@@ -1,0 +1,15 @@
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local environment files
+.env
+.env.*
+
+# Project data and generated outputs
+images/
+runs/
+train/
+val/
