@@ -1,0 +1,7 @@
+train: C:\Users\akila\Documents\research\Model\train
+
+val: C:\Users\akila\Documents\research\Model\val
+
+nc: 5
+
+names: ['Attributes', 'Entities', 'Primary Key', 'Relationships', 'Weak Entity']
