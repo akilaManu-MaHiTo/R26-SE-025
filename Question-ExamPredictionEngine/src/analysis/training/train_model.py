@@ -5,9 +5,9 @@ from sentence_transformers import InputExample, SentenceTransformer, losses
 from torch.utils.data import DataLoader
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DATA_PATH = PROJECT_ROOT / "data" / "train_data_v2.json"
-MODEL_OUTPUT_PATH = PROJECT_ROOT / "exam_similarity_model"
+MODEL_OUTPUT_PATH = PROJECT_ROOT / "model" / "similarity" / "exam_similarity_model"
 
 # Load dataset
 if not DATA_PATH.exists() or DATA_PATH.stat().st_size == 0:
@@ -27,7 +27,7 @@ for item in data:
     )
 
 # Load pre-trained model
-model = SentenceTransformer('all-MiniLM-L6-v2')
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # Create DataLoader
 train_dataloader = DataLoader(train_examples, shuffle=True, batch_size=4)

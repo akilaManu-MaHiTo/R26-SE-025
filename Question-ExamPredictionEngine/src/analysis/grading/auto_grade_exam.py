@@ -1,20 +1,31 @@
 import json
-import os
+import sys
+from pathlib import Path
+
 from sentence_transformers import SentenceTransformer, util
-from concept_scoring import extract_keywords, concept_score
-from cognitive import cognitive_score
 
-# 🔹 Load model
-model = SentenceTransformer("exam_similarity_model")
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-# 🔹 Load files
-with open("data/model_answers.json", encoding="utf-8") as f:
+from src.analysis.scoring.cognitive import cognitive_score
+from src.analysis.scoring.concept_scoring import extract_keywords, concept_score
+
+MODEL_PATH = PROJECT_ROOT / "model" / "similarity" / "exam_similarity_model"
+DATA_DIR = PROJECT_ROOT / "data"
+OUTPUT_DIR = PROJECT_ROOT / "output"
+
+# Load model
+model = SentenceTransformer(str(MODEL_PATH))
+
+# Load files
+with (DATA_DIR / "model_answers.json").open(encoding="utf-8") as f:
     model_answers = json.load(f)
 
-with open("data/student_answers.json", encoding="utf-8") as f:
+with (DATA_DIR / "student_answers.json").open(encoding="utf-8") as f:
     student_answers = json.load(f)
 
-with open("data/exam.json", encoding="utf-8") as f:
+with (DATA_DIR / "exam.json").open(encoding="utf-8") as f:
     exam_data = json.load(f)
 
 results = []
@@ -73,9 +84,9 @@ for q_id, parts in model_answers.items():
 
         print(f"Q{q_id}{part_id} → {final_marks} | Cog: {cog['student_level']}")
 
-# 🔹 Save results
-os.makedirs("output", exist_ok=True)
-with open("output/results.json", "w", encoding="utf-8") as f:
+# Save results
+OUTPUT_DIR.mkdir(exist_ok=True)
+with (OUTPUT_DIR / "results.json").open("w", encoding="utf-8") as f:
     json.dump(results, f, indent=2)
 
 print("\n Auto Grading Completed!")

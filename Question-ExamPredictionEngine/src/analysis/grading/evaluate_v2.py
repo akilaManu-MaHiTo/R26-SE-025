@@ -1,7 +1,13 @@
-from sentence_transformers import SentenceTransformer, util
-from concept_scoring import extract_keywords, concept_score
+from pathlib import Path
 
-model = SentenceTransformer("exam_similarity_model")
+from sentence_transformers import SentenceTransformer, util
+
+from src.analysis.scoring.concept_scoring import extract_keywords, concept_score
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+MODEL_PATH = PROJECT_ROOT / "model" / "similarity" / "exam_similarity_model"
+
+model = SentenceTransformer(str(MODEL_PATH))
 
 def grade_answer(model_answer, student_answer, max_marks):
     """
