@@ -1,0 +1,132 @@
+[
+  {
+    "question": "1",
+    "part": "a",
+    "similarity": 0.946,
+    "concept": 0.462,
+    "cognitive_score": 0.97,
+    "required_level": "remember",
+    "student_level": "understand",
+    "marks": 1.61
+  },
+  {
+    "question": "1",
+    "part": "b",
+    "similarity": 0.911,
+    "concept": 0.154,
+    "cognitive_score": 1.0,
+    "required_level": "remember",
+    "student_level": "remember",
+    "marks": 1.4
+  },
+  {
+    "question": "1",
+    "part": "c",
+    "similarity": 0.866,
+    "concept": 0.182,
+    "cognitive_score": 0.42,
+    "required_level": "understand",
+    "student_level": "remember",
+    "marks": 1.14
+  },
+  {
+    "question": "2",
+    "part": "a",
+    "similarity": 0.893,
+    "concept": 0.167,
+    "cognitive_score": 0.85,
+    "required_level": "remember",
+    "student_level": "remember",
+    "marks": 1.33
+  },
+  {
+    "question": "2",
+    "part": "b",
+    "similarity": 0.843,
+    "concept": 0.357,
+    "cognitive_score": 0.88,
+    "required_level": "understand",
+    "student_level": "understand",
+    "marks": 1.41
+  },
+  {
+    "question": "2",
+    "part": "c",
+    "similarity": 0.883,
+    "concept": 0.143,
+    "cognitive_score": 0.85,
+    "required_level": "remember",
+    "student_level": "remember",
+    "marks": 1.31
+  },
+  {
+    "question": "3",
+    "part": "a",
+    "similarity": 0.971,
+    "concept": 0.289,
+    "cognitive_score": 0.5,
+    "required_level": "understand",
+    "student_level": "remember",
+    "marks": 1.35
+  },
+  {
+    "question": "3",
+    "part": "b",
+    "similarity": 0.939,
+    "concept": 0.3,
+    "cognitive_score": 0.97,
+    "required_level": "remember",
+    "student_level": "understand",
+    "marks": 1.51
+  },
+  {
+    "question": "3",
+    "part": "c",
+    "similarity": 0.904,
+    "concept": 0.188,
+    "cognitive_score": 0.97,
+    "required_level": "remember",
+    "student_level": "apply",
+    "marks": 1.4
+  },
+  {
+    "question": "4",
+    "part": "a",
+    "similarity": 0.954,
+    "concept": 0.5,
+    "cognitive_score": 1.0,
+    "required_level": "remember",
+    "student_level": "remember",
+    "marks": 1.65
+  },
+  {
+    "question": "4",
+    "part": "b",
+    "similarity": 0.963,
+    "concept": 0.091,
+    "cognitive_score": 1.0,
+    "required_level": "remember",
+    "student_level": "remember",
+    "marks": 1.42
+  },
+  {
+    "question": "5",
+    "part": "a",
+    "similarity": 0.9,
+    "concept": 0.214,
+    "cognitive_score": 0.58,
+    "required_level": "apply",
+    "student_level": "understand",
+    "marks": 1.26
+  },
+  {
+    "question": "5",
+    "part": "b",
+    "similarity": 0.961,
+    "concept": 0.227,
+    "cognitive_score": 0.88,
+    "required_level": "understand",
+    "student_level": "understand",
+    "marks": 1.45
+  }
+]
