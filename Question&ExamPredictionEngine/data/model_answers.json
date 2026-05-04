@@ -1,0 +1,25 @@
+{
+  "1": {
+    "a": "Entities: Artist, Album, Song, Genre. Artist represents musician/band. Album is collection of songs. Song is individual track. Genre is music category.",
+    "b": "Artist(artist_id PK, name, country). Album(album_id PK, title, release_year, artist_id FK). Song(song_id PK, title, duration, album_id FK, genre_id FK). Genre(genre_id PK, genre_name).",
+    "c": "Yes. Recursive relationship exists: Artist can collaborate with other Artist. Implemented via separate table Collaborations(artist1_id FK, artist2_id FK)."
+  },
+  "2": {
+    "a": "Primary key is A (or E). Closure of {A}+ = A,B,C,D,E. A->BC, B->D gives D, CD->E gives E. Also E->A so E is candidate key.",
+    "b": "Insertion anomaly: cannot insert employee without department. Deletion anomaly: deleting last student removes course info. Update anomaly: changing professor name needs multiple row updates.",
+    "c": "3NF decomposition: R1(A,B,C) with FD A->BC. R2(B,D) with FD B->D. R3(C,D,E) with FD CD->E. R4(E,A) with FD E->A. All FDs preserved, all relations in 3NF."
+  },
+  "3": {
+    "a": "Atomicity: transaction completes fully or aborts. Consistency: DB constraints preserved. Isolation: concurrent execution appears serial. Durability: committed changes persist after crash.",
+    "b": "Schedule S1: R1(A),W1(A),R2(A),W2(A),R2(B),W2(B),R1(B),W1(B) → not conflict serializable (cycle T1->T2 on A, T2->T1 on B). Schedule S2: R1(A),R2(A),R1(B),R2(B),W1(A),W2(B) → conflict serializable (equivalent to T1 then T2).",
+    "c": "2PL applied: T1: lock-X(A), read(A), lock-S(B), read(B), write(A), unlock(A), unlock(B). T2: lock-S(B), read(B), lock-X(A) → blocked until T1 releases A. No deadlock. Strict 2PL prevents cascading aborts."
+  },
+  "4": {
+    "a": "Query1 (students in DBMS): π name (Student ⋈ (σ title='DBMS' Course ⋈ Enroll)). Query2 (students took all courses): π sid (Enroll ÷ π cid (Course)). Query3 (courses with no students): π cid (Course) - π cid (Enroll).",
+    "b": "Tuple calculus Q1: {s.name | Student(s) ∧ ∃e∈Enroll ∃c∈Course (e.sid=s.sid ∧ e.cid=c.cid ∧ c.title='DBMS')}. Q2: {s.name | Student(s) ∧ ∀c∈Course (∃e∈Enroll (e.sid=s.sid ∧ e.cid=c.cid))}. Q3: {c.title | Course(c) ∧ ¬∃e∈Enroll (e.cid=c.cid)}."
+  },
+  "5": {
+    "a": "Blocking factor = floor(4096/200) = 20 records/block. Total blocks = ceil(10000/20) = 500 blocks. Index blocking factor = floor(4096/(4+6)) = floor(4096/10) = 409 index entries per block (assuming 4-byte key).",
+    "b": "NoSQL types: Key-Value (Redis), Document (MongoDB), Column-family (Cassandra), Graph (Neo4j). Mapping from relational: Table → Collection (Document) or Column Family; Row → Document; Join → Embedded document or graph edge; Foreign key → Reference."
+  }
+}

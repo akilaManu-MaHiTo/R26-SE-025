@@ -1,0 +1,101 @@
+{
+  "exam": "SE2032 - Database Management Systems",
+  "year": 2024,
+  "questions": [
+    {
+      "question_number": 1,
+      "title": "Music Database Design",
+      "parts": [
+        {
+          "part": "a",
+          "question": "Identify entities in the given system and explain them.",
+          "max_marks": 3
+        },
+        {
+          "part": "b",
+          "question": "Identify attributes and primary keys for each entity.",
+          "max_marks": 3
+        },
+        {
+          "part": "c",
+          "question": "Explain whether recursive relationships exist in the system.",
+          "max_marks": 2
+        }
+      ]
+    },
+    {
+      "question_number": 2,
+      "title": "Normalization and Functional Dependencies",
+      "parts": [
+        {
+          "part": "a",
+          "question": "Find the primary key using attribute closure.",
+          "max_marks": 2
+        },
+        {
+          "part": "b",
+          "question": "Explain update anomalies in the relation.",
+          "max_marks": 2
+        },
+        {
+          "part": "c",
+          "question": "Normalize the relation into 3NF.",
+          "max_marks": 5
+        }
+      ]
+    },
+    {
+      "question_number": 3,
+      "title": "Transaction Management",
+      "parts": [
+        {
+          "part": "a",
+          "question": "Explain ACID properties of transactions.",
+          "max_marks": 2
+        },
+        {
+          "part": "b",
+          "question": "Determine whether schedules are conflict serializable.",
+          "max_marks": 4
+        },
+        {
+          "part": "c",
+          "question": "Apply 2PL protocol to given transactions.",
+          "max_marks": 4
+        }
+      ]
+    },
+    {
+      "question_number": 4,
+      "title": "Relational Algebra and Tuple Calculus",
+      "parts": [
+        {
+          "part": "a",
+          "question": "Write relational algebra expressions for given queries.",
+          "max_marks": 10
+        },
+        {
+          "part": "b",
+          "question": "Convert queries into tuple relational calculus.",
+          "max_marks": 8
+        }
+      ]
+    },
+    {
+      "question_number": 5,
+      "title": "File Organization and NoSQL",
+      "parts": [
+        {
+          "part": "a",
+          "question": "Calculate blocking factor and file size.",
+          "max_marks": 4
+        },
+        {
+          "part": "b",
+          "question": "Explain NoSQL database types and mapping.",
+          "max_marks": 6
+        }
+      ]
+    }
+  ]
+}
