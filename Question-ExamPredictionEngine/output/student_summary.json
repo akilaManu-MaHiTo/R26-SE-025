@@ -1,0 +1,94 @@
+[
+  {
+    "student_id": "it21100005",
+    "average_learning_score": 0.914,
+    "weak_questions": [],
+    "dominant_cognitive_level": "remember",
+    "performance_band": "High"
+  },
+  {
+    "student_id": "it21100004",
+    "average_learning_score": 0.823,
+    "weak_questions": [],
+    "dominant_cognitive_level": "remember",
+    "performance_band": "High"
+  },
+  {
+    "student_id": "it21100003",
+    "average_learning_score": 0.729,
+    "weak_questions": [],
+    "dominant_cognitive_level": "apply",
+    "performance_band": "Medium"
+  },
+  {
+    "student_id": "it21100002",
+    "average_learning_score": 0.588,
+    "weak_questions": [
+      "Q2b",
+      "Q3c"
+    ],
+    "dominant_cognitive_level": "remember",
+    "performance_band": "Medium"
+  },
+  {
+    "student_id": "it21104058",
+    "average_learning_score": 0.541,
+    "weak_questions": [
+      "Q2b",
+      "Q3c",
+      "Q4a",
+      "Q4b"
+    ],
+    "dominant_cognitive_level": "understand",
+    "performance_band": "Medium"
+  },
+  {
+    "student_id": "it21104032",
+    "average_learning_score": 0.461,
+    "weak_questions": [
+      "Q1a",
+      "Q2a",
+      "Q2b",
+      "Q3a",
+      "Q3b",
+      "Q3c",
+      "Q4a",
+      "Q4b",
+      "Q4c"
+    ],
+    "dominant_cognitive_level": "understand",
+    "performance_band": "Low"
+  },
+  {
+    "student_id": "it21100001",
+    "average_learning_score": 0.451,
+    "weak_questions": [
+      "Q2a",
+      "Q2b",
+      "Q2c",
+      "Q3b",
+      "Q3c",
+      "Q4a",
+      "Q4b",
+      "Q4c"
+    ],
+    "dominant_cognitive_level": "understand",
+    "performance_band": "Low"
+  },
+  {
+    "student_id": "it21104015",
+    "average_learning_score": 0.446,
+    "weak_questions": [
+      "Q2a",
+      "Q2b",
+      "Q2c",
+      "Q3b",
+      "Q3c",
+      "Q4a",
+      "Q4b",
+      "Q4c"
+    ],
+    "dominant_cognitive_level": "understand",
+    "performance_band": "Low"
+  }
+]
