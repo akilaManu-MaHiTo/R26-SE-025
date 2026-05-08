@@ -4,80 +4,80 @@
   "questions": [
     {
       "question_number": 1,
-      "marks": 20,
+      "topic": "Introduction to DBMS & Conceptual Database Design",
       "parts": [
         {
           "part": "a",
           "question": "Explain the differences between Conceptual Database Design, Logical Database Design, and Physical Database Design.",
-          "marks": 8
+          "max_marks": 8
         },
         {
           "part": "b",
           "question": "What is an Enhanced Entity-Relationship (EER) model? Explain specialization, generalization, and ISA hierarchy with suitable examples.",
-          "marks": 12
+          "max_marks": 12
         }
       ]
     },
     {
       "question_number": 2,
-      "marks": 20,
+      "topic": "Schema refinement",
       "parts": [
         {
           "part": "a",
           "question": "Consider the relation R (StudentID, Name, Dept, DeptHead, Course, Grade, Instructor). Given the functional dependencies: StudentID → Name, Dept; Dept → DeptHead; Course → Instructor. Find the candidate keys using attribute closure method.",
-          "marks": 6
+          "max_marks": 6
         },
         {
           "part": "b",
           "question": "Is the above relation in 3NF? Justify your answer.",
-          "marks": 5
+          "max_marks": 5
         },
         {
           "part": "c",
           "question": "Convert the relation into BCNF. Show all steps clearly.",
-          "marks": 9
+          "max_marks": 9
         }
       ]
     },
     {
       "question_number": 3,
-      "marks": 25,
+      "topic": "Java Database Connectivity (JDBC)",
       "parts": [
         {
           "part": "a",
           "question": "Explain the four types of JDBC drivers. Which driver is most commonly used in production and why?",
-          "marks": 8
+          "max_marks": 8
         },
         {
           "part": "b",
           "question": "Differentiate between Statement, PreparedStatement, and CallableStatement in JDBC with examples.",
-          "marks": 10
+          "max_marks": 10
         },
         {
           "part": "c",
           "question": "Write a JDBC code snippet to insert a new student record into the Student table using PreparedStatement.",
-          "marks": 7
+          "max_marks": 7
         }
       ]
     },
     {
       "question_number": 4,
-      "marks": 35,
+      "topic": "SQL",
       "parts": [
         {
           "part": "a",
           "question": "Write SQL queries for the following on the Library schema (Book, Member, Loan, Fine):\n(i) Find the names and emails of members who have overdue books.\n(ii) Find the total number of books borrowed by each member.",
-          "marks": 10
+          "max_marks": 10
         },
         {
           "part": "b",
           "question": "Create a user-defined function to calculate the fine for a loan based on the number of days overdue (Rs. 50 per day).",
-          "marks": 10
+          "max_marks": 10
         },
         {
           "part": "c",
           "question": "Explain how authentication and authorization work in SQL Server. Write T-SQL statements to create a login and assign appropriate roles.",
-          "marks": 15
+          "max_marks": 15
         }
       ]
     }

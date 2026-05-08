@@ -4,75 +4,75 @@
   "questions": [
     {
       "question_number": 1,
-      "marks": 20,
+      "topic": "Introduction to DBMS & Conceptual Database Design",
       "parts": [
         {
           "part": "a",
           "question": "What are the main components of a Database Management System? Explain the advantages of DBMS over file processing systems.",
-          "marks": 10
+          "max_marks": 10
         },
         {
           "part": "b",
           "question": "Define primary key, candidate key, foreign key, and super key with appropriate examples.",
-          "marks": 10
+          "max_marks": 10
         }
       ]
     },
     {
       "question_number": 2,
-      "marks": 20,
+      "topic": "Schema refinement",
       "parts": [
         {
           "part": "a",
           "question": "Consider the relation R (OrderID, CustomerID, CustomerName, ItemID, ItemName, Quantity, Price). Given FDs: OrderID → CustomerID; CustomerID → CustomerName; ItemID → ItemName, Price. Normalize this relation up to 3NF.",
-          "marks": 12
+          "max_marks": 12
         },
         {
           "part": "b",
           "question": "Explain the difference between 3NF and BCNF with an example.",
-          "marks": 8
+          "max_marks": 8
         }
       ]
     },
     {
       "question_number": 3,
-      "marks": 25,
+      "topic": "Database Utilities",
       "parts": [
         {
           "part": "a",
           "question": "Explain the ACID properties of a transaction with suitable examples.",
-          "marks": 8
+          "max_marks": 8
         },
         {
           "part": "b",
           "question": "What are database utilities? List and explain any four common database utilities.",
-          "marks": 7
+          "max_marks": 7
         },
         {
           "part": "c",
           "question": "Write a Java JDBC program to retrieve all records from the Employee table and display them.",
-          "marks": 10
+          "max_marks": 10
         }
       ]
     },
     {
       "question_number": 4,
-      "marks": 35,
+      "topic": "SQL",
       "parts": [
         {
           "part": "a",
           "question": "Write SQL queries for:\n(i) Find books that have never been borrowed.\n(ii) Find members who have paid more than Rs. 5000 in fines.",
-          "marks": 12
+          "max_marks": 12
         },
         {
           "part": "b",
           "question": "Create a stored procedure that issues a book to a member and updates the available copies.",
-          "marks": 10
+          "max_marks": 10
         },
         {
           "part": "c",
           "question": "Discuss common database security threats and how SQL Server helps prevent them.",
-          "marks": 13
+          "max_marks": 13
         }
       ]
     }

@@ -4,75 +4,75 @@
   "questions": [
     {
       "question_number": 1,
-      "marks": 20,
+      "topic": "Introduction to DBMS & Conceptual Database Design",
       "parts": [
         {
           "part": "a",
           "question": "What is an Entity-Relationship (ER) model? Explain weak entity, composite attribute, and multivalued attribute with examples.",
-          "marks": 12
+          "max_marks": 12
         },
         {
           "part": "b",
           "question": "Explain the mapping rules to convert ER diagrams to relational schema.",
-          "marks": 8
+          "max_marks": 8
         }
       ]
     },
     {
       "question_number": 2,
-      "marks": 20,
+      "topic": "Schema refinement",
       "parts": [
         {
           "part": "a",
           "question": "Consider relation R with attributes and FDs of your choice. Demonstrate how you would check for 2NF, 3NF, and BCNF violations.",
-          "marks": 10
+          "max_marks": 10
         },
         {
           "part": "b",
           "question": "Why is BCNF considered stronger than 3NF?",
-          "marks": 10
+          "max_marks": 10
         }
       ]
     },
     {
       "question_number": 3,
-      "marks": 25,
+      "topic": "Database Utilities",
       "parts": [
         {
           "part": "a",
           "question": "Explain the architecture and working of Type 4 JDBC Driver.",
-          "marks": 8
+          "max_marks": 8
         },
         {
           "part": "b",
           "question": "Write JDBC code to call a stored procedure that returns multiple result sets.",
-          "marks": 10
+          "max_marks": 10
         },
         {
           "part": "c",
           "question": "What are database backups and recovery techniques?",
-          "marks": 7
+          "max_marks": 7
         }
       ]
     },
     {
       "question_number": 4,
-      "marks": 35,
+      "topic": "SQL",
       "parts": [
         {
           "part": "a",
           "question": "Write complex SQL queries using JOINs, GROUP BY, and subqueries for a University database (Student, Course, Enrollment).",
-          "marks": 12
+          "max_marks": 12
         },
         {
           "part": "b",
           "question": "Create a scalar function and a table-valued function in SQL.",
-          "marks": 10
+          "max_marks": 10
         },
         {
           "part": "c",
           "question": "Write T-SQL statements for user creation, role assignment, and permission granting in SQL Server.",
-          "marks": 13
+          "max_marks": 13
         }
       ]
     }
