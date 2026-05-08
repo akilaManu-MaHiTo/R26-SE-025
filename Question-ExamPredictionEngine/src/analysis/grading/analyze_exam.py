@@ -16,6 +16,10 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.analysis.scoring.cognitive import cognitive_score
 from src.analysis.scoring.concept_scoring import extract_keywords, concept_score
+from src.analytics.cognitive_gap_analysis import CognitiveGapAnalyzer
+from src.analytics.misunderstood_questions import MisunderstoodQuestionsAnalyzer
+from src.analytics.student_analysis import analyze_student_performance
+from src.analytics.topic_utils import resolve_topic
 
 # --------------------------------------------------
 # Load data
@@ -37,7 +41,7 @@ else:
 # --------------------------------------------------
 # Storage
 # --------------------------------------------------
-topic_stats = defaultdict(list)
+student_topic_scores = defaultdict(lambda: defaultdict(list))
 student_reports = []
 
 # --------------------------------------------------
@@ -106,10 +110,10 @@ for student in students:
             )
 
             # --------------------------------------------------
-            # Topic tracking (Q + part level)
+            # Topic tracking (topic-level with question fallback)
             # --------------------------------------------------
-            topic_key = f"Q{q_id}{part_id}"
-            topic_stats[topic_key].append(learning_score)
+            topic_key = resolve_topic(exam_data, q_id, part_id, default=f"Q{q_id}{part_id}")
+            student_topic_scores[student_id][topic_key].append(learning_score)
 
             # --------------------------------------------------
             # Store result
@@ -125,6 +129,7 @@ for student in students:
                 "cognitive_score": cog["cognitive_score"],
                 "student_level": cog["student_level"],
                 "required_level": cog["required_level"],
+                "topic": topic_key,
                 "learning_score": learning_score
             })
 
@@ -135,15 +140,53 @@ for student in students:
 # --------------------------------------------------
 weak_topics = []
 
-for topic, scores in topic_stats.items():
-    avg = sum(scores) / len(scores)
+topic_summary = []
 
-    if avg < 0.5:
+for student_id, topics in student_topic_scores.items():
+    for topic, scores in topics.items():
+        if not scores:
+            continue
+
+        average_score = sum(scores) / len(scores)
+        topic_summary.append({
+            "student_id": student_id,
+            "topic": topic,
+            "average_learning_score": round(average_score, 3),
+            "attempts": len(scores),
+            "is_weak": average_score < 0.5
+        })
+
+topic_aggregates = defaultdict(lambda: {
+    "weak_students": 0,
+    "students_attempted": 0,
+    "attempts": 0,
+    "total_score": 0.0,
+})
+
+for record in topic_summary:
+    aggregate = topic_aggregates[record["topic"]]
+    aggregate["students_attempted"] += 1
+    aggregate["attempts"] += record["attempts"]
+    aggregate["total_score"] += record["average_learning_score"]
+
+    if record["is_weak"]:
+        aggregate["weak_students"] += 1
+
+for topic, aggregate in topic_aggregates.items():
+    weak_share = aggregate["weak_students"] / aggregate["students_attempted"] if aggregate["students_attempted"] else 0
+    average_score = aggregate["total_score"] / aggregate["students_attempted"] if aggregate["students_attempted"] else 0
+
+    if aggregate["students_attempted"] >= 2 and weak_share >= 0.4:
         weak_topics.append({
             "topic": topic,
-            "average_learning_score": round(avg, 3),
+            "average_learning_score": round(average_score, 3),
+            "weak_student_count": aggregate["weak_students"],
+            "students_attempted": aggregate["students_attempted"],
+            "weak_student_share": round(weak_share, 3),
             "status": "WEAK"
         })
+
+weak_topics.sort(key=lambda item: (item["weak_student_share"], item["average_learning_score"]), reverse=True)
 
 # --------------------------------------------------
 # Save outputs
@@ -153,8 +196,24 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 with (OUTPUT_DIR / "student_report.json").open("w", encoding="utf-8") as f:
     json.dump(student_reports, f, indent=2)
 
+student_summaries = analyze_student_performance(student_reports)
+misunderstood_questions = MisunderstoodQuestionsAnalyzer().analyze(student_reports)
+cognitive_gaps = CognitiveGapAnalyzer().analyze(student_reports)
+
+with (OUTPUT_DIR / "student_summary.json").open("w", encoding="utf-8") as f:
+    json.dump(student_summaries, f, indent=2)
+
+with (OUTPUT_DIR / "misunderstood_questions.json").open("w", encoding="utf-8") as f:
+    json.dump(misunderstood_questions, f, indent=2)
+
+with (OUTPUT_DIR / "cognitive_gap_analysis.json").open("w", encoding="utf-8") as f:
+    json.dump(cognitive_gaps, f, indent=2)
+
 with (OUTPUT_DIR / "weak_topics.json").open("w", encoding="utf-8") as f:
     json.dump(weak_topics, f, indent=2)
 
 print("\nAnalytics Completed!")
 print(f"Weak Topics Found: {len(weak_topics)}")
+print(f"Student Summaries Found: {len(student_summaries)}")
+print(f"Misunderstood Questions Found: {len(misunderstood_questions)}")
+print(f"Cognitive Gaps Found: {len(cognitive_gaps)}")

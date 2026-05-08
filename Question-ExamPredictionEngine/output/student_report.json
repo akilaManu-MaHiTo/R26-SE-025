@@ -10,6 +10,7 @@
     "cognitive_score": 1.0,
     "student_level": "create",
     "required_level": "create",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.522
   },
   {
@@ -23,6 +24,7 @@
     "cognitive_score": 0.97,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.545
   },
   {
@@ -36,6 +38,7 @@
     "cognitive_score": 1.0,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.469
   },
   {
@@ -49,6 +52,7 @@
     "cognitive_score": 0.17,
     "student_level": "remember",
     "required_level": "evaluate",
+    "topic": "Schema refinement",
     "learning_score": 0.333
   },
   {
@@ -62,6 +66,7 @@
     "cognitive_score": 1.0,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.367
   },
   {
@@ -75,6 +80,7 @@
     "cognitive_score": 0.88,
     "student_level": "understand",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.515
   },
   {
@@ -88,6 +94,7 @@
     "cognitive_score": 0.44,
     "student_level": "understand",
     "required_level": "analyze",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.436
   },
   {
@@ -101,6 +108,7 @@
     "cognitive_score": 0.88,
     "student_level": "understand",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.428
   },
   {
@@ -114,6 +122,7 @@
     "cognitive_score": 0.33,
     "student_level": "remember",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.479
   },
   {
@@ -127,6 +136,7 @@
     "cognitive_score": 0.58,
     "student_level": "understand",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.421
   },
   {
@@ -140,6 +150,7 @@
     "cognitive_score": 0.88,
     "student_level": "understand",
     "required_level": "understand",
+    "topic": "SQL",
     "learning_score": 0.448
   },
   {
@@ -153,6 +164,7 @@
     "cognitive_score": 1.0,
     "student_level": "create",
     "required_level": "create",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.7
   },
   {
@@ -166,6 +178,7 @@
     "cognitive_score": 0.97,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.66
   },
   {
@@ -179,6 +192,7 @@
     "cognitive_score": 1.0,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.65
   },
   {
@@ -192,6 +206,7 @@
     "cognitive_score": 0.2,
     "student_level": "remember",
     "required_level": "evaluate",
+    "topic": "Schema refinement",
     "learning_score": 0.458
   },
   {
@@ -205,6 +220,7 @@
     "cognitive_score": 1.0,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.577
   },
   {
@@ -218,6 +234,7 @@
     "cognitive_score": 0.97,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.683
   },
   {
@@ -231,6 +248,7 @@
     "cognitive_score": 0.66,
     "student_level": "apply",
     "required_level": "analyze",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.633
   },
   {
@@ -244,6 +262,7 @@
     "cognitive_score": 0.5,
     "student_level": "remember",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.446
   },
   {
@@ -257,6 +276,7 @@
     "cognitive_score": 0.33,
     "student_level": "remember",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.526
   },
   {
@@ -270,6 +290,7 @@
     "cognitive_score": 0.58,
     "student_level": "understand",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.549
   },
   {
@@ -283,6 +304,7 @@
     "cognitive_score": 0.97,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "SQL",
     "learning_score": 0.589
   },
   {
@@ -296,6 +318,7 @@
     "cognitive_score": 1.0,
     "student_level": "create",
     "required_level": "create",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.84
   },
   {
@@ -309,6 +332,7 @@
     "cognitive_score": 0.97,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.785
   },
   {
@@ -322,6 +346,7 @@
     "cognitive_score": 0.92,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.736
   },
   {
@@ -335,6 +360,7 @@
     "cognitive_score": 0.35,
     "student_level": "understand",
     "required_level": "evaluate",
+    "topic": "Schema refinement",
     "learning_score": 0.617
   },
   {
@@ -348,6 +374,7 @@
     "cognitive_score": 1.0,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.737
   },
   {
@@ -361,6 +388,7 @@
     "cognitive_score": 0.97,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.77
   },
   {
@@ -374,6 +402,7 @@
     "cognitive_score": 0.75,
     "student_level": "apply",
     "required_level": "analyze",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.732
   },
   {
@@ -387,6 +416,7 @@
     "cognitive_score": 0.88,
     "student_level": "understand",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.714
   },
   {
@@ -400,6 +430,7 @@
     "cognitive_score": 0.33,
     "student_level": "remember",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.648
   },
   {
@@ -413,6 +444,7 @@
     "cognitive_score": 0.88,
     "student_level": "apply",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.717
   },
   {
@@ -426,6 +458,7 @@
     "cognitive_score": 0.95,
     "student_level": "analyze",
     "required_level": "understand",
+    "topic": "SQL",
     "learning_score": 0.725
   },
   {
@@ -439,6 +472,7 @@
     "cognitive_score": 1.0,
     "student_level": "create",
     "required_level": "create",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.904
   },
   {
@@ -452,6 +486,7 @@
     "cognitive_score": 0.95,
     "student_level": "analyze",
     "required_level": "understand",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.868
   },
   {
@@ -465,6 +500,7 @@
     "cognitive_score": 0.92,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.843
   },
   {
@@ -478,6 +514,7 @@
     "cognitive_score": 0.68,
     "student_level": "analyze",
     "required_level": "evaluate",
+    "topic": "Schema refinement",
     "learning_score": 0.784
   },
   {
@@ -491,6 +528,7 @@
     "cognitive_score": 1.0,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.85
   },
   {
@@ -504,6 +542,7 @@
     "cognitive_score": 1.0,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.907
   },
   {
@@ -517,6 +556,7 @@
     "cognitive_score": 0.23,
     "student_level": "remember",
     "required_level": "analyze",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.79
   },
   {
@@ -530,6 +570,7 @@
     "cognitive_score": 0.5,
     "student_level": "remember",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.76
   },
   {
@@ -543,6 +584,7 @@
     "cognitive_score": 0.29,
     "student_level": "remember",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.701
   },
   {
@@ -556,6 +598,7 @@
     "cognitive_score": 0.88,
     "student_level": "apply",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.825
   },
   {
@@ -569,6 +612,7 @@
     "cognitive_score": 1.0,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "SQL",
     "learning_score": 0.826
   },
   {
@@ -582,6 +626,7 @@
     "cognitive_score": 1.0,
     "student_level": "create",
     "required_level": "create",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.986
   },
   {
@@ -595,6 +640,7 @@
     "cognitive_score": 0.5,
     "student_level": "remember",
     "required_level": "understand",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.902
   },
   {
@@ -608,6 +654,7 @@
     "cognitive_score": 0.97,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.97
   },
   {
@@ -621,6 +668,7 @@
     "cognitive_score": 0.2,
     "student_level": "remember",
     "required_level": "evaluate",
+    "topic": "Schema refinement",
     "learning_score": 0.861
   },
   {
@@ -634,6 +682,7 @@
     "cognitive_score": 0.98,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.958
   },
   {
@@ -647,6 +696,7 @@
     "cognitive_score": 1.0,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.986
   },
   {
@@ -660,6 +710,7 @@
     "cognitive_score": 0.69,
     "student_level": "apply",
     "required_level": "analyze",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.906
   },
   {
@@ -673,6 +724,7 @@
     "cognitive_score": 0.5,
     "student_level": "remember",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.854
   },
   {
@@ -686,6 +738,7 @@
     "cognitive_score": 0.31,
     "student_level": "remember",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.802
   },
   {
@@ -699,6 +752,7 @@
     "cognitive_score": 1.0,
     "student_level": "apply",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.917
   },
   {
@@ -712,6 +766,7 @@
     "cognitive_score": 1.0,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "SQL",
     "learning_score": 0.916
   },
   {
@@ -725,6 +780,7 @@
     "cognitive_score": 1.0,
     "student_level": "create",
     "required_level": "create",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.55
   },
   {
@@ -738,6 +794,7 @@
     "cognitive_score": 0.97,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.545
   },
   {
@@ -751,6 +808,7 @@
     "cognitive_score": 1.0,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.477
   },
   {
@@ -764,6 +822,7 @@
     "cognitive_score": 0.35,
     "student_level": "understand",
     "required_level": "evaluate",
+    "topic": "Schema refinement",
     "learning_score": 0.302
   },
   {
@@ -777,6 +836,7 @@
     "cognitive_score": 1.0,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.498
   },
   {
@@ -790,6 +850,7 @@
     "cognitive_score": 0.88,
     "student_level": "understand",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.532
   },
   {
@@ -803,6 +864,7 @@
     "cognitive_score": 0.44,
     "student_level": "understand",
     "required_level": "analyze",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.376
   },
   {
@@ -816,6 +878,7 @@
     "cognitive_score": 1.0,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.379
   },
   {
@@ -829,6 +892,7 @@
     "cognitive_score": 0.33,
     "student_level": "remember",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.394
   },
   {
@@ -842,6 +906,7 @@
     "cognitive_score": 0.58,
     "student_level": "understand",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.374
   },
   {
@@ -855,6 +920,7 @@
     "cognitive_score": 0.88,
     "student_level": "understand",
     "required_level": "understand",
+    "topic": "SQL",
     "learning_score": 0.477
   },
   {
@@ -868,6 +934,7 @@
     "cognitive_score": 0.29,
     "student_level": "understand",
     "required_level": "create",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.346
   },
   {
@@ -881,6 +948,7 @@
     "cognitive_score": 0.97,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.595
   },
   {
@@ -894,6 +962,7 @@
     "cognitive_score": 0.97,
     "student_level": "understand",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.495
   },
   {
@@ -907,6 +976,7 @@
     "cognitive_score": 0.35,
     "student_level": "understand",
     "required_level": "evaluate",
+    "topic": "Schema refinement",
     "learning_score": 0.422
   },
   {
@@ -920,6 +990,7 @@
     "cognitive_score": 1.0,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.517
   },
   {
@@ -933,6 +1004,7 @@
     "cognitive_score": 0.88,
     "student_level": "understand",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.457
   },
   {
@@ -946,6 +1018,7 @@
     "cognitive_score": 0.44,
     "student_level": "understand",
     "required_level": "analyze",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.451
   },
   {
@@ -959,6 +1032,7 @@
     "cognitive_score": 1.0,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.446
   },
   {
@@ -972,6 +1046,7 @@
     "cognitive_score": 0.33,
     "student_level": "remember",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.413
   },
   {
@@ -985,6 +1060,7 @@
     "cognitive_score": 0.58,
     "student_level": "understand",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.461
   },
   {
@@ -998,6 +1074,7 @@
     "cognitive_score": 0.88,
     "student_level": "understand",
     "required_level": "understand",
+    "topic": "SQL",
     "learning_score": 0.465
   },
   {
@@ -1011,6 +1088,7 @@
     "cognitive_score": 1.0,
     "student_level": "create",
     "required_level": "create",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.625
   },
   {
@@ -1024,6 +1102,7 @@
     "cognitive_score": 0.88,
     "student_level": "understand",
     "required_level": "understand",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
     "learning_score": 0.632
   },
   {
@@ -1037,6 +1116,7 @@
     "cognitive_score": 1.0,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.6
   },
   {
@@ -1050,6 +1130,7 @@
     "cognitive_score": 0.35,
     "student_level": "understand",
     "required_level": "evaluate",
+    "topic": "Schema refinement",
     "learning_score": 0.492
   },
   {
@@ -1063,6 +1144,7 @@
     "cognitive_score": 1.0,
     "student_level": "remember",
     "required_level": "remember",
+    "topic": "Schema refinement",
     "learning_score": 0.583
   },
   {
@@ -1076,6 +1158,7 @@
     "cognitive_score": 0.88,
     "student_level": "understand",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.607
   },
   {
@@ -1089,6 +1172,7 @@
     "cognitive_score": 0.44,
     "student_level": "understand",
     "required_level": "analyze",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.537
   },
   {
@@ -1102,6 +1186,7 @@
     "cognitive_score": 0.42,
     "student_level": "remember",
     "required_level": "understand",
+    "topic": "Java Database Connectivity (JDBC)",
     "learning_score": 0.431
   },
   {
@@ -1115,6 +1200,7 @@
     "cognitive_score": 0.33,
     "student_level": "remember",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.456
   },
   {
@@ -1128,6 +1214,7 @@
     "cognitive_score": 0.58,
     "student_level": "understand",
     "required_level": "apply",
+    "topic": "SQL",
     "learning_score": 0.481
   },
   {
@@ -1141,6 +1228,7 @@
     "cognitive_score": 0.97,
     "student_level": "apply",
     "required_level": "understand",
+    "topic": "SQL",
     "learning_score": 0.512
   }
 ]

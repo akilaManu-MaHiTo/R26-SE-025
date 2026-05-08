@@ -2,6 +2,8 @@
 
 from collections import defaultdict
 
+from src.analytics.topic_utils import resolve_topic
+
 
 class TopicAnalytics:
 
@@ -12,18 +14,13 @@ class TopicAnalytics:
 
     # 🔹 Get topic
     def get_topic(self, q_id, part_id):
-        for q in self.exam_data["questions"]:
-            if str(q["question_number"]) == str(q_id):
-                for part in q["parts"]:
-                    if part["part"] == part_id:
-                        return part.get("topic", "Unknown")
-        return "Unknown"
+        return resolve_topic(self.exam_data, q_id, part_id)
 
     # 🔹 Add score during grading
     def add_result(self, q_id, part_id, marks, max_marks):
         topic = self.get_topic(q_id, part_id)
 
-        normalized = marks / max_marks
+        normalized = marks / max_marks if max_marks else 0
 
         self.topic_scores[topic].append(normalized)
         self.question_scores[(q_id, part_id)].append(normalized)
@@ -74,6 +71,12 @@ class TopicAnalytics:
 
     # 🔹 Insights
     def get_insights(self, topic_analysis):
+        if not topic_analysis:
+            return {
+                "weakest_topic": None,
+                "strongest_topic": None
+            }
+
         weakest = min(topic_analysis.items(), key=lambda x: x[1]["average_score"])
         strongest = max(topic_analysis.items(), key=lambda x: x[1]["average_score"])
 
