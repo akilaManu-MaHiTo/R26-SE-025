@@ -1,0 +1,437 @@
+[
+    {
+        "student_id": "it22100001",
+        "exam": "SE2032 - Database Management Systems",
+        "year": 2022,
+        "answers": [
+            {
+                "question_number": 1,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "DBMS components: data, hardware, software, users. Advantages over file systems: less redundancy, data consistency, security, concurrent access.",
+                        "score": 4,
+                        "max_marks": 10
+                    },
+                    {
+                        "part": "b",
+                        "answer": "Primary key unique identifies row. Candidate key minimal superkey. Foreign key references another table. Superkey set of attributes that uniquely identify.",
+                        "score": 3,
+                        "max_marks": 10
+                    }
+                ]
+            },
+            {
+                "question_number": 2,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "Normalize to 3NF: R1(OrderID, CustomerID, ItemID, Quantity, Price) but need decompose. Actually split into Customer, Item, Order tables.",
+                        "score": 4,
+                        "max_marks": 12
+                    },
+                    {
+                        "part": "b",
+                        "answer": "3NF allows non-prime attributes dependent on non-superkey if the determinant is prime? BCNF stricter.",
+                        "score": 2,
+                        "max_marks": 8
+                    }
+                ]
+            },
+            {
+                "question_number": 3,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "ACID: Atomicity (all or nothing), Consistency (valid state), Isolation (concurrent not interfere), Durability (committed persists).",
+                        "score": 3,
+                        "max_marks": 8
+                    },
+                    {
+                        "part": "b",
+                        "answer": "Utilities: backup, recovery, import, export, performance monitoring.",
+                        "score": 2,
+                        "max_marks": 7
+                    },
+                    {
+                        "part": "c",
+                        "answer": "Java code: Class.forName, DriverManager.getConnection, Statement, ResultSet loop.",
+                        "score": 3,
+                        "max_marks": 10
+                    }
+                ]
+            },
+            {
+                "question_number": 4,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "(i) Books never borrowed: SELECT * FROM Book WHERE BookID NOT IN (SELECT BookID FROM Loan); (ii) Members paid >5000 fine: SELECT MemberID FROM Fine WHERE Amount>5000;",
+                        "score": 4,
+                        "max_marks": 12
+                    },
+                    {
+                        "part": "b",
+                        "answer": "CREATE PROCEDURE IssueBook @BookID INT, @MemberID INT AS BEGIN UPDATE Book SET AvailableCopies=AvailableCopies-1 WHERE BookID=@BookID; INSERT INTO Loan VALUES(...); END",
+                        "score": 3,
+                        "max_marks": 10
+                    },
+                    {
+                        "part": "c",
+                        "answer": "Threats: SQL injection, unauthorized access. SQL Server uses authentication, encryption, auditing.",
+                        "score": 3,
+                        "max_marks": 13
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "student_id": "it22100002",
+        "exam": "SE2032 - Database Management Systems",
+        "year": 2022,
+        "answers": [
+            {
+                "question_number": 1,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "Components: query processor, storage manager, transaction manager, metadata catalog. Advantages: reduces data redundancy, provides data integrity, supports backup/recovery, allows multiple user views.",
+                        "score": 6,
+                        "max_marks": 10
+                    },
+                    {
+                        "part": "b",
+                        "answer": "Primary key: unique identifier (e.g., SSN). Candidate key: all possible primary keys (e.g., email, SSN). Foreign key: references primary key of another table (e.g., DeptID in Employee). Super key: set containing unique identifier (e.g., SSN+Name).",
+                        "score": 6,
+                        "max_marks": 10
+                    }
+                ]
+            },
+            {
+                "question_number": 2,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "Normalization: R(OrderID, CustomerID, CustomerName, ItemID, ItemName, Quantity, Price). FDs: OrderID->CustomerID; CustomerID->CustomerName; ItemID->ItemName,Price. Candidate key: (OrderID, ItemID). 2NF: partial dependencies exist (OrderID->CustomerID, CustomerName; ItemID->ItemName,Price). Decompose: R1(OrderID, CustomerID), R2(CustomerID, CustomerName), R3(ItemID, ItemName, Price), R4(OrderID, ItemID, Quantity). All in 3NF.",
+                        "score": 8,
+                        "max_marks": 12
+                    },
+                    {
+                        "part": "b",
+                        "answer": "3NF allows a non-prime attribute to depend on a non-superkey if the dependent is prime? Better: BCNF requires every determinant be superkey. Example: R(A,B,C) with FD A->B, B->C. Candidate key A. 3NF okay, BCNF violates because B->C and B not superkey. So BCNF stronger.",
+                        "score": 5,
+                        "max_marks": 8
+                    }
+                ]
+            },
+            {
+                "question_number": 3,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "Atomicity: transaction either fully completes or aborts. Example: transfer money - debit and credit must both happen. Consistency: transaction leaves DB in valid state (e.g., sum of balances unchanged). Isolation: concurrent transactions appear serial. Example: two withdrawals from same account must not interfere. Durability: committed changes survive crashes.",
+                        "score": 6,
+                        "max_marks": 8
+                    },
+                    {
+                        "part": "b",
+                        "answer": "Database utilities: backup (copy database), recovery (restore from backup), load (import data), reorganize (rebuild indexes), statistics update, query optimization tools.",
+                        "score": 5,
+                        "max_marks": 7
+                    },
+                    {
+                        "part": "c",
+                        "answer": "```java\nimport java.sql.*;\npublic class RetrieveEmployees {\n  public static void main(String[] args) {\n    try (Connection conn = DriverManager.getConnection(\"jdbc:mysql://localhost/db\", \"user\", \"pass\");\n         Statement stmt = conn.createStatement();\n         ResultSet rs = stmt.executeQuery(\"SELECT * FROM Employee\")) {\n      while (rs.next()) {\n        System.out.println(rs.getInt(\"ID\") + \" \" + rs.getString(\"Name\"));\n      }\n    } catch (SQLException e) { e.printStackTrace(); }\n  }\n}\n```",
+                        "score": 7,
+                        "max_marks": 10
+                    }
+                ]
+            },
+            {
+                "question_number": 4,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "(i) Books never borrowed: SELECT * FROM Book WHERE BookID NOT IN (SELECT DISTINCT BookID FROM Loan); (ii) Members with total fines > 5000: SELECT MemberID, SUM(Amount) AS TotalFine FROM Fine GROUP BY MemberID HAVING SUM(Amount) > 5000;",
+                        "score": 8,
+                        "max_marks": 12
+                    },
+                    {
+                        "part": "b",
+                        "answer": "```sql\nCREATE PROCEDURE IssueBook(@BookID INT, @MemberID INT, @LoanDate DATE)\nAS\nBEGIN\n  IF (SELECT AvailableCopies FROM Book WHERE BookID = @BookID) > 0\n  BEGIN\n    UPDATE Book SET AvailableCopies = AvailableCopies - 1 WHERE BookID = @BookID;\n    INSERT INTO Loan (BookID, MemberID, LoanDate, DueDate)\n    VALUES (@BookID, @MemberID, @LoanDate, DATEADD(DAY, 14, @LoanDate));\n  END\n  ELSE\n    PRINT 'No copies available';\nEND;\n```",
+                        "score": 6,
+                        "max_marks": 10
+                    },
+                    {
+                        "part": "c",
+                        "answer": "Common security threats: SQL injection (malicious input), privilege escalation, eavesdropping, denial of service. SQL Server prevention: parameterized queries, least privilege principle, encrypted connections (SSL/TLS), auditing, firewall, row-level security, dynamic data masking.",
+                        "score": 7,
+                        "max_marks": 13
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "student_id": "it22100003",
+        "exam": "SE2032 - Database Management Systems",
+        "year": 2022,
+        "answers": [
+            {
+                "question_number": 1,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "Main DBMS components: Storage manager (manages file and memory), Query processor (interprets SQL), Transaction manager (ensures ACID), Metadata catalog (stores schema). Advantages over file systems: reduced redundancy (data stored once), controlled inconsistency (update anomalies avoided), data sharing (concurrent access), security (access control), backup/recovery, integrity constraints.",
+                        "score": 8,
+                        "max_marks": 10
+                    },
+                    {
+                        "part": "b",
+                        "answer": "Super key: set of attributes that uniquely identifies a tuple (e.g., {StudentID, Name}). Candidate key: minimal super key (e.g., {StudentID}). Primary key: chosen candidate key (e.g., StudentID). Foreign key: attribute referencing primary key of another table (e.g., DeptID in Employee table referencing Dept(DeptID)).",
+                        "score": 8,
+                        "max_marks": 10
+                    }
+                ]
+            },
+            {
+                "question_number": 2,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "Given FDs: OrderID→CustomerID, CustomerID→CustomerName, ItemID→ItemName, Price. Candidate key: (OrderID, ItemID). 1NF relation. 2NF violation: partial dependencies - OrderID→CustomerID,CustomerName (CustomerName depends on part of key). Also ItemID→ItemName,Price. Decompose: R1(OrderID, CustomerID) [CustomerID depends on OrderID], R2(CustomerID, CustomerName), R3(ItemID, ItemName, Price), R4(OrderID, ItemID, Quantity). Now all non-key attributes fully depend on whole key. 3NF check: In R1, OrderID→CustomerID (OK, LHS is key). R2: CustomerID→CustomerName (OK, key). R3: ItemID→ItemName,Price (OK). R4: no transitive dependencies. So 3NF achieved.",
+                        "score": 10,
+                        "max_marks": 12
+                    },
+                    {
+                        "part": "b",
+                        "answer": "3NF: For every non-trivial FD X->A, either X is superkey or A is prime (part of some candidate key). BCNF: Only requires X be superkey. Thus BCNF eliminates all transitive dependencies, even those where the dependent is prime. Example: R(Student, Course, Instructor) with FDs: {Student,Course}->Instructor, Instructor->Course. Candidate keys: (Student,Course) and (Student,Instructor). 3NF holds because Instructor->Course has Course which is prime (part of key). But BCNF violated because Instructor is not superkey. So BCNF is stronger.",
+                        "score": 7,
+                        "max_marks": 8
+                    }
+                ]
+            },
+            {
+                "question_number": 3,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "ACID properties: Atomicity – transaction either completes entirely or has no effect (e.g., fund transfer: debit and credit both succeed or rollback). Consistency – transaction transforms database from one valid state to another (e.g., total balance unchanged after transfer). Isolation – concurrent transactions appear serial, no intermediate state visible (e.g., two withdrawals see consistent balance). Durability – once committed, changes persist even after system failure (e.g., write-ahead logging).",
+                        "score": 7,
+                        "max_marks": 8
+                    },
+                    {
+                        "part": "b",
+                        "answer": "Database utilities are tools for administration. Common ones: 1) Backup and Restore – create copies and recover. 2) Load/Unload – import/export data in bulk. 3) Reorganization – rebuild indexes, defragment tables. 4) Statistics – update optimizer statistics. 5) Integrity checking – validate constraints. 6) Log management – view transaction logs.",
+                        "score": 6,
+                        "max_marks": 7
+                    },
+                    {
+                        "part": "c",
+                        "answer": "```java\nimport java.sql.*;\npublic class JDBCSelect {\n  public static void main(String[] args) {\n    String url = \"jdbc:postgresql://localhost:5432/mydb\";\n    String user = \"appuser\";\n    String pass = \"secret\";\n    try (Connection conn = DriverManager.getConnection(url, user, pass);\n         Statement st = conn.createStatement();\n         ResultSet rs = st.executeQuery(\"SELECT emp_id, emp_name, salary FROM Employee\")) {\n      while (rs.next()) {\n        int id = rs.getInt(\"emp_id\");\n        String name = rs.getString(\"emp_name\");\n        double sal = rs.getDouble(\"salary\");\n        System.out.printf(\"%d | %s | %.2f\\n\", id, name, sal);\n      }\n    } catch (SQLException e) {\n      e.printStackTrace();\n    }\n  }\n}\n```",
+                        "score": 8,
+                        "max_marks": 10
+                    }
+                ]
+            },
+            {
+                "question_number": 4,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "(i) Books never borrowed: \n```sql\nSELECT b.BookID, b.Title\nFROM Book b\nLEFT JOIN Loan l ON b.BookID = l.BookID\nWHERE l.LoanID IS NULL;\n```\n(ii) Members with total fines > 5000:\n```sql\nSELECT m.MemberID, m.Name, SUM(f.Amount) AS TotalFine\nFROM Member m\nJOIN Fine f ON m.MemberID = f.MemberID\nGROUP BY m.MemberID, m.Name\nHAVING SUM(f.Amount) > 5000;\n```",
+                        "score": 9,
+                        "max_marks": 12
+                    },
+                    {
+                        "part": "b",
+                        "answer": "```sql\nCREATE PROCEDURE IssueBook(\n  @BookID INT,\n  @MemberID INT,\n  @LoanDate DATE\n)\nAS\nBEGIN\n  SET NOCOUNT ON;\n  DECLARE @Available INT;\n  SELECT @Available = AvailableCopies FROM Book WHERE BookID = @BookID;\n  IF @Available > 0\n  BEGIN\n    UPDATE Book SET AvailableCopies = AvailableCopies - 1 WHERE BookID = @BookID;\n    INSERT INTO Loan (BookID, MemberID, LoanDate, DueDate)\n    VALUES (@BookID, @MemberID, @LoanDate, DATEADD(DAY, 14, @LoanDate));\n    SELECT 'Book issued successfully' AS Message;\n  END\n  ELSE\n    SELECT 'No copies available' AS Error;\nEND;\n```",
+                        "score": 8,
+                        "max_marks": 10
+                    },
+                    {
+                        "part": "c",
+                        "answer": "Security threats: unauthorized access (weak passwords), privilege abuse (users with excess rights), SQL injection (malicious code in input), sniffing (network eavesdropping), data leakage (backups stolen). SQL Server prevention: Use Windows Authentication for strong password policies; implement least privilege with roles; use parameterized queries or ORM to prevent injection; enable SSL/TLS encryption for connections; enable transparent data encryption (TDE) for data at rest; use audit logs (SQL Server Audit) to track sensitive actions; dynamic data masking to hide sensitive data from non-privileged users; row-level security to restrict access at row level. Regular patching and firewall configuration also critical.",
+                        "score": 10,
+                        "max_marks": 13
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "student_id": "it22100004",
+        "exam": "SE2032 - Database Management Systems",
+        "year": 2022,
+        "answers": [
+            {
+                "question_number": 1,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "Main components: Storage Manager (buffer manager, file manager, recovery manager), Query Processor (DDL/DML compiler, query optimizer, evaluation engine), Transaction Manager (concurrency control, logging), Metadata Catalog (data dictionary). Advantages of DBMS over file processing: 1) Data independence – logical and physical. 2) Reduced redundancy and inconsistency – centralized control. 3) Data sharing and concurrency control. 4) Enforcement of integrity constraints. 5) Security management. 6) Backup and recovery. 7) Multiple user views.",
+                        "score": 9,
+                        "max_marks": 10
+                    },
+                    {
+                        "part": "b",
+                        "answer": "Super key: set of attributes that uniquely identifies a tuple. Example: {EmpID, EmpName} in Employee. Candidate key: minimal super key (no proper subset is a superkey). Example: {EmpID} and {SSN} are candidate keys. Primary key: one candidate key chosen by designer (e.g., EmpID). Foreign key: attribute(s) in one table that refer to primary key of another table, maintaining referential integrity. Example: DeptID in Employee table references Dept(DeptID).",
+                        "score": 9,
+                        "max_marks": 10
+                    }
+                ]
+            },
+            {
+                "question_number": 2,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "Normalization process: Given R(OrderID, CustomerID, CustomerName, ItemID, ItemName, Quantity, Price). FDs: (1) OrderID → CustomerID; (2) CustomerID → CustomerName; (3) ItemID → ItemName, Price. Candidate key = (OrderID, ItemID) because closure includes all attributes: OrderID gives CustomerID, then CustomerName; ItemID gives ItemName,Price; Quantity remains but it's functionally dependent on the whole key. Step1 – 1NF assumed. Step2 – 2NF: remove partial dependencies. OrderID alone determines CustomerID, CustomerName (partial). ItemID alone determines ItemName, Price (partial). Decompose: R1(OrderID, CustomerID) with FD1; R2(CustomerID, CustomerName) with FD2; R3(ItemID, ItemName, Price) with FD3; R4(OrderID, ItemID, Quantity). Now all non-key attributes depend on full key. Step3 – 3NF: check for transitive dependencies. In R1, no transitive (OrderID→CustomerID, CustomerID not determining further non-prime in R1). R2: CustomerID→CustomerName (OK, key). R3: ItemID→ItemName,Price (OK). R4: no FDs other than trivial. Thus final 3NF schema: R1(OrderID, CustomerID), R2(CustomerID, CustomerName), R3(ItemID, ItemName, Price), R4(OrderID, ItemID, Quantity). All in 3NF.",
+                        "score": 11,
+                        "max_marks": 12
+                    },
+                    {
+                        "part": "b",
+                        "answer": "3NF vs BCNF: BCNF is a stronger form of normalization. A relation in BCNF is always in 3NF, but the converse is not true. 3NF allows a non-prime attribute to be functionally dependent on a non-superkey provided the dependent attribute is prime (i.e., part of some candidate key). BCNF disallows any non-trivial FD where the determinant is not a superkey. Example: Consider R(Student, Subject, Teacher) with FDs: (Student, Subject) → Teacher, and Teacher → Subject. Candidate keys: (Student, Subject) and (Student, Teacher). This is in 3NF because Teacher → Subject has Subject which is prime (part of candidate key (Student, Subject)). However, Teacher is not a superkey, so BCNF is violated. To convert to BCNF, decompose into R1(Teacher, Subject) and R2(Student, Teacher). Thus BCNF eliminates the redundancy caused by Teacher → Subject.",
+                        "score": 8,
+                        "max_marks": 8
+                    }
+                ]
+            },
+            {
+                "question_number": 3,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "ACID: Atomicity – transaction is all-or-nothing. Example: bank transfer: deduct from A and add to B; if system fails after deduct, atomicity ensures rollback. Consistency – transaction preserves database invariants. Example: sum of balances unchanged. Isolation – concurrent transactions appear as if executed serially. Example: two users buying last ticket; isolation prevents both from succeeding. Durability – committed changes survive crashes. Example: after money transfer, power loss won't revert.",
+                        "score": 8,
+                        "max_marks": 8
+                    },
+                    {
+                        "part": "b",
+                        "answer": "Database utilities – programs that assist DBAs. Four common: 1) Load/Unload utilities: import data from flat files (e.g., BULK INSERT) or export data. 2) Backup and recovery utilities: full/differential/log backups and restore. 3) Performance monitoring utilities: track query execution, locks, resource usage (e.g., SQL Server Profiler). 4) Reorganization utilities: rebuild indexes, update statistics, defragment tables (e.g., DBCC commands).",
+                        "score": 7,
+                        "max_marks": 7
+                    },
+                    {
+                        "part": "c",
+                        "answer": "```java\nimport java.sql.*;\npublic class RetrieveAllEmployees {\n    public static void main(String[] args) {\n        String url = \"jdbc:mysql://localhost:3306/company\";\n        String user = \"root\";\n        String password = \"pass123\";\n        String query = \"SELECT * FROM Employee\";\n        try (Connection conn = DriverManager.getConnection(url, user, password);\n             Statement stmt = conn.createStatement();\n             ResultSet rs = stmt.executeQuery(query)) {\n            ResultSetMetaData meta = rs.getMetaData();\n            int colCount = meta.getColumnCount();\n            while (rs.next()) {\n                for (int i = 1; i <= colCount; i++) {\n                    System.out.print(rs.getString(i) + \"\\t\");\n                }\n                System.out.println();\n            }\n        } catch (SQLException e) {\n            e.printStackTrace();\n        }\n    }\n}\n```",
+                        "score": 9,
+                        "max_marks": 10
+                    }
+                ]
+            },
+            {
+                "question_number": 4,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "(i) Books never borrowed:\n```sql\nSELECT BookID, Title, Author\nFROM Book\nWHERE BookID NOT IN (SELECT DISTINCT BookID FROM Loan);\n```\nAlternative using NOT EXISTS:\n```sql\nSELECT b.*\nFROM Book b\nWHERE NOT EXISTS (SELECT 1 FROM Loan l WHERE l.BookID = b.BookID);\n```\n(ii) Members who have paid more than Rs. 5000 in fines (assuming Fine table has Amount and MemberID):\n```sql\nSELECT MemberID, SUM(Amount) AS TotalFine\nFROM Fine\nGROUP BY MemberID\nHAVING SUM(Amount) > 5000;\n```\nTo include member names:\n```sql\nSELECT m.MemberID, m.Name, SUM(f.Amount) AS TotalFine\nFROM Member m\nJOIN Fine f ON m.MemberID = f.MemberID\nGROUP BY m.MemberID, m.Name\nHAVING SUM(f.Amount) > 5000;\n```",
+                        "score": 10,
+                        "max_marks": 12
+                    },
+                    {
+                        "part": "b",
+                        "answer": "```sql\nCREATE PROCEDURE sp_IssueBook\n    @BookID INT,\n    @MemberID INT,\n    @LoanDate DATE\nAS\nBEGIN\n    BEGIN TRANSACTION;\n    DECLARE @AvailableCopies INT;\n    SELECT @AvailableCopies = AvailableCopies FROM Books WHERE BookID = @BookID;\n    IF @AvailableCopies IS NULL OR @AvailableCopies <= 0\n    BEGIN\n        ROLLBACK;\n        RAISERROR('Book unavailable', 16, 1);\n        RETURN;\n    END\n    UPDATE Books SET AvailableCopies = AvailableCopies - 1 WHERE BookID = @BookID;\n    INSERT INTO Loan (BookID, MemberID, LoanDate, DueDate, ReturnDate)\n    VALUES (@BookID, @MemberID, @LoanDate, DATEADD(day, 14, @LoanDate), NULL);\n    COMMIT;\n    SELECT 'Book issued successfully' AS Status;\nEND;\n```",
+                        "score": 9,
+                        "max_marks": 10
+                    },
+                    {
+                        "part": "c",
+                        "answer": "Common database security threats: 1) SQL Injection – attacker inserts malicious SQL via input fields. Prevention: parameterized queries, stored procedures, input validation. 2) Unauthorized Access – weak passwords or privilege escalation. Prevention: strong authentication, least privilege principle, regular audits. 3) Eavesdropping – network sniffing of sensitive data. Prevention: SSL/TLS encryption (force encrypted connections). 4) Data tampering – modifying data directly. Prevention: access controls, auditing, row-level security. 5) Denial of Service – overwhelming database with requests. Prevention: connection pooling, rate limiting, firewalls. 6) Backup theft – stealing backup files. Prevention: encrypt backups, secure storage. SQL Server specific defenses: Windows Authentication for integrated security; Always Encrypted for client-side encryption; Dynamic Data Masking to obfuscate data; Row-Level Security to filter rows based on user; SQL Server Audit to track events; Transparent Data Encryption (TDE) for data at rest; and using schemas to isolate objects.",
+                        "score": 12,
+                        "max_marks": 13
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "student_id": "it22100005",
+        "exam": "SE2032 - Database Management Systems",
+        "year": 2022,
+        "answers": [
+            {
+                "question_number": 1,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "Main components of a DBMS: \n- Storage Manager: handles file management, buffer management, and data access. Includes recovery manager. \n- Query Processor: parses and optimizes SQL queries, generates execution plans. \n- Transaction Manager: ensures ACID properties, concurrency control (locking, timestamping). \n- Metadata Catalog: stores schema definitions, constraints, users, privileges. \nAdvantages over file processing: \n1) Data abstraction and independence (logical and physical). \n2) Elimination of redundancy and inconsistency via normalization. \n3) Data sharing and concurrency control with locks. \n4) Enforcement of integrity constraints (e.g., referential integrity). \n5) Security mechanisms (authentication, authorization). \n6) Backup and recovery facilities. \n7) Multiple views for different users. \n8) Reduced application development time.",
+                        "score": 10,
+                        "max_marks": 10
+                    },
+                    {
+                        "part": "b",
+                        "answer": "Super key: a set of attributes that uniquely identifies each tuple in a relation. Example: {StudentID, StudentName} – even though StudentID alone suffices, the superset is still a superkey. Candidate key: minimal superkey – no proper subset is a superkey. Example: {StudentID} and {Email} are candidate keys. Primary key: one candidate key chosen to identify tuples uniquely. Example: StudentID. Foreign key: an attribute or set of attributes in one relation that references the primary key of another relation, establishing a link. Example: In Enrollment table, StudentID is foreign key referencing Student(StudentID). Foreign key ensures referential integrity (no orphan records).",
+                        "score": 10,
+                        "max_marks": 10
+                    }
+                ]
+            },
+            {
+                "question_number": 2,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "Normalization to 3NF (step-by-step):\nGiven: R(OrderID, CustomerID, CustomerName, ItemID, ItemName, Quantity, Price)\nFDs: OrderID → CustomerID; CustomerID → CustomerName; ItemID → ItemName, Price.\nStep1 – Find candidate keys: Closure of (OrderID, ItemID) = OrderID,ItemID + CustomerID + CustomerName + ItemName + Price + Quantity = all attributes. So (OrderID, ItemID) is candidate key.\nStep2 – Check 2NF (remove partial dependencies). Partial dependencies exist: OrderID → CustomerID, CustomerName (non-prime attributes depend on part of key). Also ItemID → ItemName,Price (partial). Decompose:\nR1(OrderID, CustomerID) – preserves OrderID→CustomerID\nR2(CustomerID, CustomerName) – preserves CustomerID→CustomerName\nR3(ItemID, ItemName, Price) – preserves ItemID→ItemName,Price\nR4(OrderID, ItemID, Quantity) – no non-key FDs.\nAll relations are in 2NF (no partial dependencies).\nStep3 – Check 3NF (remove transitive dependencies). In R1, CustomerID depends on OrderID (key) – OK. R2: CustomerID→CustomerName – OK (key). R3: ItemID→ItemName,Price – OK. R4: no transitive dependencies. Thus all in 3NF.\nFinal schema: \nOrders(OrderID, CustomerID), Customers(CustomerID, CustomerName), Items(ItemID, ItemName, Price), OrderItems(OrderID, ItemID, Quantity).",
+                        "score": 12,
+                        "max_marks": 12
+                    },
+                    {
+                        "part": "b",
+                        "answer": "Difference between 3NF and BCNF: BCNF is a stricter version of 3NF. A relation is in BCNF if for every non-trivial functional dependency X → Y, X must be a superkey. 3NF relaxes this condition: it allows X → Y if Y is a prime attribute (i.e., part of some candidate key), even when X is not a superkey. Thus, BCNF eliminates all functional dependency anomalies that 3NF might allow. Example: Consider R(Student, Major, Advisor) with FDs: Student → Major; Major → Advisor. Candidate key is Student. The FD Major → Advisor violates BCNF because Major is not a superkey. But it satisfies 3NF because Advisor is not prime? Actually Advisor is non-prime, so it violates 3NF as well. Better example: R(Course, Instructor, Room) with FDs: {Course, Instructor} → Room; Room → Instructor. Candidate keys: (Course, Instructor) and (Course, Room). FD Room → Instructor: Room not superkey, but Instructor is prime (part of candidate key). So 3NF holds, BCNF fails. Decompose to BCNF: (Room, Instructor) and (Course, Room).",
+                        "score": 8,
+                        "max_marks": 8
+                    }
+                ]
+            },
+            {
+                "question_number": 3,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "ACID properties:\n- Atomicity: A transaction is an indivisible unit; either all operations are executed or none. Implemented via commit/rollback and recovery logs.\n- Consistency: A transaction transforms the database from one consistent state to another, preserving integrity constraints (e.g., foreign keys, check constraints).\n- Isolation: Concurrent transactions do not interfere; each transaction appears to execute in isolation. Achieved via concurrency control mechanisms (locking, timestamp ordering, MVCC).\n- Durability: Once a transaction commits, its effects persist even after system failures. Achieved via write-ahead logging and recovery.\nExamples: Banking transfer: debit from A and credit to B. Atomicity ensures both happen. Consistency: total balance unchanged. Isolation: two transfers see consistent intermediate states. Durability: after commit, funds remain even if power fails.",
+                        "score": 8,
+                        "max_marks": 8
+                    },
+                    {
+                        "part": "b",
+                        "answer": "Database utilities: specialized tools for database administration. Four common:\n1) Backup Utility: Creates copies of database (full, differential, transaction log). Example: BACKUP DATABASE in SQL Server.\n2) Load/Unload Utility: Imports/exports data in bulk formats (CSV, XML). Example: BCP (Bulk Copy Program) or SQL Server Import/Export Wizard.\n3) Reorganization Utility: Rebuilds indexes, updates statistics, defragments data files to improve performance. Example: ALTER INDEX REBUILD, DBCC DBREINDEX.\n4) Log Management Utility: Manages transaction logs, monitors log space, truncates logs. Example: DBCC SQLPERF (LOGSPACE), backup log.\nOther utilities: integrity checker (DBCC CHECKDB), performance monitor (SQL Server Profiler), query tuning advisor.",
+                        "score": 7,
+                        "max_marks": 7
+                    },
+                    {
+                        "part": "c",
+                        "answer": "```java\nimport java.sql.*;\npublic class DisplayEmployees {\n    public static void main(String[] args) {\n        String url = \"jdbc:sqlserver://localhost:1433;databaseName=CompanyDB;integratedSecurity=false\";\n        String user = \"app_user\";\n        String pass = \"SecurePass!\";\n        try (Connection conn = DriverManager.getConnection(url, user, pass);\n             Statement stmt = conn.createStatement();\n             ResultSet rs = stmt.executeQuery(\"SELECT EmployeeID, FirstName, LastName, Salary FROM Employee\")) {\n            System.out.println(\"ID\\tFirst Name\\tLast Name\\tSalary\");\n            while (rs.next()) {\n                int id = rs.getInt(\"EmployeeID\");\n                String fname = rs.getString(\"FirstName\");\n                String lname = rs.getString(\"LastName\");\n                double salary = rs.getDouble(\"Salary\");\n                System.out.printf(\"%d\\t%s\\t\\t%s\\t\\t%.2f%n\", id, fname, lname, salary);\n            }\n        } catch (SQLException e) {\n            e.printStackTrace();\n        }\n    }\n}\n```",
+                        "score": 10,
+                        "max_marks": 10
+                    }
+                ]
+            },
+            {
+                "question_number": 4,
+                "parts": [
+                    {
+                        "part": "a",
+                        "answer": "(i) Books that have never been borrowed:\n```sql\nSELECT b.BookID, b.Title, b.Author\nFROM Book b\nWHERE NOT EXISTS (SELECT 1 FROM Loan l WHERE l.BookID = b.BookID);\n```\nAlternatively using LEFT JOIN:\n```sql\nSELECT b.BookID, b.Title\nFROM Book b\nLEFT JOIN Loan l ON b.BookID = l.BookID\nWHERE l.LoanID IS NULL;\n```\n(ii) Members who have paid more than Rs. 5000 in fines (assuming Fine table records each payment):\n```sql\nSELECT m.MemberID, m.Name, SUM(f.Amount) AS TotalFines\nFROM Member m\nINNER JOIN Fine f ON m.MemberID = f.MemberID\nGROUP BY m.MemberID, m.Name\nHAVING SUM(f.Amount) > 5000;\n```\nIf fines are stored in a separate Fine table with LoanID linking to Loan, then join appropriately.",
+                        "score": 12,
+                        "max_marks": 12
+                    },
+                    {
+                        "part": "b",
+                        "answer": "```sql\nCREATE PROCEDURE IssueBook\n    @p_BookID INT,\n    @p_MemberID INT,\n    @p_LoanDate DATE\nAS\nBEGIN\n    SET NOCOUNT ON;\n    DECLARE @available INT, @existingLoan INT;\n    -- Check if member already has the book not returned\n    SELECT @existingLoan = COUNT(*) FROM Loan WHERE BookID = @p_BookID AND MemberID = @p_MemberID AND ReturnDate IS NULL;\n    IF @existingLoan > 0\n    BEGIN\n        RAISERROR('Member has already borrowed this book and not returned', 16, 1);\n        RETURN;\n    END\n    -- Get available copies\n    SELECT @available = AvailableCopies FROM Book WHERE BookID = @p_BookID;\n    IF @available IS NULL\n    BEGIN\n        RAISERROR('Invalid Book ID', 16, 1);\n        RETURN;\n    END\n    IF @available <= 0\n    BEGIN\n        RAISERROR('No copies available', 16, 1);\n        RETURN;\n    END\n    BEGIN TRANSACTION;\n    UPDATE Book SET AvailableCopies = AvailableCopies - 1 WHERE BookID = @p_BookID;\n    INSERT INTO Loan (BookID, MemberID, LoanDate, DueDate)\n    VALUES (@p_BookID, @p_MemberID, @p_LoanDate, DATEADD(DAY, 14, @p_LoanDate));\n    COMMIT TRANSACTION;\n    SELECT 'Book issued successfully' AS Message, @@IDENTITY AS LoanID;\nEND;\n```",
+                        "score": 10,
+                        "max_marks": 10
+                    },
+                    {
+                        "part": "c",
+                        "answer": "Common database security threats and SQL Server prevention:\n- SQL Injection: Attackers inject malicious SQL via user input. Prevention: Use parameterized queries (PreparedStatement in Java), use stored procedures, ORM frameworks; validate and escape input; limit database permissions.\n- Unauthorized Access: Weak passwords, default accounts, privilege escalation. Prevention: Enforce strong password policies; use Windows Authentication where possible; apply least privilege principle (create custom roles, limit GRANT); disable unused accounts; regular audit.\n- Eavesdropping: Network sniffing captures sensitive data. Prevention: Force encrypted connections (SSL/TLS) by setting 'Encrypt=true' in connection string; use IPsec.\n- Data Tampering: Unauthorized modification of data. Prevention: Implement row-level security (RLS), column-level encryption (Always Encrypted), audit trails, checksums.\n- Denial of Service (DoS): Overwhelming requests. Prevention: Use connection pooling, resource governor (limit CPU/memory), firewalls, rate limiting.\n- Backup Theft: Stealing backup files. Prevention: Encrypt backups using BACKUP WITH ENCRYPTION; store backups in secure locations; use Azure blob storage with managed identities.\n- Privilege Escalation: User gains higher privileges. Prevention: Use roles (db_datareader, db_datawriter) instead of db_owner; schema-level permissions; avoid granting CONTROL permission.\nSQL Server specific features: Transparent Data Encryption (TDE) for data at rest; Dynamic Data Masking to hide sensitive data; Always Encrypted for client-side encryption; SQL Server Audit to track logins and schema changes; Row-Level Security to filter rows; and Vulnerability Assessment tools.",
+                        "score": 13,
+                        "max_marks": 13
+                    }
+                ]
+            }
+        ]
+    }
+]
