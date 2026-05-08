@@ -1,0 +1,7 @@
+train: C:\Users\akila\Documents\research\R26-SE-025\DiagramEvaluationEngine\train
+
+val: C:\Users\akila\Documents\research\R26-SE-025\DiagramEvaluationEngine\val
+
+nc: 5
+
+names: ['Attributes', 'Entities', 'Primary Key', 'Relationships', 'Weak Entity']
