@@ -1,3 +1,6 @@
+
+"use client";
+
 import { Upload, Play, CheckCircle2, Mic, FileDown, Sparkles, Pause } from "lucide-react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";

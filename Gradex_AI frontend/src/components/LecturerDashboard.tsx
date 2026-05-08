@@ -49,6 +49,7 @@ export function LecturerDashboard({ onNavigate }: { onNavigate: (p: Page) => voi
       stat: "6 to review",
     },
   ];
+  "use client";
 
   const stats = [
     { label: "Exams graded", value: "1,284", delta: "+12%", icon: CheckCircle2, color: "text-emerald-600" },

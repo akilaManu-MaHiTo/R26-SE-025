@@ -1,3 +1,6 @@
+
+"use client";
+
 import React, { useState } from "react";
 import { AlertTriangle, Users, BookOpen, Brain, ChevronDown, ArrowUpDown } from "lucide-react";
 import { Card } from "./ui/card";

@@ -1,3 +1,6 @@
+
+"use client";
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Upload, FileText, Sparkles, Save, Edit3, CheckCircle2,
