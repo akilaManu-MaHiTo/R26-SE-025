@@ -1,0 +1,80 @@
+{
+  "exam": "IT2040 – Database Management Systems",
+  "year": 2023,
+  "questions": [
+    {
+      "question_number": 1,
+      "marks": 20,
+      "parts": [
+        {
+          "part": "a",
+          "question": "Explain schema refinement and its importance in database design.",
+          "marks": 8
+        },
+        {
+          "part": "b",
+          "question": "What is functional dependency? Explain full, partial, and transitive dependency with examples.",
+          "marks": 12
+        }
+      ]
+    },
+    {
+      "question_number": 2,
+      "marks": 20,
+      "parts": [
+        {
+          "part": "a",
+          "question": "Given a relation and set of functional dependencies, explain the step-by-step process of normalization up to BCNF.",
+          "marks": 10
+        },
+        {
+          "part": "b",
+          "question": "Define lossless join decomposition and dependency preservation.",
+          "marks": 10
+        }
+      ]
+    },
+    {
+      "question_number": 3,
+      "marks": 25,
+      "parts": [
+        {
+          "part": "a",
+          "question": "Explain the steps involved in connecting to a database using JDBC. Include necessary exception handling.",
+          "marks": 10
+        },
+        {
+          "part": "b",
+          "question": "What is SQL injection? How can it be prevented using JDBC?",
+          "marks": 8
+        },
+        {
+          "part": "c",
+          "question": "Differentiate between ResultSet TYPE_SCROLL_INSENSITIVE and TYPE_FORWARD_ONLY.",
+          "marks": 7
+        }
+      ]
+    },
+    {
+      "question_number": 4,
+      "marks": 35,
+      "parts": [
+        {
+          "part": "a",
+          "question": "Write SQL queries to:\n(i) Find the top 5 members with the highest number of loans.\n(ii) Update fine amounts by adding 10% penalty for overdue payments.",
+          "marks": 12
+        },
+        {
+          "part": "b",
+          "question": "Create a trigger that automatically updates availableCopies in the Book table when a book is returned.",
+          "marks": 12
+        },
+        {
+          "part": "c",
+          "question": "Explain how to implement role-based access control in SQL Server with examples.",
+          "marks": 11
+        }
+      ]
+    }
+  ]
+}
