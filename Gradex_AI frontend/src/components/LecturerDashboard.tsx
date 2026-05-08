@@ -1,3 +1,5 @@
+"use client";
+
 import { Workflow, FileText, BarChart3, Video, ArrowRight, TrendingUp, Clock, Users, CheckCircle2 } from "lucide-react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -49,8 +51,6 @@ export function LecturerDashboard({ onNavigate }: { onNavigate: (p: Page) => voi
       stat: "6 to review",
     },
   ];
-  "use client";
-
   const stats = [
     { label: "Exams graded", value: "1,284", delta: "+12%", icon: CheckCircle2, color: "text-emerald-600" },
     { label: "Avg. grade time", value: "2m 14s", delta: "−38%", icon: Clock, color: "text-blue-600" },
