@@ -1,3 +1,6 @@
+
+"use client";
+
 import { useState } from "react";
 import { Search, Plus, GripVertical, FileDown, Printer, FileText, Trash2, Sparkles } from "lucide-react";
 import { Card } from "./ui/card";

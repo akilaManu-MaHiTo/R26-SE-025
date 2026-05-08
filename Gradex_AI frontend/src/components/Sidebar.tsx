@@ -1,3 +1,6 @@
+
+"use client";
+
 import { LayoutDashboard, FileCheck2, FileText, Video, BarChart3, GraduationCap, LogOut, Sparkles } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "./ui/utils";

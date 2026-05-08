@@ -1,3 +1,5 @@
+"use client";
+
 import { Search, Bell, HelpCircle } from "lucide-react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";

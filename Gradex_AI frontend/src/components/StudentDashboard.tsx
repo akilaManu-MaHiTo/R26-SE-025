@@ -1,3 +1,6 @@
+
+"use client";
+
 import { Calendar, BookOpen, TrendingUp, Bell, Award, ChevronRight } from "lucide-react";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";

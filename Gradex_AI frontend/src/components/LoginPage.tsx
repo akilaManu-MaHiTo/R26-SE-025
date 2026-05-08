@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Sparkles, GraduationCap, BookUser, ArrowRight } from "lucide-react";
 import { Button } from "./ui/button";
