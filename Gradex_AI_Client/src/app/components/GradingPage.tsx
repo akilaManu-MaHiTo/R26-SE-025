@@ -18,6 +18,19 @@ type DiagramNode = {
   id: string; label: string; type: "entity" | "relation" | "attribute";
   x: number; y: number; w: number; h: number; detected: boolean; issue?: string;
 };
+type DiagramDetection = {
+  id: number;
+  label: string;
+  bbox: number[];
+  confidence: number;
+  text?: string;
+  ocr_status?: string;
+};
+type ErStructure = {
+  entities: Record<string, { attributes: string[] }>;
+  relationships: Array<{ name: string; entities: string[]; attributes?: string[] }>;
+  unmatched_connections?: Array<{ from: string; to: string; line: number[] }>;
+};
 
 /* ─── Mock extraction results ────────────────────────────────────────────── */
 const MOCK_OCR_LINES: OcrLine[] = [
@@ -41,6 +54,47 @@ const MOCK_DIAGRAM_NODES: DiagramNode[] = [
   { id: "cid", label: "courseID", type: "attribute", x: 290, y: 130, w: 80, h: 28, detected: true },
   { id: "grade", label: "grade", type: "attribute", x: 160, y: 195, w: 60, h: 24, detected: false },
 ];
+
+const LABEL_TYPE_MAP: Record<string, DiagramNode["type"]> = {
+  "entities": "entity",
+  "weak entity": "entity",
+  "relationships": "relation",
+  "attributes": "attribute",
+  "primary key": "attribute",
+};
+
+const toNodeType = (label: string): DiagramNode["type"] => {
+  const normalized = label.trim().toLowerCase().replace(/_/g, " ");
+  return LABEL_TYPE_MAP[normalized] ?? "entity";
+};
+
+const mapDetectionsToNodes = (detections: DiagramDetection[]): DiagramNode[] =>
+  detections.map((det) => {
+    const [x1, y1, x2, y2] = det.bbox;
+    const label = det.text?.trim() ? det.text.trim() : det.label;
+    return {
+      id: String(det.id),
+      label,
+      type: toNodeType(det.label),
+      x: x1,
+      y: y1,
+      w: Math.max(0, x2 - x1),
+      h: Math.max(0, y2 - y1),
+      detected: true,
+    };
+  });
+
+const dataUrlToFile = (dataUrl: string, filename: string): File => {
+  const [header, base64] = dataUrl.split(",");
+  const match = /data:(.*?);base64/.exec(header || "");
+  const mime = match?.[1] ?? "image/jpeg";
+  const binary = atob(base64 || "");
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new File([bytes], filename, { type: mime });
+};
 
 /* ─── Camera Modal ────────────────────────────────────────────────────────── */
 function CameraModal({
@@ -262,6 +316,11 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [processedImage, setProcessedImage] = useState<string | null>(null);
+  const [apiStructure, setApiStructure] = useState<ErStructure | null>(null);
+  const [apiDetections, setApiDetections] = useState<DiagramDetection[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
   const [dragOver, setDragOver] = useState(false);
   const [activeTab, setActiveTab] = useState<"preview" | "extracted">("preview");
@@ -281,10 +340,22 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
   ];
   const total = breakdown.reduce((a, b) => a + b.s, 0);
   const max = breakdown.reduce((a, b) => a + b.m, 0);
+  const previewImage = done && processedImage ? processedImage : uploadedImage;
+  const unmatchedCount = apiStructure?.unmatched_connections?.length ?? 0;
+  const hasApiResults = done && (processedImage || apiStructure || apiDetections.length > 0);
+  const diagramNodes = hasApiResults ? mapDetectionsToNodes(apiDetections) : MOCK_DIAGRAM_NODES;
+  const diagramSummaryText = hasApiResults
+    ? `${apiDetections.length} elements detected${unmatchedCount ? ` - ${unmatchedCount} unmatched links` : ""}`
+    : `${MOCK_DIAGRAM_NODES.filter(n => n.detected).length}/${MOCK_DIAGRAM_NODES.length} elements detected - 1 issue flagged`;
 
-  const handleImageLoad = (src: string, name?: string) => {
+  const handleImageLoad = (src: string, name?: string, file?: File | null) => {
     setUploadedImage(src);
     setUploadedFileName(name ?? "captured_photo.jpg");
+    setUploadedFile(file ?? null);
+    setProcessedImage(null);
+    setApiStructure(null);
+    setApiDetections([]);
+    setApiError(null);
     setDone(false);
     setActiveTab("preview");
   };
@@ -292,7 +363,7 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
   const handleFileChange = (file: File) => {
     if (!file) return;
     const url = URL.createObjectURL(file);
-    handleImageLoad(url, file.name);
+    handleImageLoad(url, file.name, file);
   };
 
   const onFileDrop = (e: React.DragEvent) => {
@@ -302,7 +373,7 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
     if (file) handleFileChange(file);
   };
 
-  const onExtract = () => {
+  const runMockExtract = () => {
     setProcessing(true);
     setDone(false);
     setExtractProgress(0);
@@ -323,9 +394,67 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
     );
   };
 
+  const onExtract = async () => {
+    if (!uploadedFile || mode !== "diagram") {
+      runMockExtract();
+      return;
+    }
+
+    setProcessing(true);
+    setDone(false);
+    setApiError(null);
+    setExtractProgress(10);
+    setExtractStep(0);
+
+    let step = 0;
+    const timerId = window.setInterval(() => {
+      step = Math.min(step + 1, 4);
+      setExtractStep(step);
+      setExtractProgress((prev) => Math.min(prev + 8, 90));
+    }, 350);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", uploadedFile);
+      const response = await fetch("http://localhost:8000/api/digaram-evaluate", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Diagram evaluation failed.");
+      }
+      const payload = await response.json();
+      if (payload.annotated_image) {
+        setProcessedImage(payload.annotated_image);
+      }
+      if (payload.structure) {
+        setApiStructure(payload.structure);
+      }
+      if (payload.detections) {
+        setApiDetections(payload.detections);
+      }
+      setDone(true);
+      setActiveTab("preview");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Diagram evaluation failed.";
+      setApiError(message);
+    } finally {
+      window.clearInterval(timerId);
+      setProcessing(false);
+      setExtractProgress(100);
+      setExtractStep(5);
+    }
+  };
+
   const clearImage = () => {
     setUploadedImage(null);
     setUploadedFileName(null);
+    setUploadedFile(null);
+    setProcessedImage(null);
+    setApiStructure(null);
+    setApiDetections([]);
+    setApiError(null);
     setDone(false);
     setActiveTab("preview");
   };
@@ -336,7 +465,10 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
     <>
       {cameraOpen && (
         <CameraModal
-          onCapture={(dataUrl) => handleImageLoad(dataUrl)}
+          onCapture={(dataUrl) => {
+            const file = dataUrlToFile(dataUrl, "captured_photo.jpg");
+            handleImageLoad(dataUrl, file.name, file);
+          }}
           onClose={() => setCameraOpen(false)}
         />
       )}
@@ -442,10 +574,10 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
                 style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
               >
                 {/* Uploaded image */}
-                {uploadedImage && activeTab === "preview" && (
+                {previewImage && activeTab === "preview" && (
                   <div className="relative bg-white rounded-lg shadow-md overflow-hidden max-w-full">
                     <img
-                      src={uploadedImage}
+                      src={previewImage}
                       alt="Uploaded student paper"
                       className="block max-w-full"
                       style={{ maxHeight: "560px", objectFit: "contain" }}
@@ -469,12 +601,14 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
                         {mode === "diagram" ? "Detected diagram elements" : "OCR extracted text"}
                       </span>
                       <Badge className="ml-auto bg-blue-50 text-blue-700 border-0">
-                        {mode === "diagram" ? `${MOCK_DIAGRAM_NODES.length} elements` : `${MOCK_OCR_LINES.length} lines`}
+                        {mode === "diagram"
+                          ? `${diagramNodes.length} elements`
+                          : `${MOCK_OCR_LINES.length} lines`}
                       </Badge>
                     </div>
                     {mode === "handwritten"
                       ? <OcrOverlay lines={MOCK_OCR_LINES} />
-                      : <DiagramOverlay nodes={MOCK_DIAGRAM_NODES} />
+                      : <DiagramOverlay nodes={diagramNodes} />
                     }
                   </div>
                 )}
@@ -589,6 +723,12 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
                 }}
               />
 
+              {apiError && (
+                <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  {apiError}
+                </div>
+              )}
+
               {/* Uploaded file pill */}
               {uploadedImage && (
                 <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100">
@@ -661,7 +801,7 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
                 <div className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${mode === "diagram" ? "bg-blue-50 text-blue-700" : "bg-violet-50 text-violet-700"}`}>
                   {mode === "diagram" ? <Layers className="size-3.5 shrink-0" /> : <Type className="size-3.5 shrink-0" />}
                   {mode === "diagram"
-                    ? `${MOCK_DIAGRAM_NODES.filter(n => n.detected).length}/${MOCK_DIAGRAM_NODES.length} elements detected · 1 issue flagged`
+                    ? diagramSummaryText
                     : `${MOCK_OCR_LINES.length} lines extracted · ${MOCK_OCR_LINES.filter(l => l.highlight).length} low-confidence regions`
                   }
                 </div>
@@ -691,6 +831,48 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
                     </div>
                   ))}
                 </div>
+
+                {mode === "diagram" && apiStructure && (
+                  <>
+                    <Separator className="my-4" />
+                    <div className="space-y-3">
+                      <div className="text-xs text-slate-500 uppercase tracking-wide">Entities</div>
+                      {Object.entries(apiStructure.entities || {}).length === 0 ? (
+                        <div className="text-xs text-slate-400">No entities detected</div>
+                      ) : (
+                        Object.entries(apiStructure.entities).map(([name, details]) => (
+                          <div key={name} className="text-sm text-slate-700">
+                            <span className="font-medium">{name}</span>
+                            <span className="text-slate-400">
+                              {details.attributes?.length
+                                ? ` - ${details.attributes.join(", ")}`
+                                : " - No attributes"}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                      <div className="text-xs text-slate-500 uppercase tracking-wide">Relationships</div>
+                      {apiStructure.relationships?.length ? (
+                        apiStructure.relationships.map((rel) => (
+                          <div key={rel.name} className="text-sm text-slate-700">
+                            <span className="font-medium">{rel.name}</span>
+                            <span className="text-slate-500">
+                              {rel.entities?.length ? ` - ${rel.entities.join(" <-> ")}` : " - No entities"}
+                            </span>
+                            {rel.attributes?.length && (
+                              <span className="text-slate-400"> - attrs: {rel.attributes.join(", ")}</span>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs text-slate-400">No relationships detected</div>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <Separator className="my-4" />
                 <div className="flex gap-2">
