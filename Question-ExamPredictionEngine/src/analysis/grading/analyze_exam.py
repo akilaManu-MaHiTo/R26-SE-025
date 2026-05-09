@@ -18,16 +18,17 @@ from src.analysis.scoring.cognitive import cognitive_score
 from src.analysis.scoring.concept_scoring import extract_keywords, concept_score
 from src.analytics.cognitive_gap_analysis import CognitiveGapAnalyzer
 from src.analytics.misunderstood_questions import MisunderstoodQuestionsAnalyzer
+from src.analytics.weak_topic_analysis import WeakTopicAnalyzer
 from src.analytics.student_analysis import analyze_student_performance
 from src.analytics.topic_utils import resolve_topic
 
 # --------------------------------------------------
 # Load data
 # --------------------------------------------------
-with (DATA_EXAM_DIR / "exam2021.json").open(encoding="utf-8") as f:
+with (DATA_EXAM_DIR / "exam2022.json").open(encoding="utf-8") as f:
     exam_data = json.load(f)
 
-with (DATA_ANSWERS_DIR / "student_answers2021.json").open(encoding="utf-8") as f:
+with (DATA_ANSWERS_DIR / "student_answers2022.json").open(encoding="utf-8") as f:
     student_data = json.load(f)
 
 # --------------------------------------------------
@@ -138,55 +139,7 @@ for student in students:
 # --------------------------------------------------
 # Weak Topic Detection
 # --------------------------------------------------
-weak_topics = []
-
-topic_summary = []
-
-for student_id, topics in student_topic_scores.items():
-    for topic, scores in topics.items():
-        if not scores:
-            continue
-
-        average_score = sum(scores) / len(scores)
-        topic_summary.append({
-            "student_id": student_id,
-            "topic": topic,
-            "average_learning_score": round(average_score, 3),
-            "attempts": len(scores),
-            "is_weak": average_score < 0.5
-        })
-
-topic_aggregates = defaultdict(lambda: {
-    "weak_students": 0,
-    "students_attempted": 0,
-    "attempts": 0,
-    "total_score": 0.0,
-})
-
-for record in topic_summary:
-    aggregate = topic_aggregates[record["topic"]]
-    aggregate["students_attempted"] += 1
-    aggregate["attempts"] += record["attempts"]
-    aggregate["total_score"] += record["average_learning_score"]
-
-    if record["is_weak"]:
-        aggregate["weak_students"] += 1
-
-for topic, aggregate in topic_aggregates.items():
-    weak_share = aggregate["weak_students"] / aggregate["students_attempted"] if aggregate["students_attempted"] else 0
-    average_score = aggregate["total_score"] / aggregate["students_attempted"] if aggregate["students_attempted"] else 0
-
-    if aggregate["students_attempted"] >= 2 and weak_share >= 0.4:
-        weak_topics.append({
-            "topic": topic,
-            "average_learning_score": round(average_score, 3),
-            "weak_student_count": aggregate["weak_students"],
-            "students_attempted": aggregate["students_attempted"],
-            "weak_student_share": round(weak_share, 3),
-            "status": "WEAK"
-        })
-
-weak_topics.sort(key=lambda item: (item["weak_student_share"], item["average_learning_score"]), reverse=True)
+weak_topics = WeakTopicAnalyzer(exam_data).analyze(student_reports)
 
 # --------------------------------------------------
 # Save outputs
