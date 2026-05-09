@@ -1,92 +1,46 @@
-"""
-Weak topic analysis module.
-
-Analyzes topics where students have demonstrated weakness or poor performance.
-"""
-
-from collections import defaultdict
-
-from src.analytics.topic_utils import resolve_topic
+from src.analytics.weak_topic_model import DEFAULT_MODEL_PATH, WeakTopicModel, build_topic_feature_rows
 
 
 class WeakTopicAnalyzer:
     """Analyzes weak topics from student performance data."""
 
-    def __init__(self, exam_data=None, threshold=0.5):
+    def __init__(self, exam_data=None, threshold=0.5, model_path=DEFAULT_MODEL_PATH, probability_threshold=0.55):
         """Initialize the weak topic analyzer."""
         self.exam_data = exam_data or {}
         self.threshold = threshold
-
-    def _topic_key_for_result(self, result):
-        topic = result.get("topic")
-        if topic:
-            return topic
-
-        question_number = result.get("question") or result.get("question_number")
-        part_id = result.get("part")
-
-        if question_number is not None:
-            return resolve_topic(self.exam_data, question_number, part_id)
-
-        return "Unknown"
-
-    def _score_from_result(self, result):
-        if "learning_score" in result:
-            return result["learning_score"]
-
-        performance = result.get("performance_score")
-        if performance is not None:
-            return performance
-
-        return result.get("score", 0)
+        self.model = WeakTopicModel(model_path=model_path, weak_probability_threshold=probability_threshold)
 
     def analyze(self, results):
         """Perform weak topic analysis."""
-        student_topic_scores = defaultdict(lambda: defaultdict(list))
+        topic_rows = build_topic_feature_rows(results, weak_threshold=self.threshold)
 
-        for result in results:
-            student_id = result.get("student_id", "UNKNOWN")
-            topic = self._topic_key_for_result(result)
-            student_topic_scores[student_id][topic].append(self._score_from_result(result))
+        if not topic_rows:
+            return []
 
-        topic_aggregates = defaultdict(lambda: {
-            "weak_students": 0,
-            "students_attempted": 0,
-            "attempts": 0,
-            "total_score": 0.0,
-        })
-
-        for student_id, topics in student_topic_scores.items():
-            for topic, scores in topics.items():
-                if not scores:
-                    continue
-
-                average_score = sum(scores) / len(scores)
-                aggregate = topic_aggregates[topic]
-                aggregate["students_attempted"] += 1
-                aggregate["attempts"] += len(scores)
-                aggregate["total_score"] += average_score
-
-                if average_score < self.threshold:
-                    aggregate["weak_students"] += 1
+        if self.model.pipeline:
+            return self.model.predict(topic_rows)
 
         weak_topics = []
 
-        for topic, aggregate in topic_aggregates.items():
-            if not aggregate["students_attempted"]:
-                continue
-
-            weak_share = aggregate["weak_students"] / aggregate["students_attempted"]
-            average_score = aggregate["total_score"] / aggregate["students_attempted"]
-
-            if aggregate["students_attempted"] >= 2 and weak_share >= 0.4:
+        for row in topic_rows:
+            if row["students_attempted"] >= 2 and row["weak_student_share"] >= 0.4:
                 weak_topics.append({
-                    "topic": topic,
-                    "average_learning_score": round(average_score, 3),
-                    "weak_student_count": aggregate["weak_students"],
-                    "students_attempted": aggregate["students_attempted"],
-                    "weak_student_share": round(weak_share, 3),
-                    "status": "WEAK"
+                    "topic": row["topic"],
+                    "average_learning_score": row["average_learning_score"],
+                    "weak_student_count": row["weak_student_count"],
+                    "students_attempted": row["students_attempted"],
+                    "weak_student_share": row["weak_student_share"],
+                    "average_performance_score": row["average_performance_score"],
+                    "average_concept_score": row["average_concept_score"],
+                    "average_cognitive_score": row["average_cognitive_score"],
+                    "score_stddev": row["score_stddev"],
+                    "average_level_gap": row["average_level_gap"],
+                    "status": "WEAK",
+                    "weak_probability": None,
                 })
 
-        return sorted(weak_topics, key=lambda item: (item["weak_student_share"], item["average_learning_score"]), reverse=True)
+        return sorted(
+            weak_topics,
+            key=lambda item: (item["weak_student_share"], item["average_learning_score"]),
+            reverse=True,
+        )
