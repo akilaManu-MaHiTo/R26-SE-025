@@ -1,3 +1,4 @@
+// @ts-ignore: allow implicit any for react module when types are not installed
 import React, { useState, useRef, useCallback, useEffect, Fragment } from "react";
 import {
   AlertTriangle,
@@ -113,6 +114,54 @@ interface BackendCognitiveGap {
 }
 
 type AnalyticsDashboard = ReturnType<typeof deriveAnalytics>;
+
+type EnginePaperPart = {
+  part?: string;
+  question?: string;
+  max_marks?: number;
+  bloom?: string;
+};
+
+type EnginePaperQuestion = {
+  id?: string;
+  question_number?: number | string;
+  topic?: string;
+  parts?: EnginePaperPart[];
+  text?: string;
+  marks?: number;
+  bloom?: string;
+};
+
+type EnginePaperJson = {
+  title?: string;
+  course?: string;
+  semester?: string;
+  exam?: string;
+  year?: number;
+  questions?: EnginePaperQuestion[];
+};
+
+type EngineAnswerPart = {
+  part?: string;
+  answer?: string;
+  score?: number;
+  max_marks?: number;
+};
+
+type EngineSubmission = {
+  studentId?: string;
+  student_id?: string;
+  answers?: Array<{
+    questionId?: string;
+    question_number?: number | string;
+    parts?: EngineAnswerPart[];
+    score?: number;
+  }>;
+};
+
+type EngineAnswersJson = {
+  submissions?: EngineSubmission[];
+};
 
 interface BackendExamReport extends AnalyticsDashboard {
   source: string;
@@ -315,6 +364,111 @@ function deriveAnalytics(paper: ExamPaper, answers: StudentAnswers) {
   };
 }
 
+function normalizePaperJson(value: unknown): ExamPaper | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const raw = value as EnginePaperJson;
+  if (!Array.isArray(raw.questions) || raw.questions.length === 0) {
+    return null;
+  }
+
+  const questions = raw.questions.flatMap((question) => {
+    if (typeof question.id === "string") {
+      return [
+        {
+          id: question.id,
+          text: question.text ?? "",
+          marks: Number(question.marks ?? 0),
+          topic: question.topic ?? "Unknown",
+          bloom: question.bloom ?? "Apply",
+        },
+      ];
+    }
+
+    const questionNumber = question.question_number;
+    if (questionNumber === undefined || !Array.isArray(question.parts)) {
+      return [];
+    }
+
+    return question.parts.map((part) => ({
+      id: `Q${questionNumber}${part.part ?? ""}`,
+      text: part.question ?? question.text ?? "",
+      marks: Number(part.max_marks ?? question.marks ?? 0),
+      topic: question.topic ?? raw.course ?? raw.exam ?? "Unknown",
+      bloom: part.bloom ?? question.bloom ?? "Apply",
+    }));
+  });
+
+  if (questions.length === 0) {
+    return null;
+  }
+
+  return {
+    title: raw.title ?? raw.exam,
+    course: raw.course ?? raw.exam,
+    semester: raw.semester ?? raw.year?.toString(),
+    questions,
+  };
+}
+
+function normalizeAnswersJson(value: unknown): StudentAnswers | null {
+  const submissionsSource: unknown[] = Array.isArray(value)
+    ? value
+    : typeof value === "object" && value !== null && Array.isArray((value as EngineAnswersJson).submissions)
+      ? (value as EngineAnswersJson).submissions ?? []
+      : [];
+
+  const submissions = submissionsSource.flatMap((submission: unknown) => {
+    if (typeof submission !== "object" || submission === null) {
+      return [];
+    }
+
+    const rawSubmission = submission as EngineSubmission;
+    const studentId = rawSubmission.studentId ?? rawSubmission.student_id;
+    if (!studentId || !Array.isArray(rawSubmission.answers)) {
+      return [];
+    }
+
+    const answers = rawSubmission.answers.flatMap((answer: unknown) => {
+      if (typeof answer !== "object" || answer === null) {
+        return [];
+      }
+
+      const rawAnswer = answer as {
+        questionId?: string;
+        question_number?: number | string;
+        parts?: EngineAnswerPart[];
+        score?: number;
+      };
+
+      if (typeof rawAnswer.questionId === "string") {
+        return [
+          {
+            questionId: rawAnswer.questionId,
+            score: Number(rawAnswer.score ?? 0),
+          },
+        ];
+      }
+
+      const questionNumber = rawAnswer.question_number;
+      if (questionNumber === undefined || !Array.isArray(rawAnswer.parts)) {
+        return [];
+      }
+
+      return rawAnswer.parts.map((part) => ({
+        questionId: `Q${questionNumber}${part.part ?? ""}`,
+        score: Number(part.score ?? 0),
+      }));
+    });
+
+    return answers.length > 0 ? [{ studentId, answers }] : [];
+  });
+
+  return submissions.length > 0 ? { submissions } : null;
+}
+
 /* ─── Static mock fallback ───────────────────────────────────────────────── */
 const MOCK_DISTRIBUTION = [
   { band: "0-39", c: 8, fill: "#ef4444" },
@@ -460,148 +614,76 @@ const MOCK_PROBLEM_QS = [
 ];
 
 /* ─── Sample JSON templates ──────────────────────────────────────────────── */
-const SAMPLE_PAPER_JSON: ExamPaper = {
-  title: "Database Systems Final Exam",
-  course: "Database Systems",
-  semester: "Spring 2026",
+const SAMPLE_PAPER_JSON: EnginePaperJson = {
+  exam: "IT2040 - Database Management Systems",
+  year: 2022,
   questions: [
     {
-      id: "Q1",
-      text: "Design an ER diagram for a university enrollment system",
-      marks: 10,
-      topic: "ER Modeling",
-      bloom: "Apply",
+      question_number: 1,
+      topic: "Introduction to DBMS & Conceptual Database Design",
+      parts: [
+        {
+          part: "a",
+          question: "What are the main components of a Database Management System? Explain the advantages of DBMS over file processing systems.",
+          max_marks: 10,
+        },
+        {
+          part: "b",
+          question: "Define primary key, candidate key, foreign key, and super key with appropriate examples.",
+          max_marks: 10,
+        },
+      ],
     },
     {
-      id: "Q2",
-      text: "Explain cardinality constraints with examples",
-      marks: 10,
-      topic: "ER Modeling",
-      bloom: "Understand",
-    },
-    {
-      id: "Q3",
-      text: "Normalize the given relation to 3NF",
-      marks: 10,
-      topic: "Normalization",
-      bloom: "Apply",
-    },
-    {
-      id: "Q4",
-      text: "Write SQL queries using joins and subqueries",
-      marks: 10,
-      topic: "SQL",
-      bloom: "Analyze",
-    },
-    {
-      id: "Q5",
-      text: "Compare B-tree and hash indexing strategies",
-      marks: 10,
-      topic: "Indexing",
-      bloom: "Evaluate",
-    },
-    {
-      id: "Q6",
-      text: "Describe ACID properties of transactions",
-      marks: 10,
-      topic: "Transactions",
-      bloom: "Understand",
-    },
-    {
-      id: "Q7",
-      text: "Analyze concurrency control protocols",
-      marks: 10,
-      topic: "Concurrency",
-      bloom: "Analyze",
-    },
-    {
-      id: "Q8",
-      text: "Design a schema for an e-commerce system",
-      marks: 10,
-      topic: "ER Modeling",
-      bloom: "Create",
+      question_number: 2,
+      topic: "Schema refinement",
+      parts: [
+        {
+          part: "a",
+          question: "Normalize the given relation up to 3NF.",
+          max_marks: 12,
+        },
+        {
+          part: "b",
+          question: "Explain the difference between 3NF and BCNF with an example.",
+          max_marks: 8,
+        },
+      ],
     },
   ],
 };
 
-const SAMPLE_ANSWERS_JSON: StudentAnswers = {
+const SAMPLE_ANSWERS_JSON: EngineAnswersJson = {
   submissions: [
     {
-      studentId: "CS-2024-018",
+      student_id: "it22100001",
       answers: [
-        { questionId: "Q1", score: 9 },
-        { questionId: "Q2", score: 8 },
-        { questionId: "Q3", score: 9 },
-        { questionId: "Q4", score: 6 },
-        { questionId: "Q5", score: 9 },
-        { questionId: "Q6", score: 9 },
-        { questionId: "Q7", score: 8 },
-        { questionId: "Q8", score: 10 },
+        {
+          question_number: 1,
+          parts: [
+            { part: "a", answer: "DBMS components: data, hardware, software, users.", score: 4, max_marks: 10 },
+            { part: "b", answer: "Primary key unique identifies row.", score: 3, max_marks: 10 },
+          ],
+        },
+        {
+          question_number: 2,
+          parts: [
+            { part: "a", answer: "Normalize to 3NF by splitting tables.", score: 4, max_marks: 12 },
+            { part: "b", answer: "BCNF is stricter than 3NF.", score: 2, max_marks: 8 },
+          ],
+        },
       ],
     },
     {
-      studentId: "CS-2024-022",
+      student_id: "it22100002",
       answers: [
-        { questionId: "Q1", score: 8 },
-        { questionId: "Q2", score: 6 },
-        { questionId: "Q3", score: 7 },
-        { questionId: "Q4", score: 6 },
-        { questionId: "Q5", score: 8 },
-        { questionId: "Q6", score: 7 },
-        { questionId: "Q7", score: 4 },
-        { questionId: "Q8", score: 8 },
-      ],
-    },
-    {
-      studentId: "CS-2024-045",
-      answers: [
-        { questionId: "Q1", score: 7 },
-        { questionId: "Q2", score: 6 },
-        { questionId: "Q3", score: 5 },
-        { questionId: "Q4", score: 6 },
-        { questionId: "Q5", score: 5 },
-        { questionId: "Q6", score: 7 },
-        { questionId: "Q7", score: 4 },
-        { questionId: "Q8", score: 6 },
-      ],
-    },
-    {
-      studentId: "CS-2024-061",
-      answers: [
-        { questionId: "Q1", score: 6 },
-        { questionId: "Q2", score: 5 },
-        { questionId: "Q3", score: 4 },
-        { questionId: "Q4", score: 7 },
-        { questionId: "Q5", score: 4 },
-        { questionId: "Q6", score: 6 },
-        { questionId: "Q7", score: 3 },
-        { questionId: "Q8", score: 6 },
-      ],
-    },
-    {
-      studentId: "CS-2024-088",
-      answers: [
-        { questionId: "Q1", score: 4 },
-        { questionId: "Q2", score: 3 },
-        { questionId: "Q3", score: 3 },
-        { questionId: "Q4", score: 6 },
-        { questionId: "Q5", score: 3 },
-        { questionId: "Q6", score: 5 },
-        { questionId: "Q7", score: 2 },
-        { questionId: "Q8", score: 4 },
-      ],
-    },
-    {
-      studentId: "CS-2024-104",
-      answers: [
-        { questionId: "Q1", score: 3 },
-        { questionId: "Q2", score: 2 },
-        { questionId: "Q3", score: 3 },
-        { questionId: "Q4", score: 4 },
-        { questionId: "Q5", score: 2 },
-        { questionId: "Q6", score: 5 },
-        { questionId: "Q7", score: 1 },
-        { questionId: "Q8", score: 3 },
+        {
+          question_number: 1,
+          parts: [
+            { part: "a", answer: "Storage manager, query processor, transaction manager.", score: 6, max_marks: 10 },
+            { part: "b", answer: "Primary key, candidate key, foreign key, super key definitions.", score: 6, max_marks: 10 },
+          ],
+        },
       ],
     },
   ],
@@ -691,12 +773,12 @@ function JsonUploadZone({
       {!file ? (
         <div
           onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => {
+          onDragOver={(e: React.DragEvent<HTMLDivElement>) => {
             e.preventDefault();
             setDrag(true);
           }}
           onDragLeave={() => setDrag(false)}
-          onDrop={(e) => {
+          onDrop={(e: React.DragEvent<HTMLDivElement>) => {
             e.preventDefault();
             setDrag(false);
             const f = e.dataTransfer.files[0];
@@ -749,7 +831,7 @@ function JsonUploadZone({
         type="file"
         accept=".json,application/json"
         className="hidden"
-        onChange={(e) => {
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
           const f = e.target.files?.[0];
           if (f) onFile(f);
           e.target.value = "";
@@ -763,7 +845,9 @@ function JsonUploadZone({
 export function AnalyticsPage() {
   const [expanded, setExpanded] = useState<string | null>("CS-2024-104");
   const [uploadOpen, setUploadOpen] = useState(true);
-  const backendBaseUrl = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:8000";
+  const backendBaseUrl =
+    ((import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL) ??
+    "http://localhost:8000";
 
   // Upload state
   const [paperFile, setPaperFile] = useState<File | null>(null);
@@ -789,7 +873,7 @@ export function AnalyticsPage() {
       setFile: (f: File) => void,
       setError: (e: string | null) => void,
       setParsed: (v: T | null) => void,
-      validate: (v: unknown) => v is T,
+      parse: (v: unknown) => T | null,
       errorMsg: string,
     ) => {
       setFile(file);
@@ -799,11 +883,12 @@ export function AnalyticsPage() {
       reader.onload = (e) => {
         try {
           const json = JSON.parse(e.target?.result as string);
-          if (!validate(json)) {
+          const parsed = parse(json);
+          if (!parsed) {
             setError(errorMsg);
             return;
           }
-          setParsed(json);
+          setParsed(parsed);
         } catch {
           setError("Invalid JSON — could not parse file.");
         }
@@ -813,27 +898,14 @@ export function AnalyticsPage() {
     [],
   );
 
-  const isPaper = (v: unknown): v is ExamPaper =>
-    typeof v === "object" &&
-    v !== null &&
-    Array.isArray((v as ExamPaper).questions) &&
-    (v as ExamPaper).questions.length > 0 &&
-    typeof (v as ExamPaper).questions[0].id === "string";
-
-  const isAnswers = (v: unknown): v is StudentAnswers =>
-    typeof v === "object" &&
-    v !== null &&
-    Array.isArray((v as StudentAnswers).submissions) &&
-    (v as StudentAnswers).submissions.length > 0;
-
   const handlePaperFile = (f: File) =>
     readJson(
       f,
       setPaperFile,
       setPaperError,
       setParsedPaper,
-      isPaper,
-      "Invalid exam paper JSON. Ensure it has a `questions` array with `id`, `marks`, `topic`, `bloom` fields.",
+      normalizePaperJson,
+      "Invalid exam JSON. Upload either the engine format with `questions[].parts[]` or the simplified analytics format.",
     );
 
   const handleAnswersFile = (f: File) =>
@@ -842,8 +914,8 @@ export function AnalyticsPage() {
       setAnswersFile,
       setAnswersError,
       setParsedAnswers,
-      isAnswers,
-      "Invalid answers JSON. Ensure it has a `submissions` array with `studentId` and `answers` fields.",
+      normalizeAnswersJson,
+      "Invalid student JSON. Upload either the engine format or the simplified analytics format.",
     );
 
   const clearPaper = () => {
@@ -877,24 +949,31 @@ export function AnalyticsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const runAnalysis = () => {
+  const runAnalysis = async () => {
     if (!parsedPaper || !parsedAnswers) return;
     setProcessing(true);
-    setTimeout(() => {
+    const loaded = await loadBackendReport(paperFile, answersFile);
+    if (!loaded) {
       setDerived(deriveAnalytics(parsedPaper, parsedAnswers));
       setAnalysed(true);
-      setProcessing(false);
-      setUploadOpen(false);
-    }, 900);
+    }
+    setUploadOpen(false);
+    setProcessing(false);
   };
 
-  const loadBackendReport = useCallback(async () => {
+  const loadBackendReport = useCallback(async (paper?: File | null, answers?: File | null) => {
     setBackendLoading(true);
     setBackendError(null);
     try {
-      const response = await fetch(`${backendBaseUrl}/api/analytics/run`, {
-        method: "POST",
-      });
+      const requestInit: RequestInit = { method: "POST" };
+      if (paper && answers) {
+        const formData = new FormData();
+        formData.append("exam_json", paper);
+        formData.append("student_json", answers);
+        requestInit.body = formData;
+      }
+
+      const response = await fetch(`${backendBaseUrl}/api/analytics/run`, requestInit);
       if (!response.ok) {
         const message = await response.text();
         throw new Error(message || "Backend analytics run failed.");
@@ -903,9 +982,11 @@ export function AnalyticsPage() {
       setBackendReport(payload);
       setDerived(payload);
       setAnalysed(true);
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Backend analytics run failed.";
       setBackendError(message);
+      return false;
     } finally {
       setBackendLoading(false);
     }
@@ -954,7 +1035,7 @@ export function AnalyticsPage() {
       note:
         problemQs
           .slice(0, 2)
-          .map((p) => p.q.split(" — ")[0])
+          .map((p: { q: string }) => p.q.split(" — ")[0])
           .join(", ") + " underperforming",
     },
     {
@@ -1017,7 +1098,7 @@ export function AnalyticsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setUploadOpen((o) => !o)}
+            onClick={() => setUploadOpen((o: boolean) => !o)}
             className="gap-1.5"
           >
             {uploadOpen ? (
@@ -1096,15 +1177,16 @@ export function AnalyticsPage() {
             <div className="bg-slate-900 rounded-xl p-4 text-xs font-mono overflow-x-auto">
               <div className="text-slate-400 mb-2">// exam_paper.json</div>
               <pre className="text-emerald-400 whitespace-pre-wrap leading-relaxed">{`{
-  "title": "Final Exam",
-  "course": "Database Systems",
-  "semester": "Spring 2026",
+  "exam": "IT2040 - Database Management Systems",
+  "year": 2022,
   "questions": [{
-    "id": "Q1",
-    "text": "Design an ER diagram...",
-    "marks": 10,
-    "topic": "ER Modeling",
-    "bloom": "Apply"
+    "question_number": 1,
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "parts": [{
+      "part": "a",
+      "question": "What are the main components of a DBMS?",
+      "max_marks": 10
+    }]
   }]
 }`}</pre>
             </div>
@@ -1112,10 +1194,15 @@ export function AnalyticsPage() {
               <div className="text-slate-400 mb-2">// student_answers.json</div>
               <pre className="text-blue-300 whitespace-pre-wrap leading-relaxed">{`{
   "submissions": [{
-    "studentId": "CS-2024-018",
+    "student_id": "it22100001",
     "answers": [{
-      "questionId": "Q1",
-      "score": 8
+      "question_number": 1,
+      "parts": [{
+        "part": "a",
+        "answer": "DBMS components: data, hardware, software, users.",
+        "score": 4,
+        "max_marks": 10
+      }]
     }]
   }]
 }`}</pre>
