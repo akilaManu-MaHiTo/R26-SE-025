@@ -13,6 +13,7 @@ for path in (PROJECT_ROOT, ENGINE_ROOT):
         sys.path.append(path_str)
 
 from DiagramEvaluationEngine.predict import run_er_pipeline
+from Gradex_AI_Server.app.analytics_report import build_exam_report, run_exam_analysis
 
 app = FastAPI(title="Gradex AI Server", version="1.0.0")
 
@@ -48,6 +49,22 @@ async def diagram_evaluate(image: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Evaluation failed: {exc}") from exc
 
     return result
+
+
+@app.get("/api/analytics/report")
+async def analytics_report():
+    try:
+        return build_exam_report()
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=f"Analytics report not available: {exc}") from exc
+
+
+@app.post("/api/analytics/run")
+async def analytics_run():
+    try:
+        return run_exam_analysis()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Analytics run failed: {exc}") from exc
 
 
 if __name__ == "__main__":
