@@ -1,12 +1,21 @@
 from typing import Dict, List
 
-from config import AppConfig, NEGATIVE_EMOTIONS, NEUTRAL_EMOTIONS, POSITIVE_EMOTIONS, SURPRISE_EMOTIONS, canonical_emotion_label
-from services.emotion_detector import EmotionDetector
-from services.face_detector import FaceDetector
-from services.gaze_head_analyser import GazeHeadAnalyser
-from services.blink_sampler import BlinkSampler
-from services.scoring import compute_confidence_score, compute_engagement_score, smooth_emotions
-from services.video_processor import VideoProcessor
+try:
+    from ..config import AppConfig, NEGATIVE_EMOTIONS, NEUTRAL_EMOTIONS, POSITIVE_EMOTIONS, SURPRISE_EMOTIONS, canonical_emotion_label
+    from .emotion_detector import EmotionDetector
+    from .face_detector import FaceDetector
+    from .gaze_head_analyser import GazeHeadAnalyser
+    from .blink_sampler import BlinkSampler
+    from .scoring import compute_confidence_score, compute_engagement_score, smooth_emotions
+    from .video_processor import VideoProcessor
+except ImportError:
+    from config import AppConfig, NEGATIVE_EMOTIONS, NEUTRAL_EMOTIONS, POSITIVE_EMOTIONS, SURPRISE_EMOTIONS, canonical_emotion_label
+    from services.emotion_detector import EmotionDetector
+    from services.face_detector import FaceDetector
+    from services.gaze_head_analyser import GazeHeadAnalyser
+    from services.blink_sampler import BlinkSampler
+    from services.scoring import compute_confidence_score, compute_engagement_score, smooth_emotions
+    from services.video_processor import VideoProcessor
 
 
 def build_summary(timeline: List[Dict[str, object]]) -> Dict[str, float]:

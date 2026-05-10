@@ -7,13 +7,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENGINE_ROOT = PROJECT_ROOT / "DiagramEvaluationEngine"
-for path in (PROJECT_ROOT, ENGINE_ROOT):
+VIVA_ENGINE_ROOT = PROJECT_ROOT / "VivaEvaluationEngine"
+for path in (PROJECT_ROOT, ENGINE_ROOT, VIVA_ENGINE_ROOT):
     path_str = str(path)
     if path_str not in sys.path:
         sys.path.append(path_str)
 
 from DiagramEvaluationEngine.predict import run_er_pipeline
 from Gradex_AI_Server.app.analytics_report import build_exam_report, run_exam_analysis
+from VivaEvaluationEngine.services.analysis_service import analyze_video
+from VivaEvaluationEngine.config import AppConfig
 
 app = FastAPI(title="Gradex AI Server", version="1.0.0")
 
@@ -83,6 +86,35 @@ async def analytics_run(
         return run_exam_analysis()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Analytics run failed: {exc}") from exc
+
+
+@app.post("/api/viva/evaluate")
+async def viva_evaluate(video: UploadFile = File(...)):
+    if not video.content_type or not video.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="Only video uploads are supported.")
+
+    contents = await video.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty upload.")
+
+    ext = Path(video.filename or "").suffix or ".mp4"
+    file_path = UPLOAD_DIR / f"{uuid4().hex}{ext}"
+    file_path.write_bytes(contents)
+
+    model_path = VIVA_ENGINE_ROOT / "models" / "hsemotion_improved.pt"
+
+    try:
+        config = AppConfig(
+            video_path=str(file_path),
+            output_path=str(UPLOAD_DIR / f"{file_path.stem}_output.json"),
+            emotion_model_path=str(model_path),
+            debug=True
+        )
+        result = analyze_video(config, include_summary=True)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Viva evaluation failed: {exc}") from exc
+
+    return result
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
-import { Upload, Play, CheckCircle2, Mic, FileDown, Sparkles, Pause } from "lucide-react";
+import { useState, useRef } from "react";
+import { Upload, Play, CheckCircle2, Mic, FileDown, Sparkles, Pause, Loader2 } from "lucide-react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -14,27 +15,109 @@ const criteria = [
   { name: "Presentation Quality", score: 7, max: 10 },
 ];
 
-const moments = [
-  { t: "00:42", label: "Introduction & background", tone: "neutral" },
-  { t: "02:15", label: "Strong explanation of B+ trees", tone: "good" },
-  { t: "05:08", label: "Hesitation on isolation levels", tone: "warn" },
-  { t: "08:27", label: "Excellent example with real-world case", tone: "good" },
-  { t: "11:54", label: "Closing summary", tone: "neutral" },
-];
-
-const toneColor: Record<string, string> = {
-  good: "bg-emerald-500",
-  warn: "bg-amber-500",
-  neutral: "bg-blue-500",
+const emotionColor: Record<string, string> = {
+  happy: "bg-emerald-500",
+  sad: "bg-blue-500",
+  angry: "bg-red-500",
+  disgust: "bg-amber-500",
+  fear: "bg-purple-500",
+  surprise: "bg-pink-500",
+  contempt: "bg-orange-500",
+  neutral: "bg-slate-400",
 };
+
+type TimelineEntry = {
+  time: number;
+  emotion: string;
+  emotion_confidence: number;
+  valid: boolean;
+};
+
+type VivaResult = {
+  confidence_score: number;
+  engagement_score: number;
+  summary?: {
+    positive_ratio: number;
+    neutral_ratio: number;
+    negative_ratio: number;
+  };
+  timeline?: TimelineEntry[];
+};
+
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
 
 export function VivaPage() {
   const total = criteria.reduce((a, b) => a + b.score, 0);
   const max = criteria.reduce((a, b) => a + b.max, 0);
+  
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploaded" | "processing" | "success" | "error">("idle");
+  const [result, setResult] = useState<VivaResult | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (file: File) => {
+    setVideoFile(file);
+    setVideoUrl(URL.createObjectURL(file));
+    setUploadStatus("uploaded");
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("video/")) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const startAnalysis = async () => {
+    if (!videoFile) return;
+    
+    setUploadStatus("processing");
+    
+    const formData = new FormData();
+    formData.append("video", videoFile);
+    
+    try {
+      const response = await fetch("/api/viva/evaluate", {
+        method: "POST",
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      
+      const data = await response.json();
+      setResult(data);
+      setUploadStatus("success");
+    } catch (error) {
+      console.error("Upload failed:", error);
+      setUploadStatus("error");
+    }
+  };
+
+  const triggerFileSelect = () => {
+    if (uploadStatus === "processing") return;
+    fileInputRef.current?.click();
+  };
+
+  const isProcessing = uploadStatus === "processing";
+  const hasVideo = videoFile !== null;
 
   return (
     <div className="p-8 space-y-6">
-      {/* AI Page Banner */}
       <AIPageBanner model="voca" />
 
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -50,66 +133,159 @@ export function VivaPage() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {/* Upload */}
           <Card className="p-6 border-slate-200">
             <div className="flex items-center justify-between">
               <div className="text-slate-900">Recording</div>
-              <Badge className="bg-emerald-50 text-emerald-700 border-0 hover:bg-emerald-50">
-                <CheckCircle2 className="size-3 mr-1" /> Uploaded
+              <Badge className={
+                uploadStatus === "success" 
+                  ? "bg-emerald-50 text-emerald-700 border-0 hover:bg-emerald-50"
+                  : uploadStatus === "processing"
+                  ? "bg-blue-50 text-blue-700 border-0"
+                  : uploadStatus === "uploaded"
+                  ? "bg-amber-50 text-amber-700 border-0"
+                  : "bg-slate-100 text-slate-500 border-0"
+              }>
+                {uploadStatus === "success" ? (
+                  <>
+                    <CheckCircle2 className="size-3 mr-1" /> Analyzed
+                  </>
+                ) : uploadStatus === "processing" ? (
+                  <>Processing...</>
+                ) : uploadStatus === "uploaded" ? (
+                  <>Ready to analyze</>
+                ) : (
+                  <>Pending upload</>
+                )}
               </Badge>
             </div>
 
-            <div className="mt-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/40 p-6 hover:border-blue-300 hover:bg-blue-50/40 transition-colors cursor-pointer text-center">
-              <div className="size-12 rounded-full bg-blue-100 mx-auto flex items-center justify-center text-blue-600">
-                <Upload className="size-6" />
+            {!hasVideo ? (
+              <div 
+                className="mt-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/40 p-6 hover:border-blue-300 hover:bg-blue-50/40 transition-colors cursor-pointer text-center"
+                onDrop={handleDrop}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={triggerFileSelect}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <div className="size-12 rounded-full bg-blue-100 mx-auto flex items-center justify-center text-blue-600">
+                  <Upload className="size-6" />
+                </div>
+                <div className="text-sm text-slate-900 mt-3">
+                  Drag & drop a viva recording
+                </div>
+                <div className="text-xs text-slate-500 mt-1">Supports MP4, AVI, MOV · up to 1 GB</div>
               </div>
-              <div className="text-sm text-slate-900 mt-3">Drag & drop a viva recording</div>
-              <div className="text-xs text-slate-500 mt-1">Supports MP4, AVI, MOV · up to 1 GB</div>
-            </div>
+            ) : (
+              <div className="mt-4 space-y-4">
+                <div className="rounded-xl bg-slate-900 aspect-video relative overflow-hidden">
+                  {isProcessing && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+                      <div className="text-center">
+                        <Loader2 className="size-10 animate-spin text-white mx-auto mb-2" />
+                        <div className="text-white text-sm">Analyzing video...</div>
+                      </div>
+                    </div>
+                  )}
+                  <video
+                    src={videoUrl || undefined}
+                    className="w-full h-full object-contain"
+                    controls={uploadStatus === "success"}
+                    muted
+                  />
+                  <div className="absolute top-3 left-3 flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-white/80 text-xs">{videoFile?.name || "viva_session_24.mp4"}</span>
+                  </div>
+                </div>
 
-            {/* Mock player */}
-            <div className="mt-5 rounded-xl bg-slate-900 aspect-video relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black flex items-center justify-center">
-                <div className="size-16 rounded-full bg-white/10 backdrop-blur flex items-center justify-center cursor-pointer hover:bg-white/20">
-                  <Play className="size-7 text-white ml-0.5" fill="white" />
+                {uploadStatus === "uploaded" && (
+                  <div className="flex justify-center">
+                    <Button 
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={startAnalysis}
+                    >
+                      Analyze Video
+                    </Button>
+                  </div>
+                )}
+
+                {uploadStatus === "error" && (
+                  <div className="flex justify-center">
+                    <Button 
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={startAnalysis}
+                    >
+                      Retry Analysis
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {uploadStatus === "success" && result && (
+              <div className="mt-6 grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+                  <div className="text-xs text-blue-700 uppercase tracking-wide">Confidence Score</div>
+                  <div className="text-3xl font-bold text-blue-900 mt-1">{result.confidence_score.toFixed(1)}<span className="text-lg text-blue-600">/100</span></div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                  <div className="text-xs text-purple-700 uppercase tracking-wide">Engagement Score</div>
+                  <div className="text-3xl font-bold text-purple-900 mt-1">{result.engagement_score.toFixed(1)}<span className="text-lg text-purple-600">/100</span></div>
                 </div>
               </div>
-              <div className="absolute top-3 left-3 flex items-center gap-2">
-                <span className="size-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-white/80 text-xs">viva_session_24.mp4</span>
-              </div>
-              <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-                <div className="flex items-center gap-3 text-white">
-                  <Pause className="size-4" />
-                  <span className="text-xs">04:32 / 12:48</span>
-                  <div className="flex-1 h-1 rounded-full bg-white/20">
-                    <div className="h-full w-1/3 rounded-full bg-blue-400" />
+            )}
+
+            {uploadStatus === "success" && result?.summary && (
+              <div className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <div className="text-xs font-medium text-slate-700 mb-2">Emotion Summary</div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <div className="text-xs text-emerald-600">Positive</div>
+                    <div className="font-semibold text-slate-900">{Math.round(result.summary.positive_ratio * 100)}%</div>
                   </div>
-                  <Mic className="size-4" />
+                  <div>
+                    <div className="text-xs text-blue-600">Neutral</div>
+                    <div className="font-semibold text-slate-900">{Math.round(result.summary.neutral_ratio * 100)}%</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-amber-600">Negative</div>
+                    <div className="font-semibold text-slate-900">{Math.round(result.summary.negative_ratio * 100)}%</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Timeline of moments */}
-            <div className="mt-5">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-slate-900">Key moments</div>
-                <div className="text-xs text-slate-500">AI-detected</div>
+            {uploadStatus === "success" && result?.timeline && result.timeline.length > 0 && (
+              <div className="mt-5">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm text-slate-900">Emotion Timeline</div>
+                  <div className="text-xs text-slate-500">Frame-by-frame analysis</div>
+                </div>
+                <div className="max-h-64 overflow-y-auto pr-2 space-y-1">
+                  {result.timeline.map((entry, i) => {
+                    const emotionColorClass = emotionColor[entry.emotion] || "bg-slate-400";
+                    return (
+                      <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-50">
+                        <span className={`size-2 rounded-full ${emotionColorClass}`} />
+                        <span className="text-xs font-mono text-slate-500 w-16">{formatTime(entry.time)}</span>
+                        <span className="text-sm text-slate-700 capitalize flex-1">{entry.emotion}</span>
+                        <span className="text-xs text-slate-500 w-12 text-right">
+                          {Math.round(entry.emotion_confidence * 100)}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="space-y-1.5">
-                {moments.map((m) => (
-                  <div key={m.t} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-                    <span className={`size-2 rounded-full ${toneColor[m.tone]}`} />
-                    <span className="text-xs font-mono text-slate-500 w-12">{m.t}</span>
-                    <span className="text-sm text-slate-700 flex-1">{m.label}</span>
-                    <Play className="size-3.5 text-slate-400" />
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </Card>
 
-          {/* Transcript */}
           <Card className="p-6 border-slate-200">
             <div className="flex items-center justify-between">
               <div className="text-slate-900">Transcript</div>
@@ -146,7 +322,6 @@ export function VivaPage() {
         </div>
 
         <div className="space-y-6">
-          {/* Guidelines */}
           <Card className="p-5 border-slate-200">
             <div className="text-slate-900">Recording checklist</div>
             <div className="mt-3 space-y-2.5">
@@ -164,7 +339,6 @@ export function VivaPage() {
             </div>
           </Card>
 
-          {/* Criteria */}
           <Card className="p-5 border-slate-200">
             <div className="flex items-center justify-between">
               <div className="text-slate-900">Evaluation rubric</div>

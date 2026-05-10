@@ -1,13 +1,22 @@
 from collections import Counter
 from typing import Dict, List
 import numpy as np
-from config import (
-    NEGATIVE_EMOTIONS,
-    NEUTRAL_EMOTIONS,
-    POSITIVE_EMOTIONS,
-    SURPRISE_EMOTIONS,
-    canonical_emotion_label,
-)
+try:
+    from ..config import (
+        NEGATIVE_EMOTIONS,
+        NEUTRAL_EMOTIONS,
+        POSITIVE_EMOTIONS,
+        SURPRISE_EMOTIONS,
+        canonical_emotion_label,
+    )
+except ImportError:
+    from config import (
+        NEGATIVE_EMOTIONS,
+        NEUTRAL_EMOTIONS,
+        POSITIVE_EMOTIONS,
+        SURPRISE_EMOTIONS,
+        canonical_emotion_label,
+    )
 
 
 def smooth_emotions(timeline: List[Dict[str, object]], window: int = 3) -> List[Dict[str, object]]:

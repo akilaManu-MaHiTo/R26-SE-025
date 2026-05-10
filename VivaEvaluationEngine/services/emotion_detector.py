@@ -6,7 +6,10 @@ import numpy as np
 import torch
 import timm
 
-from config import canonical_emotion_label
+try:
+    from ..config import canonical_emotion_label
+except ImportError:
+    from config import canonical_emotion_label
 
 
 CLASS_NAMES = [

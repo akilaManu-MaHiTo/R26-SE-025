@@ -4,8 +4,12 @@ import os
 import sys
 from typing import Dict
 
-from config import AppConfig
-from services.analysis_service import analyze_video
+try:
+    from config import AppConfig
+    from services.analysis_service import analyze_video
+except ImportError:
+    from VivaEvaluationEngine.config import AppConfig
+    from VivaEvaluationEngine.services.analysis_service import analyze_video
 
 
 def parse_args() -> argparse.Namespace:
