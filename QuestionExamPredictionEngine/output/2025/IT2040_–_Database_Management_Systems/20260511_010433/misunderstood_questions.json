@@ -1,61 +1,61 @@
 [
   {
-    "question": "Q4a",
-    "average_score": 0.67,
+    "question": "Q4b",
+    "average_score": 0.68,
     "students_below_threshold": 1,
     "status": "Review"
   },
   {
-    "question": "Q4b",
-    "average_score": 0.725,
-    "students_below_threshold": 0,
-    "status": "Review"
-  },
-  {
-    "question": "Q3b",
-    "average_score": 0.748,
-    "students_below_threshold": 0,
-    "status": "Review"
-  },
-  {
-    "question": "Q2a",
-    "average_score": 0.75,
-    "students_below_threshold": 0,
-    "status": "Review"
-  },
-  {
-    "question": "Q4c",
-    "average_score": 0.766,
-    "students_below_threshold": 0,
-    "status": "Review"
-  },
-  {
     "question": "Q1a",
-    "average_score": 0.776,
-    "students_below_threshold": 0,
-    "status": "Review"
-  },
-  {
-    "question": "Q1b",
-    "average_score": 0.825,
-    "students_below_threshold": 0,
-    "status": "Review"
-  },
-  {
-    "question": "Q3c",
-    "average_score": 0.849,
-    "students_below_threshold": 0,
-    "status": "Review"
-  },
-  {
-    "question": "Q3a",
-    "average_score": 0.852,
+    "average_score": 0.631,
     "students_below_threshold": 0,
     "status": "Review"
   },
   {
     "question": "Q2b",
-    "average_score": 0.853,
+    "average_score": 0.682,
+    "students_below_threshold": 0,
+    "status": "Review"
+  },
+  {
+    "question": "Q3b",
+    "average_score": 0.719,
+    "students_below_threshold": 0,
+    "status": "Review"
+  },
+  {
+    "question": "Q1b",
+    "average_score": 0.72,
+    "students_below_threshold": 0,
+    "status": "Review"
+  },
+  {
+    "question": "Q2a",
+    "average_score": 0.726,
+    "students_below_threshold": 0,
+    "status": "Review"
+  },
+  {
+    "question": "Q3c",
+    "average_score": 0.728,
+    "students_below_threshold": 0,
+    "status": "Review"
+  },
+  {
+    "question": "Q4a",
+    "average_score": 0.772,
+    "students_below_threshold": 0,
+    "status": "Review"
+  },
+  {
+    "question": "Q4c",
+    "average_score": 0.813,
+    "students_below_threshold": 0,
+    "status": "Review"
+  },
+  {
+    "question": "Q3a",
+    "average_score": 0.82,
     "students_below_threshold": 0,
     "status": "Review"
   }

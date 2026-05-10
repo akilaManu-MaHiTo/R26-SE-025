@@ -1,5 +1,3 @@
-"""Train the weak topic detection model from a student report JSON file."""
-
 from __future__ import annotations
 
 import argparse
