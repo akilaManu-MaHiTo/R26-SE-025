@@ -129,7 +129,6 @@ def build_topic_feature_rows(results, weak_threshold=0.5, minimum_students=2, mi
 
 
 class WeakTopicModel:
-    """Train and run a small classifier for weak topic detection."""
 
     FEATURE_NAMES = [
         "average_learning_score",

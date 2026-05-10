@@ -113,6 +113,37 @@ interface BackendCognitiveGap {
   gap: string;
 }
 
+interface HistoricalDataCollection {
+  years: number[];
+  data: Record<string, HistoricalSessionRecord[]>;
+}
+
+interface HistoricalSessionRecord {
+  year: number;
+  exam: string;
+  timestamp: string;
+  totalStudents: number;
+  avgLearningScore: number;
+  performanceBandDistribution: Record<string, number>;
+  studentSummary: BackendStudentSummary[];
+  studentReport: BackendStudentReport[];
+  weakTopics: BackendWeakTopic[];
+  cognitiveGapAnalysis: BackendCognitiveGap[];
+  misunderstoodQuestions: Array<{
+    question: string;
+    average_score: number;
+    students_below_threshold: number;
+    status: string;
+  }>;
+  summary?: {
+    total: number;
+    atRisk: number;
+    avgScore: number;
+    cogGaps: number;
+    problemCount: number;
+  };
+}
+
 type AnalyticsDashboard = ReturnType<typeof deriveAnalytics>;
 
 type EnginePaperPart = {
@@ -469,149 +500,147 @@ function normalizeAnswersJson(value: unknown): StudentAnswers | null {
   return submissions.length > 0 ? { submissions } : null;
 }
 
-/* ─── Static mock fallback ───────────────────────────────────────────────── */
-const MOCK_DISTRIBUTION = [
-  { band: "0-39", c: 8, fill: "#ef4444" },
-  { band: "40-54", c: 22, fill: "#f59e0b" },
-  { band: "55-69", c: 96, fill: "#3b82f6" },
-  { band: "70-84", c: 142, fill: "#10b981" },
-  { band: "85-100", c: 74, fill: "#059669" },
-];
-const MOCK_STUDENTS = [
-  {
-    id: "CS-2024-018",
-    avg: 92,
-    band: "high",
-    weak: ["Q4"],
-    cog: "Evaluate",
-    scoreMap: {},
-  },
-  {
-    id: "CS-2024-022",
-    avg: 78,
-    band: "high",
-    weak: ["Q2", "Q7"],
-    cog: "Analyze",
-    scoreMap: {},
-  },
-  {
-    id: "CS-2024-045",
-    avg: 64,
-    band: "mid",
-    weak: ["Q3", "Q4", "Q7"],
-    cog: "Apply",
-    scoreMap: {},
-  },
-  {
-    id: "CS-2024-061",
-    avg: 58,
-    band: "mid",
-    weak: ["Q2", "Q5", "Q7"],
-    cog: "Apply",
-    scoreMap: {},
-  },
-  {
-    id: "CS-2024-088",
-    avg: 41,
-    band: "low",
-    weak: ["Q1", "Q3", "Q5", "Q7"],
-    cog: "Understand",
-    scoreMap: {},
-  },
-  {
-    id: "CS-2024-104",
-    avg: 36,
-    band: "low",
-    weak: ["Q2", "Q3", "Q5", "Q6", "Q7"],
-    cog: "Remember",
-    scoreMap: {},
-  },
-];
-const MOCK_HEAT_STUDENTS = [
-  "CS-018",
-  "CS-022",
-  "CS-045",
-  "CS-061",
-  "CS-088",
-  "CS-104",
-  "CS-117",
-  "CS-128",
-];
-const MOCK_HEAT_QS = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8"];
-const MOCK_HEAT_DATA: number[][] = [
-  [9, 8, 7, 9, 9, 9, 8, 10],
-  [8, 6, 7, 6, 8, 7, 4, 8],
-  [7, 6, 5, 6, 5, 7, 4, 6],
-  [6, 5, 4, 7, 4, 6, 3, 6],
-  [4, 3, 3, 6, 3, 5, 2, 4],
-  [3, 2, 3, 4, 2, 5, 1, 3],
-  [7, 6, 7, 8, 6, 7, 5, 7],
-  [8, 7, 7, 8, 7, 8, 6, 8],
-];
-const MOCK_COGNITIVE = [
-  { expected: 3, actual: 4 },
-  { expected: 4, actual: 4 },
-  { expected: 5, actual: 6 },
-  { expected: 5, actual: 3 },
-  { expected: 6, actual: 4 },
-  { expected: 4, actual: 5 },
-  { expected: 6, actual: 6 },
-  { expected: 3, actual: 2 },
-  { expected: 5, actual: 5 },
-  { expected: 4, actual: 3 },
-  { expected: 6, actual: 5 },
-  { expected: 2, actual: 3 },
-];
-const MOCK_BLOOM_LADDER = [
-  { l: "Create", v: 32, c: "bg-violet-500" },
-  { l: "Evaluate", v: 48, c: "bg-indigo-500" },
-  { l: "Analyze", v: 61, c: "bg-blue-500" },
-  { l: "Apply", v: 74, c: "bg-emerald-500" },
-  { l: "Understand", v: 86, c: "bg-emerald-400" },
-  { l: "Remember", v: 92, c: "bg-emerald-300" },
-];
-const MOCK_TOPICS = [
-  "ER Modeling",
-  "Normalization",
-  "SQL",
-  "Indexing",
-  "Transactions",
-  "Concurrency",
-];
-const MOCK_TOPIC_MASTERY: number[][] = [
-  [85, 78, 92, 70, 64, 58],
-  [72, 68, 81, 60, 55, 50],
-  [60, 55, 75, 48, 42, 38],
-  [82, 75, 88, 65, 60, 55],
-  [40, 35, 60, 30, 28, 22],
-  [90, 85, 95, 80, 78, 72],
-];
-const MOCK_PROBLEM_QS = [
-  {
-    q: "Q7 — Concurrency control protocols",
-    below: "62%",
-    avg: 3.8,
-    req: "Analyze",
-    act: "Apply",
-    belowPct: 0.62,
-  },
-  {
-    q: "Q3 — Normalization to BCNF",
-    below: "48%",
-    avg: 4.6,
-    req: "Apply",
-    act: "Understand",
-    belowPct: 0.48,
-  },
-  {
-    q: "Q5 — Index selection trade-offs",
-    below: "44%",
-    avg: 5.1,
-    req: "Evaluate",
-    act: "Apply",
-    belowPct: 0.44,
-  },
-];
+/* ─── Historical data helpers ───────────────────────────────────────────── */
+const titleCase = (value?: string) =>
+  value ? value.replace(/_/g, " ").trim().replace(/\b\w/g, (char) => char.toUpperCase()) : "";
+
+const normalizeBand = (value?: string) => {
+  const band = value?.trim().toLowerCase();
+  if (band === "high") return "high";
+  if (band === "low") return "low";
+  return "mid";
+};
+
+function deriveHistoricalAnalytics(session: HistoricalSessionRecord) {
+  const students = [...session.studentSummary]
+    .sort((a, b) => b.average_learning_score - a.average_learning_score)
+    .map((entry) => ({
+      id: entry.student_id,
+      avg: Math.round(entry.average_learning_score * 100),
+      band: normalizeBand(entry.performance_band),
+      weak: entry.weak_questions ?? [],
+      cog: titleCase(entry.dominant_cognitive_level) || "Apply",
+      scoreMap: {},
+    }));
+
+  const distribution = [
+    { band: "Low", c: session.performanceBandDistribution.Low ?? 0, fill: "#ef4444" },
+    { band: "Medium", c: session.performanceBandDistribution.Medium ?? 0, fill: "#f59e0b" },
+    { band: "High", c: session.performanceBandDistribution.High ?? 0, fill: "#10b981" },
+  ];
+
+  const studentOrder = students.map((student) => student.id);
+  const heatQuestionOrder: string[] = [];
+  const heatLookup = new Map<string, number>();
+
+  session.studentReport.forEach((row) => {
+    const studentId = row.student_id;
+    const questionId = `Q${row.question}${row.part}`;
+    if (!heatQuestionOrder.includes(questionId)) {
+      heatQuestionOrder.push(questionId);
+    }
+    heatLookup.set(`${studentId}::${questionId}`, Math.max(0, Math.min(10, Math.round(row.learning_score * 10))));
+  });
+
+  const heatData = studentOrder.map((studentId) =>
+    heatQuestionOrder.map((questionId) => heatLookup.get(`${studentId}::${questionId}`) ?? 0),
+  );
+
+  const cognitiveScatter = session.cognitiveGapAnalysis.map((row) => ({
+    expected: bloomLevel[row.required?.toLowerCase()] ?? 3,
+    actual: bloomLevel[row.average_student_level?.toLowerCase()] ?? 3,
+    label: row.question,
+  }));
+
+  const cognitiveMap = new Map(session.cognitiveGapAnalysis.map((row) => [row.question, row]));
+  const totalStudents = session.totalStudents || students.length || 1;
+
+  const problemQs = session.misunderstoodQuestions
+    .map((row) => {
+      const cognitive = cognitiveMap.get(row.question);
+      const belowPct = row.students_below_threshold / totalStudents;
+      return {
+        q: row.question,
+        below: `${Math.round(belowPct * 100)}%`,
+        avg: Number((row.average_score * 10).toFixed(1)),
+        req: titleCase(cognitive?.required) || "Apply",
+        act: titleCase(cognitive?.average_student_level) || "Apply",
+        belowPct,
+      };
+    })
+    .filter((problem) => problem.belowPct >= 0.3)
+    .slice(0, 5);
+
+  const bloomGroups: Record<string, number[]> = {};
+  session.studentReport.forEach((row) => {
+    const key = row.required_level?.toLowerCase() || "apply";
+    bloomGroups[key] ??= [];
+    bloomGroups[key].push(row.learning_score * 100);
+  });
+
+  const bloomLadder = Object.entries(bloomLevel)
+    .sort((a, b) => a[1] - b[1])
+    .flatMap(([key, level]) => {
+      const values = bloomGroups[key] ?? [];
+      if (values.length === 0) return [];
+      const colors = [
+        "bg-emerald-300",
+        "bg-emerald-400",
+        "bg-emerald-500",
+        "bg-blue-500",
+        "bg-indigo-500",
+        "bg-violet-500",
+      ];
+      return [
+        {
+          l: titleCase(key),
+          v: Math.round(values.reduce((sum, value) => sum + value, 0) / values.length),
+          c: colors[level - 1] ?? "bg-blue-500",
+        },
+      ];
+    });
+
+  const topics: string[] = [];
+  const topicByStudent: Record<string, Record<string, number[]>> = {};
+  session.studentReport.forEach((row) => {
+    if (!topics.includes(row.topic)) {
+      topics.push(row.topic);
+    }
+    topicByStudent[row.student_id] ??= {};
+    topicByStudent[row.student_id][row.topic] ??= [];
+    topicByStudent[row.student_id][row.topic].push(row.learning_score * 100);
+  });
+
+  const topicMastery = students.map((student) =>
+    topics.map((topic) => {
+      const values = topicByStudent[student.id]?.[topic] ?? [];
+      if (values.length === 0) return 0;
+      return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+    }),
+  );
+
+  const summary = session.summary ?? {
+    total: students.length,
+    atRisk: students.filter((student) => student.band === "low").length,
+    avgScore: Math.round(session.avgLearningScore * 100 * 10) / 10,
+    cogGaps: session.cognitiveGapAnalysis.filter((row) => String(row.gap || "").toUpperCase() !== "LOW").length,
+    problemCount: problemQs.length,
+  };
+
+  return {
+    students,
+    distribution,
+    heatStudents: studentOrder,
+    heatQs: heatQuestionOrder,
+    heatData,
+    cognitiveScatter,
+    bloomLadder,
+    topicMastery,
+    topics,
+    problemQs,
+    summary,
+  };
+}
 
 /* ─── Sample JSON templates ──────────────────────────────────────────────── */
 const SAMPLE_PAPER_JSON: EnginePaperJson = {
@@ -866,6 +895,11 @@ export function AnalyticsPage() {
   const [derived, setDerived] = useState<ReturnType<
     typeof deriveAnalytics
   > | null>(null);
+  const [historicalData, setHistoricalData] = useState<HistoricalDataCollection | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedSessionIndex, setSelectedSessionIndex] = useState(0);
+  const [historicalLoading, setHistoricalLoading] = useState(false);
+  const [historicalError, setHistoricalError] = useState<string | null>(null);
 
   const readJson = useCallback(
     <T,>(
@@ -992,55 +1026,92 @@ export function AnalyticsPage() {
     }
   }, [backendBaseUrl]);
 
-  useEffect(() => {
-    void loadBackendReport();
-  }, [loadBackendReport]);
+  const loadHistoricalData = useCallback(async () => {
+    setHistoricalLoading(true);
+    setHistoricalError(null);
+    try {
+      const response = await fetch(`${backendBaseUrl}/api/analytics/historical`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Historical data fetch failed:", response.status, errorText);
+        setHistoricalError(errorText || "Historical data unavailable.");
+        setHistoricalData({ years: [], data: {} });
+        return;
+      }
+      const data = (await response.json()) as HistoricalDataCollection;
+      setHistoricalData(data);
+      if (data.years.length > 0) {
+        const latestYear = data.years[data.years.length - 1];
+        setSelectedYear(latestYear);
+        setSelectedSessionIndex(0);
+      }
+    } catch (error) {
+      console.error("Failed to load historical data:", error);
+      setHistoricalError(error instanceof Error ? error.message : "Historical data unavailable.");
+      setHistoricalData({ years: [], data: {} });
+    } finally {
+      setHistoricalLoading(false);
+    }
+  }, [backendBaseUrl]);
 
-  // Active data (derived or mock)
-  const D = derived ?? null;
-  const backendFiles = backendReport?.files;
-  const students = D ? D.students : MOCK_STUDENTS;
-  const distribution = D ? D.distribution : MOCK_DISTRIBUTION;
-  const heatStudents = D ? D.heatStudents : MOCK_HEAT_STUDENTS;
-  const heatQs = D ? D.heatQs : MOCK_HEAT_QS;
-  const heatData = D ? D.heatData : MOCK_HEAT_DATA;
-  const cognitiveScatter = D ? D.cognitiveScatter : MOCK_COGNITIVE;
-  const bloomLadder = D ? D.bloomLadder : MOCK_BLOOM_LADDER;
-  const topics = D ? D.topics : MOCK_TOPICS;
-  const topicMastery = D ? D.topicMastery : MOCK_TOPIC_MASTERY;
-  const problemQs = D ? D.problemQs : MOCK_PROBLEM_QS;
+  useEffect(() => {
+    void loadHistoricalData();
+  }, [loadHistoricalData]);
+
+  const selectedYearSessions = selectedYear ? historicalData?.data[String(selectedYear)] ?? [] : [];
+  const selectedSession = selectedYearSessions[selectedSessionIndex] ?? selectedYearSessions[0] ?? null;
+  const historicalDerived = selectedSession ? deriveHistoricalAnalytics(selectedSession) : null;
+
+  // Active data (uploaded analysis takes priority, otherwise historical output data)
+  const D = derived ?? historicalDerived ?? null;
+  const activeFiles = selectedSession ? {
+    student_summary: selectedSession.studentSummary,
+    student_report: selectedSession.studentReport,
+    misunderstood_questions: selectedSession.misunderstoodQuestions,
+    cognitive_gap_analysis: selectedSession.cognitiveGapAnalysis,
+    weak_topics: selectedSession.weakTopics,
+  } : null;
+  const students = D?.students ?? [];
+  const distribution = D?.distribution ?? [];
+  const heatStudents = D?.heatStudents ?? [];
+  const heatQs = D?.heatQs ?? [];
+  const heatData = D?.heatData ?? [];
+  const cognitiveScatter = D?.cognitiveScatter ?? [];
+  const bloomLadder = D?.bloomLadder ?? [];
+  const topics = D?.topics ?? [];
+  const topicMastery = D?.topicMastery ?? [];
+  const problemQs = D?.problemQs ?? [];
   const course = parsedPaper?.course ?? "Database Systems";
   const semester = parsedPaper?.semester ?? "Spring 2026";
 
   const summary = [
     {
       title: "Class Performance",
-      value: `${D ? D.summary.total : 342} students`,
+      value: `${D ? D.summary.total : 0} students`,
       icon: Users,
       color: "blue",
-      note: `Avg ${D ? D.summary.avgScore : 74.2} / 100`,
+      note: `Avg ${D ? D.summary.avgScore : 0} / 100`,
     },
     {
       title: "At-Risk Students",
-      value: `${D ? D.summary.atRisk : 8}`,
+      value: `${D ? D.summary.atRisk : 0}`,
       icon: AlertTriangle,
       color: "red",
       note: "Below 40% threshold",
     },
     {
       title: "Problem Questions",
-      value: `${D ? D.summary.problemCount : 3}`,
+      value: `${D ? D.summary.problemCount : 0}`,
       icon: BookOpen,
       color: "amber",
       note:
-        problemQs
-          .slice(0, 2)
-          .map((p: { q: string }) => p.q.split(" — ")[0])
-          .join(", ") + " underperforming",
+        problemQs.length > 0
+          ? `${problemQs.slice(0, 2).map((p: { q: string }) => p.q).join(", ")} underperforming`
+          : "No flagged questions",
     },
     {
       title: "Cognitive Gaps",
-      value: `${D ? D.summary.cogGaps : 12}`,
+      value: `${D ? D.summary.cogGaps : 0}`,
       icon: Brain,
       color: "orange",
       note: "Below required Bloom level",
@@ -1071,24 +1142,24 @@ export function AnalyticsPage() {
         </div>
         <div className="flex items-center gap-2">
           <AIBadgePill model="pulse" />
-          {backendError && (
+          {historicalError && (
             <Badge className="bg-red-50 text-red-700 border-red-200 border">
-              <AlertCircle className="size-3 mr-1" /> Backend unavailable
+              <AlertCircle className="size-3 mr-1" /> Historical data unavailable
             </Badge>
           )}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => void loadBackendReport()}
-            disabled={backendLoading}
+            onClick={() => void loadHistoricalData()}
+            disabled={historicalLoading}
             className="gap-1.5"
           >
-            {backendLoading ? (
+            {historicalLoading ? (
               <RefreshCw className="size-3.5 animate-spin" />
             ) : (
               <Sparkles className="size-3.5" />
             )}
-            {backendLoading ? "Syncing report" : "Reload backend report"}
+            {historicalLoading ? "Syncing data" : "Reload historical data"}
           </Button>
           {analysed && (
             <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 border">
@@ -1144,6 +1215,24 @@ export function AnalyticsPage() {
                 <FileText className="size-3.5" /> Sample answers JSON
               </Button>
             </div>
+          </div>
+
+          <div className="px-5 pt-4 flex items-center gap-2 flex-wrap text-xs">
+            {backendLoading && (
+              <Badge className="bg-blue-50 text-blue-700 border-0">
+                <RefreshCw className="size-3 mr-1 animate-spin" /> Generating upload report
+              </Badge>
+            )}
+            {backendReport && !backendLoading && (
+              <Badge className="bg-emerald-50 text-emerald-700 border-0">
+                <Sparkles className="size-3 mr-1" /> Upload report ready
+              </Badge>
+            )}
+            {backendError && (
+              <Badge className="bg-red-50 text-red-700 border-0">
+                <AlertCircle className="size-3 mr-1" /> {backendError}
+              </Badge>
+            )}
           </div>
 
           <div className="p-5 grid md:grid-cols-2 gap-5">
@@ -1257,7 +1346,7 @@ export function AnalyticsPage() {
                       setUploadOpen(true);
                     }}
                   >
-                    <RefreshCw className="size-3.5 mr-1.5" /> Reset to demo data
+                    <RefreshCw className="size-3.5 mr-1.5" /> Clear uploaded data
                   </Button>
                 )}
                 <Button
@@ -1328,26 +1417,26 @@ export function AnalyticsPage() {
         })}
       </div>
 
-      {backendReport && (
+      {selectedSession && (
         <Card className="border-slate-200 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <div className="text-slate-900">Backend output folder</div>
+              <div className="text-slate-900">Output session snapshot</div>
               <div className="text-xs text-slate-500 mt-0.5">
-                {backendReport.source} · {new Date(backendReport.generatedAt).toLocaleString()}
+                Year {selectedSession.year} · {selectedSession.exam} · {selectedSession.timestamp}
               </div>
             </div>
             <Badge className="bg-blue-50 text-blue-700 border-0">
-              {fileCount(backendFiles?.student_summary as unknown[])} student summaries · {fileCount(backendFiles?.weak_topics as unknown[])} weak topics · {fileCount(backendFiles?.cognitive_gap_analysis as unknown[])} cognitive gaps
+              {fileCount(activeFiles?.student_summary as unknown[])} student summaries · {fileCount(activeFiles?.student_report as unknown[])} report rows · {fileCount(activeFiles?.cognitive_gap_analysis as unknown[])} cognitive gaps
             </Badge>
           </div>
 
           <div className="grid lg:grid-cols-2 xl:grid-cols-4 gap-4 p-5">
             <Card className="p-4 border-slate-200 bg-white">
               <div className="text-xs uppercase tracking-wide text-slate-500">student_summary.json</div>
-              <div className="mt-2 text-slate-900">{fileCount(backendFiles?.student_summary as unknown[])} students</div>
+              <div className="mt-2 text-slate-900">{fileCount(activeFiles?.student_summary as unknown[])} students</div>
               <div className="mt-3 space-y-2">
-                {(backendFiles?.student_summary ?? []).slice(0, 3).map((student) => (
+                {(activeFiles?.student_summary ?? []).slice(0, 3).map((student) => (
                   <div key={student.student_id} className="flex items-center justify-between text-xs text-slate-600">
                     <span>{student.student_id}</span>
                     <span>{Math.round(student.average_learning_score * 100)}% · {student.performance_band}</span>
@@ -1358,9 +1447,9 @@ export function AnalyticsPage() {
 
             <Card className="p-4 border-slate-200 bg-white">
               <div className="text-xs uppercase tracking-wide text-slate-500">weak_topics.json</div>
-              <div className="mt-2 text-slate-900">{fileCount(backendFiles?.weak_topics as unknown[])} topic entries</div>
+              <div className="mt-2 text-slate-900">{fileCount(activeFiles?.weak_topics as unknown[])} topic entries</div>
               <div className="mt-3 space-y-2">
-                {(backendFiles?.weak_topics ?? []).slice(0, 3).map((topic) => (
+                {(activeFiles?.weak_topics ?? []).slice(0, 3).map((topic) => (
                   <div key={topic.topic} className="flex items-center justify-between text-xs text-slate-600 gap-2">
                     <span className="truncate">{topic.topic}</span>
                     <span>{Math.round(topic.weak_probability * 100)}% weak</span>
@@ -1371,9 +1460,9 @@ export function AnalyticsPage() {
 
             <Card className="p-4 border-slate-200 bg-white">
               <div className="text-xs uppercase tracking-wide text-slate-500">cognitive_gap_analysis.json</div>
-              <div className="mt-2 text-slate-900">{fileCount(backendFiles?.cognitive_gap_analysis as unknown[])} question gaps</div>
+              <div className="mt-2 text-slate-900">{fileCount(activeFiles?.cognitive_gap_analysis as unknown[])} question gaps</div>
               <div className="mt-3 space-y-2">
-                {(backendFiles?.cognitive_gap_analysis ?? []).slice(0, 3).map((gap) => (
+                {(activeFiles?.cognitive_gap_analysis ?? []).slice(0, 3).map((gap) => (
                   <div key={gap.question} className="flex items-center justify-between text-xs text-slate-600 gap-2">
                     <span>{gap.question}</span>
                     <span>{gap.required} → {gap.average_student_level}</span>
@@ -1384,9 +1473,9 @@ export function AnalyticsPage() {
 
             <Card className="p-4 border-slate-200 bg-white">
               <div className="text-xs uppercase tracking-wide text-slate-500">misunderstood_questions.json</div>
-              <div className="mt-2 text-slate-900">{fileCount(backendFiles?.misunderstood_questions as unknown[])} questions flagged</div>
+              <div className="mt-2 text-slate-900">{fileCount(activeFiles?.misunderstood_questions as unknown[])} questions flagged</div>
               <div className="mt-3 space-y-2">
-                {(backendFiles?.misunderstood_questions ?? []).slice(0, 3).map((question) => (
+                {(activeFiles?.misunderstood_questions ?? []).slice(0, 3).map((question) => (
                   <div key={question.q} className="flex items-center justify-between text-xs text-slate-600 gap-2">
                     <span className="truncate">{question.q}</span>
                     <span>{question.below}</span>
@@ -1404,6 +1493,7 @@ export function AnalyticsPage() {
           <TabsTrigger value="questions">Question analysis</TabsTrigger>
           <TabsTrigger value="cognitive">Cognitive gaps</TabsTrigger>
           <TabsTrigger value="topics">Topic mastery</TabsTrigger>
+          <TabsTrigger value="historical">Historical trends</TabsTrigger>
         </TabsList>
 
         {/* ── Leaderboard ──────────────────────────────────────────────── */}
@@ -1922,6 +2012,168 @@ export function AnalyticsPage() {
                 </tbody>
               </table>
             </div>
+          </Card>
+        </TabsContent>
+
+        {/* ── Historical Trends ────────────────────────────────────────── */}
+        <TabsContent value="historical" className="m-0 space-y-4">
+          <Card className="border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <div className="text-slate-900">Year-over-Year Performance</div>
+                <div className="text-xs text-slate-500 mt-1">
+                  Historical exam performance trends across years
+                </div>
+              </div>
+              {historicalLoading && (
+                <RefreshCw className="size-4 animate-spin text-slate-400" />
+              )}
+            </div>
+
+            {historicalData && historicalData.years.length > 0 ? (
+              <div className="p-5 space-y-6">
+                {/* Year selector */}
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {historicalData.years.map((year) => (
+                    <button
+                      key={year}
+                      onClick={() => {
+                        setSelectedYear(year);
+                        setSelectedSessionIndex(0);
+                      }}
+                      className={`px-4 py-2 rounded-lg whitespace-nowrap text-sm font-medium transition-all ${
+                        selectedYear === year
+                          ? "bg-blue-600 text-white"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      }`}
+                    >
+                      {year}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Session selector */}
+                {selectedYearSessions.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {selectedYearSessions.map((session, index) => (
+                      <button
+                        key={`${session.timestamp}-${index}`}
+                        onClick={() => setSelectedSessionIndex(index)}
+                        className={`px-4 py-2 rounded-lg whitespace-nowrap text-sm font-medium transition-all ${
+                          selectedSessionIndex === index
+                            ? "bg-slate-900 text-white"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        }`}
+                      >
+                        {session.exam} · {session.timestamp}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {selectedSession ? (
+                  <div className="grid lg:grid-cols-[1.4fr_0.8fr] gap-4">
+                    <Card className="p-5 border-slate-200 bg-white">
+                      <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div>
+                          <div className="text-slate-900">{selectedSession.exam}</div>
+                          <div className="text-xs text-slate-500 mt-1">
+                            Year {selectedSession.year} · {selectedSession.timestamp}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-blue-600">
+                            {Math.round(selectedSession.avgLearningScore * 100)}%
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1">
+                            Average learning score
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid sm:grid-cols-3 gap-3">
+                        {Object.entries(selectedSession.performanceBandDistribution).map(([band, count]) => {
+                          const bandColors: Record<string, string> = {
+                            High: "bg-emerald-100 text-emerald-700",
+                            Medium: "bg-amber-100 text-amber-700",
+                            Low: "bg-red-100 text-red-700",
+                          };
+                          return (
+                            <div key={band} className={`p-3 rounded-lg text-center ${bandColors[band] ?? "bg-slate-100 text-slate-700"}`}>
+                              <div className="text-sm font-semibold">{count}</div>
+                              <div className="text-xs mt-1">{band}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-5 space-y-3">
+                        <div className="text-xs font-semibold text-slate-700">Top student summaries</div>
+                        {selectedSession.studentSummary.slice(0, 5).map((student) => (
+                          <div key={student.student_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 gap-3">
+                            <div>
+                              <div className="text-sm text-slate-900">{student.student_id}</div>
+                              <div className="mt-1">{titleCase(student.dominant_cognitive_level)} · {student.performance_band}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-semibold text-slate-900">
+                                {Math.round(student.average_learning_score * 100)}%
+                              </div>
+                              <div className="text-[11px] text-slate-500 mt-1">
+                                {student.weak_questions.length} weak questions
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+
+                    <div className="space-y-4">
+                      <Card className="p-5 border-slate-200 bg-white">
+                        <div className="text-slate-900">Output files</div>
+                        <div className="text-xs text-slate-500 mt-0.5">Raw JSON snapshot for the selected session</div>
+                        <div className="mt-4 space-y-3 text-xs">
+                          <div className="flex items-center justify-between"><span className="text-slate-600">student_summary.json</span><span className="text-slate-900">{selectedSession.studentSummary.length} rows</span></div>
+                          <div className="flex items-center justify-between"><span className="text-slate-600">student_report.json</span><span className="text-slate-900">{selectedSession.studentReport.length} rows</span></div>
+                          <div className="flex items-center justify-between"><span className="text-slate-600">weak_topics.json</span><span className="text-slate-900">{selectedSession.weakTopics.length} rows</span></div>
+                          <div className="flex items-center justify-between"><span className="text-slate-600">cognitive_gap_analysis.json</span><span className="text-slate-900">{selectedSession.cognitiveGapAnalysis.length} rows</span></div>
+                          <div className="flex items-center justify-between"><span className="text-slate-600">misunderstood_questions.json</span><span className="text-slate-900">{selectedSession.misunderstoodQuestions.length} rows</span></div>
+                        </div>
+                      </Card>
+
+                      <Card className="p-5 border-slate-200 bg-white">
+                        <div className="text-slate-900">Weak topics</div>
+                        <div className="text-xs text-slate-500 mt-0.5">Topics with lower learning score</div>
+                        <div className="mt-4 space-y-3">
+                          {selectedSession.weakTopics.slice(0, 5).map((topic) => (
+                            <div key={topic.topic} className="space-y-1">
+                              <div className="flex items-center justify-between text-xs text-slate-600 gap-2">
+                                <span className="truncate">{topic.topic}</span>
+                                <span>{Math.round(topic.average_learning_score * 100)}%</span>
+                              </div>
+                              <Progress value={topic.average_learning_score * 100} className="h-2" />
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-slate-500">
+                    <FileText className="size-8 mx-auto mb-2 opacity-50" />
+                    <div className="text-sm">Select a year to view session data</div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-slate-500">
+                <FileText className="size-8 mx-auto mb-2 opacity-50" />
+                <div className="text-sm">No historical data available</div>
+                <div className="text-xs mt-1">
+                  Run exams and generate analytics to see historical trends
+                </div>
+              </div>
+            )}
           </Card>
         </TabsContent>
       </Tabs>
