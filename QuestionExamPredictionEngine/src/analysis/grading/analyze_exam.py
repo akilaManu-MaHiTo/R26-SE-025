@@ -68,7 +68,7 @@ for student in students:
     year = student.get("year", "UNKNOWN")
     exam_name = student.get("exam", "UNKNOWN")
 
-    print(f"\n📘 Processing Student: {student_id}")
+    print(f"\nProcessing Student: {student_id}")
 
     for question in student.get("answers", []):
         q_id = str(question.get("question_number"))
@@ -179,7 +179,7 @@ with (OUTPUT_DIR / "cognitive_gap_analysis.json").open("w", encoding="utf-8") as
 with (OUTPUT_DIR / "weak_topics.json").open("w", encoding="utf-8") as f:
     json.dump(weak_topics, f, indent=2)
 
-print("\n✅ Analytics Completed!")
+print("\nAnalytics Completed!")
 print(f"Weak Topics Found: {len(weak_topics)}")
 print(f"Student Summaries Found: {len(student_summaries)}")
 print(f"Output saved to: {OUTPUT_DIR}")

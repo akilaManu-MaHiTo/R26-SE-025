@@ -1,0 +1,49 @@
+{
+  "title": "HOW sample_training_data.json BECOMES TRAINING ROWS",
+  "description": "When you run build_topic_feature_rows(), it aggregates records → topic-level features",
+  "step1_input": "sample_training_data.json (16 student attempt records)",
+  "step2_process": "Group by topic → aggregate learning_scores → count weak students",
+  "step3_output": "Topic feature rows (4 rows) ready for LogisticRegression model",
+  "training_rows": [
+    {
+      "topic": "Entity-Relationship Modeling",
+      "average_learning_score": 0.42,
+      "average_performance_score": 0.41,
+      "average_concept_score": 0.52,
+      "average_cognitive_score": 0.55,
+      "score_stddev": 0.36,
+      "weak_student_count": 3,
+      "students_attempted": 4,
+      "attempts": 6,
+      "weak_student_share": 0.75,
+      "average_level_gap": 0.5,
+      "label": 1,
+      "_explanation": "Model learns: HIGH weak_share (0.75) + LOW avg score (0.42) = WEAK topic (label=1)"
+    },
+    {
+      "topic": "Normalization",
+      "average_learning_score": 0.79,
+      "average_performance_score": 0.76,
+      "average_concept_score": 0.87,
+      "average_cognitive_score": 0.91,
+      "score_stddev": 0.05,
+      "weak_student_count": 0,
+      "students_attempted": 4,
+      "attempts": 6,
+      "weak_student_share": 0.0,
+      "average_level_gap": -0.25,
+      "label": 0,
+      "_explanation": "Model learns: LOW weak_share (0.0) + HIGH avg score (0.79) = NON-WEAK topic (label=0)"
+    }
+  ],
+  "model_learns": {
+    "positive_class_example": "When weak_student_share >= 0.4 AND avg_learning_score < 0.5 → likely WEAK",
+    "negative_class_example": "When weak_student_share == 0.0 AND avg_learning_score > 0.7 → likely NON-WEAK",
+    "feature_importance": "weak_student_share and average_learning_score are the strongest signals"
+  },
+  "after_training": {
+    "logistic_regression": "Trained on 2 topic examples (1 weak, 1 non-weak)",
+    "decision_boundary": "Probability threshold = 0.55",
+    "prediction_on_new_exam": "When new cohort comes, model predicts weak_probability based on 10 features"
+  }
+}
