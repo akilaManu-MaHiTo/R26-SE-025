@@ -416,7 +416,8 @@ export function GradingPage({ mode }: { mode: "diagram" | "handwritten" }) {
     try {
       const formData = new FormData();
       formData.append("image", uploadedFile);
-      const response = await fetch("http://localhost:8000/api/digaram-evaluate", {
+      const backend = (import.meta as any).env?.VITE_BACKEND_URL ?? "http://localhost:8000";
+      const response = await fetch(`${backend}/api/diagram-evaluate`, {
         method: "POST",
         body: formData,
       });
