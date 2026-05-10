@@ -1,0 +1,41 @@
+{
+  "description": "WEAK TOPIC MODEL TRAINING DATA - JSON SAMPLES",
+  "structure": "student_report.json - one object per student answer/question part",
+  "samples": [
+    {
+      "title": "SINGLE COHORT (Current Format) - Not ideal for training",
+      "example": [
+        {
+          "student_id": "it25100001",
+          "exam": "IT2040 – Database Management Systems",
+          "year": 2025,
+          "question": "1",
+          "part": "a",
+          "performance_score": 0.333,
+          "concept_score": 0.75,
+          "cognitive_score": 0.95,
+          "student_level": "analyze",
+          "required_level": "understand",
+          "topic": "Transaction Management & Concurrency Control",
+          "learning_score": 0.53
+        },
+        {
+          "student_id": "it25100002",
+          "exam": "IT2040 – Database Management Systems",
+          "year": 2025,
+          "question": "1",
+          "part": "a",
+          "performance_score": 0.0,
+          "concept_score": 0.2,
+          "cognitive_score": 0.3,
+          "student_level": "remember",
+          "required_level": "understand",
+          "topic": "Transaction Management & Concurrency Control",
+          "learning_score": 0.09
+        }
+      ],
+      "problem": "Only 1 cohort, all scores high (no natural weak topics)",
+      "impact": "Model can't learn to distinguish weak vs non-weak"
+    }
+  ]
+}
