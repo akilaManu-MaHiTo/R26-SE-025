@@ -1,77 +1,77 @@
 {
   "exam": "IT2040 – Database Management Systems",
-  "year": 2022,
+  "year": 2025,
   "questions": [
     {
       "question_number": 1,
-      "topic": "Introduction to DBMS & Conceptual Database Design",
+      "topic": "Transaction Management & Concurrency Control",
       "parts": [
         {
           "part": "a",
-          "question": "What are the main components of a Database Management System? Explain the advantages of DBMS over file processing systems.",
-          "max_marks": 10
+          "question": "Consider a schedule S involving three transactions T1, T2, and T3. Explain the concepts of conflict serializability and view serializability. Construct a schedule that is view serializable but not conflict serializable, and prove that it is view equivalent to some serial schedule while not being conflict equivalent to any. Include detailed step-by-step analysis of read-from and final-write dependencies.",
+          "max_marks": 12
         },
         {
           "part": "b",
-          "question": "Define primary key, candidate key, foreign key, and super key with appropriate examples.",
-          "max_marks": 10
+          "question": "Explain the differences between Thomas' Write Rule, Basic Timestamp Ordering, and Strict Two-Phase Locking protocols. Given a concurrent execution scenario with read and write operations on data items X, Y, Z, demonstrate how each protocol would handle the same sequence of operations and identify which operations would be allowed, delayed, or aborted. Analyze starvation and cascading rollback possibilities in each case.",
+          "max_marks": 8
         }
       ]
     },
     {
       "question_number": 2,
-      "topic": "Schema refinement",
+      "topic": "Query Processing & Optimization",
       "parts": [
         {
           "part": "a",
-          "question": "Consider the relation R (OrderID, CustomerID, CustomerName, ItemID, ItemName, Quantity, Price). Given FDs: OrderID → CustomerID; CustomerID → CustomerName; ItemID → ItemName, Price. Normalize this relation up to 3NF.",
-          "max_marks": 12
+          "question": "Given a complex SQL query involving multi-table JOINs, nested subqueries, aggregation, and selection predicates on a schema of your choice, derive the initial canonical query tree. Then apply heuristic optimization rules to transform it into an optimized query tree. For each transformation step, state which heuristic rule is applied and justify how it reduces the estimated query cost. Calculate the estimated I/O cost for both pipelined and materialized evaluation strategies.",
+          "max_marks": 10
         },
         {
           "part": "b",
-          "question": "Explain the difference between 3NF and BCNF with an example.",
-          "max_marks": 8
+          "question": "Compare and contrast cost-based optimization versus heuristic-based optimization. Explain the role of database statistics (histograms, selectivity, cardinality) in cost estimation. Discuss the challenges of optimizing queries with correlated subqueries and how decorrelation techniques work. Provide an example where query optimizer might choose a suboptimal plan due to outdated statistics or the uniform distribution assumption.",
+          "max_marks": 10
         }
       ]
     },
     {
       "question_number": 3,
-      "topic": "Database Utilities",
+      "topic": "NoSQL & Distributed Databases",
       "parts": [
         {
           "part": "a",
-          "question": "Explain the ACID properties of a transaction with suitable examples.",
+          "question": "Explain the CAP theorem in detail and its implications for distributed database design. For each of the following systems, classify them in terms of CAP trade-offs and justify your classification with specific architectural features: Apache Cassandra, MongoDB (with replica sets), Google Spanner, and Amazon DynamoDB. Discuss the role of tunable consistency levels and how they allow systems to operate in different CAP configurations.",
           "max_marks": 8
         },
         {
           "part": "b",
-          "question": "What are database utilities? List and explain any four common database utilities.",
-          "max_marks": 7
+          "question": "Design a distributed database solution for a global social media platform handling 500 million active users with requirements for low-latency access, high availability, and eventual consistency for non-critical data while maintaining strong consistency for financial transactions. Specify the partitioning strategy (range vs hash vs directory-based), replication strategy, and consistency protocols. Explain how you would handle network partitions and provide a detailed conflict resolution mechanism using CRDTs (Conflict-Free Replicated Data Types) or vector clocks with examples.",
+          "max_marks": 10
         },
         {
           "part": "c",
-          "question": "Write a Java JDBC program to retrieve all records from the Employee table and display them.",
-          "max_marks": 10
+          "question": "Compare the data models of Document Stores (MongoDB), Wide-Column Stores (Cassandra), and Graph Databases (Neo4j). For a given complex domain with highly interconnected data (social network with posts, comments, likes, and user relationships), discuss which NoSQL paradigm would be most suitable and why. Include query examples in the native query language of each system for finding 'friends of friends who liked the same post' and analyze their performance characteristics.",
+          "max_marks": 7
         }
       ]
     },
     {
       "question_number": 4,
-      "topic": "SQL",
+      "topic": "Advanced Indexing & Hashing",
       "parts": [
         {
           "part": "a",
-          "question": "Write SQL queries for:\n(i) Find books that have never been borrowed.\n(ii) Find members who have paid more than Rs. 5000 in fines.",
+          "question": "Provide a detailed comparison of B+ Trees, ISAM, and Linear Hashing for dynamic database indexing. For each structure, explain the insertion, deletion, and search algorithms with step-by-step examples using an order of your choice. Analyze their performance under various workloads (range queries, equality search, insert-heavy, delete-heavy) and derive the worst-case and average-case I/O complexity for each operation. Discuss the concept of fill factor and its impact on performance.",
           "max_marks": 12
         },
         {
           "part": "b",
-          "question": "Create a stored procedure that issues a book to a member and updates the available copies.",
+          "question": "Explain the structure and use cases of bitmap indexes, spatial indexes (R-Trees), and full-text indexes (inverted indexes). For a data warehousing scenario with a star schema containing a large fact table and multiple dimension tables, design an indexing strategy that optimizes complex OLAP queries involving aggregation, grouping, and multi-dimensional filtering. Justify the choice of bitmap join indexes, materialized views, and covering indexes in your design.",
           "max_marks": 10
         },
         {
           "part": "c",
-          "question": "Discuss common database security threats and how SQL Server helps prevent them.",
+          "question": "Discuss the concept of index-only scans (covering indexes) and how they differ from regular index scans. Explain the internal structure of PostgreSQL's GiST and GIN indexes and their trade-offs. For a table with a JSONB column storing complex nested documents, write SQL statements to create appropriate GIN indexes with jsonb_path_ops and demonstrate how the query planner utilizes these indexes for containment, existence, and path-based queries. Include EXPLAIN ANALYZE output interpretation showing the difference between sequential scan, bitmap index scan, and index scan.",
           "max_marks": 13
         }
       ]

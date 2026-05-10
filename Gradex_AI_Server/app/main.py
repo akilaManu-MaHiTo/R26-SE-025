@@ -13,6 +13,7 @@ for path in (PROJECT_ROOT, ENGINE_ROOT):
         sys.path.append(path_str)
 
 from DiagramEvaluationEngine.predict import run_er_pipeline
+from Gradex_AI_Server.app.analytics_report import build_exam_report, run_exam_analysis
 
 app = FastAPI(title="Gradex AI Server", version="1.0.0")
 
@@ -26,6 +27,17 @@ app.add_middleware(
 
 UPLOAD_DIR = PROJECT_ROOT / "Gradex_AI_Server" / "app"/ "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+ENGINE_DATA_EXAM = PROJECT_ROOT / "Question-ExamPredictionEngine" / "data" / "exams" / "exam2022.json"
+ENGINE_DATA_ANSWERS = PROJECT_ROOT / "Question-ExamPredictionEngine" / "data" / "answers" / "student_answers2022.json"
+
+
+def _save_json_upload(upload: UploadFile, destination: Path) -> None:
+    contents = upload.file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail=f"Empty upload for {upload.filename or destination.name}.")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(contents)
 
 
 @app.post("/api/digaram-evaluate")
@@ -48,6 +60,29 @@ async def diagram_evaluate(image: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Evaluation failed: {exc}") from exc
 
     return result
+
+
+@app.get("/api/analytics/report")
+async def analytics_report():
+    try:
+        return build_exam_report()
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=f"Analytics report not available: {exc}") from exc
+
+
+@app.post("/api/analytics/run")
+async def analytics_run(
+    exam_json: UploadFile | None = File(None),
+    student_json: UploadFile | None = File(None),
+):
+    try:
+        if exam_json is not None:
+            _save_json_upload(exam_json, ENGINE_DATA_EXAM)
+        if student_json is not None:
+            _save_json_upload(student_json, ENGINE_DATA_ANSWERS)
+        return run_exam_analysis()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Analytics run failed: {exc}") from exc
 
 
 if __name__ == "__main__":
