@@ -2,6 +2,7 @@ import json
 import sys
 from pathlib import Path
 from collections import defaultdict
+from datetime import datetime
 
 # --------------------------------------------------
 # Project setup
@@ -10,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 DATA_EXAM_DIR = PROJECT_ROOT / "data" / "exams"
 DATA_ANSWERS_DIR = PROJECT_ROOT / "data" / "answers"
-OUTPUT_DIR = PROJECT_ROOT / "output"
+OUTPUT_BASE_DIR = PROJECT_ROOT / "output"
 
 sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -25,10 +26,10 @@ from src.analytics.topic_utils import resolve_topic
 # --------------------------------------------------
 # Load data
 # --------------------------------------------------
-with (DATA_EXAM_DIR / "exam2022.json").open(encoding="utf-8") as f:
+with (DATA_EXAM_DIR / "exam2024.json").open(encoding="utf-8") as f:
     exam_data = json.load(f)
 
-with (DATA_ANSWERS_DIR / "student_answers2022.json").open(encoding="utf-8") as f:
+with (DATA_ANSWERS_DIR / "student_answers2024.json").open(encoding="utf-8") as f:
     student_data = json.load(f)
 
 # --------------------------------------------------
@@ -67,7 +68,7 @@ for student in students:
     year = student.get("year", "UNKNOWN")
     exam_name = student.get("exam", "UNKNOWN")
 
-    print(f"\n📘 Processing Student: {student_id}")
+    print(f"\nProcessing Student: {student_id}")
 
     for question in student.get("answers", []):
         q_id = str(question.get("question_number"))
@@ -142,10 +143,23 @@ for student in students:
 weak_topics = WeakTopicAnalyzer(exam_data).analyze(student_reports)
 
 # --------------------------------------------------
+# Create organized output directory structure
+# --------------------------------------------------
+# Extract year and exam info from exam_data (the primary source)
+year = exam_data.get("year", "UNKNOWN")
+exam_name = exam_data.get("exam", "PAPERS").replace(" ", "_")
+
+# Create timestamped output folder
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+OUTPUT_DIR = OUTPUT_BASE_DIR / str(year) / exam_name / timestamp
+
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+print(f"\n📁 Output Directory: {OUTPUT_DIR}\n")
+
+# --------------------------------------------------
 # Save outputs
 # --------------------------------------------------
-OUTPUT_DIR.mkdir(exist_ok=True)
-
 with (OUTPUT_DIR / "student_report.json").open("w", encoding="utf-8") as f:
     json.dump(student_reports, f, indent=2)
 
@@ -168,5 +182,6 @@ with (OUTPUT_DIR / "weak_topics.json").open("w", encoding="utf-8") as f:
 print("\nAnalytics Completed!")
 print(f"Weak Topics Found: {len(weak_topics)}")
 print(f"Student Summaries Found: {len(student_summaries)}")
+print(f"Output saved to: {OUTPUT_DIR}")
 print(f"Misunderstood Questions Found: {len(misunderstood_questions)}")
 print(f"Cognitive Gaps Found: {len(cognitive_gaps)}")

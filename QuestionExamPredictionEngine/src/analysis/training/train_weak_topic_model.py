@@ -1,5 +1,3 @@
-"""Train the weak topic detection model from a student report JSON file."""
-
 from __future__ import annotations
 
 import argparse
@@ -10,7 +8,7 @@ from src.analytics.weak_topic_model import DEFAULT_MODEL_PATH, WeakTopicModel, b
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_INPUT_PATH = PROJECT_ROOT / "output" / "student_report.json"
+DEFAULT_INPUT_PATH = PROJECT_ROOT / "data" / "traindata" / "student_data_V2.json"
 
 
 def load_records(path):
