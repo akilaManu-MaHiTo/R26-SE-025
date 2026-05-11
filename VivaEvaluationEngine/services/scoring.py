@@ -2,10 +2,12 @@ from collections import Counter
 from typing import Dict, List
 import numpy as np
 from config import (
+    ENGAGEMENT_LEVEL_SCORES,
     NEGATIVE_EMOTIONS,
     NEUTRAL_EMOTIONS,
     POSITIVE_EMOTIONS,
     SURPRISE_EMOTIONS,
+    canonical_engagement_label,
     canonical_emotion_label,
 )
 
@@ -96,13 +98,25 @@ def compute_engagement_score(
 
     blink_penalty  = max(0.0, (blinks_per_minute - 25) * 0.01)
 
-    lstm_score = 0.5
+    engagement_scores = []
+    for item in timeline:
+        score_value = item.get("engagement_model_score")
+        try:
+            engagement_scores.append(max(0.0, min(1.0, float(score_value))))
+            continue
+        except (TypeError, ValueError):
+            pass
+
+        label = canonical_engagement_label(str(item.get("engagement_label", "")))
+        engagement_scores.append(ENGAGEMENT_LEVEL_SCORES.get(label, 0.5))
+
+    engagement_model_score = sum(engagement_scores) / total if engagement_scores else 0.5
 
     score = (
         0.30 * avg_emotion +
         0.30 * gaze_score +
         0.20 * head_stability +
         0.10 * max(0.0, 1.0 - blink_penalty) +
-        0.10 * lstm_score
+        0.10 * engagement_model_score
     )
     return round(min(100.0, score * 100), 2)
