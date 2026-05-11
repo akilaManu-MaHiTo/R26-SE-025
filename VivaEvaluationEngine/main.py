@@ -6,6 +6,7 @@ from typing import Dict
 
 from config import AppConfig
 from services.analysis_service import analyze_video
+from services.viva_analysis import analyze_audio_from_video
 
 
 def parse_args() -> argparse.Namespace:
@@ -41,6 +42,7 @@ def main() -> int:
             raise FileNotFoundError(f"Video file not found: {config.video_path}")
 
         result = analyze_video(config, include_summary=True)
+        result.update(analyze_audio_from_video(config.video_path, debug=args.debug))
         save_output(result, config.output_path)
 
         print(json.dumps(result, indent=2))

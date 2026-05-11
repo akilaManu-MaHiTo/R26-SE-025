@@ -15,6 +15,7 @@ if str(VIVA_ENGINE_ROOT) not in sys.path:
 try:
     from config import AppConfig
     from services.analysis_service import analyze_video
+    from services.viva_analysis import analyze_audio_from_video
 except ImportError as e:
     raise ImportError(f"Failed to import VivaEvaluationEngine modules: {e}")
 
@@ -48,5 +49,6 @@ def analyze_video_file(video_path: str, debug: bool = False) -> Dict[str, Any]:
     
     # Run the analysis
     result = analyze_video(config, include_summary=True)
+    result.update(analyze_audio_from_video(video_path, debug=debug))
     
     return result

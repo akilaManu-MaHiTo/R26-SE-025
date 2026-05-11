@@ -1,12 +1,11 @@
 "use client";
 
-import { Upload, Play, CheckCircle2, Mic, FileDown, Sparkles, Pause, Loader2, AlertCircle, Clock } from "lucide-react";
+import { Upload, Play, CheckCircle2, Mic, FileDown, Sparkles, Pause, Loader2, AlertCircle, Clock, Volume2, ScanText } from "lucide-react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
 import { Input } from "./ui/input";
-import { Checkbox } from "./ui/checkbox";
 import { AIPageBanner, AIBadgePill } from "./AIBrand";
 import { useState, useRef } from "react";
 
@@ -38,6 +37,41 @@ interface AnalysisResult {
   timeline: TimelineItem[];
   confidence_score: number;
   engagement_score: number;
+  audio_analysis?: {
+    status?: string;
+    transcript?: string;
+    transcript_excerpt?: string;
+    transcript_word_count?: number;
+    segment_count?: number;
+    audio_grade?: number;
+    pitch_profile?: {
+      level?: string;
+      mean_hz?: number;
+      min_hz?: number;
+      max_hz?: number;
+      std_hz?: number;
+    };
+    audio_emotion?: {
+      predicted_emotion?: string;
+      valence?: string;
+      confidence?: number;
+      probabilities?: Record<string, number>;
+    };
+    acoustic_features?: {
+      duration_seconds?: number;
+      tempo_bpm?: number;
+      rms_mean?: number;
+      pitch_mean_hz?: number;
+      pitch_min_hz?: number;
+      pitch_max_hz?: number;
+      pitch_std_hz?: number;
+      jitter_local?: number;
+      shimmer_local?: number;
+      hnr_mean_db?: number;
+    };
+    grade_breakdown?: Record<string, number>;
+    error?: string;
+  };
   summary: {
     positive_ratio: number;
     neutral_ratio: number;
@@ -123,8 +157,9 @@ export function VivaPage() {
     formData.append("video", file);
 
     try {
-      // Use Vite env flag in development, absolute in production
-      const apiUrl = import.meta.env.DEV
+      const isLocalHost = typeof window !== "undefined" && window.location.hostname === "localhost";
+      // Use the local proxy during frontend dev, direct backend access otherwise.
+      const apiUrl = isLocalHost
         ? "/api/viva-analyze"
         : "http://localhost:8000/api/viva-analyze";
       
@@ -207,6 +242,13 @@ export function VivaPage() {
   };
 
   const keyMoments = generateKeyMoments();
+  const confidenceScore = (analysisResult?.confidence_score ?? 0) / 10;
+  const audioAnalysis = analysisResult?.audio_analysis;
+  const audioGrade = audioAnalysis?.audio_grade ?? 0;
+  const audioEmotion = audioAnalysis?.audio_emotion?.predicted_emotion || "unknown";
+  const audioEmotionConfidence = audioAnalysis?.audio_emotion?.confidence ?? 0;
+  const audioPitchLevel = audioAnalysis?.pitch_profile?.level || "unknown";
+  const transcriptText = audioAnalysis?.transcript?.trim() || audioAnalysis?.transcript_excerpt?.trim() || "Upload a video to generate transcript";
 
   return (
     <div className="p-8 space-y-6">
@@ -335,11 +377,11 @@ export function VivaPage() {
             {analysisResult && (
               <>
                 {/* Scores Display */}
-                <div className="mt-5 grid grid-cols-2 gap-4">
+                <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100/50 border border-purple-200">
                     <div className="text-xs text-purple-700 uppercase tracking-wide font-medium">Confidence Score</div>
                     <div className="text-3xl font-bold text-purple-900 mt-2">
-                      {analysisResult.confidence_score.toFixed(2)}
+                      {confidenceScore.toFixed(2)}
                       <span className="text-sm text-purple-700 font-normal">/10</span>
                     </div>
                     <div className="text-xs text-purple-700 mt-1">Overall detection confidence</div>
@@ -351,6 +393,16 @@ export function VivaPage() {
                       <span className="text-sm text-emerald-700 font-normal">%</span>
                     </div>
                     <div className="text-xs text-emerald-700 mt-1">Engagement level</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-gradient-to-br from-orange-50 to-amber-100/50 border border-orange-200">
+                    <div className="text-xs text-orange-700 uppercase tracking-wide font-medium">Audio Grade</div>
+                    <div className="text-3xl font-bold text-orange-900 mt-2">
+                      {audioGrade.toFixed(2)}
+                      <span className="text-sm text-orange-700 font-normal">/10</span>
+                    </div>
+                    <div className="text-xs text-orange-700 mt-1">
+                      {audioEmotion} emotion · {audioPitchLevel} pitch
+                    </div>
                   </div>
                 </div>
 
@@ -447,36 +499,58 @@ export function VivaPage() {
             )}
           </Card>
 
-          {/* Transcript - Placeholder */}
+          {/* Transcript */}
           <Card className="p-6 border-slate-200">
             <div className="flex items-center justify-between">
-              <div className="text-slate-900">Transcript</div>
+              <div className="text-slate-900">Recording transcript</div>
               <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-0">
                 <Sparkles className="size-3 mr-1" /> AI generated
               </Badge>
             </div>
-            <div className="mt-4 p-4 rounded-lg bg-slate-50 border border-slate-100 text-center text-sm text-slate-600">
-              {analysisResult ? "Transcript generation coming soon" : "Upload a video to generate transcript"}
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-1 text-orange-700 border border-orange-200">
+                  <Volume2 className="size-3 mr-1" />
+                  Emotion: {audioEmotion} ({(audioEmotionConfidence * 100).toFixed(0)}%)
+                </span>
+                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-blue-700 border border-blue-200">
+                  <ScanText className="size-3 mr-1" />
+                  Pitch: {audioPitchLevel}
+                </span>
+              </div>
+              <div className="max-h-72 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-slate-700 pr-1">
+                {analysisResult ? transcriptText : "Upload a video to generate transcript"}
+              </div>
             </div>
           </Card>
         </div>
 
         <div className="space-y-6">
-          {/* Guidelines */}
+          {/* Transcript summary */}
           <Card className="p-5 border-slate-200">
-            <div className="text-slate-900">Recording checklist</div>
-            <div className="mt-3 space-y-2.5">
-              {[
-                "Audio is clear & free of noise",
-                "Both examiner and student visible",
-                "Session ≥ 10 minutes",
-                "Slides/notes shared on screen",
-                "Consent acknowledged",
-              ].map((g, i) => (
-                <label key={g} className="flex items-center gap-2.5 text-sm text-slate-700">
-                  <Checkbox defaultChecked={i < 4} /> {g}
-                </label>
-              ))}
+            <div className="flex items-center justify-between">
+              <div className="text-slate-900">Transcript summary</div>
+              <Badge className="bg-orange-50 text-orange-700 border-0 hover:bg-orange-50">
+                <Mic className="size-3 mr-1" /> Audio extracted
+              </Badge>
+            </div>
+            <div className="mt-3 space-y-2.5 text-sm text-slate-700">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="text-xs uppercase tracking-wide text-slate-500">Word count</div>
+                <div className="mt-1 text-slate-900 font-medium">{audioAnalysis?.transcript_word_count ?? 0} words</div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="text-xs uppercase tracking-wide text-slate-500">Segments</div>
+                <div className="mt-1 text-slate-900 font-medium">{audioAnalysis?.segment_count ?? 0} segments</div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="text-xs uppercase tracking-wide text-slate-500">Pitch profile</div>
+                <div className="mt-1 text-slate-900 font-medium capitalize">{audioPitchLevel}</div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="text-xs uppercase tracking-wide text-slate-500">Audio grade</div>
+                <div className="mt-1 text-slate-900 font-medium">{audioGrade.toFixed(2)}/10</div>
+              </div>
             </div>
           </Card>
 

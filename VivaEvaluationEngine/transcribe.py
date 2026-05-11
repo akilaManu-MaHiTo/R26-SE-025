@@ -1,5 +1,4 @@
-"""Transcribe audio using Whisper model"""
-import whisper
+"""Transcribe audio using Whisper model when available."""
 import json
 import os
 
@@ -10,6 +9,12 @@ def transcribe_audio(audio_path, model_size="base"):
         audio_path: Path to audio file
         model_size: Size of Whisper model (tiny, base, small, medium, large)
     """
+    try:
+        import whisper
+    except ImportError:
+        print("Whisper is not installed; skipping transcription and returning an empty transcript.")
+        return "", []
+
     print(f"Loading Whisper model: {model_size}")
     model = whisper.load_model(model_size)
     

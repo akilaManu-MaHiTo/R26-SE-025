@@ -1,9 +1,10 @@
-import torch
-import torchaudio
 import json
 import os
-from transformers import Wav2Vec2ForSequenceClassification, Wav2Vec2Processor
+import wave
+
 import numpy as np
+import torch
+from transformers import Wav2Vec2ForSequenceClassification, Wav2Vec2Processor
 
 def extract_speech_emotion(audio_path, model_name="ehcalabres/wav2vec2-lg-xlsr-en-speech-emotion-recognition"):
     """Extract speech emotion features using Wav2Vec2 from HuggingFace Transformers"""
@@ -18,21 +19,27 @@ def extract_speech_emotion(audio_path, model_name="ehcalabres/wav2vec2-lg-xlsr-e
     
     print(f"Processing audio file: {audio_path}")
     
-    # Load audio
-    signal, fs = torchaudio.load(audio_path)
-    
-    # Ensure mono audio
-    if signal.shape[0] > 1:
-        signal = torch.mean(signal, dim=0, keepdim=True)
-    
-    # Resample if necessary (model expects 16kHz)
-    if fs != 16000:
-        resampler = torchaudio.transforms.Resample(fs, 16000)
-        signal = resampler(signal)
+    # Load PCM WAV data without relying on torchaudio or librosa.
+    with wave.open(audio_path, "rb") as wav_file:
+        frame_count = wav_file.getnframes()
+        sample_width = wav_file.getsampwidth()
+        channel_count = wav_file.getnchannels()
+        raw_audio = wav_file.readframes(frame_count)
+
+    if sample_width == 2:
+        signal = np.frombuffer(raw_audio, dtype=np.int16).astype(np.float32) / 32768.0
+    elif sample_width == 4:
+        signal = np.frombuffer(raw_audio, dtype=np.int32).astype(np.float32) / 2147483648.0
+    else:
+        signal = np.frombuffer(raw_audio, dtype=np.uint8).astype(np.float32)
+        signal = (signal - 128.0) / 128.0
+
+    if channel_count > 1:
+        signal = signal.reshape(-1, channel_count).mean(axis=1)
     
     # Process audio
     print("Processing audio for emotion recognition...")
-    inputs = processor(signal.squeeze().numpy(), sampling_rate=16000, return_tensors="pt", padding=True)
+    inputs = processor(signal, sampling_rate=16000, return_tensors="pt", padding=True)
     
     # Get predictions
     with torch.no_grad():

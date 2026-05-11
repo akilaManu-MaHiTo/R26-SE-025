@@ -86,5 +86,48 @@
     "positive_ratio": 0.875,
     "neutral_ratio": 0.125,
     "negative_ratio": 0.0
+  },
+  "audio_analysis": {
+    "status": "success",
+    "transcript": "",
+    "transcript_excerpt": "",
+    "transcript_word_count": 0,
+    "segment_count": 0,
+    "audio_grade": 3.4,
+    "pitch_profile": {
+      "level": "unknown",
+      "mean_hz": 0.0,
+      "min_hz": 0.0,
+      "max_hz": 0.0,
+      "std_hz": 0.0
+    },
+    "audio_emotion": {
+      "predicted_emotion": "unknown",
+      "valence": "neutral",
+      "confidence": 0.0,
+      "probabilities": {}
+    },
+    "acoustic_features": {
+      "duration_seconds": 8.0,
+      "tempo_bpm": 0.0,
+      "rms_mean": 0.055269,
+      "pitch_mean_hz": 0.0,
+      "pitch_min_hz": 0.0,
+      "pitch_max_hz": 0.0,
+      "pitch_std_hz": 0.0,
+      "jitter_local": 0.0,
+      "shimmer_local": 0.0,
+      "hnr_mean_db": 0.0
+    },
+    "grade_breakdown": {
+      "pitch_score": 0.0,
+      "pitch_stability": 1.0,
+      "clarity_score": 0.0,
+      "articulation_score": 1.0,
+      "energy_score": 0.3316,
+      "emotion_score": 0.0,
+      "transcript_score": 0.0,
+      "segment_score": 0.0
+    }
   }
 }
