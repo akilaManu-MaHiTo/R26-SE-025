@@ -73,12 +73,14 @@ async def run_batch_grading(upload_path: str, rubric_id: str):
             print(f"🔄 Processing student: {student_id}")
             full_transcript = ""
 
-            # 3. OCR each page image
-            for image_name in sorted(os.listdir(student_folder_path)):
-                if image_name.lower().endswith((".png", ".jpg", ".jpeg")):
-                    img_path = os.path.join(student_folder_path, image_name)
-                    page_text, _ = await process_student_answer(img_path)
-                    full_transcript += f"\n{page_text}"
+            # 3. OCR each page (images or PDF)
+            for entry_name in sorted(os.listdir(student_folder_path)):
+                lower = entry_name.lower()
+                if lower.endswith((".png", ".jpg", ".jpeg", ".pdf")):
+                    file_path = os.path.join(student_folder_path, entry_name)
+                    if os.path.isfile(file_path):
+                        page_text, _ = await process_student_answer(file_path)
+                        full_transcript += f"\n{page_text}"
 
             # 4. Send transcript + rubric to LLM, then store result
             if full_transcript.strip():

@@ -1,9 +1,21 @@
 {
-    "python-envs.pythonProjects": [
-        {
-            "path": ".",
-            "envManager": "ms-python.python:venv",
-            "packageManager": "ms-python.python:pip"
-        }
-    ]
+	"python-envs.pythonProjects": [
+		{
+			"path": ".",
+			"envManager": "ms-python.python:venv",
+			"packageManager": "ms-python.python:pip"
+		}
+	],
+	"files.exclude": {
+		"**/.venv": true,
+		"**/.venv/**": true
+	},
+	"search.exclude": {
+		"**/.venv": true,
+		"**/.venv/**": true
+	},
+	"files.watcherExclude": {
+		"**/.venv": true,
+		"**/.venv/**": true
+	}
 }

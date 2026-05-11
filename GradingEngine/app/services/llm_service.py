@@ -31,16 +31,22 @@ async def generate_grading_report(all_text, rubric_data):
     questions_list = rubric_data.get('questions', [])
     
     prompt = f"""
-    SYSTEM: Expert University Grader. 
+    SYSTEM: Expert University Grader.
     RUBRIC: {json.dumps(questions_list)}
     STUDENT TEXT: "{all_text}"
     
-    TASK: Map text to questions, score semantically, and return JSON ONLY.
+    TASK: Map text to questions, score semantically against question_text + criteria points, and return JSON ONLY.
     FORMAT: 
     {{
         "total_score": 0.0,
         "results": [
-            {{"q_no": 1, "score": 0.0, "justification": "...", "feedback": "..."}}
+            {{
+              "q_no": "01",
+              "score": 0.0,
+              "criteria_breakdown": [{{"point": "...", "awarded_marks": 0.0, "reason": "..."}}],
+              "justification": "...",
+              "feedback": "..."
+            }}
         ]
     }}
     """

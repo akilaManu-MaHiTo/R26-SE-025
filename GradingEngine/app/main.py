@@ -4,10 +4,19 @@ from uuid import uuid4
 import os
 
 from bson import ObjectId
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, model_validator
 
 from app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 from app.services.ai_service import parse_rubric_ai, AIServiceUnavailableError
+from app.services.batch_upload import (
+    count_student_folders,
+    extract_zip_to_batch,
+    resolve_batch_directory,
+    resolve_effective_batch_root,
+    write_multipart_files_to_batch,
+)
 from app.services.ocr_service import process_student_answer
 from app.services.grading_manager import run_batch_grading
 
@@ -20,6 +29,64 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Project Grading API", lifespan=lifespan)
+
+_cors_origins = [
+    o.strip()
+    for o in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if o.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins or ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class RubricUpdatePayload(BaseModel):
+    session_name: str | None = None
+    subject_code: str | None = None
+    questions: list[dict] = Field(default_factory=list)
+
+
+class BatchGradePayload(BaseModel):
+    upload_path: str | None = None
+    batch_id: str | None = None
+
+    @model_validator(mode="after")
+    def exactly_one_batch_source(self):
+        u = (self.upload_path or "").strip()
+        b = (self.batch_id or "").strip()
+        if bool(u) == bool(b):
+            raise ValueError("Provide exactly one of upload_path or batch_id")
+        return self
+
+
+class SubmissionUpdatePayload(BaseModel):
+    status: str | None = None
+    lecturer_note: str | None = None
+    evaluation: dict | None = None
+
+
+def _serialize_rubric_doc(rubric: dict) -> dict:
+    rubric = dict(rubric)
+    rubric["_id"] = str(rubric["_id"])
+    return rubric
+
+
+def _serialize_submission_doc(submission: dict) -> dict:
+    submission = dict(submission)
+    submission["_id"] = str(submission["_id"])
+    if isinstance(submission.get("rubric_ref"), ObjectId):
+        submission["rubric_ref"] = str(submission["rubric_ref"])
+    processed_at = submission.get("processed_at")
+    if hasattr(processed_at, "isoformat"):
+        submission["processed_at"] = processed_at.isoformat()
+    return submission
 
 
 @app.get("/")
@@ -91,8 +158,48 @@ async def get_rubric(rubric_id: str):
     if not rubric:
         raise HTTPException(status_code=404, detail="Rubric not found")
 
-    rubric["_id"] = str(rubric["_id"])
-    return rubric
+    return _serialize_rubric_doc(rubric)
+
+
+@app.get("/rubrics")
+async def list_rubrics(
+    session_name: str | None = Query(default=None),
+    subject_code: str | None = Query(default=None),
+):
+    query = {}
+    if session_name:
+        query["session_name"] = session_name
+    if subject_code:
+        query["subject_code"] = subject_code
+
+    docs = await db_instance.rubric_col.find(query).sort("parsed_at", -1).to_list(length=200)
+    return {"status": "success", "count": len(docs), "items": [_serialize_rubric_doc(doc) for doc in docs]}
+
+
+@app.put("/rubric/{rubric_id}")
+async def update_rubric(rubric_id: str, payload: RubricUpdatePayload):
+    if not ObjectId.is_valid(rubric_id):
+        raise HTTPException(status_code=400, detail="Invalid Rubric ID format")
+    if not payload.questions:
+        raise HTTPException(status_code=400, detail="questions array is required")
+
+    update_fields = {
+        "questions": payload.questions,
+    }
+    if payload.session_name is not None:
+        update_fields["session_name"] = payload.session_name
+    if payload.subject_code is not None:
+        update_fields["subject_code"] = payload.subject_code
+
+    result = await db_instance.rubric_col.update_one(
+        {"_id": ObjectId(rubric_id)},
+        {"$set": update_fields},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Rubric not found")
+
+    updated = await db_instance.rubric_col.find_one({"_id": ObjectId(rubric_id)})
+    return {"status": "success", "item": _serialize_rubric_doc(updated)}
 
 
 @app.post("/process-answer")
@@ -133,13 +240,135 @@ async def process_answer(file: UploadFile = File(...)):
             os.remove(temp_name)
 
 
-@app.post("/grade-batch/{rubric_id}")
-async def start_grading(rubric_id: str):
-    # This is where your folder is located
-    upload_path = "C:/Users/harit/Desktop/grading-backend/uploads/batch_1"
+@app.post("/upload-student-batch/zip")
+async def upload_student_batch_zip(archive: UploadFile = File(...)):
+    if not archive.filename or not archive.filename.lower().endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Expected a .zip file.")
+
+    batch_id = uuid4().hex
+    body = await archive.read()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty zip file.")
 
     try:
-        await run_batch_grading(upload_path, rubric_id)
-        return {"status": "success", "message": f"Grading complete for rubric {rubric_id}"}
+        batch_dir = extract_zip_to_batch(body, batch_id)
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(status_code=400, detail=str(e))
+
+    effective = resolve_effective_batch_root(batch_dir)
+    n = count_student_folders(effective)
+    return {
+        "status": "success",
+        "batch_id": batch_id,
+        "student_folder_count": n,
+    }
+
+
+@app.post("/upload-student-batch/files")
+async def upload_student_batch_files(files: list[UploadFile] = File(...)):
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded.")
+
+    batch_id = uuid4().hex
+    try:
+        batch_dir = await write_multipart_files_to_batch(files, batch_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    effective = resolve_effective_batch_root(batch_dir)
+    n = count_student_folders(effective)
+    return {
+        "status": "success",
+        "batch_id": batch_id,
+        "student_folder_count": n,
+    }
+
+
+@app.post("/grade-batch/{rubric_id}")
+async def start_grading(rubric_id: str, payload: BatchGradePayload):
+    if not ObjectId.is_valid(rubric_id):
+        raise HTTPException(status_code=400, detail="Invalid Rubric ID format")
+
+    if payload.batch_id:
+        try:
+            batch_dir = resolve_batch_directory(payload.batch_id.strip())
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="Batch not found. Upload again.")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        raw_path = batch_dir
+    else:
+        upload_path = (payload.upload_path or "").strip()
+        if not upload_path or not os.path.isdir(upload_path):
+            raise HTTPException(status_code=400, detail="Invalid upload_path.")
+        raw_path = Path(upload_path)
+
+    effective_path = resolve_effective_batch_root(raw_path)
+
+    try:
+        await run_batch_grading(str(effective_path), rubric_id)
+        return {
+            "status": "success",
+            "message": f"Grading complete for rubric {rubric_id}",
+            "upload_path": str(effective_path),
+            "batch_id": payload.batch_id,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/submissions")
+async def list_submissions(
+    rubric_id: str | None = Query(default=None),
+    student_id: str | None = Query(default=None),
+):
+    query = {}
+    if rubric_id:
+        if not ObjectId.is_valid(rubric_id):
+            raise HTTPException(status_code=400, detail="Invalid Rubric ID format")
+        query["rubric_ref"] = ObjectId(rubric_id)
+    if student_id:
+        query["student_id"] = student_id
+
+    docs = await db_instance.submissions_col.find(query).sort("processed_at", -1).to_list(length=1000)
+    return {"status": "success", "count": len(docs), "items": [_serialize_submission_doc(doc) for doc in docs]}
+
+
+@app.get("/submissions/{submission_id}")
+async def get_submission(submission_id: str):
+    if not ObjectId.is_valid(submission_id):
+        raise HTTPException(status_code=400, detail="Invalid submission ID format")
+
+    doc = await db_instance.submissions_col.find_one({"_id": ObjectId(submission_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return _serialize_submission_doc(doc)
+
+
+@app.patch("/submissions/{submission_id}")
+async def update_submission(submission_id: str, payload: SubmissionUpdatePayload):
+    if not ObjectId.is_valid(submission_id):
+        raise HTTPException(status_code=400, detail="Invalid submission ID format")
+
+    update_fields = {}
+    if payload.status is not None:
+        update_fields["status"] = payload.status
+    if payload.lecturer_note is not None:
+        update_fields["lecturer_note"] = payload.lecturer_note
+    if payload.evaluation is not None:
+        update_fields["evaluation"] = payload.evaluation
+
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No updatable fields provided")
+
+    result = await db_instance.submissions_col.update_one(
+        {"_id": ObjectId(submission_id)},
+        {"$set": update_fields},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    doc = await db_instance.submissions_col.find_one({"_id": ObjectId(submission_id)})
+    return {"status": "success", "item": _serialize_submission_doc(doc)}

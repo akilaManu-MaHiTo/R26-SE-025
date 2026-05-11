@@ -4,6 +4,19 @@ from typing import Any, Iterable, List, Optional, Tuple
 import cv2
 import numpy as np
 import torch
+
+if not hasattr(torch, "library"):
+    torch.library = type("library", (), {})()
+
+if not hasattr(torch.library, "register_fake"):
+    def _register_fake(*args, **kwargs):
+        def decorator(func):
+            return func
+
+        return decorator
+
+    torch.library.register_fake = _register_fake
+
 import timm
 
 from config import canonical_emotion_label
