@@ -147,7 +147,7 @@ async def query_ocr_space(filename: str):
         extracted_text = await loop.run_in_executor(None, _query_ocr_space_sync, filename)
         return extracted_text.strip()
     except Exception as e:
-        return f"❌ OCR Failed: {str(e)}"
+        return f"OCR Failed: {str(e)}"
 
 
 async def process_student_answer(file_path: str):
