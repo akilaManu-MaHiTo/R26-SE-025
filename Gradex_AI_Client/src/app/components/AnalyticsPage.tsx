@@ -900,6 +900,57 @@ export function AnalyticsPage() {
   const [selectedSessionIndex, setSelectedSessionIndex] = useState(0);
   const [historicalLoading, setHistoricalLoading] = useState(false);
   const [historicalError, setHistoricalError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+
+  /* ─── Student Details Modal & Charts ─────────────────────────────────────── */
+  function SimpleBarChart({ data = [], labels = [], height = 80 }: { data?: number[]; labels?: string[]; height?: number }) {
+    const chartData = labels.map((l, i) => ({ k: l, v: data[i] ?? 0 }));
+    return (
+      <div style={{ width: "100%", height: 80 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 6, right: 6, left: 0, bottom: 6 }}>
+            <XAxis dataKey="k" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+            <YAxis hide />
+            <Tooltip formatter={(v: any) => [v, "Score"]} />
+            <Bar dataKey="v" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  function StudentDetailsModal({ open, onClose, student }: { open: boolean; onClose: () => void; student?: any }) {
+    if (!open || !student) return null;
+    const qLabels = Object.keys(student.scoreMap || {});
+    const qValues = qLabels.map((k) => student.scoreMap[k] ?? 0);
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+        <div className="bg-white rounded shadow-lg p-4 w-11/12 max-w-2xl z-10">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Student: {student.id}</h3>
+            <button onClick={onClose} className="text-sm text-gray-500">Close</button>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <strong>Average:</strong> {student.avg}
+            </div>
+            <div>
+              <strong>Band:</strong> {student.band}
+            </div>
+            <div>
+              <strong>Per-question (sample):</strong>
+              <SimpleBarChart data={qValues} labels={qLabels} />
+            </div>
+            <div>
+              <strong>Weak Questions:</strong> {(student.weak || []).join(", ") || "None"}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const readJson = useCallback(
     <T,>(
@@ -923,8 +974,8 @@ export function AnalyticsPage() {
             return;
           }
           setParsed(parsed);
-        } catch {
-          setError("Invalid JSON — could not parse file.");
+        } catch (err) {
+          setError(errorMsg);
         }
       };
       reader.readAsText(file);
@@ -1567,12 +1618,24 @@ export function AnalyticsPage() {
                         </td>
                         <td className="px-5 py-3 text-slate-700">{s.cog}</td>
                         <td className="px-5 py-3 text-right">
-                          <ChevronDown
-                            className={
-                              "size-4 text-slate-400 transition-transform " +
-                              (open ? "rotate-180" : "")
-                            }
-                          />
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedStudent(s);
+                                setModalOpen(true);
+                              }}
+                              className="text-xs px-2 py-1 border rounded bg-slate-50 hover:bg-slate-100"
+                            >
+                              Details
+                            </button>
+                            <ChevronDown
+                              className={
+                                "size-4 text-slate-400 transition-transform " +
+                                (open ? "rotate-180" : "")
+                              }
+                            />
+                          </div>
                         </td>
                       </tr>
                       {open && (
@@ -1688,6 +1751,25 @@ export function AnalyticsPage() {
 
         {/* ─ Question analysis + Heatmap ──────────────────────────────── */}
         <TabsContent value="questions" className="m-0 space-y-4">
+          {(() => {
+            const heatScatterData = heatStudents.flatMap((s, r) =>
+              heatQs.map((q, c) => ({
+                x: c,
+                y: r,
+                value: heatData[r]?.[c] ?? 0,
+                student: s,
+                question: q,
+              })),
+            );
+            const heatColorHex = (v: number) => {
+              if (v >= 8) return "#dc2626";
+              if (v >= 6) return "#f97316";
+              if (v >= 4) return "#f59e0b";
+              if (v >= 2) return "#34d399";
+              return "#065f46";
+            };
+            return (
+              <>
           <Card className="p-5 border-slate-200">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -1713,39 +1795,53 @@ export function AnalyticsPage() {
               </div>
             </div>
             <div className="overflow-auto">
-              <div
-                className="inline-grid gap-1.5"
-                style={{
-                  gridTemplateColumns: `auto repeat(${heatQs.length}, minmax(40px, 1fr))`,
-                }}
-              >
-                <div />
-                {heatQs.map((q) => (
-                  <div
-                    key={`hq-${q}`}
-                    className="text-xs text-slate-500 text-center"
-                  >
-                    {q}
-                  </div>
-                ))}
-                {heatStudents.map((s, r) => (
-                  <React.Fragment key={`hs-${s}`}>
-                    <div className="text-xs text-slate-500 pr-2 flex items-center whitespace-nowrap">
-                      {s}
-                    </div>
-                    {heatData[r]?.map((v, c) => (
-                      <div
-                        key={`${s}-col-${c}`}
-                        className={`aspect-square rounded ${heatColor(v)} text-white text-[10px] flex items-center justify-center`}
-                      >
-                        {v}
-                      </div>
-                    ))}
-                  </React.Fragment>
-                ))}
+              <div style={{ width: Math.min(heatQs.length * 80 + 120, 1200), height: Math.min(heatStudents.length * 26 + 80, 800) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis
+                      type="number"
+                      dataKey="x"
+                      name="Question"
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={(i: number) => heatQs[i]}
+                      interval={0}
+                    />
+                    <YAxis
+                      type="number"
+                      dataKey="y"
+                      name="Student"
+                      tickFormatter={(i: number) => heatStudents[i]}
+                      reversed={true}
+                    />
+                    <ZAxis dataKey="value" range={[4, 20]} />
+                    <Scatter data={heatScatterData}>
+                      {heatScatterData.map((entry, idx) => (
+                        <Cell key={`cell-${idx}`} fill={heatColorHex(entry.value)} />
+                      ))}
+                    </Scatter>
+                    <Tooltip
+                      cursor={{ strokeDasharray: "3 3" }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        const p = payload[0].payload as any;
+                        return (
+                          <div className="bg-white p-2 rounded border text-xs">
+                            <div className="font-semibold">{p.student}</div>
+                            <div>{p.question}</div>
+                            <div>Score: {p.value}</div>
+                          </div>
+                        );
+                      }}
+                    />
+                  </ScatterChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </Card>
+          </>
+            );
+          })()}
 
           <Card className="border-slate-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 text-slate-900">
@@ -2177,6 +2273,14 @@ export function AnalyticsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <StudentDetailsModal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedStudent(null);
+        }}
+        student={selectedStudent}
+      />
     </div>
   );
 }

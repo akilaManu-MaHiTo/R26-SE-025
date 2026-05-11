@@ -8,7 +8,7 @@ from src.analytics.weak_topic_model import DEFAULT_MODEL_PATH, WeakTopicModel, b
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_INPUT_PATH = PROJECT_ROOT / "data" / "traindata" / "student_data_V2.json"
+DEFAULT_INPUT_PATH = PROJECT_ROOT / "data" / "traindata" / "student_data_V3.json"
 
 
 def load_records(path):
