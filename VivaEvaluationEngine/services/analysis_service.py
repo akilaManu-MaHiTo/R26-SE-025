@@ -1,6 +1,16 @@
 from typing import Dict, List
 
-from config import AppConfig, NEGATIVE_EMOTIONS, NEUTRAL_EMOTIONS, POSITIVE_EMOTIONS, SURPRISE_EMOTIONS, canonical_emotion_label
+from config import (
+    AppConfig,
+    ENGAGEMENT_LEVEL_SCORES,
+    NEGATIVE_EMOTIONS,
+    NEUTRAL_EMOTIONS,
+    POSITIVE_EMOTIONS,
+    SURPRISE_EMOTIONS,
+    canonical_emotion_label,
+    canonical_engagement_label,
+)
+from services.engagement_detector import EngagementDetector
 from services.emotion_detector import EmotionDetector
 from services.face_detector import FaceDetector
 from services.gaze_head_analyser import GazeHeadAnalyser
@@ -40,6 +50,41 @@ def build_summary(timeline: List[Dict[str, object]]) -> Dict[str, float]:
     }
 
 
+def build_engagement_summary(timeline: List[Dict[str, object]]) -> Dict[str, float]:
+    valid_timeline = [item for item in timeline if item.get("valid", True) is True]
+    total = len(valid_timeline)
+    if total == 0:
+        return {
+            "very_low_ratio": 0.0,
+            "low_ratio": 0.0,
+            "high_ratio": 0.0,
+            "very_high_ratio": 0.0,
+            "average_engagement_score": 0.0,
+        }
+
+    counts = {label: 0 for label in ENGAGEMENT_LEVEL_SCORES}
+    engagement_scores = []
+
+    for item in valid_timeline:
+        label = canonical_engagement_label(str(item.get("engagement_label", "")))
+        if label in counts:
+            counts[label] += 1
+
+        score_value = item.get("engagement_model_score")
+        try:
+            engagement_scores.append(float(score_value))
+        except (TypeError, ValueError):
+            engagement_scores.append(ENGAGEMENT_LEVEL_SCORES.get(label, 0.5))
+
+    return {
+        "very_low_ratio": round(counts["very_low"] / total, 4),
+        "low_ratio": round(counts["low"] / total, 4),
+        "high_ratio": round(counts["high"] / total, 4),
+        "very_high_ratio": round(counts["very_high"] / total, 4),
+        "average_engagement_score": round(sum(engagement_scores) / total, 4),
+    }
+
+
 def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, object]:
     blinks_per_minute = BlinkSampler().count_blinks(config.video_path)
 
@@ -50,6 +95,10 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
     )
     emotion_detector = EmotionDetector(
         model_path=config.emotion_model_path,
+        debug=config.debug,
+    )
+    engagement_detector = EngagementDetector(
+        model_path=config.engagement_model_path,
         debug=config.debug,
     )
 
@@ -68,17 +117,24 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
                         "time": frame_data.time_sec,
                         "emotion": "NoFace",
                         "emotion_confidence": 0.0,
+                        "engagement_label": "NoFace",
+                        "engagement_confidence": 0.0,
+                        "engagement_model_score": 0.0,
                         "valid": False,
                     }
                 )
                 continue
 
             emotion, emotion_confidence = emotion_detector.predict(face_crop)
+            engagement_label, engagement_confidence, engagement_model_score = engagement_detector.predict(face_crop)
             timeline.append(
                 {
                     "time": frame_data.time_sec,
                     "emotion": emotion,
                     "emotion_confidence": round(emotion_confidence, 4),
+                    "engagement_label": engagement_label,
+                    "engagement_confidence": round(engagement_confidence, 4),
+                    "engagement_model_score": round(engagement_model_score, 4),
                     "valid": True,
                 }
             )
@@ -96,6 +152,7 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
         "timeline": smoothed_timeline,
         "confidence_score": confidence_score,
         "engagement_score": engagement_score,
+        "engagement_summary": build_engagement_summary(smoothed_timeline),
     }
 
     if include_summary:
