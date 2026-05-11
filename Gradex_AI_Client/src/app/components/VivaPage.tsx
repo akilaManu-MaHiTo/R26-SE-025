@@ -111,9 +111,7 @@ export function VivaPage() {
     // Create preview URL
     const preview = URL.createObjectURL(file);
     setVideoPreview(preview);
-
-    // Auto-start analysis
-    analyzeVideo(file);
+    // Do not auto-start analysis — wait for user to click Analyze
   };
 
   const analyzeVideo = async (file: File) => {
@@ -252,49 +250,73 @@ export function VivaPage() {
               )}
             </div>
 
-            <div
-              className={`mt-4 rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors ${
-                isDragging
-                  ? "border-blue-400 bg-blue-50/60"
-                  : "border-slate-200 bg-slate-50/40 hover:border-blue-300 hover:bg-blue-50/40"
-              }`}
-              onDragEnter={handleDragEnter}
-              onDragLeave={handleDragLeave}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="video/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <div className="size-12 rounded-full bg-blue-100 mx-auto flex items-center justify-center text-blue-600">
-                {isAnalyzing ? (
-                  <Loader2 className="size-6 animate-spin" />
-                ) : (
-                  <Upload className="size-6" />
-                )}
-              </div>
-              <div className="text-sm text-slate-900 mt-3">
-                {isAnalyzing ? "Analyzing video..." : "Drag & drop a viva recording"}
-              </div>
-              <div className="text-xs text-slate-500 mt-1">Supports MP4, AVI, MOV · up to 1 GB</div>
-              {uploadedFile && <div className="text-xs text-emerald-700 mt-2 font-medium">{uploadedFile.name}</div>}
-            </div>
-
-            {/* Video player / Preview */}
-            {videoPreview && (
-              <div className="mt-5 rounded-xl bg-slate-900 aspect-video relative overflow-hidden">
-                <video
-                  src={videoPreview}
-                  className="w-full h-full object-cover"
-                  controls
-                  controlsList="nodownload"
+            {/* Upload area — becomes preview + actions after file is selected */}
+            {!videoPreview ? (
+              <div
+                className={`mt-4 rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors ${
+                  isDragging
+                    ? "border-blue-400 bg-blue-50/60"
+                    : "border-slate-200 bg-slate-50/40 hover:border-blue-300 hover:bg-blue-50/40"
+                }`}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={handleFileChange}
+                  className="hidden"
                 />
+                <div className="size-12 rounded-full bg-blue-100 mx-auto flex items-center justify-center text-blue-600">
+                  <Upload className="size-6" />
+                </div>
+                <div className="text-sm text-slate-900 mt-3">Drag & drop a viva recording</div>
+                <div className="text-xs text-slate-500 mt-1">Supports MP4, AVI, MOV · up to 1 GB</div>
+                {uploadedFile && <div className="text-xs text-emerald-700 mt-2 font-medium">{uploadedFile.name}</div>}
               </div>
+            ) : (
+              <>
+                <div className="mt-4 rounded-xl bg-slate-900 aspect-video relative overflow-hidden">
+                  <video
+                    src={videoPreview}
+                    className="w-full h-full object-cover"
+                    controls
+                    controlsList="nodownload"
+                  />
+                </div>
+
+                <div className="mt-3 flex items-center gap-3">
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={() => uploadedFile && analyzeVideo(uploadedFile)}
+                    disabled={isAnalyzing}
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin mr-2" />Analyzing...
+                      </>
+                    ) : (
+                      "Analyze"
+                    )}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setUploadedFile(null);
+                      setVideoPreview("");
+                      setAnalysisResult(null);
+                      setError("");
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </>
             )}
 
             {/* Loading state */}

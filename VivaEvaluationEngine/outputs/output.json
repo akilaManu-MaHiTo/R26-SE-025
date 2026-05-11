@@ -1,0 +1,90 @@
+{
+  "timeline": [
+    {
+      "time": 0.0,
+      "emotion": "surprise",
+      "emotion_confidence": 0.5121,
+      "engagement_label": "high",
+      "engagement_confidence": 0.5127,
+      "engagement_model_score": 0.75,
+      "valid": true
+    },
+    {
+      "time": 1.0,
+      "emotion": "surprise",
+      "emotion_confidence": 0.5481,
+      "engagement_label": "high",
+      "engagement_confidence": 0.617,
+      "engagement_model_score": 0.75,
+      "valid": true
+    },
+    {
+      "time": 2.0,
+      "emotion": "happy",
+      "emotion_confidence": 0.5469,
+      "engagement_label": "high",
+      "engagement_confidence": 0.5445,
+      "engagement_model_score": 0.75,
+      "valid": true
+    },
+    {
+      "time": 3.0,
+      "emotion": "happy",
+      "emotion_confidence": 0.5355,
+      "engagement_label": "very_high",
+      "engagement_confidence": 0.6499,
+      "engagement_model_score": 0.95,
+      "valid": true
+    },
+    {
+      "time": 4.0,
+      "emotion": "happy",
+      "emotion_confidence": 0.4682,
+      "engagement_label": "high",
+      "engagement_confidence": 0.7041,
+      "engagement_model_score": 0.75,
+      "valid": true
+    },
+    {
+      "time": 5.0,
+      "emotion": "happy",
+      "emotion_confidence": 0.3883,
+      "engagement_label": "high",
+      "engagement_confidence": 0.6899,
+      "engagement_model_score": 0.75,
+      "valid": true
+    },
+    {
+      "time": 6.0,
+      "emotion": "surprise",
+      "emotion_confidence": 0.5215,
+      "engagement_label": "high",
+      "engagement_confidence": 0.793,
+      "engagement_model_score": 0.75,
+      "valid": true
+    },
+    {
+      "time": 7.0,
+      "emotion": "neutral",
+      "emotion_confidence": 0.5732,
+      "engagement_label": "very_high",
+      "engagement_confidence": 0.7396,
+      "engagement_model_score": 0.95,
+      "valid": true
+    }
+  ],
+  "confidence_score": 87.5,
+  "engagement_score": 67.0,
+  "engagement_summary": {
+    "very_low_ratio": 0.0,
+    "low_ratio": 0.0,
+    "high_ratio": 0.75,
+    "very_high_ratio": 0.25,
+    "average_engagement_score": 0.8
+  },
+  "summary": {
+    "positive_ratio": 0.875,
+    "neutral_ratio": 0.125,
+    "negative_ratio": 0.0
+  }
+}
