@@ -207,6 +207,49 @@ async def analytics_historical():
         raise HTTPException(status_code=500, detail=f"Failed to load historical data: {exc}") from exc
 
 
+@app.post("/api/viva-analyze")
+async def viva_analyze(video: UploadFile = File(...)):
+    """
+    Analyze a viva recording for emotion detection and engagement scoring.
+    
+    Returns:
+        - timeline: Frame-by-frame emotion and engagement analysis
+        - confidence_score: Overall confidence score (0-10)
+        - engagement_score: Overall engagement score (0-100)
+        - summary: Summary statistics
+    """
+    if not video.content_type or not video.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="Only video uploads are supported.")
+
+    contents = await video.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty upload.")
+
+    ext = Path(video.filename or "").suffix or ".mp4"
+    file_path = UPLOAD_DIR / f"{uuid4().hex}{ext}"
+    file_path.write_bytes(contents)
+
+    try:
+        from Gradex_AI_Server.app.viva_service import analyze_video_file
+
+        result = analyze_video_file(str(file_path), debug=False)
+        
+        # Clean up the uploaded file after analysis
+        try:
+            file_path.unlink()
+        except Exception:
+            pass
+        
+        return result
+    except ModuleNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=f"Viva analysis unavailable: {exc}") from exc
+    except FileNotFoundError as exc:
+        # Model files or other required files missing
+        raise HTTPException(status_code=503, detail=f"Viva model file not found: {exc}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Viva analysis failed: {exc}") from exc
+
+
 if __name__ == "__main__":
     import uvicorn
 
