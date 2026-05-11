@@ -1,0 +1,62 @@
+[
+  {
+    "topic": "Advanced Indexing & Hashing",
+    "average_learning_score": 0.755,
+    "average_performance_score": 0.737,
+    "average_concept_score": 0.906,
+    "average_cognitive_score": 0.578,
+    "score_stddev": 0.11,
+    "weak_student_count": 0,
+    "students_attempted": 10,
+    "attempts": 30,
+    "weak_student_share": 0.0,
+    "average_level_gap": 1.5,
+    "weak_probability": 0.215,
+    "status": "REVIEW"
+  },
+  {
+    "topic": "NoSQL & Distributed Databases",
+    "average_learning_score": 0.756,
+    "average_performance_score": 0.72,
+    "average_concept_score": 0.91,
+    "average_cognitive_score": 0.642,
+    "score_stddev": 0.083,
+    "weak_student_count": 0,
+    "students_attempted": 10,
+    "attempts": 30,
+    "weak_student_share": 0.0,
+    "average_level_gap": 0.5,
+    "weak_probability": 0.156,
+    "status": "REVIEW"
+  },
+  {
+    "topic": "Transaction Management & Concurrency Control",
+    "average_learning_score": 0.676,
+    "average_performance_score": 0.533,
+    "average_concept_score": 0.86,
+    "average_cognitive_score": 0.939,
+    "score_stddev": 0.065,
+    "weak_student_count": 0,
+    "students_attempted": 10,
+    "attempts": 20,
+    "weak_student_share": 0.0,
+    "average_level_gap": -2.15,
+    "weak_probability": 0.058,
+    "status": "REVIEW"
+  },
+  {
+    "topic": "Query Processing & Optimization",
+    "average_learning_score": 0.704,
+    "average_performance_score": 0.585,
+    "average_concept_score": 0.842,
+    "average_cognitive_score": 0.951,
+    "score_stddev": 0.053,
+    "weak_student_count": 0,
+    "students_attempted": 10,
+    "attempts": 20,
+    "weak_student_share": 0.0,
+    "average_level_gap": -1.45,
+    "weak_probability": 0.05,
+    "status": "REVIEW"
+  }
+]
