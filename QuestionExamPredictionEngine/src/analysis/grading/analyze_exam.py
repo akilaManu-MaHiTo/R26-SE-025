@@ -26,10 +26,10 @@ from src.analytics.topic_utils import resolve_topic
 # --------------------------------------------------
 # Load data
 # --------------------------------------------------
-with (DATA_EXAM_DIR / "exam2024.json").open(encoding="utf-8") as f:
+with (DATA_EXAM_DIR / "exam2023.json").open(encoding="utf-8") as f:
     exam_data = json.load(f)
 
-with (DATA_ANSWERS_DIR / "student_answers2024.json").open(encoding="utf-8") as f:
+with (DATA_ANSWERS_DIR / "student_answers2023.json").open(encoding="utf-8") as f:
     student_data = json.load(f)
 
 # --------------------------------------------------
@@ -145,7 +145,6 @@ weak_topics = WeakTopicAnalyzer(exam_data).analyze(student_reports)
 # --------------------------------------------------
 # Create organized output directory structure
 # --------------------------------------------------
-# Extract year and exam info from exam_data (the primary source)
 year = exam_data.get("year", "UNKNOWN")
 exam_name = exam_data.get("exam", "PAPERS").replace(" ", "_")
 
