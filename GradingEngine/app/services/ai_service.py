@@ -210,6 +210,60 @@ def _parse_questions_payload(content: str):
                 return normalized[key]
         return default
 
+    def _parse_question_no(value, fallback_idx: int) -> str:
+        text = str(value or "").strip()
+        if not text:
+            return str(fallback_idx).zfill(2)
+        match = re.search(r"(\d+)", text)
+        if match:
+            return match.group(1).zfill(2)
+        return text
+
+    def _coerce_marks(value):
+        if isinstance(value, (int, float)):
+            return float(value)
+        text = str(value or "").strip()
+        if not text:
+            return 0.0
+        try:
+            return float(text)
+        except ValueError:
+            return 0.0
+
+    def _normalize_criteria(raw_criteria, question_max_marks):
+        if isinstance(raw_criteria, list):
+            normalized = []
+            marks_total = 0.0
+            for item in raw_criteria:
+                if isinstance(item, dict):
+                    point = str(
+                        item.get("point")
+                        or item.get("description")
+                        or item.get("criterion")
+                        or item.get("text")
+                        or ""
+                    ).strip()
+                    marks = _coerce_marks(item.get("marks"))
+                else:
+                    point = str(item).strip()
+                    marks = 0.0
+                if not point:
+                    continue
+                normalized.append({"point": point, "marks": marks})
+                marks_total += marks
+            if normalized:
+                if marks_total == 0.0 and question_max_marks > 0:
+                    per_point = round(question_max_marks / len(normalized), 4)
+                    for entry in normalized:
+                        entry["marks"] = per_point
+                return normalized
+            return [{"point": "No criteria extracted", "marks": question_max_marks}]
+
+        text = str(raw_criteria or "").strip()
+        if not text:
+            text = "No criteria extracted"
+        return [{"point": text, "marks": question_max_marks}]
+
     parsed = json.loads(content)
     if isinstance(parsed, list):
         questions = parsed
@@ -234,44 +288,31 @@ def _parse_questions_payload(content: str):
             freeform_fields = _extract_from_freeform_blob(segment, question_no_from_header=qn_header)
             merged_question = {**freeform_fields}
 
-        question_no = _pick_value_case_insensitive(
+        question_no_raw = _pick_value_case_insensitive(
             merged_question, ["question_no", "question no", "q_no", "qno"], qn_header or seg_idx
         )
         question_text = _pick_value_case_insensitive(
             merged_question, ["question", "question_text", "question text", "prompt"], ""
         )
-        model_answer = _pick_value_case_insensitive(
-            merged_question, ["model_answer", "model answer", "answer", "sample_answer"], ""
-        )
-        max_marks = _pick_value_case_insensitive(
+        max_marks_raw = _pick_value_case_insensitive(
             merged_question, ["max_marks", "max marks", "marks", "total_marks"], 0
         )
-        criteria = _pick_value_case_insensitive(
+        criteria_raw = _pick_value_case_insensitive(
             merged_question, ["criteria", "criterion", "rubric", "marking_criteria"], ""
         )
-
-        if isinstance(criteria, list):
-            criteria_descriptions = []
-            criteria_marks_total = 0
-            for criterion in criteria:
-                if not isinstance(criterion, dict):
-                    continue
-                description = str(criterion.get("description", "")).strip()
-                if description:
-                    criteria_descriptions.append(description)
-                marks = criterion.get("marks")
-                if isinstance(marks, (int, float)):
-                    criteria_marks_total += marks
-            criteria = "; ".join(criteria_descriptions).strip()
-            if (not max_marks or max_marks == 0) and criteria_marks_total > 0:
-                max_marks = criteria_marks_total
+        max_marks = _coerce_marks(max_marks_raw)
+        criteria = _normalize_criteria(criteria_raw, max_marks)
+        if max_marks == 0:
+            max_marks = round(sum(_coerce_marks(c.get("marks")) for c in criteria), 4)
+        question_no = _parse_question_no(question_no_raw, seg_idx)
+        if not question_text:
+            question_text = f"Question {question_no}"
 
         normalized_questions.append(
             {
                 "question_no": str(question_no).strip(),
-                "question": str(question_text).strip(),
-                "criteria": str(criteria).strip(),
-                "model_answer": str(model_answer).strip(),
+                "question_text": str(question_text).strip(),
+                "criteria": criteria,
                 "max_marks": max_marks,
             }
         )
@@ -299,12 +340,15 @@ async def parse_rubric_ai(file_path: str):
 Analyze the following marking scheme text and convert it into JSON.
 Return a JSON object with one key: "questions".
 "questions" must be an array of objects. Each object MUST use these exact keys:
-"question_no", "question", "criteria", "model_answer", "max_marks".
+"question_no", "question_text", "criteria", "max_marks".
+
+"criteria" should be an array of objects with keys: "point", "marks".
 
 Rules:
 - "question_no" is the question number only (e.g. "01", "2").
-- "question" is the full question wording (not the rubric criteria).
-- If the source uses lines like "Question 01" as a header, still fill "question_no" and put the actual question text in "question".
+- "question_text" is the full question wording (not the rubric criteria).
+- If the source uses lines like "Question 01" as a header, still fill "question_no" and put the actual question text in "question_text".
+- Do not include model answers.
 
 Return only valid JSON.
 
