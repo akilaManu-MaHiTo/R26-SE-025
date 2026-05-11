@@ -8,3 +8,13 @@ python-multipart
 timm
 torch
 torchvision
+torchaudio
+librosa
+parselmouth
+transformers
+soundfile
+pydub
+ffmpeg-python
+openai-whisper
+scipy
+matplotlib
