@@ -22,8 +22,8 @@ async def connect_to_mongo():
     db_instance.db = db_instance.client[os.getenv("DATABASE_NAME")] 
     db_instance.rubric_col = db_instance.db["rubricCollection"]
     db_instance.submissions_col = db_instance.db["submissions"]
-    print("✅ Connected to MongoDB Atlas")
+    print("Connected to MongoDB Atlas")
 
 async def close_mongo_connection():
     db_instance.client.close()
-    print("❌ MongoDB connection closed.")
+    print("MongoDB connection closed.")

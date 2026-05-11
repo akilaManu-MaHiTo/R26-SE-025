@@ -48,7 +48,7 @@ async def get_rubric_by_object_id(rubric_id_str: str):
         rubric = await db.rubric_col.find_one({"_id": ObjectId(rubric_id_str)})
         return rubric
     except Exception as e:
-        print(f"❌ Database error fetching rubric: {e}")
+        print(f"Database error fetching rubric: {e}")
         return None
 
 
@@ -70,7 +70,7 @@ async def run_batch_grading(upload_path: str, rubric_id: str):
         student_folder_path = os.path.join(upload_path, student_id)
 
         if os.path.isdir(student_folder_path):
-            print(f"🔄 Processing student: {student_id}")
+            print(f"Processing student: {student_id}")
             full_transcript = ""
 
             # 3. OCR each page (images or PDF)
@@ -98,6 +98,6 @@ async def run_batch_grading(upload_path: str, rubric_id: str):
                     "processed_at": datetime.utcnow(),
                 }
                 await db.submissions_col.insert_one(submission_document)
-                print(f"✅ Grading complete for {student_id}")
+                print(f"Grading complete for {student_id}")
             else:
-                print(f"⚠️ No text extracted for {student_id}. Skipping LLM.")
+                print(f"No text extracted for {student_id}. Skipping LLM.")
