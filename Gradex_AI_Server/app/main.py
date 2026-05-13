@@ -218,21 +218,36 @@ async def viva_analyze(video: UploadFile = File(...)):
         - engagement_score: Overall engagement score (0-100)
         - summary: Summary statistics
     """
+    import time
+    request_start = time.time()
+    
     if not video.content_type or not video.content_type.startswith("video/"):
         raise HTTPException(status_code=400, detail="Only video uploads are supported.")
 
     contents = await video.read()
+    upload_complete = time.time()
+    upload_time = upload_complete - request_start
+    print(f"[VIVA] Upload received: {len(contents) / 1024 / 1024:.2f} MB in {upload_time:.2f}s")
+    
     if not contents:
         raise HTTPException(status_code=400, detail="Empty upload.")
 
     ext = Path(video.filename or "").suffix or ".mp4"
     file_path = UPLOAD_DIR / f"{uuid4().hex}{ext}"
     file_path.write_bytes(contents)
+    file_saved = time.time()
+    print(f"[VIVA] File saved: {file_path.name} in {file_saved - upload_complete:.2f}s")
 
     try:
         from Gradex_AI_Server.app.viva_service import analyze_video_file
 
+        analysis_start = time.time()
         result = analyze_video_file(str(file_path), debug=False)
+        analysis_complete = time.time()
+        analysis_time = analysis_complete - analysis_start
+        total_time = analysis_complete - request_start
+        
+        print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")
         
         # Clean up the uploaded file after analysis
         try:

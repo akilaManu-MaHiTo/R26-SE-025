@@ -1,0 +1,262 @@
+{
+  "transcript": " My research focuses on sustainable development in urban environments. I'm excited to share my findings with you today.",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 4.14,
+      "text": " My research focuses on sustainable development in urban environments.",
+      "tokens": [
+        50364,
+        1222,
+        2132,
+        16109,
+        322,
+        11235,
+        3250,
+        294,
+        9681,
+        12388,
+        13,
+        50594
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.2785928799555852,
+      "compression_ratio": 1.1683168316831682,
+      "no_speech_prob": 0.006431937217712402,
+      "words": [
+        {
+          "word": " My",
+          "start": 0.0,
+          "end": 0.58,
+          "probability": 0.7049838304519653
+        },
+        {
+          "word": " research",
+          "start": 0.58,
+          "end": 0.98,
+          "probability": 0.9962841868400574
+        },
+        {
+          "word": " focuses",
+          "start": 0.98,
+          "end": 1.46,
+          "probability": 0.9919300079345703
+        },
+        {
+          "word": " on",
+          "start": 1.46,
+          "end": 1.76,
+          "probability": 0.9991022348403931
+        },
+        {
+          "word": " sustainable",
+          "start": 1.76,
+          "end": 2.18,
+          "probability": 0.9927265644073486
+        },
+        {
+          "word": " development",
+          "start": 2.18,
+          "end": 2.94,
+          "probability": 0.9989253878593445
+        },
+        {
+          "word": " in",
+          "start": 2.94,
+          "end": 3.2,
+          "probability": 0.9929805397987366
+        },
+        {
+          "word": " urban",
+          "start": 3.2,
+          "end": 3.5,
+          "probability": 0.9941157102584839
+        },
+        {
+          "word": " environments.",
+          "start": 3.5,
+          "end": 4.14,
+          "probability": 0.9973434805870056
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 4.7,
+      "end": 7.14,
+      "text": " I'm excited to share my findings with you today.",
+      "tokens": [
+        50594,
+        286,
+        478,
+        2919,
+        281,
+        2073,
+        452,
+        16483,
+        365,
+        291,
+        965,
+        13,
+        50744
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.2785928799555852,
+      "compression_ratio": 1.1683168316831682,
+      "no_speech_prob": 0.006431937217712402,
+      "words": [
+        {
+          "word": " I'm",
+          "start": 4.7,
+          "end": 5.12,
+          "probability": 0.9593435823917389
+        },
+        {
+          "word": " excited",
+          "start": 5.12,
+          "end": 5.46,
+          "probability": 0.9982075691223145
+        },
+        {
+          "word": " to",
+          "start": 5.46,
+          "end": 5.66,
+          "probability": 0.9991707801818848
+        },
+        {
+          "word": " share",
+          "start": 5.66,
+          "end": 5.86,
+          "probability": 0.9985663294792175
+        },
+        {
+          "word": " my",
+          "start": 5.86,
+          "end": 6.04,
+          "probability": 0.9992327690124512
+        },
+        {
+          "word": " findings",
+          "start": 6.04,
+          "end": 6.4,
+          "probability": 0.9995443224906921
+        },
+        {
+          "word": " with",
+          "start": 6.4,
+          "end": 6.68,
+          "probability": 0.997266411781311
+        },
+        {
+          "word": " you",
+          "start": 6.68,
+          "end": 6.84,
+          "probability": 0.9991034865379333
+        },
+        {
+          "word": " today.",
+          "start": 6.84,
+          "end": 7.14,
+          "probability": 0.9955511093139648
+        }
+      ]
+    }
+  ],
+  "words_with_times": [
+    {
+      "word": " My",
+      "start": 0.0,
+      "end": 0.58
+    },
+    {
+      "word": " research",
+      "start": 0.58,
+      "end": 0.98
+    },
+    {
+      "word": " focuses",
+      "start": 0.98,
+      "end": 1.46
+    },
+    {
+      "word": " on",
+      "start": 1.46,
+      "end": 1.76
+    },
+    {
+      "word": " sustainable",
+      "start": 1.76,
+      "end": 2.18
+    },
+    {
+      "word": " development",
+      "start": 2.18,
+      "end": 2.94
+    },
+    {
+      "word": " in",
+      "start": 2.94,
+      "end": 3.2
+    },
+    {
+      "word": " urban",
+      "start": 3.2,
+      "end": 3.5
+    },
+    {
+      "word": " environments.",
+      "start": 3.5,
+      "end": 4.14
+    },
+    {
+      "word": " I'm",
+      "start": 4.7,
+      "end": 5.12
+    },
+    {
+      "word": " excited",
+      "start": 5.12,
+      "end": 5.46
+    },
+    {
+      "word": " to",
+      "start": 5.46,
+      "end": 5.66
+    },
+    {
+      "word": " share",
+      "start": 5.66,
+      "end": 5.86
+    },
+    {
+      "word": " my",
+      "start": 5.86,
+      "end": 6.04
+    },
+    {
+      "word": " findings",
+      "start": 6.04,
+      "end": 6.4
+    },
+    {
+      "word": " with",
+      "start": 6.4,
+      "end": 6.68
+    },
+    {
+      "word": " you",
+      "start": 6.68,
+      "end": 6.84
+    },
+    {
+      "word": " today.",
+      "start": 6.84,
+      "end": 7.14
+    }
+  ],
+  "language": "en",
+  "duration": 0
+}

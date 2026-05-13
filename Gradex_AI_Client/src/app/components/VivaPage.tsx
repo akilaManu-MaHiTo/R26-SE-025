@@ -86,7 +86,13 @@ export function VivaPage() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStartTime, setUploadStartTime] = useState<number | null>(null);
+  const [analysisPhase, setAnalysisPhase] = useState<"idle" | "uploading" | "processing" | "complete">("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const backendBaseUrl =
+    ((import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL) ??
+    "http://localhost:8000";
   
   const total = criteria.reduce((a, b) => a + b.score, 0);
   const max = criteria.reduce((a, b) => a + b.max, 0);
@@ -153,32 +159,58 @@ export function VivaPage() {
 
     setIsAnalyzing(true);
     setError("");
+    setUploadProgress(0);
+    setUploadStartTime(Date.now());
+    setAnalysisPhase("uploading");
     const formData = new FormData();
     formData.append("video", file);
 
     try {
-      const isLocalHost = typeof window !== "undefined" && window.location.hostname === "localhost";
-      // Use the local proxy during frontend dev, direct backend access otherwise.
-      const apiUrl = isLocalHost
-        ? "/api/viva-analyze"
-        : "http://localhost:8000/api/viva-analyze";
+      const apiUrl = `${backendBaseUrl}/api/viva-analyze`;
       
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        body: formData,
+      // Use XMLHttpRequest to track upload progress
+      const response = await new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        // Track upload progress
+        xhr.upload.addEventListener("progress", (e: ProgressEvent) => {
+          if (e.lengthComputable) {
+            const progress = (e.loaded / e.total) * 100;
+            setUploadProgress(Math.round(progress));
+            console.log(`Upload progress: ${Math.round(progress)}% (${(e.loaded / 1024 / 1024).toFixed(2)} MB / ${(e.total / 1024 / 1024).toFixed(2)} MB)`);
+          }
+        });
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status === 200) {
+            setAnalysisPhase("processing");
+            console.log(`Upload complete! Elapsed: ${((Date.now() - (uploadStartTime || 0)) / 1000).toFixed(2)}s`);
+            resolve(xhr.responseText);
+          } else {
+            reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+          }
+        });
+
+        xhr.addEventListener("error", () => {
+          reject(new Error("Upload failed"));
+        });
+
+        xhr.addEventListener("abort", () => {
+          reject(new Error("Upload aborted"));
+        });
+
+        xhr.open("POST", apiUrl, true);
+        xhr.send(formData);
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Analysis failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = JSON.parse(response);
       setAnalysisResult(data);
+      setAnalysisPhase("complete");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to analyze video";
       setError(message);
       console.error("Analysis error:", err);
+      setAnalysisPhase("idle");
     } finally {
       setIsAnalyzing(false);
     }
@@ -363,13 +395,42 @@ export function VivaPage() {
 
             {/* Loading state */}
             {isAnalyzing && (
-              <div className="mt-5 p-4 rounded-lg bg-blue-50 border border-blue-100">
-                <div className="flex items-center gap-3">
-                  <Loader2 className="size-5 text-blue-600 animate-spin" />
-                  <div className="text-sm text-blue-900">
-                    Analyzing video for emotion detection and engagement scoring...
+              <div className="mt-5 space-y-3">
+                {analysisPhase === "uploading" && (
+                  <div className="p-4 rounded-lg bg-blue-50 border border-blue-100">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Loader2 className="size-5 text-blue-600 animate-spin" />
+                      <div className="text-sm font-medium text-blue-900">
+                        Uploading video ({uploadProgress}%)
+                      </div>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-blue-200 overflow-hidden">
+                      <div
+                        className="h-full bg-blue-600 transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-blue-700 mt-2">
+                      {uploadedFile ? `${(uploadedFile.size / 1024 / 1024).toFixed(2)} MB` : ""} · 
+                      {uploadStartTime ? ` Elapsed: ${Math.round((Date.now() - uploadStartTime) / 1000)}s` : ""}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {analysisPhase === "processing" && (
+                  <div className="p-4 rounded-lg bg-amber-50 border border-amber-100">
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="size-5 text-amber-600 animate-spin" />
+                      <div className="text-sm text-amber-900">
+                        <div className="font-medium">Analyzing video</div>
+                        <div className="text-xs text-amber-700 mt-1">
+                          Processing frames, extracting audio, transcribing...
+                          {uploadStartTime && ` (${Math.round((Date.now() - uploadStartTime) / 1000)}s elapsed)`}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -499,30 +560,6 @@ export function VivaPage() {
             )}
           </Card>
 
-          {/* Transcript */}
-          <Card className="p-6 border-slate-200">
-            <div className="flex items-center justify-between">
-              <div className="text-slate-900">Recording transcript</div>
-              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-0">
-                <Sparkles className="size-3 mr-1" /> AI generated
-              </Badge>
-            </div>
-            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4 space-y-3">
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-1 text-orange-700 border border-orange-200">
-                  <Volume2 className="size-3 mr-1" />
-                  Emotion: {audioEmotion} ({(audioEmotionConfidence * 100).toFixed(0)}%)
-                </span>
-                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-blue-700 border border-blue-200">
-                  <ScanText className="size-3 mr-1" />
-                  Pitch: {audioPitchLevel}
-                </span>
-              </div>
-              <div className="max-h-72 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-slate-700 pr-1">
-                {analysisResult ? transcriptText : "Upload a video to generate transcript"}
-              </div>
-            </div>
-          </Card>
         </div>
 
         <div className="space-y-6">
@@ -553,7 +590,30 @@ export function VivaPage() {
               </div>
             </div>
           </Card>
-
+ {/* Transcript */}
+          <Card className="p-6 border-slate-200">
+            <div className="flex items-center justify-between">
+              <div className="text-slate-900">Recording transcript</div>
+              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-0">
+                <Sparkles className="size-3 mr-1" /> AI generated
+              </Badge>
+            </div>
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-1 text-orange-700 border border-orange-200">
+                  <Volume2 className="size-3 mr-1" />
+                  Emotion: {audioEmotion} ({(audioEmotionConfidence * 100).toFixed(0)}%)
+                </span>
+                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-blue-700 border border-blue-200">
+                  <ScanText className="size-3 mr-1" />
+                  Pitch: {audioPitchLevel}
+                </span>
+              </div>
+              <div className="max-h-72 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-slate-700 pr-1">
+                {analysisResult ? transcriptText : "Upload a video to generate transcript"}
+              </div>
+            </div>
+          </Card>
           {/* Criteria */}
           <Card className="p-5 border-slate-200">
             <div className="flex items-center justify-between">

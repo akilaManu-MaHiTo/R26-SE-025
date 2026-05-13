@@ -89,45 +89,50 @@
   },
   "audio_analysis": {
     "status": "success",
-    "transcript": "",
-    "transcript_excerpt": "",
-    "transcript_word_count": 0,
-    "segment_count": 0,
-    "audio_grade": 3.4,
+    "transcript": "My research focuses on sustainable development in urban environments. I'm excited to share my findings with you today.",
+    "transcript_excerpt": "My research focuses on sustainable development in urban environments. I'm excited to share my findings with you today.",
+    "transcript_word_count": 18,
+    "segment_count": 2,
+    "audio_grade": 4.72,
     "pitch_profile": {
-      "level": "unknown",
-      "mean_hz": 0.0,
-      "min_hz": 0.0,
-      "max_hz": 0.0,
-      "std_hz": 0.0
+      "level": "high",
+      "mean_hz": 224.91,
+      "min_hz": 79.91,
+      "max_hz": 535.29,
+      "std_hz": 54.95
     },
     "audio_emotion": {
-      "predicted_emotion": "unknown",
-      "valence": "neutral",
-      "confidence": 0.0,
-      "probabilities": {}
+      "predicted_emotion": "surprise",
+      "valence": "positive",
+      "confidence": 0.9627,
+      "probabilities": {
+        "happy": 0.8127,
+        "surprise": 0.9627,
+        "neutral": 0.0,
+        "sad": 0.0
+      }
     },
     "acoustic_features": {
       "duration_seconds": 8.0,
       "tempo_bpm": 0.0,
       "rms_mean": 0.055269,
-      "pitch_mean_hz": 0.0,
-      "pitch_min_hz": 0.0,
-      "pitch_max_hz": 0.0,
-      "pitch_std_hz": 0.0,
-      "jitter_local": 0.0,
+      "pitch_mean_hz": 224.91,
+      "pitch_min_hz": 79.91,
+      "pitch_max_hz": 535.29,
+      "pitch_std_hz": 54.95,
+      "jitter_local": 0.01818,
       "shimmer_local": 0.0,
-      "hnr_mean_db": 0.0
+      "hnr_mean_db": 12.64
     },
     "grade_breakdown": {
-      "pitch_score": 0.0,
-      "pitch_stability": 1.0,
-      "clarity_score": 0.0,
-      "articulation_score": 1.0,
+      "pitch_score": 0.6792,
+      "pitch_stability": 0.5421,
+      "clarity_score": 0.4213,
+      "articulation_score": 0.0,
       "energy_score": 0.3316,
-      "emotion_score": 0.0,
-      "transcript_score": 0.0,
-      "segment_score": 0.0
+      "emotion_score": 0.9664,
+      "transcript_score": 0.225,
+      "segment_score": 0.1
     }
   }
 }

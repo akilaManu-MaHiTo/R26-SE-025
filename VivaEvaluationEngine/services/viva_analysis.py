@@ -18,7 +18,10 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
     try:
         if value is None:
             return default
-        return float(value)
+        converted = float(value)
+        if converted != converted or converted in (float("inf"), float("-inf")):
+            return default
+        return converted
     except (TypeError, ValueError):
         return default
 
@@ -42,6 +45,59 @@ def _emotion_valence(emotion: str) -> str:
     if normalized:
         return "neutral"
     return "unknown"
+
+
+def _fallback_audio_emotion(acoustic_features: Dict[str, Any], transcript: str) -> Dict[str, Any]:
+    pitch_mean = _safe_float(acoustic_features.get("pitch_mean"))
+    pitch_std = _safe_float(acoustic_features.get("pitch_std"))
+    rms_mean = _safe_float(acoustic_features.get("rms_mean"))
+    hnr_mean = _safe_float(acoustic_features.get("hnr_mean"))
+    transcript_text = transcript.strip().lower()
+
+    positive_hint_words = {"excited", "great", "happy", "confident", "exciting", "good"}
+    negative_hint_words = {"sad", "sorry", "worried", "nervous", "concerned", "bad"}
+    positive_hint = any(word in transcript_text for word in positive_hint_words)
+    negative_hint = any(word in transcript_text for word in negative_hint_words)
+
+    if negative_hint or pitch_mean < 145:
+        emotion = "sad"
+    elif positive_hint or pitch_mean >= 225:
+        emotion = "surprise" if pitch_std > 45 or rms_mean > 0.05 else "happy"
+    else:
+        emotion = "neutral"
+
+    confidence = 0.35
+    confidence += min(0.25, abs(pitch_mean - 180.0) / 200.0)
+    confidence += min(0.15, pitch_std / 180.0)
+    confidence += min(0.15, rms_mean * 2.5)
+    confidence += min(0.10, hnr_mean / 80.0)
+    confidence = _clamp(confidence)
+
+    probabilities = {
+        "happy": 0.0,
+        "surprise": 0.0,
+        "neutral": 0.0,
+        "sad": 0.0,
+    }
+    if emotion == "happy":
+        probabilities["happy"] = round(confidence, 4)
+        probabilities["neutral"] = round(1.0 - confidence, 4)
+    elif emotion == "surprise":
+        probabilities["surprise"] = round(confidence, 4)
+        probabilities["happy"] = round(max(0.0, confidence - 0.15), 4)
+    elif emotion == "sad":
+        probabilities["sad"] = round(confidence, 4)
+        probabilities["neutral"] = round(max(0.0, 1.0 - confidence), 4)
+    else:
+        probabilities["neutral"] = round(confidence, 4)
+        probabilities["happy"] = round((1.0 - confidence) * 0.35, 4)
+
+    return {
+        "predicted_emotion": emotion,
+        "valence": _emotion_valence(emotion),
+        "confidence": round(confidence, 4),
+        "probabilities": probabilities,
+    }
 
 
 def _score_audio_grade(
@@ -164,6 +220,9 @@ def analyze_audio_from_video(video_path: str, debug: bool = False) -> Dict[str, 
         pitch_std = _safe_float(acoustic_features.get("pitch_std"))
         pitch_level = _pitch_level(pitch_mean)
 
+        if not emotion_features or not emotion_features.get("predicted_emotion"):
+            emotion_features = _fallback_audio_emotion(acoustic_features, transcript_text)
+
         audio_grade, grade_breakdown = _score_audio_grade(
             acoustic_features=acoustic_features,
             emotion_features=emotion_features,
@@ -173,7 +232,7 @@ def analyze_audio_from_video(video_path: str, debug: bool = False) -> Dict[str, 
 
         predicted_emotion = str(emotion_features.get("predicted_emotion", "unknown")).strip() or "unknown"
         emotion_confidence = _clamp(_safe_float(emotion_features.get("confidence")))
-        emotion_probabilities = emotion_features.get("emotion_probabilities", {})
+        emotion_probabilities = emotion_features.get("emotion_probabilities") or emotion_features.get("probabilities", {})
 
         audio_analysis = {
             "status": "success",
