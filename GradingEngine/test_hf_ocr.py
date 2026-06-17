@@ -7,10 +7,10 @@ async def run_test():
     image_to_test = "proc_test_handwriting.jpeg" # Change this to your actual filename
     
     if not os.path.exists(image_to_test):
-        print(f"❌ Error: {image_to_test} not found!")
+        print(f"Error: {image_to_test} not found!")
         return
 
-    print(f"🚀 Sending '{image_to_test}' to OCR.Space...")
+    print(f"Sending '{image_to_test}' to OCR.Space...")
     
     try:
         # 2. Run the AI
@@ -18,13 +18,13 @@ async def run_test():
         
         # 3. Display the result
         print("\n" + "="*30)
-        print("📝 EXTRACTED HANDWRITTEN TEXT:")
+        print("EXTRACTED HANDWRITTEN TEXT:")
         print("="*30)
         print(extracted_text if extracted_text else "No text found or AI failed.")
         print("="*30 + "\n")
         
     except Exception as e:
-        print(f"❌ An error occurred: {e}")
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     asyncio.run(run_test())
