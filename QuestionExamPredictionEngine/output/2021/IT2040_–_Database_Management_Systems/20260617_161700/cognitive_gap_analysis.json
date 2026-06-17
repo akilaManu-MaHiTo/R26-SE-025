@@ -1,0 +1,68 @@
+[
+  {
+    "question": "Q2a",
+    "required": "create",
+    "average_student_level": "analyze",
+    "gap": "HIGH"
+  },
+  {
+    "question": "Q1a",
+    "required": "apply",
+    "average_student_level": "evaluate",
+    "gap": "LOW"
+  },
+  {
+    "question": "Q3a",
+    "required": "analyze",
+    "average_student_level": "analyze",
+    "gap": "LOW"
+  },
+  {
+    "question": "Q3b",
+    "required": "understand",
+    "average_student_level": "analyze",
+    "gap": "LOW"
+  },
+  {
+    "question": "Q4a",
+    "required": "analyze",
+    "average_student_level": "analyze",
+    "gap": "LOW"
+  },
+  {
+    "question": "Q4b",
+    "required": "analyze",
+    "average_student_level": "evaluate",
+    "gap": "LOW"
+  },
+  {
+    "question": "Q4c",
+    "required": "apply",
+    "average_student_level": "analyze",
+    "gap": "LOW"
+  },
+  {
+    "question": "Q1b",
+    "required": "create",
+    "average_student_level": "analyze",
+    "gap": "MEDIUM"
+  },
+  {
+    "question": "Q2b",
+    "required": "create",
+    "average_student_level": "analyze",
+    "gap": "MEDIUM"
+  },
+  {
+    "question": "Q2c",
+    "required": "create",
+    "average_student_level": "evaluate",
+    "gap": "MEDIUM"
+  },
+  {
+    "question": "Q3c",
+    "required": "create",
+    "average_student_level": "evaluate",
+    "gap": "MEDIUM"
+  }
+]
