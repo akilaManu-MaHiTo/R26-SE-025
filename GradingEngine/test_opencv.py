@@ -6,7 +6,7 @@ from app.services.ocr_service import _process_image_to_clean_version
 input_image = "test_handwriting.jpeg"
 
 if not os.path.exists(input_image):
-    print(f"❌ Error: {input_image} not found! Put a photo in this folder.")
+    print(f"Error: {input_image} not found! Put a photo in this folder.")
 else:
     # 2. Run your DIP Preprocessor
     print("Processing image with OpenCV...")
@@ -25,7 +25,7 @@ else:
     cv2.imshow("Original Handwriting", display_original)
     cv2.imshow("DIP Cleaned (Black & White)", display_processed)
     
-    print("✅ Success! Windows opened. Press ANY KEY to close them.")
+    print("Success! Windows opened. Press ANY KEY to close them.")
     
     # 6. Wait for a key press, then clean up
     cv2.waitKey(0) # 0 means wait forever until a key is pressed
