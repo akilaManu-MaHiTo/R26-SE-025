@@ -1,1 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
 .venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Node.js
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build
+.next/
+out/
+
+# Vite build
+dist/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs & databases
+*.log
+*.sqlite3
+*.sql
+
+# Generated / runtime data (subproject-specific)
+**/uploads/
+**/runs/
+**/images/
+**/train/
+**/val/
+**/engine/
+**/videos/
+**/outputs/
+**/models/
+**/data/
+**/output/
+**/checkpoints/
+**/notebooks/
+
+# ZIP archives
+*.zip

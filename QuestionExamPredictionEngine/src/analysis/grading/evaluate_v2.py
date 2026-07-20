@@ -1,13 +1,17 @@
+from functools import lru_cache
 from pathlib import Path
-
-from sentence_transformers import SentenceTransformer, util
 
 from src.analysis.scoring.concept_scoring import extract_keywords, concept_score
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 MODEL_PATH = PROJECT_ROOT / "model" / "similarity" / "exam_similarity_model"
 
-model = SentenceTransformer(str(MODEL_PATH))
+
+@lru_cache(maxsize=1)
+def _get_model():
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer(str(MODEL_PATH))
+
 
 def grade_answer(model_answer, student_answer, max_marks):
     """
@@ -21,6 +25,10 @@ def grade_answer(model_answer, student_answer, max_marks):
     Returns:
         tuple: (similarity_score, concept_score, marks_obtained)
     """
+    from sentence_transformers import util
+
+    model = _get_model()
+
     # Encode and calculate semantic similarity
     emb1 = model.encode(model_answer, convert_to_tensor=True)
     emb2 = model.encode(student_answer, convert_to_tensor=True)
