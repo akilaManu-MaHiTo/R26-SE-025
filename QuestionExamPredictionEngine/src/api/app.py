@@ -17,7 +17,7 @@ QuestionExamPredictionEngine API
 Automated exam grading and student learning analytics for DBMS courses.
 - **Grade** student answers using semantic similarity + concept scoring
 - **Analyze** exams with weak topic detection, cognitive gap analysis, and more
-- **Predict** topics and performance trends across exam years
+- **Match** answer text to existing topics and summarize historical trends
 """
 
 app = FastAPI(
