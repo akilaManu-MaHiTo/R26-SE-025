@@ -26,3 +26,6 @@ notebooks/
 
 # ZIP archives
 *.zip
+
+/graphify-out
+/chroma_db
