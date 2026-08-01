@@ -1,0 +1,246 @@
+<mxfile host="app.diagrams.net" agent="Cursor" version="22.1.0" type="device">
+  <diagram id="grading-engine-erd" name="GradingEngine ERD">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="GradingEngine — Entity Relationship Diagram&#xa;(MongoDB + ChromaDB + disk staging)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#1F2937;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="560" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== COURSES ===================== -->
+        <mxCell id="courses" value="courses&#xa;(MongoDB)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#DBEAFE;strokeColor=#2563EB;fontColor=#1E3A8A;swimlaneFillColor=#EFF6FF;" vertex="1" parent="1">
+          <mxGeometry x="60" y="90" width="260" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="courses_pk" value="PK  _id : ObjectId" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" vertex="1" parent="courses">
+          <mxGeometry y="40" width="260" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="courses_code" value="UK  code : String  (e.g. SE3040)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="courses">
+          <mxGeometry y="68" width="260" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="courses_name" value="name : String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="courses">
+          <mxGeometry y="96" width="260" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="courses_desc" value="description : String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="courses">
+          <mxGeometry y="124" width="260" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== RUBRIC ===================== -->
+        <mxCell id="rubric" value="rubricCollection&#xa;(MongoDB)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#D1FAE5;strokeColor=#059669;fontColor=#064E3B;swimlaneFillColor=#ECFDF5;" vertex="1" parent="1">
+          <mxGeometry x="420" y="80" width="300" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="rubric_pk" value="PK  _id : ObjectId" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" vertex="1" parent="rubric">
+          <mxGeometry y="40" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="rubric_session" value="session_name : String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="rubric">
+          <mxGeometry y="68" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="rubric_subject" value="subject_code : String  (→ courses.code)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="rubric">
+          <mxGeometry y="96" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="rubric_file" value="filename : String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="rubric">
+          <mxGeometry y="124" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="rubric_parsed" value="parsed_at : Number (Unix mtime)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="rubric">
+          <mxGeometry y="152" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="rubric_questions" value="questions : Array&lt;Question&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=2" vertex="1" parent="rubric">
+          <mxGeometry y="180" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="rubric_qnote" value="  question_no, question_text," style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontColor=#6B7280;fontSize=11" vertex="1" parent="rubric">
+          <mxGeometry y="208" width="300" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="rubric_qnote2" value="  max_marks, criteria[], model_answer?" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontColor=#6B7280;fontSize=11" vertex="1" parent="rubric">
+          <mxGeometry y="232" width="300" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== SUBMISSIONS ===================== -->
+        <mxCell id="submissions" value="submissions&#xa;(MongoDB)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#FEF3C7;strokeColor=#D97706;fontColor=#78350F;swimlaneFillColor=#FFFBEB;" vertex="1" parent="1">
+          <mxGeometry x="820" y="60" width="340" height="420" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_pk" value="PK  _id : ObjectId" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" vertex="1" parent="submissions">
+          <mxGeometry y="40" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_fk" value="FK  rubric_ref : ObjectId  → rubric._id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" vertex="1" parent="submissions">
+          <mxGeometry y="66" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_session" value="session_name : String  (copied)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="submissions">
+          <mxGeometry y="92" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_subject" value="subject_code : String  (→ courses.code)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="submissions">
+          <mxGeometry y="118" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_sid" value="student_id : String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="submissions">
+          <mxGeometry y="144" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_max" value="max_marks_paper_total : Number" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="submissions">
+          <mxGeometry y="170" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_maxq" value="max_marks_per_question : Array" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="submissions">
+          <mxGeometry y="196" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_ocr" value="raw_ocr_transcript : String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="submissions">
+          <mxGeometry y="222" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_eval" value="evaluation : Object  (embedded)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=2" vertex="1" parent="submissions">
+          <mxGeometry y="248" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_status" value="status : String  (e.g. graded)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="submissions">
+          <mxGeometry y="274" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_at" value="processed_at : DateTime" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="submissions">
+          <mxGeometry y="300" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_note" value="lecturer_note : String?  (optional PATCH)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontColor=#6B7280" vertex="1" parent="submissions">
+          <mxGeometry y="326" width="340" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="sub_card" value="Cardinality: 1 document = 1 student paper" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=2;fontColor=#92400E;fontSize=11" vertex="1" parent="submissions">
+          <mxGeometry y="352" width="340" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== EVALUATION (embedded) ===================== -->
+        <mxCell id="evaluation" value="evaluation&#xa;(embedded in submissions)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#FCE7F3;strokeColor=#DB2777;fontColor=#831843;swimlaneFillColor=#FDF2F8;" vertex="1" parent="1">
+          <mxGeometry x="820" y="520" width="340" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="ev_total" value="total_score : Number" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="evaluation">
+          <mxGeometry y="40" width="340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ev_max" value="max_score : Number" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="evaluation">
+          <mxGeometry y="64" width="340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ev_just" value="justification / feedback : String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="evaluation">
+          <mxGeometry y="88" width="340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ev_results" value="results[] : { q_no, score, criteria_breakdown," style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="evaluation">
+          <mxGeometry y="112" width="340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ev_results2" value="  justification, feedback }" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="evaluation">
+          <mxGeometry y="136" width="340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ev_src" value="grading_source : colab | groq | mixed | ..." style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="evaluation">
+          <mxGeometry y="160" width="340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ev_rag" value="rag_context_used : Boolean" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="evaluation">
+          <mxGeometry y="184" width="340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ev_chunks" value="rag_chunks : Number ; rag_course : String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="evaluation">
+          <mxGeometry y="208" width="340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ev_ragq" value="rag_per_question : Object" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="evaluation">
+          <mxGeometry y="232" width="340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="ev_split" value="answer_split : { buckets_found, per_question_source }" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="evaluation">
+          <mxGeometry y="256" width="340" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== CHROMA ===================== -->
+        <mxCell id="chroma" value="lecture_notes chunks&#xa;(ChromaDB — not Mongo)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#E0E7FF;strokeColor=#4F46E5;fontColor=#312E81;swimlaneFillColor=#EEF2FF;" vertex="1" parent="1">
+          <mxGeometry x="60" y="320" width="300" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="ch_id" value="id : String  (e.g. se3040_pdf_p3)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontStyle=1" vertex="1" parent="chroma">
+          <mxGeometry y="40" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="ch_doc" value="document : String  (page/slide text)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="chroma">
+          <mxGeometry y="68" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="ch_course" value="metadata.course : String  (→ courses.code)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="chroma">
+          <mxGeometry y="96" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="ch_page" value="metadata.page_number : Number" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="chroma">
+          <mxGeometry y="124" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="ch_src" value="metadata.source_file : String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="chroma">
+          <mxGeometry y="152" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="ch_type" value="metadata.type : PDF | PPTX" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="chroma">
+          <mxGeometry y="180" width="300" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== BATCH DISK ===================== -->
+        <mxCell id="batch" value="uploads/batches (disk staging)&#xa;(not a DB entity)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=40;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#F3F4F6;strokeColor=#6B7280;fontColor=#111827;swimlaneFillColor=#F9FAFB;" vertex="1" parent="1">
+          <mxGeometry x="420" y="420" width="300" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="batch_id" value="batch_id : folder name" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="batch">
+          <mxGeometry y="40" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="batch_stu" value="&lt;student_id&gt;/ : folder per student" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="batch">
+          <mxGeometry y="68" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="batch_files" value="*.jpg | *.png | *.pdf  (raw papers)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="batch">
+          <mxGeometry y="96" width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="batch_note" value="Processed → OCR text into submissions" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontColor=#6B7280;fontSize=11" vertex="1" parent="batch">
+          <mxGeometry y="124" width="300" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== RELATIONSHIPS ===================== -->
+
+        <!-- courses.code —logical— rubric.subject_code -->
+        <mxCell id="rel1" value="1  matches by code  N&#xa;(logical; no ObjectId FK)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;startArrow=ERone;endFill=0;startFill=0;strokeColor=#2563EB;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="courses" target="rubric">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- courses.code —logical— chroma.course -->
+        <mxCell id="rel2" value="1  tags materials  N&#xa;(logical via course code)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;startArrow=ERone;endFill=0;startFill=0;strokeColor=#4F46E5;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="courses" target="chroma">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="80" y="290" />
+              <mxPoint x="80" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- rubric 1 — N submissions (real FK) -->
+        <mxCell id="rel3" value="1   graded into   N&#xa;FK: rubric_ref" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;startArrow=ERone;endFill=0;startFill=0;strokeColor=#059669;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rubric" target="submissions">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- courses —logical— submissions.subject_code -->
+        <mxCell id="rel4" value="1  session subject  N&#xa;(copied subject_code)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmany;startArrow=ERone;endFill=0;startFill=0;dashed=1;strokeColor=#D97706;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="courses_code" target="sub_subject">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="600" />
+              <mxPoint x="780" y="600" />
+              <mxPoint x="780" y="191" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- submissions embeds evaluation -->
+        <mxCell id="rel5" value="embeds 1:1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;startArrow=diamond;startFill=1;strokeColor=#DB2777;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="submissions" target="evaluation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- batch → submissions (process flow) -->
+        <mxCell id="rel6" value="OCR + grade&#xa;(process, not FK)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;dashed=1;strokeColor=#6B7280;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="batch" target="submissions">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="720" y="500" />
+              <mxPoint x="800" y="500" />
+              <mxPoint x="800" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- chroma used at grade time (RAG) -->
+        <mxCell id="rel7" value="RAG retrieve at grade time&#xa;(snippet → evaluation)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;dashed=1;strokeColor=#4F46E5;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="chroma" target="evaluation">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="210" y="560" />
+              <mxPoint x="210" y="880" />
+              <mxPoint x="820" y="880" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="Legend&#xa;• Solid FK arrow = real Mongo ObjectId reference&#xa;• Dashed / logical = match by course code string (no FK)&#xa;• evaluation is embedded JSON inside submissions (not a collection)&#xa;• Chroma + disk are separate stores outside MongoDB&#xa;• View results later: GET /submissions?rubric_id=..." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fillColor=#F9FAFB;strokeColor=#9CA3AF;fontColor=#374151;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="580" width="340" height="160" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -23,6 +23,14 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { AIPageBanner, AILoadingOverlay, AIBadgePill, type AIModel } from "./AIBrand";
+import { LectureMaterialsPanel, fetchCourses, formatCourseLabel, type CourseItem } from "./LectureMaterialsPanel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 const API_BASE_URL = (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
@@ -871,10 +879,12 @@ type GradingHistory = {
 };
 
 function HandwrittenGradingWorkflow() {
-  const [page, setPage] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(1);
+  const [page, setPage] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
 
   // Page 2: Session Initialization
-  const [subject, setSubject] = useState("SE3040");
+  const [subject, setSubject] = useState("");
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
   const [examName, setExamName] = useState("Semester 1 Final Exam");
   const [rubricFile, setRubricFile] = useState<File | null>(null);
   const [rubricId, setRubricId] = useState<string | null>(null);
@@ -927,6 +937,32 @@ function HandwrittenGradingWorkflow() {
 
   const rubricFileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+
+  const loadCourses = useCallback(async () => {
+    setCoursesLoading(true);
+    try {
+      const list = await fetchCourses(API_BASE_URL);
+      setCourses(list);
+      setSubject((prev) => {
+        if (prev && list.some((c) => c.code === prev)) return prev;
+        return list[0]?.code ?? "";
+      });
+    } catch {
+      setCourses([]);
+    } finally {
+      setCoursesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCourses();
+  }, [loadCourses]);
+
+  useEffect(() => {
+    if (page === 2 || page === 8) {
+      void loadCourses();
+    }
+  }, [page, loadCourses]);
 
   const fetchSubmissionsForRubric = async (rid: string) => {
     setSubmissionsLoading(true);
@@ -1330,7 +1366,7 @@ function HandwrittenGradingWorkflow() {
             <p className="text-sm text-slate-500 mt-1">Command center for AI-assisted answer grading</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-3 gap-6">
             {/* Card 1: Start AI Answer Grading */}
             <Card
               className="p-6 border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 hover:shadow-lg transition-shadow cursor-pointer"
@@ -1353,7 +1389,29 @@ function HandwrittenGradingWorkflow() {
               </div>
             </Card>
 
-            {/* Card 2: Ongoing Grading Tasks */}
+            {/* Card 2: Lecture Knowledge Base */}
+            <Card
+              className="p-6 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => setPage(8)}
+            >
+              <div className="flex items-start gap-4">
+                <div className="size-14 rounded-2xl bg-emerald-600 flex items-center justify-center shrink-0">
+                  <BookOpen className="size-7 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg text-slate-900 mb-1">Lecture Knowledge Base</h3>
+                  <p className="text-sm text-slate-600">
+                    Upload and manage lecture PDFs or PowerPoints indexed for RAG during grading.
+                  </p>
+                  <div className="mt-3 flex items-center gap-2 text-emerald-700">
+                    <span className="text-sm">Manage materials</span>
+                    <ArrowRight className="size-4" />
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Card 3: Ongoing Grading Tasks */}
             <Card className="p-6 border-slate-200 bg-slate-50">
               <div className="flex items-start gap-4">
                 <div className="size-14 rounded-2xl bg-blue-100 flex items-center justify-center shrink-0">
@@ -1418,8 +1476,44 @@ function HandwrittenGradingWorkflow() {
 
           <Card className="p-6 border-slate-200 space-y-5">
             <div>
-              <label className="text-sm text-slate-700 mb-2 block">Subject Selection</label>
-              <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g., SE3040, CS2020" />
+              <label className="text-sm text-slate-700 mb-2 block">Subject / course</label>
+              <Select
+                value={subject || undefined}
+                onValueChange={setSubject}
+                disabled={coursesLoading || courses.length === 0}
+              >
+                <SelectTrigger className="w-full bg-white">
+                  <SelectValue
+                    placeholder={
+                      coursesLoading
+                        ? "Loading courses..."
+                        : courses.length
+                          ? "Select a course"
+                          : "No courses yet — add one in Knowledge Base"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.map((course) => (
+                    <SelectItem key={course._id} value={course.code}>
+                      {formatCourseLabel(course)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-400 mt-1">
+                Managed in Lecture Knowledge Base. RAG will only use materials tagged with this course.
+              </p>
+              {courses.length === 0 && !coursesLoading && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="px-0 h-auto text-violet-700"
+                  onClick={() => setPage(8)}
+                >
+                  Manage courses / upload lecture materials
+                </Button>
+              )}
             </div>
 
             <div>
@@ -1471,7 +1565,7 @@ function HandwrittenGradingWorkflow() {
             <Button
               className="bg-violet-600 hover:bg-violet-700"
               onClick={handleSessionContinue}
-              disabled={!subject || !examName || rubricLoading}
+              disabled={!subject || !examName || rubricLoading || courses.length === 0}
             >
               {rubricLoading ? (
                 <><RefreshCw className="size-4 mr-2 animate-spin" /> Extracting rubric...</>
@@ -2020,7 +2114,37 @@ function HandwrittenGradingWorkflow() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="text-xs text-slate-500 mb-3">Score breakdown (from API)</div>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="text-xs text-slate-500">Score breakdown (from API)</div>
+                        {selectedStudent.evaluation && (
+                          <div className="flex flex-wrap items-center gap-1.5 justify-end">
+                            {typeof selectedStudent.evaluation.grading_source === "string" && (
+                              <Badge variant="outline" className="text-[10px] font-normal">
+                                Engine: {String(selectedStudent.evaluation.grading_source)}
+                              </Badge>
+                            )}
+                            {selectedStudent.evaluation.rag_context_used ? (
+                              <Badge className="text-[10px] font-normal bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100">
+                                RAG: {Number(selectedStudent.evaluation.rag_chunks ?? 0)} chunk
+                                {Number(selectedStudent.evaluation.rag_chunks ?? 0) === 1 ? "" : "s"}
+                                {selectedStudent.evaluation.rag_course
+                                  ? ` (${String(selectedStudent.evaluation.rag_course)})`
+                                  : ""}
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-normal text-amber-700 border-amber-300 bg-amber-50"
+                              >
+                                RAG: none
+                                {selectedStudent.evaluation.rag_course
+                                  ? ` for ${String(selectedStudent.evaluation.rag_course)}`
+                                  : ""}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       {Array.isArray(selectedStudent.evaluation?.results) &&
                       (selectedStudent.evaluation?.results as unknown[]).length > 0 ? (
                         (selectedStudent.evaluation?.results as Record<string, unknown>[]).map((row, i) => {
@@ -2178,6 +2302,26 @@ function HandwrittenGradingWorkflow() {
               <CheckCircle2 className="size-4 mr-2" /> Finish Session
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* ═══ PAGE 8: Lecture Knowledge Base (RAG) ═══ */}
+      {page === 8 && (
+        <div className="space-y-6 max-w-3xl">
+          <div>
+            <h2 className="tracking-tight text-slate-900">Lecture Knowledge Base</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Manage subjects/courses, then upload lecture PDFs or PowerPoints. Materials are indexed once and filtered by course during grading.
+            </p>
+          </div>
+
+          <Card className="p-6 border-slate-200">
+            <LectureMaterialsPanel apiBaseUrl={API_BASE_URL} />
+          </Card>
+
+          <Button variant="outline" onClick={() => setPage(1)}>
+            <ArrowLeft className="size-4 mr-2" /> Back to command center
+          </Button>
         </div>
       )}
 

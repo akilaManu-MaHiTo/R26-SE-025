@@ -19,6 +19,13 @@ from app.services.batch_upload import (
 )
 from app.services.ocr_service import process_student_answer
 from app.services.grading_manager import run_batch_grading
+from app.services.ai_model_route import router as ai_model_router
+from app.services.ingest_manager import process_and_index_lecture
+from app.services.rag_service import (
+    delete_all_lecture_materials_for_course,
+    delete_lecture_material,
+    list_indexed_lectures,
+)
 
 
 @asynccontextmanager
@@ -46,6 +53,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(ai_model_router)
+
 
 class RubricUpdatePayload(BaseModel):
     session_name: str | None = None
@@ -72,6 +81,22 @@ class SubmissionUpdatePayload(BaseModel):
     evaluation: dict | None = None
 
 
+class CourseCreatePayload(BaseModel):
+    code: str = Field(..., min_length=1)
+    name: str = Field(default="")
+    description: str = Field(default="")
+
+
+def _normalize_course_code(value: str) -> str:
+    return " ".join((value or "").strip().upper().split())
+
+
+def _serialize_course_doc(course: dict) -> dict:
+    course = dict(course)
+    course["_id"] = str(course["_id"])
+    return course
+
+
 def _serialize_rubric_doc(rubric: dict) -> dict:
     rubric = dict(rubric)
     rubric["_id"] = str(rubric["_id"])
@@ -87,6 +112,142 @@ def _serialize_submission_doc(submission: dict) -> dict:
     if hasattr(processed_at, "isoformat"):
         submission["processed_at"] = processed_at.isoformat()
     return submission
+
+
+@app.post("/upload-lecture-notes")
+async def upload_lecture_notes(
+    file: UploadFile = File(...),
+    course_name: str = Form(...),
+):
+    lower_name = (file.filename or "").lower()
+    if not file.filename or not lower_name.endswith((".pdf", ".pptx")):
+        raise HTTPException(status_code=400, detail="Only PDF and PPTX files are supported.")
+
+    temp_path = f"temp_{uuid4().hex}_{Path(file.filename).name}"
+    try:
+        file_bytes = await file.read()
+        if not file_bytes:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+        with open(temp_path, "wb") as buffer:
+            buffer.write(file_bytes)
+
+        indexed_items = process_and_index_lecture(temp_path, _normalize_course_code(course_name))
+        if indexed_items == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="No extractable text found. Scanned/image-only pages or empty slides are skipped.",
+            )
+
+        return {
+            "status": "success",
+            "course_name": _normalize_course_code(course_name),
+            "indexed_items": indexed_items,
+            "indexed_pages": indexed_items,
+            "filename": file.filename,
+        }
+    except HTTPException:
+        raise
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"Error during lecture notes upload: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+@app.get("/lecture-notes")
+async def get_lecture_notes(course_name: str | None = Query(default=None)):
+    try:
+        items = list_indexed_lectures(course_name)
+        return {"status": "success", "count": len(items), "items": items}
+    except Exception as e:
+        print(f"Error listing lecture notes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/lecture-notes")
+async def remove_lecture_notes(
+    course_name: str = Query(...),
+    filename: str = Query(...),
+):
+    try:
+        deleted_chunks = delete_lecture_material(course_name, filename)
+        if deleted_chunks == 0:
+            raise HTTPException(status_code=404, detail="Lecture material not found.")
+        return {
+            "status": "success",
+            "course_name": course_name.strip(),
+            "filename": filename.strip(),
+            "deleted_chunks": deleted_chunks,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting lecture notes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/courses")
+async def list_courses():
+    docs = await db_instance.courses_col.find({}).sort("code", 1).to_list(length=500)
+    return {
+        "status": "success",
+        "count": len(docs),
+        "items": [_serialize_course_doc(doc) for doc in docs],
+    }
+
+
+@app.post("/courses")
+async def create_course(payload: CourseCreatePayload):
+    code = _normalize_course_code(payload.code)
+    if not code:
+        raise HTTPException(status_code=400, detail="Course code is required.")
+
+    name = (payload.name or "").strip() or code
+    description = (payload.description or "").strip()
+
+    existing = await db_instance.courses_col.find_one({"code": code})
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Course '{code}' already exists.")
+
+    doc = {
+        "code": code,
+        "name": name,
+        "description": description,
+    }
+    result = await db_instance.courses_col.insert_one(doc)
+    created = await db_instance.courses_col.find_one({"_id": result.inserted_id})
+    return {"status": "success", "item": _serialize_course_doc(created)}
+
+
+@app.delete("/courses/{course_code}")
+async def delete_course(
+    course_code: str,
+    purge_materials: bool = Query(default=True),
+):
+    code = _normalize_course_code(course_code)
+    existing = await db_instance.courses_col.find_one({"code": code})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Course not found.")
+
+    await db_instance.courses_col.delete_one({"code": code})
+    deleted_chunks = 0
+    if purge_materials:
+        # Match both stored code and any legacy casing variants via exact code used at upload.
+        deleted_chunks = delete_all_lecture_materials_for_course(code)
+        # Also try original casing from the document if different
+        legacy = str(existing.get("code") or "").strip()
+        if legacy and legacy != code:
+            deleted_chunks += delete_all_lecture_materials_for_course(legacy)
+
+    return {
+        "status": "success",
+        "code": code,
+        "deleted_chunks": deleted_chunks,
+    }
 
 
 @app.get("/")
@@ -123,7 +284,7 @@ async def upload_rubric(
 
         rubric_document = {
             "session_name": session_name,
-            "subject_code": subject_code,
+            "subject_code": _normalize_course_code(subject_code),
             "filename": file.filename,
             "parsed_at": os.path.getmtime(temp_path),
             "questions": structured_data,
@@ -189,7 +350,7 @@ async def update_rubric(rubric_id: str, payload: RubricUpdatePayload):
     if payload.session_name is not None:
         update_fields["session_name"] = payload.session_name
     if payload.subject_code is not None:
-        update_fields["subject_code"] = payload.subject_code
+        update_fields["subject_code"] = _normalize_course_code(payload.subject_code)
 
     result = await db_instance.rubric_col.update_one(
         {"_id": ObjectId(rubric_id)},
