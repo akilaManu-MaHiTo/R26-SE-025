@@ -76,10 +76,17 @@ Thumbs.db
 # Logs and databases
 *.log
 *.sql
-*.sqlite3
+
 
 # Uploaded or user data
 uploads/
+
+# Local vector store
+
+
+# Sample ingest artifacts
+sample_university_lecture.pdf
+test_per_question_grading_output.json
 
 # Jupyter
 .ipynb_checkpoints
