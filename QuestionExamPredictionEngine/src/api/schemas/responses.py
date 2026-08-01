@@ -57,6 +57,9 @@ class StudentReportRecord(BaseModel):
     year: str
     question: str
     part: str
+    score: float
+    max_marks: float
+    concept_reference_source: str
     performance_score: float
     concept_score: float
     cognitive_score: float

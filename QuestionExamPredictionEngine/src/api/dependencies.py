@@ -48,8 +48,10 @@ def get_topics() -> list[str]:
     return load_json(settings.topics_path)
 
 
-def get_model_answer(year: int = 2021) -> dict:
+def get_model_answer(year: int = 2021, *, required: bool = False) -> dict:
     path = settings.data_dir / "model_answer" / f"model_answer_{year}.json"
+    if not required and not path.exists():
+        return {}
     return load_json(path)
 
 

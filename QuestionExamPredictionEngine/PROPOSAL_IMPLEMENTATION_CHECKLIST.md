@@ -46,7 +46,7 @@ This checklist maps the proposal's main objective, six specific objectives, tech
 - [ ] **Bloom's Taxonomy / cognitive-skill analysis.** Six Bloom levels, a TF-IDF + logistic-regression classifier, rule-based fallback, question/answer comparison, and gap summaries are integrated. However, the saved model's metadata reports only **16.68% validation accuracy** on 4,855 rows, so this component is not yet research-valid; it also does not use the proposed BERT/RoBERTa approach.
 - [ ] **Question-type analysis.** Bloom classification and heuristic difficulty bands exist, but there is no separate classifier/taxonomy for question structures or types.
 - [ ] **FR4 - Group similar questions into concept clusters.** Questions can be grouped by pre-existing topic labels and matched with token overlap, but topics are not discovered and questions are not algorithmically clustered by semantic similarity.
-- [ ] **FR5/FR6 - Concept-gap reliability.** The pipeline combines performance and cognitive data correctly, but `src/api/routers/analytics.py:65-66` extracts keywords from the student's own answer and then scores that answer against those same keywords. It should score against reference-answer or validated concept keywords to avoid inflated concept scores.
+- [ ] **FR5/FR6 - Concept-gap reliability.** The self-referential scoring defect has been corrected: reports now use a model/reference answer when available and record `concept_reference_source`. Only 2021 currently has a separate model-answer dataset; other years fall back to question text, so verified reference answers and instructor validation are still required.
 - [ ] **FR7 - Predictive analytics.** `/predict/topics` and `/predict/trends` provide useful scaffolding, but the former ranks current exam topics from a student's answer using token overlap and the latter fits descriptive score slopes. Neither forecasts future exam topics or future question structures.
 - [ ] **FR8 - Analytical reporting.** JSON report generation is complete, but visual reports, charts, heatmaps, concept-cluster views, and an interactive dashboard are absent.
 - [ ] **FR9 - Lecturer insight access.** The generic analytics API returns weaknesses and trends that a lecturer could consume, but there is no lecturer-specific authenticated view, cohort/course filtering, dashboard, export, or teaching-action workflow.
@@ -105,6 +105,7 @@ This checklist maps the proposal's main objective, six specific objectives, tech
 - Extracted all 27 PDF pages and reviewed the objective, methodology, tools/platforms, validation, stakeholder, FR1-FR10, non-functional, and commercialization sections.
 - Inspected all tracked source files plus ignored/local `data/`, `output/`, and saved model artifacts.
 - `python -m compileall -q src`: **passed**.
+- `python -m unittest discover -s tests -v`: **9 regression tests passed** after the cleanup.
 - `examples/test_predictions_trends.py`: **passed**.
 - `examples/test_all_years.py`: **passed** across the 2021-2025 datasets. Note: these scripts print demonstrations and do not contain research-grade assertions or held-out forecasting evaluation.
 - Existing generated analytical outputs were found for 2021, 2023, 2024, and 2025. A complete generated analysis output for 2022 was not found.
