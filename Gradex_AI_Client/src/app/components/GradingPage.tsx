@@ -158,11 +158,11 @@ function CameraModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+      <div className="bg-card rounded-2xl shadow-2xl border border-border w-full max-w-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-2 text-slate-800">
-            <Camera className="size-5 text-blue-600" />
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2 text-foreground">
+            <Camera className="size-5 text-primary" />
             <span>Capture student paper</span>
           </div>
           <Button size="icon" variant="ghost" className="size-8" onClick={onClose}>
@@ -184,11 +184,11 @@ function CameraModal({
               {/* guide overlay */}
               <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute inset-8 border-2 border-white/40 rounded-lg" />
-                <div className="absolute top-8 left-8 w-8 h-8 border-t-2 border-l-2 border-blue-400 rounded-tl-lg" />
-                <div className="absolute top-8 right-8 w-8 h-8 border-t-2 border-r-2 border-blue-400 rounded-tr-lg" />
-                <div className="absolute bottom-8 left-8 w-8 h-8 border-b-2 border-l-2 border-blue-400 rounded-bl-lg" />
-                <div className="absolute bottom-8 right-8 w-8 h-8 border-b-2 border-r-2 border-blue-400 rounded-br-lg" />
-                <div className="absolute inset-x-0 top-1/2 h-px bg-blue-400/30" />
+                <div className="absolute top-8 left-8 w-8 h-8 border-t-2 border-l-2 border-white/70 rounded-tl-lg" />
+                <div className="absolute top-8 right-8 w-8 h-8 border-t-2 border-r-2 border-white/70 rounded-tr-lg" />
+                <div className="absolute bottom-8 left-8 w-8 h-8 border-b-2 border-l-2 border-white/70 rounded-bl-lg" />
+                <div className="absolute bottom-8 right-8 w-8 h-8 border-b-2 border-r-2 border-white/70 rounded-br-lg" />
+                <div className="absolute inset-x-0 top-1/2 h-px bg-white/30" />
               </div>
               {loading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-2">
@@ -213,8 +213,8 @@ function CameraModal({
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-between px-5 py-4 bg-slate-50">
-          <div className="text-xs text-slate-500 flex items-center gap-1.5">
+        <div className="flex items-center justify-between px-5 py-4 bg-muted">
+          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
             <ScanLine className="size-3.5" />
             {captured ? "Preview — looks good? Confirm to proceed." : "Align the paper within the guide frame"}
           </div>
@@ -224,13 +224,13 @@ function CameraModal({
                 <Button variant="outline" onClick={retake}>
                   <RotateCcw className="size-4 mr-2" /> Retake
                 </Button>
-                <Button className="bg-blue-600 hover:bg-blue-700" onClick={confirm}>
+                <Button className="bg-primary hover:bg-primary/90" onClick={confirm}>
                   <CheckCircle2 className="size-4 mr-2" /> Use this photo
                 </Button>
               </>
             ) : (
               <Button
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-primary hover:bg-primary/90"
                 onClick={capture}
                 disabled={loading || !!error}
               >
@@ -255,14 +255,14 @@ function OcrOverlay({ lines }: { lines: OcrLine[] }) {
         >
           <span
             className={`shrink-0 mt-0.5 text-[10px] px-1 rounded ${
-              l.conf >= 0.9 ? "bg-emerald-100 text-emerald-700" :
+              l.conf >= 0.9 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300" :
               l.conf >= 0.75 ? "bg-amber-100 text-amber-700" :
-              "bg-red-100 text-red-700"
+              "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300"
             }`}
           >
             {Math.round(l.conf * 100)}%
           </span>
-          <span className="text-slate-700 leading-tight">{l.text}</span>
+          <span className="text-slate-800 leading-tight">{l.text}</span>
           {l.highlight && <AlertCircle className="size-3 shrink-0 mt-0.5 text-amber-500" />}
         </div>
       ))}
@@ -273,9 +273,9 @@ function OcrOverlay({ lines }: { lines: OcrLine[] }) {
 /* ─── Diagram Node overlay ───────────────────────────────────────────────── */
 function DiagramOverlay({ nodes }: { nodes: DiagramNode[] }) {
   const typeColor: Record<DiagramNode["type"], string> = {
-    entity: "border-blue-500 bg-blue-50/80 text-blue-800",
-    relation: "border-amber-500 bg-amber-50/80 text-amber-800",
-    attribute: "border-emerald-500 bg-emerald-50/80 text-emerald-800",
+    entity: "border-primary/50 bg-accent/80 text-foreground",
+    relation: "border-amber-500/50 bg-amber-100/80 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200",
+    attribute: "border-emerald-500/50 bg-emerald-100/80 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-200",
   };
   return (
     <div className="space-y-1.5">
@@ -287,7 +287,7 @@ function DiagramOverlay({ nodes }: { nodes: DiagramNode[] }) {
           <span className="capitalize text-[10px] opacity-60 w-14 shrink-0">{n.type}</span>
           <span className="flex-1">{n.label}</span>
           {n.issue ? (
-            <Badge className="bg-red-100 text-red-700 border-red-200 border text-[10px] px-1">
+            <Badge className="bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 border-red-200 border text-[10px] px-1">
               ⚠ {n.issue}
             </Badge>
           ) : n.detected ? (
@@ -404,11 +404,11 @@ function DiagramGradingPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Icon className="size-4" /> Diagram Grader
             </div>
-            <h2 className="tracking-tight text-slate-900 mt-1">{title}</h2>
-            <div className="text-sm text-slate-500 mt-1">
+            <h2 className="tracking-tight text-foreground mt-1">{title}</h2>
+            <div className="text-sm text-muted-foreground mt-1">
               Database Systems · Final Exam · {uploadedFileName ? uploadedFileName : "Paper 24/47"}
             </div>
           </div>
@@ -419,7 +419,7 @@ function DiagramGradingPage() {
             <Button
               onClick={onExtract}
               disabled={processing}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
+              className="bg-primary hover:bg-primary/90 disabled:opacity-60"
             >
               {processing ? (
                 <><RefreshCw className="size-4 mr-2 animate-spin" /> Extracting…</>
@@ -432,14 +432,14 @@ function DiagramGradingPage() {
 
         <div className="grid lg:grid-cols-5 gap-6">
           {/* ── Left: document viewer ─────────────────────────────────── */}
-          <Card className="lg:col-span-3 border-slate-200 overflow-hidden flex flex-col">
+          <Card className="lg:col-span-3 border-border overflow-hidden flex flex-col">
             {/* toolbar */}
-            <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50 gap-2">
+            <div className="px-4 py-2.5 border-b border-border flex items-center justify-between bg-muted gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <FileImage className="size-4 shrink-0 text-slate-400" />
-                <span className="text-sm text-slate-600 truncate">{displayFileName}</span>
+                <FileImage className="size-4 shrink-0 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground truncate">{displayFileName}</span>
                 {uploadedImage && (
-                  <Badge className="bg-blue-50 text-blue-700 border-0 text-[10px] shrink-0">
+                  <Badge className="bg-accent text-primary border-0 text-[10px] shrink-0">
                     {uploadedFileName?.match(/\.(jpg|jpeg|png|webp)$/i) ? "IMAGE" : "PDF"}
                   </Badge>
                 )}
@@ -447,16 +447,16 @@ function DiagramGradingPage() {
               <div className="flex items-center gap-1 shrink-0">
                 {/* Tab: Preview / Extracted */}
                 {done && (
-                  <div className="flex bg-slate-100 rounded-lg p-0.5 mr-2">
+                  <div className="flex bg-muted rounded-lg p-0.5 mr-2">
                     <button
                       onClick={() => setActiveTab("preview")}
-                      className={`text-xs px-2.5 py-1 rounded-md transition-colors ${activeTab === "preview" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                      className={`text-xs px-2.5 py-1 rounded-md transition-colors ${activeTab === "preview" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <Eye className="size-3 inline mr-1" />Preview
                     </button>
                     <button
                       onClick={() => setActiveTab("extracted")}
-                      className={`text-xs px-2.5 py-1 rounded-md transition-colors ${activeTab === "extracted" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                      className={`text-xs px-2.5 py-1 rounded-md transition-colors ${activeTab === "extracted" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <Layers className="size-3 inline mr-1" />Nodes
                     </button>
@@ -465,7 +465,7 @@ function DiagramGradingPage() {
                 <Button size="icon" variant="ghost" className="size-8" onClick={() => setZoom(z => Math.max(50, z - 25))}>
                   <ZoomOut className="size-4" />
                 </Button>
-                <span className="text-xs text-slate-500 w-10 text-center">{zoom}%</span>
+                <span className="text-xs text-muted-foreground w-10 text-center">{zoom}%</span>
                 <Button size="icon" variant="ghost" className="size-8" onClick={() => setZoom(z => Math.min(200, z + 25))}>
                   <ZoomIn className="size-4" />
                 </Button>
@@ -479,9 +479,9 @@ function DiagramGradingPage() {
 
             {/* extraction progress bar */}
             {processing && (
-              <div className="h-1 bg-slate-100">
+              <div className="h-1 bg-muted">
                 <div
-                  className="h-full bg-blue-500 transition-all duration-300"
+                  className="h-full bg-accent0 transition-all duration-300"
                   style={{ width: `${extractProgress}%` }}
                 />
               </div>
@@ -489,7 +489,7 @@ function DiagramGradingPage() {
 
             {/* document area */}
             <div
-              className="flex-1 bg-slate-100 relative overflow-auto"
+              className="flex-1 bg-muted relative overflow-auto"
               style={{ minHeight: "420px" }}
             >
               <div
@@ -517,11 +517,11 @@ function DiagramGradingPage() {
 
                 {/* Extracted view for uploaded image */}
                 {uploadedImage && activeTab === "extracted" && done && (
-                  <div className="bg-white rounded-lg shadow-md w-full p-5 space-y-3">
-                    <div className="flex items-center gap-2 text-slate-700 pb-2 border-b border-slate-100">
-                      <Layers className="size-4 text-blue-600" />
+                  <div className="bg-card rounded-lg shadow-md border border-border w-full p-5 space-y-3">
+                    <div className="flex items-center gap-2 text-foreground pb-2 border-b border-border">
+                      <Layers className="size-4 text-primary" />
                       <span className="text-sm">Detected diagram elements</span>
-                      <Badge className="ml-auto bg-blue-50 text-blue-700 border-0">
+                      <Badge className="ml-auto bg-accent text-primary border-0">
                         {MOCK_DIAGRAM_NODES.length} elements
                       </Badge>
                     </div>
@@ -532,9 +532,9 @@ function DiagramGradingPage() {
                 {/* Default mock paper (no upload) */}
                 {!uploadedImage && (
                   <div className="w-full max-w-lg bg-white rounded-md shadow-sm p-8 overflow-hidden">
-                    <div className="text-xs text-slate-400 uppercase tracking-wider">DB Systems · Final · 2026</div>
-                    <div className="mt-2 text-slate-900 tracking-tight">Question 2: ER Diagram</div>
-                    <div className="text-xs text-slate-500 mt-1">Design an ER diagram for a university enrollment system…</div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wider">DB Systems · Final · 2026</div>
+                    <div className="mt-2 text-foreground tracking-tight">Question 2: ER Diagram</div>
+                    <div className="text-xs text-muted-foreground mt-1">Design an ER diagram for a university enrollment system…</div>
 
                     <svg viewBox="0 0 400 260" className="mt-6 w-full">
                       <rect x="20" y="40" width="100" height="40" rx="6" fill="#dbeafe" stroke="#2563eb" />
@@ -571,11 +571,11 @@ function DiagramGradingPage() {
           {/* ── Right: upload + results ──────────────────────────────────── */}
           <div className="lg:col-span-2 space-y-5">
             {/* Upload card */}
-            <Card className="p-5 border-slate-200 space-y-3">
+            <Card className="p-5 border-border space-y-3">
               <div className="flex items-center justify-between">
-                <div className="text-slate-900">Upload diagram / photo</div>
+                <div className="text-foreground">Upload diagram / photo</div>
                 {uploadedImage && (
-                  <Badge className="bg-emerald-50 text-emerald-700 border-0">
+                  <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-0">
                     <CheckCircle2 className="size-3 mr-1" /> Loaded
                   </Badge>
                 )}
@@ -585,14 +585,14 @@ function DiagramGradingPage() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setCameraOpen(true)}
-                  className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-colors cursor-pointer group"
+                  className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 border-dashed border-border bg-muted hover:bg-accent hover:border-primary/50 transition-colors cursor-pointer group"
                 >
-                  <div className="size-10 rounded-full bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center text-slate-500 group-hover:text-blue-600 transition-colors">
+                  <div className="size-10 rounded-full bg-muted group-hover:bg-accent flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
                     <Camera className="size-5" />
                   </div>
                   <div className="text-center">
-                    <div className="text-sm text-slate-700 group-hover:text-blue-700">Use camera</div>
-                    <div className="text-xs text-slate-400 mt-0.5">Capture live photo</div>
+                    <div className="text-sm text-foreground group-hover:text-primary">Use camera</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Capture live photo</div>
                   </div>
                 </button>
 
@@ -602,17 +602,17 @@ function DiagramGradingPage() {
                   onDragLeave={() => setDragOver(false)}
                   onDrop={onFileDrop}
                   className={`flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 border-dashed transition-colors cursor-pointer group ${
-                    dragOver ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300"
+                    dragOver ? "border-primary/60 bg-accent" : "border-border bg-muted hover:bg-accent hover:border-primary/50"
                   }`}
                 >
-                  <div className={`size-10 rounded-full flex items-center justify-center transition-colors ${dragOver ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600"}`}>
+                  <div className={`size-10 rounded-full flex items-center justify-center transition-colors ${dragOver ? "bg-accent text-primary" : "bg-muted text-muted-foreground group-hover:bg-accent group-hover:text-primary"}`}>
                     <ImageIcon className="size-5" />
                   </div>
                   <div className="text-center">
-                    <div className={`text-sm transition-colors ${dragOver ? "text-blue-700" : "text-slate-700 group-hover:text-blue-700"}`}>
+                    <div className={`text-sm transition-colors ${dragOver ? "text-primary" : "text-foreground group-hover:text-primary"}`}>
                       {dragOver ? "Drop to upload" : "Upload file"}
                     </div>
-                    <div className="text-xs text-slate-400 mt-0.5">PDF · JPG · PNG</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">PDF · JPG · PNG</div>
                   </div>
                 </button>
               </div>
@@ -631,10 +631,10 @@ function DiagramGradingPage() {
 
               {/* Uploaded file pill */}
               {uploadedImage && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100">
-                  <FileImage className="size-4 text-blue-500 shrink-0" />
-                  <span className="text-xs text-blue-700 truncate flex-1">{uploadedFileName}</span>
-                  <button onClick={clearImage} className="text-blue-400 hover:text-red-500 transition-colors">
+                <div className="flex items-center gap-2 px-3 py-2 bg-accent rounded-lg border border-border">
+                  <FileImage className="size-4 text-primary shrink-0" />
+                  <span className="text-xs text-primary truncate flex-1">{uploadedFileName}</span>
+                  <button onClick={clearImage} className="text-muted-foreground hover:text-destructive transition-colors">
                     <X className="size-3.5" />
                   </button>
                 </div>
@@ -648,7 +648,7 @@ function DiagramGradingPage() {
 
               {/* Tips */}
               {!uploadedImage && (
-                <div className="text-xs text-slate-400 space-y-1 pt-1">
+                <div className="text-xs text-muted-foreground space-y-1 pt-1">
                   <div className="flex items-center gap-1.5"><ChevronRight className="size-3" />Ensure good lighting for camera capture</div>
                   <div className="flex items-center gap-1.5"><ChevronRight className="size-3" />Flatten paper to avoid distortion</div>
                   <div className="flex items-center gap-1.5"><ChevronRight className="size-3" />Max file size 25 MB</div>
@@ -658,7 +658,7 @@ function DiagramGradingPage() {
               {/* Extract button (in card for quick access) */}
               {uploadedImage && !done && (
                 <Button
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  className="w-full bg-primary hover:bg-primary/90"
                   onClick={onExtract}
                   disabled={processing}
                 >
@@ -673,32 +673,32 @@ function DiagramGradingPage() {
 
             {/* Results card */}
             {done && (
-              <Card className="p-5 border-slate-200">
+              <Card className="p-5 border-border">
                 <div className="flex items-center justify-between">
-                  <div className="text-slate-900">Results</div>
-                  <Badge className="bg-emerald-50 text-emerald-700 border-0 hover:bg-emerald-50">
+                  <div className="text-foreground">Results</div>
+                  <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-0 hover:bg-emerald-50">
                     <CheckCircle2 className="size-3 mr-1" /> Graded
                   </Badge>
                 </div>
 
                 <div className="mt-4 flex items-end gap-4">
                   <div>
-                    <div className="text-xs text-slate-500 uppercase tracking-wide">Total score</div>
-                    <div className="tracking-tight text-slate-900 mt-0.5">
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Total score</div>
+                    <div className="tracking-tight text-foreground mt-0.5">
                       <span className="text-3xl">{total}</span>
-                      <span className="text-slate-400">/{max}</span>
+                      <span className="text-muted-foreground">/{max}</span>
                     </div>
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                      <span>AI confidence</span><span className="text-blue-600">87%</span>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                      <span>AI confidence</span><span className="text-primary">87%</span>
                     </div>
                     <Progress value={87} />
                   </div>
                 </div>
 
                 {/* OCR/diagram summary pill */}
-                <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs bg-blue-50 text-blue-700">
+                <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs bg-accent text-primary">
                   <Layers className="size-3.5 shrink-0" />
                   {MOCK_DIAGRAM_NODES.filter(n => n.detected).length}/{MOCK_DIAGRAM_NODES.length} elements detected · 1 issue flagged
                 </div>
@@ -709,17 +709,17 @@ function DiagramGradingPage() {
                   {breakdown.map((b) => (
                     <div key={b.q}>
                       <div className="flex items-center justify-between text-sm">
-                        <div className="text-slate-700 truncate pr-2">{b.q}</div>
-                        <div className="text-slate-900 shrink-0">{b.s}/{b.m}</div>
+                        <div className="text-foreground truncate pr-2">{b.q}</div>
+                        <div className="text-foreground shrink-0">{b.s}/{b.m}</div>
                       </div>
                       <div className="flex items-center gap-2 mt-1.5">
                         <Progress value={(b.s / b.m) * 100} className="flex-1 h-1.5" />
                         <Badge
                           variant="secondary"
                           className={
-                            b.conf >= 0.9 ? "bg-emerald-50 text-emerald-700 border-0" :
-                            b.conf >= 0.75 ? "bg-amber-50 text-amber-700 border-0" :
-                            "bg-red-50 text-red-700 border-0"
+                            b.conf >= 0.9 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-0" :
+                            b.conf >= 0.75 ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 border-0" :
+                            "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 border-0"
                           }
                         >
                           {Math.round(b.conf * 100)}%
@@ -732,7 +732,7 @@ function DiagramGradingPage() {
                 <Separator className="my-4" />
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1">Review flags</Button>
-                  <Button className="flex-1 bg-blue-600 hover:bg-blue-700">Publish grade</Button>
+                  <Button className="flex-1 bg-primary hover:bg-primary/90">Publish grade</Button>
                 </div>
               </Card>
             )}
@@ -1362,26 +1362,26 @@ function HandwrittenGradingWorkflow() {
       {page === 1 && (
         <div className="space-y-6">
           <div>
-            <h2 className="tracking-tight text-slate-900">Project Nexus: AI Evaluation Suite</h2>
-            <p className="text-sm text-slate-500 mt-1">Command center for AI-assisted answer grading</p>
+            <h2 className="tracking-tight text-foreground">Project Nexus: AI Evaluation Suite</h2>
+            <p className="text-sm text-muted-foreground mt-1">Command center for AI-assisted answer grading</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {/* Card 1: Start AI Answer Grading */}
             <Card
-              className="p-6 border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 hover:shadow-lg transition-shadow cursor-pointer"
+              className="p-6 border-border bg-card hover:border-primary/40 hover:shadow-md transition-all cursor-pointer"
               onClick={() => setPage(2)}
             >
               <div className="flex items-start gap-4">
-                <div className="size-14 rounded-2xl bg-violet-600 flex items-center justify-center shrink-0">
-                  <Sparkles className="size-7 text-white" />
+                <div className="size-14 rounded-2xl bg-primary flex items-center justify-center shrink-0">
+                  <Sparkles className="size-7 text-primary-foreground" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg text-slate-900 mb-1">Start AI Answer Grading</h3>
-                  <p className="text-sm text-slate-600">
+                  <h3 className="text-lg text-foreground mb-1">Start AI Answer Grading</h3>
+                  <p className="text-sm text-muted-foreground">
                     Launch the OCR + RAG pipeline to grade handwritten exams with AI assistance.
                   </p>
-                  <div className="mt-3 flex items-center gap-2 text-violet-700">
+                  <div className="mt-3 flex items-center gap-2 text-primary">
                     <span className="text-sm">Begin session</span>
                     <ArrowRight className="size-4" />
                   </div>
@@ -1391,19 +1391,19 @@ function HandwrittenGradingWorkflow() {
 
             {/* Card 2: Lecture Knowledge Base */}
             <Card
-              className="p-6 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 hover:shadow-lg transition-shadow cursor-pointer"
+              className="p-6 border-border bg-card hover:border-primary/40 hover:shadow-md transition-all cursor-pointer"
               onClick={() => setPage(8)}
             >
               <div className="flex items-start gap-4">
-                <div className="size-14 rounded-2xl bg-emerald-600 flex items-center justify-center shrink-0">
-                  <BookOpen className="size-7 text-white" />
+                <div className="size-14 rounded-2xl bg-accent flex items-center justify-center shrink-0">
+                  <BookOpen className="size-7 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg text-slate-900 mb-1">Lecture Knowledge Base</h3>
-                  <p className="text-sm text-slate-600">
+                  <h3 className="text-lg text-foreground mb-1">Lecture Knowledge Base</h3>
+                  <p className="text-sm text-muted-foreground">
                     Upload and manage lecture PDFs or PowerPoints indexed for RAG during grading.
                   </p>
-                  <div className="mt-3 flex items-center gap-2 text-emerald-700">
+                  <div className="mt-3 flex items-center gap-2 text-primary">
                     <span className="text-sm">Manage materials</span>
                     <ArrowRight className="size-4" />
                   </div>
@@ -1412,15 +1412,15 @@ function HandwrittenGradingWorkflow() {
             </Card>
 
             {/* Card 3: Ongoing Grading Tasks */}
-            <Card className="p-6 border-slate-200 bg-slate-50">
+            <Card className="p-6 border-border bg-muted">
               <div className="flex items-start gap-4">
-                <div className="size-14 rounded-2xl bg-blue-100 flex items-center justify-center shrink-0">
-                  <RefreshCw className="size-7 text-blue-600" />
+                <div className="size-14 rounded-2xl bg-accent flex items-center justify-center shrink-0">
+                  <RefreshCw className="size-7 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg text-slate-900 mb-1">Ongoing Grading Tasks</h3>
-                  <p className="text-sm text-slate-500">No background tasks running</p>
-                  <div className="mt-3 text-xs text-slate-400">
+                  <h3 className="text-lg text-foreground mb-1">Ongoing Grading Tasks</h3>
+                  <p className="text-sm text-muted-foreground">No background tasks running</p>
+                  <div className="mt-3 text-xs text-muted-foreground">
                     Tasks will appear here when batch processing is active.
                   </div>
                 </div>
@@ -1429,15 +1429,15 @@ function HandwrittenGradingWorkflow() {
           </div>
 
           {/* Recent Grading History */}
-          <Card className="p-6 border-slate-200">
+          <Card className="p-6 border-border">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg text-slate-900">Recent Grading History</h3>
-              <Badge className="bg-slate-100 text-slate-600 border-0">{history.length} sessions</Badge>
+              <h3 className="text-lg text-foreground">Recent Grading History</h3>
+              <Badge className="bg-muted text-muted-foreground border-0">{history.length} sessions</Badge>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="border-b border-slate-200">
-                  <tr className="text-left text-xs text-slate-500 uppercase tracking-wide">
+                <thead className="border-b border-border">
+                  <tr className="text-left text-xs text-muted-foreground uppercase tracking-wide">
                     <th className="pb-3">Session Name</th>
                     <th className="pb-3">Subject Code</th>
                     <th className="pb-3">Date</th>
@@ -1447,13 +1447,13 @@ function HandwrittenGradingWorkflow() {
                 </thead>
                 <tbody className="text-sm">
                   {history.map((h, i) => (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="py-3 text-slate-900">{h.sessionName}</td>
-                      <td className="py-3 text-slate-600">{h.subjectCode}</td>
-                      <td className="py-3 text-slate-600">{h.date}</td>
-                      <td className="py-3 text-slate-700">{h.avgScore}%</td>
+                    <tr key={i} className="border-b border-border hover:bg-muted">
+                      <td className="py-3 text-foreground">{h.sessionName}</td>
+                      <td className="py-3 text-muted-foreground">{h.subjectCode}</td>
+                      <td className="py-3 text-muted-foreground">{h.date}</td>
+                      <td className="py-3 text-foreground">{h.avgScore}%</td>
                       <td className="py-3">
-                        <Badge className={h.status === "Completed" ? "bg-emerald-50 text-emerald-700 border-0" : "bg-amber-50 text-amber-700 border-0"}>
+                        <Badge className={h.status === "Completed" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-0" : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 border-0"}>
                           {h.status}
                         </Badge>
                       </td>
@@ -1470,19 +1470,19 @@ function HandwrittenGradingWorkflow() {
       {page === 2 && (
         <div className="space-y-6 max-w-3xl">
           <div>
-            <h2 className="tracking-tight text-slate-900">Session Initialization</h2>
-            <p className="text-sm text-slate-500 mt-1">Define the context before AI processing begins</p>
+            <h2 className="tracking-tight text-foreground">Session Initialization</h2>
+            <p className="text-sm text-muted-foreground mt-1">Define the context before AI processing begins</p>
           </div>
 
-          <Card className="p-6 border-slate-200 space-y-5">
+          <Card className="p-6 border-border space-y-5">
             <div>
-              <label className="text-sm text-slate-700 mb-2 block">Subject / course</label>
+              <label className="text-sm text-foreground mb-2 block">Subject / course</label>
               <Select
                 value={subject || undefined}
                 onValueChange={setSubject}
                 disabled={coursesLoading || courses.length === 0}
               >
-                <SelectTrigger className="w-full bg-white">
+                <SelectTrigger className="w-full bg-card">
                   <SelectValue
                     placeholder={
                       coursesLoading
@@ -1501,14 +1501,14 @@ function HandwrittenGradingWorkflow() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Managed in Lecture Knowledge Base. RAG will only use materials tagged with this course.
               </p>
               {courses.length === 0 && !coursesLoading && (
                 <Button
                   type="button"
                   variant="link"
-                  className="px-0 h-auto text-violet-700"
+                  className="px-0 h-auto text-primary"
                   onClick={() => setPage(8)}
                 >
                   Manage courses / upload lecture materials
@@ -1517,29 +1517,29 @@ function HandwrittenGradingWorkflow() {
             </div>
 
             <div>
-              <label className="text-sm text-slate-700 mb-2 block">Exam/Session Name</label>
+              <label className="text-sm text-foreground mb-2 block">Exam/Session Name</label>
               <Input value={examName} onChange={(e) => setExamName(e.target.value)} placeholder="e.g., Semester 1 Final Exam" />
             </div>
 
             <div>
-              <label className="text-sm text-slate-700 mb-2 block">Rubric upload (optional)</label>
+              <label className="text-sm text-foreground mb-2 block">Rubric upload (optional)</label>
               <div
                 onClick={() => rubricFileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-200 rounded-xl p-6 hover:bg-slate-50 cursor-pointer transition-colors"
+                className="border-2 border-dashed border-border rounded-xl p-6 hover:bg-muted cursor-pointer transition-colors"
               >
                 {rubricFile ? (
                   <div className="flex items-center gap-3">
-                    <FileText className="size-10 text-violet-600" />
+                    <FileText className="size-10 text-primary" />
                     <div>
-                      <div className="text-sm text-slate-900">{rubricFile.name}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">Marking scheme loaded</div>
+                      <div className="text-sm text-foreground">{rubricFile.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Marking scheme loaded</div>
                     </div>
                   </div>
                 ) : (
                   <div className="text-center">
-                    <Upload className="size-10 text-slate-400 mx-auto mb-2" />
-                    <div className="text-sm text-slate-600">Drop marking scheme here or click to browse</div>
-                    <div className="text-xs text-slate-400 mt-1">
+                    <Upload className="size-10 text-muted-foreground mx-auto mb-2" />
+                    <div className="text-sm text-muted-foreground">Drop marking scheme here or click to browse</div>
+                    <div className="text-xs text-muted-foreground mt-1">
                       Optional — skip and choose an existing rubric when you run batch grading.
                     </div>
                   </div>
@@ -1563,7 +1563,7 @@ function HandwrittenGradingWorkflow() {
               <ArrowLeft className="size-4 mr-2" /> Back
             </Button>
             <Button
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-primary hover:bg-primary/90"
               onClick={handleSessionContinue}
               disabled={!subject || !examName || rubricLoading || courses.length === 0}
             >
@@ -1585,16 +1585,16 @@ function HandwrittenGradingWorkflow() {
       {page === 3 && (
         <div className="space-y-6">
           <div>
-            <h2 className="tracking-tight text-slate-900">Rubric Verification</h2>
-            <p className="text-sm text-slate-500 mt-1">
+            <h2 className="tracking-tight text-foreground">Rubric Verification</h2>
+            <p className="text-sm text-muted-foreground mt-1">
               Verify and edit the extracted marking scheme before grading, or skip to batch grading and select a rubric there.
             </p>
             {rubricId && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <Hash className="size-3.5 shrink-0" />
                 <span className="font-mono break-all">Rubric ID: {rubricId}</span>
                 {rubricFetchLoading && (
-                  <span className="text-violet-600 flex items-center gap-1">
+                  <span className="text-primary flex items-center gap-1">
                     <RefreshCw className="size-3 animate-spin" /> Syncing from server…
                   </span>
                 )}
@@ -1602,37 +1602,37 @@ function HandwrittenGradingWorkflow() {
             )}
           </div>
 
-          <Card className="p-6 border-slate-200">
+          <Card className="p-6 border-border">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-slate-900">Extracted Rubric</h3>
-              <Badge className="bg-violet-50 text-violet-700 border-0">
+              <h3 className="text-foreground">Extracted Rubric</h3>
+              <Badge className="bg-accent text-muted-foreground border-0">
                 Paper total: {paperTotalMarks} marks
               </Badge>
             </div>
 
             {rubricFetchLoading ? (
-              <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500 border border-slate-200 rounded-lg">
+              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground border border-border rounded-lg">
                 <RefreshCw className="size-5 animate-spin" />
                 Loading rubric from the API…
               </div>
             ) : rubric.length === 0 ? (
-              <div className="py-12 px-4 text-center text-sm text-slate-500 border border-slate-200 rounded-lg space-y-3">
+              <div className="py-12 px-4 text-center text-sm text-muted-foreground border border-border rounded-lg space-y-3">
                 <p>
                   No questions were returned. Upload a PDF on session setup, go back to try again, or use{" "}
-                  <span className="font-medium text-slate-700">Skip to batch grading</span> below and pick an existing rubric on the next screen.
+                  <span className="font-medium text-foreground">Skip to batch grading</span> below and pick an existing rubric on the next screen.
                 </p>
                 <p className="text-xs">
-                  Backend: <span className="font-mono text-slate-700">{API_BASE_URL}</span>
+                  Backend: <span className="font-mono text-foreground">{API_BASE_URL}</span>
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
                 {rubric.map((entry, qi) => (
-                  <Card key={`${entry.questionNo}-${qi}`} className="p-4 border-slate-200 shadow-sm">
+                  <Card key={`${entry.questionNo}-${qi}`} className="p-4 border-border shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex flex-wrap items-end gap-3">
                         <div className="space-y-1">
-                          <label className="text-xs text-slate-500">Question #</label>
+                          <label className="text-xs text-muted-foreground">Question #</label>
                           <Input
                             value={entry.questionNo}
                             onChange={(e) => updateQuestionField(qi, "questionNo", e.target.value)}
@@ -1646,18 +1646,18 @@ function HandwrittenGradingWorkflow() {
                       </Badge>
                     </div>
                     <div className="mt-3 space-y-1">
-                      <label className="text-xs text-slate-500">Question wording</label>
+                      <label className="text-xs text-muted-foreground">Question wording</label>
                       <Input
                         value={entry.questionText}
                         onChange={(e) => updateQuestionField(qi, "questionText", e.target.value)}
                       />
                     </div>
                     <div className="mt-4">
-                      <div className="text-xs font-medium text-slate-600 mb-2">Criteria (each row is one marking point with its marks)</div>
-                      <div className="rounded-lg border border-slate-200 overflow-hidden">
+                      <div className="text-xs font-medium text-muted-foreground mb-2">Criteria (each row is one marking point with its marks)</div>
+                      <div className="rounded-lg border border-border overflow-hidden">
                         <table className="w-full text-sm">
-                          <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr className="text-left text-xs text-slate-600 uppercase tracking-wide">
+                          <thead className="bg-muted border-b border-border">
+                            <tr className="text-left text-xs text-muted-foreground uppercase tracking-wide">
                               <th className="p-2 pl-3">Criterion</th>
                               <th className="p-2 w-28 text-right">Marks</th>
                               <th className="p-2 w-12" />
@@ -1666,13 +1666,13 @@ function HandwrittenGradingWorkflow() {
                           <tbody>
                             {entry.criteria.length === 0 ? (
                               <tr>
-                                <td colSpan={3} className="p-4 text-xs text-slate-500">
+                                <td colSpan={3} className="p-4 text-xs text-muted-foreground">
                                   No criteria yet — use &quot;Add criterion&quot; below.
                                 </td>
                               </tr>
                             ) : (
                               entry.criteria.map((c, ci) => (
-                                <tr key={ci} className="border-b border-slate-100 last:border-0">
+                                <tr key={ci} className="border-b border-border last:border-0">
                                   <td className="p-2 pl-3 align-top">
                                     <Textarea
                                       value={c.point}
@@ -1702,7 +1702,7 @@ function HandwrittenGradingWorkflow() {
                                       type="button"
                                       variant="ghost"
                                       size="icon"
-                                      className="text-slate-400 hover:text-red-600"
+                                      className="text-muted-foreground hover:text-red-600"
                                       onClick={() => removeCriterion(qi, ci)}
                                       aria-label="Remove criterion"
                                     >
@@ -1730,7 +1730,7 @@ function HandwrittenGradingWorkflow() {
               </div>
             )}
 
-            <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
+            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
               <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
               Edit below, then click Finalize — changes are saved with{" "}
               <span className="font-mono">PUT /rubric/&lt;id&gt;</span>.
@@ -1744,7 +1744,7 @@ function HandwrittenGradingWorkflow() {
             <Button
               type="button"
               variant="outline"
-              className="border-slate-300"
+              className="border-border"
               onClick={() => {
                 setRubricError(null);
                 setBatchBackFromSessionSkip(false);
@@ -1754,7 +1754,7 @@ function HandwrittenGradingWorkflow() {
               Skip to batch grading <ChevronRight className="size-4 ml-1" />
             </Button>
             <Button
-              className="bg-violet-600 hover:bg-violet-700 ml-auto sm:ml-0"
+              className="bg-primary hover:bg-primary/90 ml-auto sm:ml-0"
               onClick={saveRubricEdits}
               disabled={rubricSaving || !canFinalizeRubric}
             >
@@ -1775,8 +1775,8 @@ function HandwrittenGradingWorkflow() {
         <div className="space-y-6 max-w-3xl">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="tracking-tight text-slate-900">Batch Script Ingestion</h2>
-              <p className="text-sm text-slate-500 mt-1">
+              <h2 className="tracking-tight text-foreground">Batch Script Ingestion</h2>
+              <p className="text-sm text-muted-foreground mt-1">
                 Choose a marking rubric (required for grading), then upload a ZIP or folder of student scripts (one folder per student ID). You can upload a new scheme earlier in the flow or pick one already stored on the server.
               </p>
             </div>
@@ -1785,14 +1785,14 @@ function HandwrittenGradingWorkflow() {
             </Button>
           </div>
 
-          <Card className="p-5 border-slate-200 space-y-3">
-            <div className="text-sm text-slate-700">Selected rubric</div>
+          <Card className="p-5 border-border space-y-3">
+            <div className="text-sm text-foreground">Selected rubric</div>
             {gradingRubricId ? (
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <Badge variant="outline" className="font-mono">
                   {gradingRubricId}
                 </Badge>
-                <span className="text-slate-500">
+                <span className="text-muted-foreground">
                   Use “Choose rubric” to pick another scheme from the server.
                 </span>
               </div>
@@ -1801,19 +1801,19 @@ function HandwrittenGradingWorkflow() {
             )}
           </Card>
 
-          <Card className="p-6 border-slate-200 space-y-5">
+          <Card className="p-6 border-border space-y-5">
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-slate-700 mb-2 block">Upload ZIP archive</label>
+                <label className="text-sm text-foreground mb-2 block">Upload ZIP archive</label>
                 <div
                   onClick={() => !batchUploading && zipInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-                    batchUploading ? "opacity-60 pointer-events-none border-slate-100" : "border-slate-200 hover:bg-slate-50"
+                    batchUploading ? "opacity-60 pointer-events-none border-border" : "border-border hover:bg-muted"
                   }`}
                 >
-                  <Upload className="size-10 text-violet-500 mx-auto mb-2" />
-                  <div className="text-sm text-slate-700">Click to select .zip</div>
-                  <div className="text-xs text-slate-400 mt-1">Structure: StudentID/page.jpg …</div>
+                  <Upload className="size-10 text-primary mx-auto mb-2" />
+                  <div className="text-sm text-foreground">Click to select .zip</div>
+                  <div className="text-xs text-muted-foreground mt-1">Structure: StudentID/page.jpg …</div>
                 </div>
                 <input
                   ref={zipInputRef}
@@ -1828,16 +1828,16 @@ function HandwrittenGradingWorkflow() {
                 />
               </div>
               <div>
-                <label className="text-sm text-slate-700 mb-2 block">Or upload folder</label>
+                <label className="text-sm text-foreground mb-2 block">Or upload folder</label>
                 <div
                   onClick={() => !batchUploading && folderInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-                    batchUploading ? "opacity-60 pointer-events-none border-slate-100" : "border-slate-200 hover:bg-slate-50"
+                    batchUploading ? "opacity-60 pointer-events-none border-border" : "border-border hover:bg-muted"
                   }`}
                 >
-                  <FolderOpen className="size-10 text-violet-600 mx-auto mb-2" />
-                  <div className="text-sm text-slate-700">Select folder (Chrome / Edge)</div>
-                  <div className="text-xs text-slate-400 mt-1">Preserves paths → student subfolders</div>
+                  <FolderOpen className="size-10 text-primary mx-auto mb-2" />
+                  <div className="text-sm text-foreground">Select folder (Chrome / Edge)</div>
+                  <div className="text-xs text-muted-foreground mt-1">Preserves paths → student subfolders</div>
                 </div>
                 {/* webkitdirectory enables folder picker in Chromium */}
                 <input
@@ -1857,7 +1857,7 @@ function HandwrittenGradingWorkflow() {
             </div>
 
             {batchUploading && (
-              <div className="flex items-center gap-2 text-sm text-violet-600">
+              <div className="flex items-center gap-2 text-sm text-primary">
                 <RefreshCw className="size-4 animate-spin" /> Uploading to server…
               </div>
             )}
@@ -1873,15 +1873,15 @@ function HandwrittenGradingWorkflow() {
 
             {uploadedFiles.length > 0 && (
               <div className="space-y-2">
-                <div className="text-sm text-slate-700">{uploadedFiles.length} path(s) uploaded</div>
-                <div className="max-h-48 overflow-y-auto space-y-1 bg-slate-50 rounded-lg p-2 text-xs font-mono">
+                <div className="text-sm text-foreground">{uploadedFiles.length} path(s) uploaded</div>
+                <div className="max-h-48 overflow-y-auto space-y-1 bg-muted rounded-lg p-2 text-xs font-mono">
                   {uploadedFiles.slice(0, 80).map((name, i) => (
-                    <div key={i} className="truncate text-slate-600">
+                    <div key={i} className="truncate text-muted-foreground">
                       {name}
                     </div>
                   ))}
                   {uploadedFiles.length > 80 && (
-                    <div className="text-slate-400">… and {uploadedFiles.length - 80} more</div>
+                    <div className="text-muted-foreground">… and {uploadedFiles.length - 80} more</div>
                   )}
                 </div>
               </div>
@@ -1903,7 +1903,7 @@ function HandwrittenGradingWorkflow() {
               <ArrowLeft className="size-4 mr-2" /> Back
             </Button>
             <Button
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-primary hover:bg-primary/90"
               onClick={runBatchGrading}
               disabled={
                 !gradingRubricId ||
@@ -1928,8 +1928,8 @@ function HandwrittenGradingWorkflow() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="tracking-tight text-slate-900">Master Evaluation Dashboard</h2>
-              <p className="text-sm text-slate-500 mt-1">Monitor batch processing progress</p>
+              <h2 className="tracking-tight text-foreground">Master Evaluation Dashboard</h2>
+              <p className="text-sm text-muted-foreground mt-1">Monitor batch processing progress</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setFilterWarnings(!filterWarnings)}>
@@ -1945,27 +1945,27 @@ function HandwrittenGradingWorkflow() {
                 <RefreshCw className={`size-4 mr-2 ${submissionsLoading ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
-              <Badge className="bg-violet-50 text-violet-700 border-0">
+              <Badge className="bg-accent text-muted-foreground border-0">
                 {dashboardStudents.filter((s) => s.status === "completed").length}/
                 {dashboardStudents.length} graded
               </Badge>
             </div>
           </div>
 
-          <Card className="p-6 border-slate-200">
+          <Card className="p-6 border-border">
             {submissionsLoading && dashboardStudents.length === 0 ? (
-              <div className="flex items-center gap-2 py-8 text-slate-500 text-sm justify-center">
+              <div className="flex items-center gap-2 py-8 text-muted-foreground text-sm justify-center">
                 <RefreshCw className="size-5 animate-spin" /> Loading submissions…
               </div>
             ) : dashboardStudents.length === 0 ? (
-              <p className="text-sm text-slate-500 py-6 text-center">
+              <p className="text-sm text-muted-foreground py-6 text-center">
                 No submissions for this rubric yet. Run batch grading from the previous step.
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="border-b border-slate-200">
-                    <tr className="text-left text-xs text-slate-500 uppercase tracking-wide">
+                  <thead className="border-b border-border">
+                    <tr className="text-left text-xs text-muted-foreground uppercase tracking-wide">
                       <th className="pb-3">Student ID</th>
                       <th className="pb-3">Status</th>
                       <th className="pb-3">OCR confidence</th>
@@ -1975,16 +1975,16 @@ function HandwrittenGradingWorkflow() {
                   </thead>
                   <tbody className="text-sm">
                     {filteredStudents.map((student) => (
-                      <tr key={student.submissionId ?? student.id} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="py-3 text-slate-900 font-mono text-xs">{student.id}</td>
+                      <tr key={student.submissionId ?? student.id} className="border-b border-border hover:bg-muted">
+                        <td className="py-3 text-foreground font-mono text-xs">{student.id}</td>
                         <td className="py-3">
                           <Badge
                             className={
                               student.status === "completed"
-                                ? "bg-emerald-50 text-emerald-700 border-0"
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-0"
                                 : student.status === "processing"
-                                  ? "bg-blue-50 text-blue-700 border-0"
-                                  : "bg-amber-50 text-amber-700 border-0"
+                                  ? "bg-accent text-primary border-0"
+                                  : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 border-0"
                             }
                           >
                             {student.status === "processing" && (
@@ -1995,16 +1995,16 @@ function HandwrittenGradingWorkflow() {
                             {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
                           </Badge>
                         </td>
-                        <td className="py-3 text-xs text-slate-500">
+                        <td className="py-3 text-xs text-muted-foreground">
                           {typeof student.ocrConf === "number" ? `${student.ocrConf}%` : "—"}
                         </td>
                         <td className="py-3">
                           {student.quickGrade !== undefined ? (
-                            <span className="text-slate-900 tabular-nums">
+                            <span className="text-foreground tabular-nums">
                               {student.quickGrade}/{student.maxGrade || "—"}
                             </span>
                           ) : (
-                            <span className="text-slate-400">—</span>
+                            <span className="text-muted-foreground">—</span>
                           )}
                         </td>
                         <td className="py-3">
@@ -2029,7 +2029,7 @@ function HandwrittenGradingWorkflow() {
             <Button variant="outline" onClick={() => setPage(1)}>
               <ArrowLeft className="size-4 mr-2" /> Back to Dashboard
             </Button>
-            <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => setPage(7)}>
+            <Button className="bg-primary hover:bg-primary/90" onClick={() => setPage(7)}>
               View Analytics & Export <ArrowRight className="size-4 ml-2" />
             </Button>
           </div>
@@ -2041,17 +2041,17 @@ function HandwrittenGradingWorkflow() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="tracking-tight text-slate-900">AI-Assisted Review</h2>
-              <p className="text-sm text-slate-500 mt-1">Student ID: {selectedStudent.id}</p>
+              <h2 className="tracking-tight text-foreground">AI-Assisted Review</h2>
+              <p className="text-sm text-muted-foreground mt-1">Student ID: {selectedStudent.id}</p>
             </div>
             <AIBadgePill model="lexo" />
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Left: Original Scan */}
-            <Card className="border-slate-200 overflow-hidden flex flex-col">
-              <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                <div className="flex items-center gap-2 text-sm text-slate-600">
+            <Card className="border-border overflow-hidden flex flex-col">
+              <div className="px-4 py-2.5 border-b border-border flex items-center justify-between bg-muted">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <FileImage className="size-4" />
                   Original Scan
                 </div>
@@ -2059,19 +2059,19 @@ function HandwrittenGradingWorkflow() {
                   <Button size="icon" variant="ghost" className="size-7" onClick={() => setZoom(z => Math.max(50, z - 25))}>
                     <ZoomOut className="size-3.5" />
                   </Button>
-                  <span className="text-xs text-slate-500 w-10 text-center">{zoom}%</span>
+                  <span className="text-xs text-muted-foreground w-10 text-center">{zoom}%</span>
                   <Button size="icon" variant="ghost" className="size-7" onClick={() => setZoom(z => Math.min(200, z + 25))}>
                     <ZoomIn className="size-3.5" />
                   </Button>
                 </div>
               </div>
 
-              <div className="flex-1 bg-slate-100 overflow-auto" style={{ minHeight: "500px" }}>
+              <div className="flex-1 bg-muted overflow-auto" style={{ minHeight: "500px" }}>
                 <div className="p-6 flex items-start justify-center" style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}>
-                  <div className="bg-white rounded-lg shadow-sm p-6 max-w-lg w-full">
-                    <div className="text-xs text-slate-400 uppercase tracking-wider">OCR transcript preview</div>
-                    <div className="mt-2 text-slate-900 tracking-tight text-sm">Student ID: {selectedStudent.id}</div>
-                    <div className="mt-4 text-slate-700 text-sm leading-relaxed whitespace-pre-wrap max-h-[420px] overflow-y-auto border border-slate-100 rounded-md p-3 bg-slate-50/50">
+                  <div className="bg-card rounded-lg shadow-sm border border-border p-6 max-w-lg w-full">
+                    <div className="text-xs text-muted-foreground uppercase tracking-wider">OCR transcript preview</div>
+                    <div className="mt-2 text-foreground tracking-tight text-sm">Student ID: {selectedStudent.id}</div>
+                    <div className="mt-4 text-foreground text-sm leading-relaxed whitespace-pre-wrap max-h-[420px] overflow-y-auto border border-border rounded-md p-3 bg-muted/50">
                       {parsedText || "No OCR text stored for this submission."}
                     </div>
                   </div>
@@ -2081,19 +2081,19 @@ function HandwrittenGradingWorkflow() {
 
             {/* Right: Digital Workspace */}
             <div className="space-y-4">
-              <Card className="border-slate-200">
-                <div className="border-b border-slate-100 bg-slate-50">
+              <Card className="border-border">
+                <div className="border-b border-border bg-muted">
                   <div className="flex gap-1 p-1">
                     <button
                       onClick={() => setReviewTab("parsed")}
-                      className={`flex-1 px-3 py-2 rounded text-sm transition-colors ${reviewTab === "parsed" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                      className={`flex-1 px-3 py-2 rounded text-sm transition-colors ${reviewTab === "parsed" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <Type className="size-4 inline mr-2" />
                       Parsed Text
                     </button>
                     <button
                       onClick={() => setReviewTab("analysis")}
-                      className={`flex-1 px-3 py-2 rounded text-sm transition-colors ${reviewTab === "analysis" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                      className={`flex-1 px-3 py-2 rounded text-sm transition-colors ${reviewTab === "analysis" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <Cpu className="size-4 inline mr-2" />
                       AI Analysis
@@ -2104,7 +2104,7 @@ function HandwrittenGradingWorkflow() {
                 <div className="p-5">
                   {reviewTab === "parsed" ? (
                     <div>
-                      <div className="text-xs text-slate-500 mb-2">OCR Output (editable)</div>
+                      <div className="text-xs text-muted-foreground mb-2">OCR Output (editable)</div>
                       <Textarea
                         value={parsedText}
                         onChange={(e) => setParsedText(e.target.value)}
@@ -2115,7 +2115,7 @@ function HandwrittenGradingWorkflow() {
                   ) : (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between gap-2 mb-3">
-                        <div className="text-xs text-slate-500">Score breakdown (from API)</div>
+                        <div className="text-xs text-muted-foreground">Score breakdown (from API)</div>
                         {selectedStudent.evaluation && (
                           <div className="flex flex-wrap items-center gap-1.5 justify-end">
                             {typeof selectedStudent.evaluation.grading_source === "string" && (
@@ -2134,7 +2134,7 @@ function HandwrittenGradingWorkflow() {
                             ) : (
                               <Badge
                                 variant="outline"
-                                className="text-[10px] font-normal text-amber-700 border-amber-300 bg-amber-50"
+                                className="text-[10px] font-normal text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/15"
                               >
                                 RAG: none
                                 {selectedStudent.evaluation.rag_course
@@ -2153,28 +2153,28 @@ function HandwrittenGradingWorkflow() {
                           const justification = String(row.justification ?? "");
                           const feedback = String(row.feedback ?? "");
                           return (
-                            <div key={i} className="pb-3 border-b border-slate-100 last:border-0">
+                            <div key={i} className="pb-3 border-b border-border last:border-0">
                               <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-slate-700">Q{String(qNo)}</span>
-                                <span className="text-sm text-slate-900 tabular-nums">{Number.isFinite(score) ? score : "—"}</span>
+                                <span className="text-sm text-foreground">Q{String(qNo)}</span>
+                                <span className="text-sm text-foreground tabular-nums">{Number.isFinite(score) ? score : "—"}</span>
                               </div>
                               {justification && (
-                                <p className="text-xs text-slate-600 leading-relaxed">{justification}</p>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{justification}</p>
                               )}
                               {feedback && (
-                                <p className="text-xs text-slate-500 mt-1 italic">{feedback}</p>
+                                <p className="text-xs text-muted-foreground mt-1 italic">{feedback}</p>
                               )}
                             </div>
                           );
                         })
                       ) : (
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-muted-foreground">
                           No structured results on this submission yet.
                         </p>
                       )}
                       {selectedStudent.evaluation &&
                         typeof selectedStudent.evaluation.total_score === "number" && (
-                          <div className="pt-2 text-sm font-medium text-slate-800">
+                          <div className="pt-2 text-sm font-medium text-foreground">
                             Total: {selectedStudent.evaluation.total_score as number}
                           </div>
                         )}
@@ -2183,15 +2183,15 @@ function HandwrittenGradingWorkflow() {
                 </div>
               </Card>
 
-              <Card className="p-5 border-slate-200">
-                <div className="text-sm text-slate-700 mb-2">Manual Override</div>
+              <Card className="p-5 border-border">
+                <div className="text-sm text-foreground mb-2">Manual Override</div>
                 <Textarea
                   value={lecturerNote}
                   onChange={(e) => setLecturerNote(e.target.value)}
                   placeholder="Add lecturer notes or adjust marks manually…"
                   rows={3}
                 />
-                <Button className="w-full mt-3 bg-blue-600 hover:bg-blue-700">
+                <Button className="w-full mt-3 bg-primary hover:bg-primary/90">
                   <Save className="size-4 mr-2" /> Save Changes
                 </Button>
               </Card>
@@ -2218,24 +2218,24 @@ function HandwrittenGradingWorkflow() {
       {page === 7 && (
         <div className="space-y-6">
           <div>
-            <h2 className="tracking-tight text-slate-900">Analytics & Export</h2>
-            <p className="text-sm text-slate-500 mt-1">Final insights and export options</p>
+            <h2 className="tracking-tight text-foreground">Analytics & Export</h2>
+            <p className="text-sm text-muted-foreground mt-1">Final insights and export options</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Grade Distribution */}
-            <Card className="p-6 border-slate-200">
-              <h3 className="text-lg text-slate-900 mb-4">Grade Distribution</h3>
+            <Card className="p-6 border-border">
+              <h3 className="text-lg text-foreground mb-4">Grade Distribution</h3>
               <div className="space-y-3">
                 {["0-40", "40-50", "50-60", "60-70", "70-80", "80-100"].map((range, i) => (
                   <div key={i}>
                     <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-slate-600">{range}</span>
-                      <span className="text-slate-900">{gradeDistribution[i]} students</span>
+                      <span className="text-muted-foreground">{range}</span>
+                      <span className="text-foreground">{gradeDistribution[i]} students</span>
                     </div>
-                    <div className="bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div className="bg-muted rounded-full h-2 overflow-hidden">
                       <div
-                        className="h-full bg-violet-600 rounded-full transition-all"
+                        className="h-full bg-primary rounded-full transition-all"
                         style={{ width: `${(gradeDistribution[i] / 25) * 100}%` }}
                       />
                     </div>
@@ -2245,16 +2245,16 @@ function HandwrittenGradingWorkflow() {
             </Card>
 
             {/* Topic Mastery */}
-            <Card className="p-6 border-slate-200">
-              <h3 className="text-lg text-slate-900 mb-4">Topic Mastery</h3>
+            <Card className="p-6 border-border">
+              <h3 className="text-lg text-foreground mb-4">Topic Mastery</h3>
               <div className="space-y-3">
                 {rubric.map((r, i) => (
                   <div key={i}>
                     <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-slate-600">{r.questionNo}</span>
-                      <span className="text-slate-900">{[72, 58, 85, 64][i]}% avg</span>
+                      <span className="text-muted-foreground">{r.questionNo}</span>
+                      <span className="text-foreground">{[72, 58, 85, 64][i]}% avg</span>
                     </div>
-                    <div className="bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div className="bg-muted rounded-full h-2 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${[72, 58, 85, 64][i] >= 70 ? "bg-emerald-500" : [72, 58, 85, 64][i] >= 50 ? "bg-amber-500" : "bg-red-500"}`}
                         style={{ width: `${[72, 58, 85, 64][i]}%` }}
@@ -2267,28 +2267,28 @@ function HandwrittenGradingWorkflow() {
           </div>
 
           {/* Export Actions */}
-          <Card className="p-6 border-slate-200">
-            <h3 className="text-lg text-slate-900 mb-4">Export Actions</h3>
+          <Card className="p-6 border-border">
+            <h3 className="text-lg text-foreground mb-4">Export Actions</h3>
             <div className="grid md:grid-cols-2 gap-4">
               <Button variant="outline" className="justify-start h-auto py-4">
                 <div className="flex items-start gap-3 w-full">
                   <FileSpreadsheet className="size-5 text-emerald-600 shrink-0 mt-0.5" />
                   <div className="text-left flex-1">
-                    <div className="text-sm text-slate-900">Download CSV</div>
-                    <div className="text-xs text-slate-500 mt-0.5">Student ID and marks for university records</div>
+                    <div className="text-sm text-foreground">Download CSV</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Student ID and marks for university records</div>
                   </div>
-                  <Download className="size-4 text-slate-400 shrink-0" />
+                  <Download className="size-4 text-muted-foreground shrink-0" />
                 </div>
               </Button>
 
               <Button variant="outline" className="justify-start h-auto py-4">
                 <div className="flex items-start gap-3 w-full">
-                  <FileText className="size-5 text-blue-600 shrink-0 mt-0.5" />
+                  <FileText className="size-5 text-primary shrink-0 mt-0.5" />
                   <div className="text-left flex-1">
-                    <div className="text-sm text-slate-900">Generate PDF Pack</div>
-                    <div className="text-xs text-slate-500 mt-0.5">Individual feedback reports for every student</div>
+                    <div className="text-sm text-foreground">Generate PDF Pack</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Individual feedback reports for every student</div>
                   </div>
-                  <Download className="size-4 text-slate-400 shrink-0" />
+                  <Download className="size-4 text-muted-foreground shrink-0" />
                 </div>
               </Button>
             </div>
@@ -2298,7 +2298,7 @@ function HandwrittenGradingWorkflow() {
             <Button variant="outline" onClick={() => setPage(5)}>
               <ArrowLeft className="size-4 mr-2" /> Back to Dashboard
             </Button>
-            <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => setPage(1)}>
+            <Button className="bg-primary hover:bg-primary/90" onClick={() => setPage(1)}>
               <CheckCircle2 className="size-4 mr-2" /> Finish Session
             </Button>
           </div>
@@ -2309,13 +2309,13 @@ function HandwrittenGradingWorkflow() {
       {page === 8 && (
         <div className="space-y-6 max-w-3xl">
           <div>
-            <h2 className="tracking-tight text-slate-900">Lecture Knowledge Base</h2>
-            <p className="text-sm text-slate-500 mt-1">
+            <h2 className="tracking-tight text-foreground">Lecture Knowledge Base</h2>
+            <p className="text-sm text-muted-foreground mt-1">
               Manage subjects/courses, then upload lecture PDFs or PowerPoints. Materials are indexed once and filtered by course during grading.
             </p>
           </div>
 
-          <Card className="p-6 border-slate-200">
+          <Card className="p-6 border-border">
             <LectureMaterialsPanel apiBaseUrl={API_BASE_URL} />
           </Card>
 
@@ -2335,11 +2335,11 @@ function HandwrittenGradingWorkflow() {
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto space-y-2 pr-1">
             {rubricsListLoading ? (
-              <div className="flex justify-center py-10 text-slate-500">
+              <div className="flex justify-center py-10 text-muted-foreground">
                 <RefreshCw className="size-6 animate-spin" />
               </div>
             ) : rubricsList.length === 0 ? (
-              <p className="text-sm text-slate-500 py-4">
+              <p className="text-sm text-muted-foreground py-4">
                 No rubrics in the database yet. Use Session Initialization to upload a marking PDF, or seed rubrics via the API.
               </p>
             ) : (
@@ -2350,13 +2350,13 @@ function HandwrittenGradingWorkflow() {
                   onClick={() => setPendingRubricId(r._id)}
                   className={`w-full text-left rounded-lg border p-3 text-sm transition-colors ${
                     pendingRubricId === r._id
-                      ? "border-violet-500 bg-violet-50"
-                      : "border-slate-200 hover:bg-slate-50"
+                      ? "border-primary/40 bg-accent"
+                      : "border-border hover:bg-muted"
                   }`}
                 >
-                  <div className="font-mono text-[11px] text-slate-500 break-all">{r._id}</div>
-                  <div className="font-medium text-slate-900 mt-0.5">{r.session_name ?? "—"}</div>
-                  <div className="text-xs text-slate-600 mt-0.5">
+                  <div className="font-mono text-[11px] text-muted-foreground break-all">{r._id}</div>
+                  <div className="font-medium text-foreground mt-0.5">{r.session_name ?? "—"}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
                     {r.subject_code ?? "—"}
                     {r.filename ? ` · ${r.filename}` : ""}
                   </div>
@@ -2370,7 +2370,7 @@ function HandwrittenGradingWorkflow() {
             </Button>
             <Button
               type="button"
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-primary hover:bg-primary/90"
               disabled={!pendingRubricId}
               onClick={() => {
                 if (pendingRubricId) {

@@ -15,7 +15,7 @@ function Layout({ role, onLogout }: { role: Role; onLogout: () => void }) {
   const location = useLocation();
   const meta = titleFor(location.pathname);
   return (
-    <div className="flex bg-slate-50 min-h-screen text-slate-900">
+    <div className="flex bg-background min-h-screen text-foreground">
       <Sidebar role={role} onLogout={onLogout} />
       <main className="flex-1 min-w-0 flex flex-col">
         <TopBar title={meta.title} subtitle={meta.subtitle} />
