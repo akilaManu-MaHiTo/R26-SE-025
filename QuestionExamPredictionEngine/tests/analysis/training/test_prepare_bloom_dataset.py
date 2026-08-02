@@ -1,12 +1,35 @@
+import csv
+import hashlib
+import io
+import json
+import shutil
 import unittest
+from contextlib import contextmanager, redirect_stderr
+from pathlib import Path
 
 from src.analysis.training.prepare_bloom_dataset import (
     build_review_records,
+    build_training,
     build_training_records,
+    main,
     normalize_question,
+    prepare_review,
     question_group_id,
     validate_source_rows,
 )
+from src.analysis.scoring.cognitive_bloom_model import load_tabular_dataset
+
+
+@contextmanager
+def workspace_temp_directory():
+    path = Path("tests") / "_bloom_dataset_tmp"
+    if path.exists():
+        shutil.rmtree(path)
+    path.mkdir()
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path)
 
 
 def source_row(**overrides):
@@ -135,6 +158,119 @@ class BloomDatasetPreparationTests(unittest.TestCase):
         row["group_id"] = "bloom-not-the-question-hash"
         with self.assertRaisesRegex(ValueError, "mismatched group_id"):
             build_training_records([row])
+
+
+    def test_prepare_review_writes_reconciled_outputs_without_changing_source(self):
+        with workspace_temp_directory() as temporary_path:
+            source_path = temporary_path / "source.csv"
+            output_dir = temporary_path / "processed"
+            source_rows = [
+                source_row(id="1", bloom_level="Remember"),
+                source_row(id="2", question=" explain   acid? ", bloom_level="Analyze"),
+                source_row(
+                    id="3",
+                    question="Compare SQL and NoSQL.",
+                    bloom_level="Analyze",
+                    subtopic="NoSQL",
+                ),
+            ]
+            with source_path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(source_rows[0]))
+                writer.writeheader()
+                writer.writerows(source_rows)
+            source_before = source_path.read_bytes()
+            checksum_before = hashlib.sha256(source_before).hexdigest()
+
+            audit = prepare_review(source_path, output_dir)
+
+            self.assertEqual(source_path.read_bytes(), source_before)
+            self.assertEqual(audit["input_sha256"], checksum_before)
+            review_rows = load_tabular_dataset(
+                output_dir / "dataset_v1_bloom_review.csv"
+            )
+            training_rows = load_tabular_dataset(
+                output_dir / "dataset_v1_bloom_train.csv"
+            )
+            saved_audit = json.loads(
+                (output_dir / "dataset_v1_bloom_audit.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(len(review_rows), 2)
+            self.assertEqual(len(training_rows), 0)
+            self.assertEqual(saved_audit, audit)
+            self.assertEqual(audit["source_rows"], 3)
+            self.assertEqual(audit["unique_normalized_questions"], 2)
+            self.assertEqual(audit["conflicting_question_groups"], 1)
+            self.assertEqual(audit["rows_in_conflicting_groups"], 2)
+            self.assertEqual(audit["approved_training_rows"], 0)
+            self.assertEqual(audit["excluded_unreviewed_groups"], 2)
+
+
+    def test_build_training_writes_only_the_approved_subset(self):
+        with workspace_temp_directory() as temporary_path:
+            source_path = temporary_path / "source.csv"
+            output_dir = temporary_path / "processed"
+            source_rows = [
+                source_row(id="1", bloom_level="Remember"),
+                source_row(
+                    id="2",
+                    question="Compare SQL and NoSQL.",
+                    bloom_level="Analyze",
+                    subtopic="NoSQL",
+                ),
+            ]
+            with source_path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(source_rows[0]))
+                writer.writeheader()
+                writer.writerows(source_rows)
+            prepare_review(source_path, output_dir)
+            review_path = output_dir / "dataset_v1_bloom_review.csv"
+            review_rows = load_tabular_dataset(review_path)
+            review_rows[0]["approved_bloom_level"] = "Remember"
+            review_rows[0]["review_notes"] = "Lecturer checked"
+            with review_path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(review_rows[0]))
+                writer.writeheader()
+                writer.writerows(review_rows)
+
+            audit = build_training(review_path, output_dir)
+
+            training_rows = load_tabular_dataset(
+                output_dir / "dataset_v1_bloom_train.csv"
+            )
+            self.assertEqual(len(training_rows), 1)
+            self.assertEqual(training_rows[0]["bloom_level"], "remember")
+            self.assertEqual(training_rows[0]["review_notes"], "Lecturer checked")
+            self.assertEqual(audit["approved_training_rows"], 1)
+            self.assertEqual(audit["excluded_unreviewed_groups"], 1)
+            self.assertEqual(
+                audit["approved_training_label_distribution"],
+                {"remember": 1},
+            )
+
+    def test_cli_complete_review_requirement_exits_nonzero(self):
+        with workspace_temp_directory() as temporary_path:
+            source_path = temporary_path / "source.csv"
+            output_dir = temporary_path / "processed"
+            row = source_row()
+            with source_path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(row))
+                writer.writeheader()
+                writer.writerow(row)
+            prepare_review(source_path, output_dir)
+
+            with redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as raised:
+                    main([
+                        "build-training",
+                        "--review-file",
+                        str(output_dir / "dataset_v1_bloom_review.csv"),
+                        "--output-dir",
+                        str(output_dir),
+                        "--require-complete-review",
+                    ])
+            self.assertNotEqual(raised.exception.code, 0)
 
 
 if __name__ == "__main__":
