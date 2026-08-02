@@ -1,3 +1,4 @@
+from src.agents.answer_misconception_agent import AnswerMisconceptionAgent
 from src.agents.contracts import (
     AgentRunContext,
     AgentStatus,
@@ -13,6 +14,7 @@ from src.agents.contracts import (
 from src.agents.question_knowledge_agent import QuestionKnowledgeAgent
 
 __all__ = [
+    "AnswerMisconceptionAgent",
     "AgentRunContext",
     "AgentStatus",
     "AgentWarning",
