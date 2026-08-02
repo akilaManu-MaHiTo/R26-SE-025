@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.config import settings
-from src.api.routers import analytics, grading, models, prediction
+from src.api.routers import agent_workflows, analytics, grading, models, prediction
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,7 +17,8 @@ QuestionExamPredictionEngine API
 Automated exam grading and student learning analytics for DBMS courses.
 - **Grade** student answers using semantic similarity + concept scoring
 - **Analyze** exams with weak topic detection, cognitive gap analysis, and more
-- **Predict** topics and performance trends across exam years
+- **Match** answer text to existing topics and summarize historical trends
+- **Orchestrate** typed question, answer, and cohort analysis agents
 """
 
 app = FastAPI(
@@ -40,6 +41,7 @@ app.include_router(models.router)
 app.include_router(grading.router)
 app.include_router(analytics.router)
 app.include_router(prediction.router)
+app.include_router(agent_workflows.router)
 
 
 @app.get("/")

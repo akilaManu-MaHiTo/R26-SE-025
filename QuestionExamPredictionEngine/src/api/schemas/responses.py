@@ -1,6 +1,8 @@
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 
+from src.agents.contracts import AgentWorkflowResult
+
 
 class ErrorResponse(BaseModel):
     detail: str
@@ -57,6 +59,9 @@ class StudentReportRecord(BaseModel):
     year: str
     question: str
     part: str
+    score: float
+    max_marks: float
+    concept_reference_source: str
     performance_score: float
     concept_score: float
     cognitive_score: float
@@ -100,3 +105,7 @@ class TrendSummary(BaseModel):
 
 class AnalyzeTrendsResponse(BaseModel):
     trends: dict[str, TrendSummary]
+
+
+class AgentWorkflowAnalyzeExamResponse(BaseModel):
+    result: AgentWorkflowResult

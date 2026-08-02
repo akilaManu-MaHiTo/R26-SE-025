@@ -48,8 +48,10 @@ def get_topics() -> list[str]:
     return load_json(settings.topics_path)
 
 
-def get_model_answer(year: int = 2021) -> dict:
+def get_model_answer(year: int = 2021, *, required: bool = False) -> dict:
     path = settings.data_dir / "model_answer" / f"model_answer_{year}.json"
+    if not required and not path.exists():
+        return {}
     return load_json(path)
 
 
@@ -64,3 +66,40 @@ def get_similarity_model():
 def get_weak_topic_model():
     from src.analytics.weak_topic_model import WeakTopicModel
     return WeakTopicModel(model_path=settings.weak_topic_model_path)
+
+
+@lru_cache(maxsize=1)
+def get_cognitive_bloom_model():
+    from src.analysis.scoring.cognitive_bloom_model import CognitiveBloomModel
+
+    return CognitiveBloomModel(model_path=settings.cognitive_bloom_model_path)
+
+
+@lru_cache(maxsize=1)
+def get_model_registry():
+    from src.agents.model_registry import ModelRegistry
+
+    registry = ModelRegistry()
+    registry.register(
+        "similarity",
+        "exam-similarity-local-v1",
+        get_similarity_model,
+    )
+    registry.register(
+        "weak_topic",
+        "weak-topic-local-v1",
+        get_weak_topic_model,
+    )
+    registry.register(
+        "cognitive_bloom",
+        "cognitive-bloom-local-v1",
+        get_cognitive_bloom_model,
+    )
+    return registry
+
+
+@lru_cache(maxsize=1)
+def get_agent_orchestrator():
+    from src.agents.orchestrator import ExamAnalysisOrchestrator
+
+    return ExamAnalysisOrchestrator.with_defaults(get_model_registry())
