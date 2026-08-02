@@ -1,3 +1,4 @@
+from src.agents.cohort_prediction_agent import CohortPredictionAgent
 from src.agents.answer_misconception_agent import AnswerMisconceptionAgent
 from src.agents.contracts import (
     AgentRunContext,
@@ -14,6 +15,7 @@ from src.agents.contracts import (
 from src.agents.question_knowledge_agent import QuestionKnowledgeAgent
 
 __all__ = [
+    "CohortPredictionAgent",
     "AnswerMisconceptionAgent",
     "AgentRunContext",
     "AgentStatus",
