@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import argparse
+import csv
 import hashlib
 import json
+import os
+import tempfile
 import unicodedata
 from collections import Counter, defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from datetime import datetime, timezone
+from pathlib import Path
 
 
 VALID_BLOOM_LEVELS = (
@@ -221,3 +227,231 @@ def build_training_records(
         training_records,
         key=lambda row: (str(row["question"]).casefold(), str(row["group_id"])),
     )
+
+def read_csv_rows(path: Path) -> list[dict[str, str]]:
+    with Path(path).open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        if not reader.fieldnames:
+            raise ValueError(f"CSV file has no header: {path}")
+        return list(reader)
+
+
+def write_csv_atomic(
+    path: Path,
+    fieldnames: Sequence[str],
+    rows: Sequence[Mapping[str, object]],
+) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            newline="",
+            delete=False,
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+        ) as handle:
+            temporary_path = Path(handle.name)
+            writer = csv.DictWriter(handle, fieldnames=list(fieldnames))
+            writer.writeheader()
+            writer.writerows(rows)
+        os.replace(temporary_path, path)
+        temporary_path = None
+    finally:
+        if temporary_path and temporary_path.exists():
+            temporary_path.unlink()
+
+
+def write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            newline="\n",
+            delete=False,
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+        ) as handle:
+            temporary_path = Path(handle.name)
+            json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=False)
+            handle.write("\n")
+        os.replace(temporary_path, path)
+        temporary_path = None
+    finally:
+        if temporary_path and temporary_path.exists():
+            temporary_path.unlink()
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def build_audit(
+    source_path: Path,
+    source_rows: list[Mapping[str, object]],
+    review_rows: list[Mapping[str, object]],
+    training_rows: list[Mapping[str, object]],
+) -> dict[str, object]:
+    source_labels = Counter(
+        str(row.get("bloom_level") or "").strip().lower()
+        for row in source_rows
+    )
+    conflicting_rows = []
+    for row in review_rows:
+        counts = json.loads(str(row.get("label_counts") or "{}"))
+        if len(counts) > 1:
+            conflicting_rows.append(row)
+
+    review_status_counts = Counter(
+        "approved"
+        if str(row.get("approved_bloom_level") or "").strip()
+        else "needs_review"
+        for row in review_rows
+    )
+    training_labels = Counter(
+        str(row.get("bloom_level") or "").strip().lower()
+        for row in training_rows
+    )
+
+    return {
+        "pipeline_version": PIPELINE_VERSION,
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "input_path": str(Path(source_path).resolve()),
+        "input_sha256": sha256_file(source_path),
+        "source_rows": len(source_rows),
+        "source_label_distribution": dict(sorted(source_labels.items())),
+        "unique_normalized_questions": len(review_rows),
+        "conflicting_question_groups": len(conflicting_rows),
+        "rows_in_conflicting_groups": sum(
+            int(row.get("source_row_count") or 0)
+            for row in conflicting_rows
+        ),
+        "review_status_counts": dict(sorted(review_status_counts.items())),
+        "approved_training_rows": len(training_rows),
+        "approved_training_label_distribution": dict(sorted(training_labels.items())),
+        "excluded_unreviewed_groups": len(review_rows) - len(training_rows),
+    }
+
+
+def prepare_review(input_path: Path, output_dir: Path) -> dict[str, object]:
+    input_path = Path(input_path)
+    output_dir = Path(output_dir)
+    review_path = output_dir / "dataset_v1_bloom_review.csv"
+    training_path = output_dir / "dataset_v1_bloom_train.csv"
+    audit_path = output_dir / "dataset_v1_bloom_audit.json"
+
+    source_rows = read_csv_rows(input_path)
+    existing_reviews = read_csv_rows(review_path) if review_path.exists() else None
+    review_rows = build_review_records(source_rows, existing_reviews=existing_reviews)
+    training_rows = build_training_records(review_rows)
+    audit = build_audit(input_path, source_rows, review_rows, training_rows)
+
+    write_csv_atomic(review_path, REVIEW_FIELDNAMES, review_rows)
+    write_csv_atomic(training_path, TRAIN_FIELDNAMES, training_rows)
+    write_json_atomic(audit_path, audit)
+    return audit
+
+def build_training(
+    review_file: Path,
+    output_dir: Path,
+    require_complete_review: bool = False,
+) -> dict[str, object]:
+    review_file = Path(review_file)
+    output_dir = Path(output_dir)
+    training_path = output_dir / "dataset_v1_bloom_train.csv"
+    audit_path = output_dir / "dataset_v1_bloom_audit.json"
+
+    review_rows = read_csv_rows(review_file)
+    training_rows = build_training_records(
+        review_rows,
+        require_complete=require_complete_review,
+    )
+    if not audit_path.exists():
+        raise ValueError(
+            f"Audit file not found; run prepare-review first: {audit_path}"
+        )
+    with audit_path.open("r", encoding="utf-8") as handle:
+        audit = json.load(handle)
+
+    review_status_counts = Counter(
+        "approved"
+        if str(row.get("approved_bloom_level") or "").strip()
+        else "needs_review"
+        for row in review_rows
+    )
+    training_labels = Counter(
+        str(row.get("bloom_level") or "").strip().lower()
+        for row in training_rows
+    )
+    audit.update({
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "unique_normalized_questions": len(review_rows),
+        "review_status_counts": dict(sorted(review_status_counts.items())),
+        "approved_training_rows": len(training_rows),
+        "approved_training_label_distribution": dict(sorted(training_labels.items())),
+        "excluded_unreviewed_groups": len(review_rows) - len(training_rows),
+    })
+
+    write_csv_atomic(training_path, TRAIN_FIELDNAMES, training_rows)
+    write_json_atomic(audit_path, audit)
+    return audit
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Prepare expert-reviewed Bloom classification data"
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    prepare_parser = subparsers.add_parser(
+        "prepare-review",
+        help="Create or refresh the expert-review queue",
+    )
+    prepare_parser.add_argument("--input", type=Path, required=True)
+    prepare_parser.add_argument("--output-dir", type=Path, required=True)
+
+    training_parser = subparsers.add_parser(
+        "build-training",
+        help="Build the approved-only training CSV",
+    )
+    training_parser.add_argument("--review-file", type=Path, required=True)
+    training_parser.add_argument("--output-dir", type=Path, required=True)
+    training_parser.add_argument("--require-complete-review", action="store_true")
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "prepare-review":
+            audit = prepare_review(args.input, args.output_dir)
+        else:
+            audit = build_training(
+                args.review_file,
+                args.output_dir,
+                require_complete_review=args.require_complete_review,
+            )
+    except (OSError, ValueError, csv.Error, json.JSONDecodeError) as error:
+        parser.error(str(error))
+
+    print(f"Source rows: {audit['source_rows']}")
+    print(f"Review groups: {audit['unique_normalized_questions']}")
+    print(f"Approved training rows: {audit['approved_training_rows']}")
+    print(f"Unreviewed groups: {audit['excluded_unreviewed_groups']}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
