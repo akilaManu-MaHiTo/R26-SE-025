@@ -5,6 +5,7 @@ import csv
 import hashlib
 import json
 import os
+import shutil
 import tempfile
 import unicodedata
 from collections import Counter, defaultdict
@@ -95,23 +96,13 @@ def _joined_values(rows: list[Mapping[str, object]], column: str) -> str:
 def _index_existing_reviews(
     existing_reviews: list[Mapping[str, object]] | None,
 ) -> dict[str, Mapping[str, object]]:
-    indexed = {}
-    for row_number, row in enumerate(existing_reviews or [], start=2):
-        normalized = normalize_question(row.get("normalized_question"))
-        group_id = str(row.get("group_id") or "").strip()
-        if group_id in indexed:
-            raise ValueError(f"Duplicate review group_id at row {row_number}: {group_id}")
-        if not normalized or group_id != question_group_id(normalized):
-            raise ValueError(f"Review row {row_number} has a mismatched group_id")
-
-        approval = str(row.get("approved_bloom_level") or "").strip().lower()
-        if approval and approval not in VALID_BLOOM_LEVELS:
-            raise ValueError(
-                f"Review row {row_number} has invalid approved Bloom label: {approval!r}"
-            )
-        indexed[group_id] = row
-    return indexed
-
+    if not existing_reviews:
+        return {}
+    validate_review_rows(existing_reviews)
+    return {
+        str(row.get("group_id") or "").strip(): row
+        for row in existing_reviews
+    }
 
 def build_review_records(
     rows: list[Mapping[str, object]],
@@ -176,8 +167,17 @@ def validate_review_rows(rows: list[Mapping[str, object]]) -> None:
         raise ValueError("Review dataset is empty")
 
     seen_group_ids = set()
+    required_fields = set(REVIEW_FIELDNAMES)
     for row_number, row in enumerate(rows, start=2):
+        missing_fields = sorted(required_fields.difference(row.keys()))
+        if missing_fields:
+            raise ValueError(
+                f"Review row {row_number} is missing required columns: "
+                f"{', '.join(missing_fields)}"
+            )
+
         normalized = normalize_question(row.get("normalized_question"))
+        question = str(row.get("question") or "").strip()
         group_id = str(row.get("group_id") or "").strip()
         if group_id in seen_group_ids:
             raise ValueError(f"Duplicate review group_id at row {row_number}: {group_id}")
@@ -185,6 +185,22 @@ def validate_review_rows(rows: list[Mapping[str, object]]) -> None:
 
         if not normalized or group_id != question_group_id(normalized):
             raise ValueError(f"Review row {row_number} has a mismatched group_id")
+        if not question:
+            raise ValueError(f"Review row {row_number} has an empty question")
+        if normalize_question(question) != normalized:
+            raise ValueError(
+                f"Review row {row_number} question does not match normalized_question"
+            )
+        try:
+            source_row_count = int(str(row.get("source_row_count") or ""))
+        except ValueError as error:
+            raise ValueError(
+                f"Review row {row_number} needs a positive source_row_count"
+            ) from error
+        if source_row_count <= 0:
+            raise ValueError(
+                f"Review row {row_number} needs a positive source_row_count"
+            )
 
         approval = str(row.get("approved_bloom_level") or "").strip().lower()
         if approval and approval not in VALID_BLOOM_LEVELS:
@@ -228,22 +244,55 @@ def build_training_records(
         key=lambda row: (str(row["question"]).casefold(), str(row["group_id"])),
     )
 
-def read_csv_rows(path: Path) -> list[dict[str, str]]:
+def read_csv_rows(
+    path: Path,
+    expected_fieldnames: Sequence[str] | None = None,
+) -> list[dict[str, str]]:
     with Path(path).open("r", encoding="utf-8-sig", newline="") as handle:
-        reader = csv.DictReader(handle)
+        reader = csv.DictReader(handle, strict=True)
         if not reader.fieldnames:
             raise ValueError(f"CSV file has no header: {path}")
-        return list(reader)
+        fieldnames = list(reader.fieldnames)
+        duplicate_headers = sorted({
+            name
+            for name in fieldnames
+            if fieldnames.count(name) > 1
+        })
+        if duplicate_headers:
+            raise ValueError(
+                f"CSV file has duplicate columns: {', '.join(duplicate_headers)}"
+            )
+        if expected_fieldnames is not None:
+            expected = set(expected_fieldnames)
+            actual = set(fieldnames)
+            missing = sorted(expected - actual)
+            unexpected = sorted(actual - expected)
+            if missing or unexpected:
+                details = []
+                if missing:
+                    details.append(f"missing: {', '.join(missing)}")
+                if unexpected:
+                    details.append(f"unexpected: {', '.join(unexpected)}")
+                raise ValueError(
+                    "Review CSV columns do not match the required schema ("
+                    + "; ".join(details)
+                    + ")"
+                )
+
+        rows = list(reader)
+        if any(None in row for row in rows):
+            raise ValueError(f"CSV row has more values than columns: {path}")
+        return rows
 
 
-def write_csv_atomic(
+def _stage_csv(
     path: Path,
     fieldnames: Sequence[str],
     rows: Sequence[Mapping[str, object]],
-) -> None:
+) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = None
+    staged_path = None
     try:
         with tempfile.NamedTemporaryFile(
             "w",
@@ -252,23 +301,23 @@ def write_csv_atomic(
             delete=False,
             dir=path.parent,
             prefix=f".{path.name}.",
-            suffix=".tmp",
+            suffix=".stage",
         ) as handle:
-            temporary_path = Path(handle.name)
+            staged_path = Path(handle.name)
             writer = csv.DictWriter(handle, fieldnames=list(fieldnames))
             writer.writeheader()
             writer.writerows(rows)
-        os.replace(temporary_path, path)
-        temporary_path = None
-    finally:
-        if temporary_path and temporary_path.exists():
-            temporary_path.unlink()
+        return staged_path
+    except Exception:
+        if staged_path and staged_path.exists():
+            staged_path.unlink()
+        raise
 
 
-def write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
+def _stage_json(path: Path, payload: Mapping[str, object]) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = None
+    staged_path = None
     try:
         with tempfile.NamedTemporaryFile(
             "w",
@@ -277,17 +326,97 @@ def write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
             delete=False,
             dir=path.parent,
             prefix=f".{path.name}.",
-            suffix=".tmp",
+            suffix=".stage",
         ) as handle:
-            temporary_path = Path(handle.name)
+            staged_path = Path(handle.name)
             json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=False)
             handle.write("\n")
-        os.replace(temporary_path, path)
-        temporary_path = None
-    finally:
-        if temporary_path and temporary_path.exists():
-            temporary_path.unlink()
+        return staged_path
+    except Exception:
+        if staged_path and staged_path.exists():
+            staged_path.unlink()
+        raise
 
+
+def _commit_staged_files(staged_files: Mapping[Path, Path]) -> None:
+    backups: dict[Path, Path | None] = {}
+    try:
+        for destination in staged_files:
+            destination = Path(destination)
+            if destination.exists():
+                with tempfile.NamedTemporaryFile(
+                    "wb",
+                    delete=False,
+                    dir=destination.parent,
+                    prefix=f".{destination.name}.",
+                    suffix=".backup",
+                ) as handle:
+                    backup_path = Path(handle.name)
+                shutil.copy2(destination, backup_path)
+                backups[destination] = backup_path
+            else:
+                backups[destination] = None
+
+        for destination, staged_path in staged_files.items():
+            os.replace(staged_path, destination)
+    except Exception as commit_error:
+        rollback_errors = []
+        for destination, backup_path in backups.items():
+            try:
+                if backup_path and backup_path.exists():
+                    os.replace(backup_path, destination)
+                elif destination.exists():
+                    destination.unlink()
+            except OSError as rollback_error:
+                rollback_errors.append(f"{destination}: {rollback_error}")
+        if rollback_errors:
+            raise RuntimeError(
+                "Artifact commit failed and rollback was incomplete: "
+                + "; ".join(rollback_errors)
+            ) from commit_error
+        raise
+    finally:
+        for staged_path in staged_files.values():
+            if staged_path.exists():
+                staged_path.unlink()
+        for backup_path in backups.values():
+            if backup_path and backup_path.exists():
+                backup_path.unlink()
+
+
+def write_artifact_set_atomic(
+    csv_artifacts: Sequence[
+        tuple[Path, Sequence[str], Sequence[Mapping[str, object]]]
+    ],
+    json_artifacts: Sequence[tuple[Path, Mapping[str, object]]],
+) -> None:
+    staged_files: dict[Path, Path] = {}
+    try:
+        for path, fieldnames, rows in csv_artifacts:
+            destination = Path(path)
+            staged_files[destination] = _stage_csv(destination, fieldnames, rows)
+        for path, payload in json_artifacts:
+            destination = Path(path)
+            staged_files[destination] = _stage_json(destination, payload)
+    except Exception:
+        for staged_path in staged_files.values():
+            if staged_path.exists():
+                staged_path.unlink()
+        raise
+
+    _commit_staged_files(staged_files)
+
+
+def write_csv_atomic(
+    path: Path,
+    fieldnames: Sequence[str],
+    rows: Sequence[Mapping[str, object]],
+) -> None:
+    write_artifact_set_atomic([(Path(path), fieldnames, rows)], [])
+
+
+def write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
+    write_artifact_set_atomic([], [(Path(path), payload)])
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
@@ -295,6 +424,27 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def review_queue_sha256(review_rows: list[Mapping[str, object]]) -> str:
+    immutable_fields = REVIEW_FIELDNAMES[:10]
+    queue_payload = [
+        {
+            field: str(row.get(field) or "").strip()
+            for field in immutable_fields
+        }
+        for row in sorted(
+            review_rows,
+            key=lambda row: str(row.get("group_id") or ""),
+        )
+    ]
+    serialized = json.dumps(
+        queue_payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(serialized).hexdigest()
 
 
 def build_audit(
@@ -332,6 +482,7 @@ def build_audit(
         "source_rows": len(source_rows),
         "source_label_distribution": dict(sorted(source_labels.items())),
         "unique_normalized_questions": len(review_rows),
+        "review_queue_sha256": review_queue_sha256(review_rows),
         "conflicting_question_groups": len(conflicting_rows),
         "rows_in_conflicting_groups": sum(
             int(row.get("source_row_count") or 0)
@@ -352,15 +503,24 @@ def prepare_review(input_path: Path, output_dir: Path) -> dict[str, object]:
     audit_path = output_dir / "dataset_v1_bloom_audit.json"
 
     source_rows = read_csv_rows(input_path)
-    existing_reviews = read_csv_rows(review_path) if review_path.exists() else None
+    existing_reviews = (
+        read_csv_rows(review_path, REVIEW_FIELDNAMES)
+        if review_path.exists()
+        else None
+    )
     review_rows = build_review_records(source_rows, existing_reviews=existing_reviews)
     training_rows = build_training_records(review_rows)
     audit = build_audit(input_path, source_rows, review_rows, training_rows)
 
-    write_csv_atomic(review_path, REVIEW_FIELDNAMES, review_rows)
-    write_csv_atomic(training_path, TRAIN_FIELDNAMES, training_rows)
-    write_json_atomic(audit_path, audit)
+    write_artifact_set_atomic(
+        [
+            (review_path, REVIEW_FIELDNAMES, review_rows),
+            (training_path, TRAIN_FIELDNAMES, training_rows),
+        ],
+        [(audit_path, audit)],
+    )
     return audit
+
 
 def build_training(
     review_file: Path,
@@ -372,7 +532,7 @@ def build_training(
     training_path = output_dir / "dataset_v1_bloom_train.csv"
     audit_path = output_dir / "dataset_v1_bloom_audit.json"
 
-    review_rows = read_csv_rows(review_file)
+    review_rows = read_csv_rows(review_file, REVIEW_FIELDNAMES)
     training_rows = build_training_records(
         review_rows,
         require_complete=require_complete_review,
@@ -383,6 +543,14 @@ def build_training(
         )
     with audit_path.open("r", encoding="utf-8") as handle:
         audit = json.load(handle)
+    expected_review_fingerprint = str(audit.get("review_queue_sha256") or "")
+    actual_review_fingerprint = review_queue_sha256(review_rows)
+    if not expected_review_fingerprint:
+        raise ValueError("Audit has no review queue fingerprint; run prepare-review again")
+    if actual_review_fingerprint != expected_review_fingerprint:
+        raise ValueError(
+            "Review queue does not match its audit; run prepare-review with the original source"
+        )
 
     review_status_counts = Counter(
         "approved"
@@ -403,8 +571,10 @@ def build_training(
         "excluded_unreviewed_groups": len(review_rows) - len(training_rows),
     })
 
-    write_csv_atomic(training_path, TRAIN_FIELDNAMES, training_rows)
-    write_json_atomic(audit_path, audit)
+    write_artifact_set_atomic(
+        [(training_path, TRAIN_FIELDNAMES, training_rows)],
+        [(audit_path, audit)],
+    )
     return audit
 
 

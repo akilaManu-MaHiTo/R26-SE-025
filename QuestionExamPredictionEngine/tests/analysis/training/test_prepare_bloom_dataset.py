@@ -2,10 +2,12 @@ import csv
 import hashlib
 import io
 import json
+import os
 import shutil
 import unittest
 from contextlib import contextmanager, redirect_stderr
 from pathlib import Path
+from unittest.mock import patch
 
 from src.analysis.training.prepare_bloom_dataset import (
     build_review_records,
@@ -15,6 +17,7 @@ from src.analysis.training.prepare_bloom_dataset import (
     normalize_question,
     prepare_review,
     question_group_id,
+    read_csv_rows,
     validate_source_rows,
 )
 from src.analysis.scoring.cognitive_bloom_model import load_tabular_dataset
@@ -110,13 +113,8 @@ class BloomDatasetPreparationTests(unittest.TestCase):
 
 
     def test_existing_review_is_preserved(self):
-        normalized = normalize_question("Explain ACID?")
-        existing = [{
-            "group_id": question_group_id(normalized),
-            "normalized_question": normalized,
-            "approved_bloom_level": "Understand",
-            "review_notes": "Checked by lecturer",
-        }]
+        existing = [review_row("Explain ACID?", "Understand")]
+        existing[0]["review_notes"] = "Checked by lecturer"
 
         review = build_review_records([source_row()], existing_reviews=existing)
 
@@ -271,6 +269,116 @@ class BloomDatasetPreparationTests(unittest.TestCase):
                         "--require-complete-review",
                     ])
             self.assertNotEqual(raised.exception.code, 0)
+
+
+    def test_build_training_rejects_review_queue_from_another_audit(self):
+        with workspace_temp_directory() as temporary_path:
+            source_path = temporary_path / "source.csv"
+            output_dir = temporary_path / "processed"
+            row = source_row()
+            with source_path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(row))
+                writer.writeheader()
+                writer.writerow(row)
+            prepare_review(source_path, output_dir)
+
+            foreign = review_row("Compare SQL and NoSQL.", "Analyze")
+            review_path = output_dir / "dataset_v1_bloom_review.csv"
+            with review_path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(foreign))
+                writer.writeheader()
+                writer.writerow(foreign)
+
+            with self.assertRaisesRegex(ValueError, "does not match its audit"):
+                build_training(review_path, output_dir)
+
+
+    def test_approved_review_requires_nonblank_question(self):
+        row = review_row("Explain ACID?", "Remember")
+        row["question"] = "   "
+        with self.assertRaisesRegex(ValueError, "empty question"):
+            build_training_records([row])
+
+    def test_review_requires_positive_source_row_count(self):
+        row = review_row("Explain ACID?", "Remember")
+        row["source_row_count"] = "0"
+        with self.assertRaisesRegex(ValueError, "positive source_row_count"):
+            build_training_records([row])
+
+    def test_review_question_must_match_normalized_question(self):
+        row = review_row("Explain ACID?", "Remember")
+        row["question"] = "Compare SQL and NoSQL."
+        with self.assertRaisesRegex(ValueError, "question does not match"):
+            build_training_records([row])
+
+
+    def test_prepare_review_rolls_back_all_outputs_when_commit_fails(self):
+        with workspace_temp_directory() as temporary_path:
+            source_path = temporary_path / "source.csv"
+            output_dir = temporary_path / "processed"
+            initial_row = source_row()
+            with source_path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(initial_row))
+                writer.writeheader()
+                writer.writerow(initial_row)
+            prepare_review(source_path, output_dir)
+            output_paths = [
+                output_dir / "dataset_v1_bloom_review.csv",
+                output_dir / "dataset_v1_bloom_train.csv",
+                output_dir / "dataset_v1_bloom_audit.json",
+            ]
+            original_outputs = {path: path.read_bytes() for path in output_paths}
+
+            second_row = source_row(
+                id="2",
+                question="Compare SQL and NoSQL.",
+                bloom_level="Analyze",
+            )
+            with source_path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(initial_row))
+                writer.writeheader()
+                writer.writerows([initial_row, second_row])
+
+            real_replace = os.replace
+
+            failure_raised = {"value": False}
+
+            def fail_audit_commit(source, destination):
+                destination_path_value = Path(destination)
+                if (
+                    not failure_raised["value"]
+                    and destination_path_value.name == "dataset_v1_bloom_audit.json"
+                ):
+                    failure_raised["value"] = True
+                    raise OSError("simulated audit replacement failure")
+                return real_replace(source, destination)
+
+            with patch(
+                "src.analysis.training.prepare_bloom_dataset.os.replace",
+                side_effect=fail_audit_commit,
+            ):
+                with self.assertRaisesRegex(OSError, "simulated audit"):
+                    prepare_review(source_path, output_dir)
+
+            for path, original_bytes in original_outputs.items():
+                self.assertEqual(path.read_bytes(), original_bytes)
+
+
+    def test_read_csv_rows_rejects_malformed_quoting(self):
+        with workspace_temp_directory() as temporary_path:
+            malformed_path = temporary_path / "malformed.csv"
+            malformed_path.write_text(
+                'id,question\n1,"unterminated\n',
+                encoding="utf-8",
+            )
+            with self.assertRaises(csv.Error):
+                read_csv_rows(malformed_path)
+
+    def test_review_missing_required_field_is_rejected(self):
+        row = review_row("Explain ACID?", "Remember")
+        del row["question"]
+        with self.assertRaisesRegex(ValueError, "missing required columns"):
+            build_training_records([row])
 
 
 if __name__ == "__main__":
