@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, Sparkles } from "lucide-react";
+import { LayoutDashboard, LogOut, GraduationCap } from "lucide-react";
 import { NavLink } from "react-router";
 import { Button } from "./ui/button";
 import { cn } from "./ui/utils";
@@ -11,32 +11,38 @@ interface SidebarProps {
 
 const itemClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
-    isActive ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-200",
+    isActive
+      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+      : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
   );
 
 const headerClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium uppercase tracking-wider transition-colors",
-    isActive ? "text-blue-700" : "text-slate-400 hover:text-slate-600"
+    "w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium tracking-wide transition-colors",
+    isActive
+      ? "text-foreground"
+      : "text-muted-foreground hover:text-foreground",
   );
 
 const subItemClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-    isActive ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-200",
+    isActive
+      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+      : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
   );
 
 export function Sidebar({ role, onLogout }: SidebarProps) {
   return (
-    <aside className="w-64 shrink-0 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0">
-      <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-2.5">
-        <div className="size-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-sm shadow-blue-200">
-          <Sparkles className="size-5 text-white" />
+    <aside className="w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0">
+      <div className="px-6 py-5 border-b border-sidebar-border flex items-center gap-3">
+        <div className="size-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+          <GraduationCap className="size-5" />
         </div>
         <div className="leading-tight">
-          <div className="text-slate-900 tracking-tight">GradeX AI</div>
-          <div className="text-xs text-slate-500">Learning Suite</div>
+          <div className="text-sidebar-foreground tracking-tight font-medium">GradeX AI</div>
+          <div className="text-xs text-muted-foreground">Learning Suite</div>
         </div>
       </div>
 
@@ -57,7 +63,7 @@ export function Sidebar({ role, onLogout }: SidebarProps) {
                       <Icon className="size-4" />
                       <span className="truncate">{agent.name}</span>
                     </NavLink>
-                    <div className="ml-4 space-y-0.5 border-l border-slate-100 pl-2">
+                    <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-2">
                       {agent.features.map((feature) => (
                         <NavLink key={feature.path} to={feature.path} end className={subItemClass}>
                           <span className="truncate">{feature.label}</span>
@@ -77,16 +83,16 @@ export function Sidebar({ role, onLogout }: SidebarProps) {
         )}
       </nav>
 
-      <div className="p-3 border-t border-slate-100">
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50">
-          <div className="size-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center text-sm">
-            {role === "lecturer" ? "DR" : "ST"}
+      <div className="p-3 border-t border-sidebar-border">
+        <div className="flex items-center gap-3 p-2.5 rounded-lg bg-sidebar-accent/60">
+          <div className="size-9 rounded-lg bg-secondary text-secondary-foreground flex items-center justify-center text-sm font-medium">
+            {role === "lecturer" ? "DR" : "SP"}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm text-slate-900 truncate">
+            <div className="text-sm text-sidebar-foreground truncate">
               {role === "lecturer" ? "Dr. R. Mendis" : "Sahan Perera"}
             </div>
-            <div className="text-xs text-slate-500 truncate capitalize">{role}</div>
+            <div className="text-xs text-muted-foreground truncate capitalize">{role}</div>
           </div>
           <Button variant="ghost" size="icon" onClick={onLogout} className="size-8">
             <LogOut className="size-4" />
