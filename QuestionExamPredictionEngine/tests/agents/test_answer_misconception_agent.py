@@ -39,7 +39,18 @@ class AnswerMisconceptionAgentTests(unittest.TestCase):
 
         results = AnswerMisconceptionAgent().run(
             {"questions": []},
-            {"student_id": "student-1", "answers": []},
+            {
+                "student_id": "student-1",
+                "answers": [{
+                    "question_number": 1,
+                    "parts": [{
+                        "part": "a",
+                        "answer": "normalized tables",
+                        "score": 8,
+                        "max_marks": 10,
+                    }],
+                }],
+            },
             {},
             {("1", "a"): mapping},
         )

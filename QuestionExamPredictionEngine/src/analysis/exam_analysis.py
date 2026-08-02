@@ -72,6 +72,7 @@ def build_student_reports(
     performance_weight: float = 0.6,
     concept_weight: float = 0.25,
     cognitive_weight: float = 0.15,
+    cognitive_scorer=cognitive_score,
 ) -> list[dict]:
     """Build one analytical record per student answer part."""
     students = [student_data] if isinstance(student_data, dict) else list(student_data or [])
@@ -106,7 +107,7 @@ def build_student_reports(
                 )
                 keywords = extract_keywords(reference_text)
                 concept = concept_score(student_answer, keywords)
-                cognitive = cognitive_score(question_text, student_answer)
+                cognitive = cognitive_scorer(question_text, student_answer)
 
                 learning_score = round(
                     (performance_weight * performance)

@@ -35,21 +35,30 @@ class ExamAnalysisOrchestrator:
 
     @classmethod
     def with_defaults(cls, registry: ModelRegistry):
+        cognitive_provider = lambda: registry.try_get("cognitive_bloom")
+        weak_topic_provider = lambda: registry.try_get("weak_topic")
         return cls(
             registry,
-            QuestionKnowledgeAgent(),
-            AnswerMisconceptionAgent(),
-            CohortPredictionAgent(),
+            QuestionKnowledgeAgent(cognitive_provider),
+            AnswerMisconceptionAgent(cognitive_provider),
+            CohortPredictionAgent(weak_topic_provider),
         )
 
     @staticmethod
-    def _input_hash(exam_data, students, model_answers, rubric) -> str:
+    def _input_hash(
+        exam_data,
+        students,
+        model_answers,
+        rubric,
+        options=None,
+    ) -> str:
         payload = json.dumps(
             {
                 "exam_data": exam_data,
                 "students": students,
                 "model_answers": model_answers,
                 "rubric": rubric,
+                "options": options or {},
             },
             sort_keys=True,
             separators=(",", ":"),
@@ -58,7 +67,7 @@ class ExamAnalysisOrchestrator:
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @staticmethod
-    def _failed_mapping(exam_id, question, part, exc):
+    def _failed_mapping(exam_id, question, part, _exc):
         question_id = str(question.get("question_number", ""))
         part_id = str(part.get("part", ""))
         return QuestionMappingResult(
@@ -73,17 +82,17 @@ class ExamAnalysisOrchestrator:
             warnings=[
                 AgentWarning(
                     code="question_mapping_failed",
-                    message=str(exc),
+                    message="This question part could not be mapped",
                     capability="question_mapping",
                 )
             ],
         )
 
     @staticmethod
-    def _failed_answers(exam_data, student, mapping_index, exc):
+    def _failed_answers(exam_data, student, mapping_index, _exc):
         warning = AgentWarning(
             code="answer_analysis_failed",
-            message=str(exc),
+            message="This student's answers could not be analyzed",
             capability="answer_analysis",
         )
         results = []
@@ -92,7 +101,7 @@ class ExamAnalysisOrchestrator:
             for part in question.get("parts", []):
                 part_id = str(part.get("part", ""))
                 mapping = mapping_index.get((question_id, part_id))
-                max_marks = float(part.get("max_marks", 1) or 1)
+                max_marks = max(float(part.get("max_marks", 1) or 1), 0.001)
                 marks = max(0.0, float(part.get("score", 0) or 0))
                 topic = (
                     mapping.topic_ids[0]
@@ -130,6 +139,17 @@ class ExamAnalysisOrchestrator:
                 )
         return results
 
+    @staticmethod
+    def _deduplicate_warnings(warnings):
+        unique = []
+        seen = set()
+        for warning in warnings:
+            key = (warning.code, warning.capability, warning.message)
+            if key not in seen:
+                seen.add(key)
+                unique.append(warning)
+        return unique
+
     def run(
         self,
         exam_data: dict,
@@ -144,6 +164,19 @@ class ExamAnalysisOrchestrator:
             f"{exam_data.get('exam', 'EXAM')}-"
             f"{exam_data.get('year', 'UNKNOWN')}"
         )
+        context = AgentRunContext(
+            run_id=str(uuid4()),
+            input_hash=self._input_hash(
+                exam_data,
+                students,
+                model_answers,
+                rubric,
+                options,
+            ),
+            exam_id=exam_id,
+            started_at=datetime.now(timezone.utc),
+        )
+
         mappings = []
         mapping_index = {}
         for question in exam_data.get("questions", []):
@@ -216,18 +249,19 @@ class ExamAnalysisOrchestrator:
                 analyses,
                 **threshold_options,
             )
-        except Exception as exc:
+        except Exception:
             cohort = CohortPredictionResult(
                 exam_id=exam_id,
                 status=AgentStatus.FAILED,
                 warnings=[
                     AgentWarning(
                         code="cohort_analysis_failed",
-                        message=str(exc),
+                        message="Cohort analysis could not be completed",
                         capability="cohort_analysis",
                     )
                 ],
             )
+
         statuses = [item.status for item in mappings]
         statuses.extend(item.status for item in analyses)
         statuses.append(cohort.status)
@@ -240,28 +274,9 @@ class ExamAnalysisOrchestrator:
                 else AgentStatus.SUCCESS
             )
         )
-        context = AgentRunContext(
-            run_id=str(uuid4()),
-            input_hash=self._input_hash(
-                exam_data,
-                students,
-                model_answers,
-                rubric,
-            ),
-            exam_id=exam_id,
-            started_at=datetime.now(timezone.utc),
-            model_versions=self.registry.versions(),
-        )
-        warnings = [
-            warning
-            for item in mappings
-            for warning in item.warnings
-        ]
-        warnings.extend(
-            warning
-            for item in analyses
-            for warning in item.warnings
-        )
+        context.model_versions = self.registry.loaded_versions()
+        warnings = [warning for item in mappings for warning in item.warnings]
+        warnings.extend(warning for item in analyses for warning in item.warnings)
         warnings.extend(cohort.warnings)
         return AgentWorkflowResult(
             context=context,
@@ -269,5 +284,5 @@ class ExamAnalysisOrchestrator:
             answer_analyses=analyses,
             cohort_result=cohort,
             status=status,
-            warnings=warnings,
+            warnings=self._deduplicate_warnings(warnings),
         )
