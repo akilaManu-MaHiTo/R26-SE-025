@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, GraduationCap, BookUser, ArrowRight } from "lucide-react";
+import { GraduationCap, BookUser, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -9,58 +9,64 @@ export function LoginPage({ onLogin }: { onLogin: (role: "lecturer" | "student")
   const [role, setRole] = useState<"lecturer" | "student">("lecturer");
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 relative overflow-hidden p-12 flex-col justify-between text-white">
-        <div className="absolute -top-24 -right-24 size-96 rounded-full bg-blue-400/20 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 size-96 rounded-full bg-indigo-400/20 blur-3xl" />
+    <div className="min-h-screen flex bg-background">
+      {/* Editorial panel */}
+      <div className="hidden lg:flex flex-1 relative overflow-hidden p-14 flex-col justify-between border-r border-border">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-accent/70 via-background to-transparent" />
+        <div className="absolute -top-40 -right-40 size-[480px] rounded-full bg-primary/5 blur-3xl" />
 
         <div className="relative flex items-center gap-3">
-          <div className="size-11 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center">
-            <Sparkles className="size-6" />
+          <div className="size-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+            <Sparkles className="size-5" />
           </div>
-          <div className="tracking-tight">GradeX AI</div>
+          <div className="tracking-tight text-lg font-medium">GradeX AI</div>
         </div>
 
-        <div className="relative space-y-6 max-w-lg">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/20 text-sm">
-            <span className="size-1.5 rounded-full bg-emerald-400" /> AI-powered assessment
+        <div className="relative space-y-8 max-w-lg">
+          <div className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            <span className="size-1.5 rounded-full bg-primary" /> AI-powered assessment
           </div>
-          <h1 className="text-4xl tracking-tight leading-tight">
-            Smarter grading. Deeper insight. Better outcomes.
+          <h1 className="text-[2.75rem] leading-[1.1] tracking-tight">
+            Smarter grading.
+            <br />
+            Deeper insight.
+            <br />
+            Better outcomes.
           </h1>
-          <p className="text-blue-100 leading-relaxed">
+          <p className="text-muted-foreground leading-relaxed max-w-md">
             GradeX AI helps lecturers grade diagrams, handwritten exams, and viva
             voce sessions in minutes — and gives students a clear view of their
             mastery across every topic.
           </p>
-          <div className="grid grid-cols-3 gap-3 pt-4">
+          <div className="grid grid-cols-3 gap-4 pt-2 max-w-lg">
             {[
               { k: "92%", v: "Time saved" },
               { k: "12k+", v: "Exams graded" },
-              { k: "4.9★", v: "Lecturer rating" },
+              { k: "4.9", v: "Lecturer rating" },
             ].map((s) => (
-              <div key={s.k} className="rounded-xl bg-white/10 backdrop-blur border border-white/15 p-4">
-                <div className="tracking-tight">{s.k}</div>
-                <div className="text-xs text-blue-100 mt-1">{s.v}</div>
+              <div key={s.k} className="rounded-xl border border-border bg-card/60 p-5">
+                <div className="text-2xl tracking-tight tabular-nums">{s.k}</div>
+                <div className="text-xs text-muted-foreground mt-1.5">{s.v}</div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="relative text-sm text-blue-200">© 2026 GradeX AI · University Edition</div>
+        <div className="relative text-sm text-muted-foreground">© 2026 GradeX AI · University Edition</div>
       </div>
 
+      {/* Form panel */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-2.5 mb-8">
-            <div className="size-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center">
-              <Sparkles className="size-5 text-white" />
+            <div className="size-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+              <Sparkles className="size-5" />
             </div>
-            <div className="tracking-tight text-slate-900">GradeX AI</div>
+            <div className="tracking-tight text-lg font-medium text-foreground">GradeX AI</div>
           </div>
 
-          <h2 className="tracking-tight text-slate-900">Welcome back</h2>
-          <p className="text-slate-500 mt-2">Sign in to continue to your workspace.</p>
+          <h2 className="tracking-tight text-2xl text-foreground">Welcome back</h2>
+          <p className="text-muted-foreground mt-2">Sign in to continue to your workspace.</p>
 
           <div className="grid grid-cols-2 gap-3 mt-8">
             {[
@@ -74,15 +80,15 @@ export function LoginPage({ onLogin }: { onLogin: (role: "lecturer" | "student")
                   key={r.id}
                   onClick={() => setRole(r.id as any)}
                   className={cn(
-                    "rounded-xl border p-4 text-left transition-all",
+                    "rounded-xl border p-4 text-left transition-all duration-200",
                     active
-                      ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100"
-                      : "border-slate-200 bg-white hover:border-slate-300",
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : "border-border bg-card hover:border-primary/50",
                   )}
                 >
-                  <Icon className={cn("size-5 mb-2", active ? "text-blue-600" : "text-slate-500")} />
-                  <div className="text-sm text-slate-900">{r.label}</div>
-                  <div className="text-xs text-slate-500 mt-0.5">
+                  <Icon className={cn("size-5 mb-2", active ? "text-primary-foreground" : "text-muted-foreground")} />
+                  <div className={cn("text-sm", active ? "text-primary-foreground" : "text-foreground")}>{r.label}</div>
+                  <div className={cn("text-xs mt-0.5", active ? "text-primary-foreground/70" : "text-muted-foreground")}>
                     {r.id === "lecturer" ? "Grade & analyze" : "Track progress"}
                   </div>
                 </button>
@@ -104,18 +110,18 @@ export function LoginPage({ onLogin }: { onLogin: (role: "lecturer" | "student")
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <button type="button" className="text-xs text-blue-600 hover:underline">
+                <button type="button" className="text-xs text-muted-foreground hover:text-foreground hover:underline">
                   Forgot password?
                 </button>
               </div>
               <Input id="password" type="password" defaultValue="••••••••••" />
             </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
+            <Button type="submit" className="w-full">
               Sign in <ArrowRight className="size-4 ml-1" />
             </Button>
-            <div className="text-center text-sm text-slate-500">
+            <div className="text-center text-sm text-muted-foreground">
               New to GradeX?{" "}
-              <button type="button" className="text-blue-600 hover:underline">
+              <button type="button" className="text-foreground hover:underline">
                 Create an account
               </button>
             </div>

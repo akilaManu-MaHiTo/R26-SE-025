@@ -2,83 +2,91 @@
 
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
+  --font-sans: "Geist Variable", "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", "SF Mono", "JetBrains Mono", monospace;
+
+  --background: #fbfbfa;
+  --foreground: #1a1815;
   --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
+  --card-foreground: #1a1815;
+  --popover: #ffffff;
+  --popover-foreground: #1a1815;
+  --primary: #1a1815;
+  --primary-foreground: #faf9f7;
+  --secondary: #f0eee8;
+  --secondary-foreground: #1a1815;
+  --muted: #f0eee8;
+  --muted-foreground: #75726a;
+  --accent: #e9e6df;
+  --accent-foreground: #1a1815;
+  --destructive: #b3423b;
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
-  --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
+  --border: #e7e4dc;
+  --input: #d8d4c9;
+  --input-background: #f5f3ee;
+  --switch-background: #c9c5ba;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --ring: oklch(0.48 0.09 252);
+  --chart-1: oklch(0.55 0.12 220);
+  --chart-2: oklch(0.62 0.13 160);
+  --chart-3: oklch(0.6 0.12 85);
+  --chart-4: oklch(0.55 0.13 25);
+  --chart-5: oklch(0.56 0.12 290);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #f6f4ef;
+  --sidebar-foreground: #1a1815;
+  --sidebar-primary: #1a1815;
+  --sidebar-primary-foreground: #faf9f7;
+  --sidebar-accent: #ece9e1;
+  --sidebar-accent-foreground: #1a1815;
+  --sidebar-border: #e7e4dc;
+  --sidebar-ring: oklch(0.48 0.09 252);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  --background: #131210;
+  --foreground: #e9e7e1;
+  --card: #1b1a17;
+  --card-foreground: #e9e7e1;
+  --popover: #1b1a17;
+  --popover-foreground: #e9e7e1;
+  --primary: #e9e7e1;
+  --primary-foreground: #1b1a17;
+  --secondary: #29261f;
+  --secondary-foreground: #e9e7e1;
+  --muted: #29261f;
+  --muted-foreground: #9c988c;
+  --accent: #34302a;
+  --accent-foreground: #e9e7e1;
+  --destructive: #e07a6e;
+  --destructive-foreground: #2b0a07;
+  --border: #2b2924;
+  --input: #3a372f;
+  --input-background: #201e1b;
+  --switch-background: #3a372f;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --ring: oklch(0.62 0.09 252);
+  --chart-1: oklch(0.6 0.11 220);
+  --chart-2: oklch(0.66 0.12 160);
+  --chart-3: oklch(0.66 0.11 85);
+  --chart-4: oklch(0.62 0.12 25);
+  --chart-5: oklch(0.6 0.11 290);
+  --sidebar: #171613;
+  --sidebar-foreground: #e9e7e1;
+  --sidebar-primary: #e9e7e1;
+  --sidebar-primary-foreground: #171613;
+  --sidebar-accent: #29261f;
+  --sidebar-accent-foreground: #e9e7e1;
+  --sidebar-border: #2b2924;
+  --sidebar-ring: oklch(0.62 0.09 252);
 }
 
 @theme inline {
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -124,41 +132,45 @@
     @apply border-border outline-ring/50;
   }
 
-  body {
-    @apply bg-background text-foreground;
-  }
-
-  /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
-
   html {
     font-size: var(--font-size);
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
   h1 {
     font-size: var(--text-2xl);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
   }
 
   h2 {
     font-size: var(--text-xl);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
   }
 
   h3 {
     font-size: var(--text-lg);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
   }
 
   h4 {
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
   }
 
   label {

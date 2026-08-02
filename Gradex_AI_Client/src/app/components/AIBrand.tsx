@@ -19,11 +19,6 @@ export const AI_IDENTITIES = {
     version: "v2.4",
     c1: "#1d4ed8",   // deep blue
     c2: "#0891b2",   // cyan
-    c3: "#bfdbfe",   // light blue
-    bg: "from-[#0c1445] via-[#0a2a5c] to-[#0e3a6b]",
-    pill: "bg-blue-600",
-    pillText: "text-white",
-    glowColor: "rgba(37,99,235,0.5)",
     loadingMessages: [
       "Parsing diagram topology…",
       "Detecting entities & relationships…",
@@ -42,11 +37,6 @@ export const AI_IDENTITIES = {
     version: "v3.1",
     c1: "#6d28d9",   // deep violet
     c2: "#9333ea",   // purple
-    c3: "#e9d5ff",   // light purple
-    bg: "from-[#1a0938] via-[#2e1065] to-[#3b0764]",
-    pill: "bg-violet-600",
-    pillText: "text-white",
-    glowColor: "rgba(124,58,237,0.5)",
     loadingMessages: [
       "Preprocessing image…",
       "Running OCR pipeline…",
@@ -65,11 +55,6 @@ export const AI_IDENTITIES = {
     version: "v1.8",
     c1: "#0f766e",   // teal
     c2: "#059669",   // emerald
-    c3: "#a7f3d0",   // light emerald
-    bg: "from-[#032e27] via-[#064e3b] to-[#065f46]",
-    pill: "bg-teal-600",
-    pillText: "text-white",
-    glowColor: "rgba(13,148,136,0.5)",
     loadingMessages: [
       "Ingesting exam submissions…",
       "Computing Bloom's taxonomy mapping…",
@@ -88,11 +73,6 @@ export const AI_IDENTITIES = {
     version: "v2.0",
     c1: "#be123c",   // rose
     c2: "#ea580c",   // orange
-    c3: "#fed7aa",   // light orange
-    bg: "from-[#3b0a14] via-[#4c0519] to-[#431407]",
-    pill: "bg-rose-600",
-    pillText: "text-white",
-    glowColor: "rgba(225,29,72,0.5)",
     loadingMessages: [
       "Initialising audio pipeline…",
       "Running speech-to-text model…",
@@ -275,14 +255,12 @@ export function AILogo({ model, size = 40 }: { model: AIModel; size?: number }) 
 export function AIBadgePill({ model }: { model: AIModel }) {
   const id = AI_IDENTITIES[model];
   return (
-    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${id.pill} shadow-lg`}
-      style={{ boxShadow: `0 0 16px ${id.glowColor}` }}>
+    <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-card/80">
       <AILogo model={model} size={20} />
-      <span className={`text-xs tracking-widest ${id.pillText}`} style={{ letterSpacing: "0.15em" }}>
+      <span className="text-xs font-medium tracking-widest" style={{ letterSpacing: "0.12em" }}>
         {id.name}
       </span>
-      <span className={`text-xs ${id.pillText} opacity-70`}>{id.dot}</span>
-      <span className={`text-[10px] ${id.pillText} opacity-50 border border-white/20 rounded px-1`}>{id.version}</span>
+      <span className="text-[10px] text-muted-foreground border border-border rounded px-1">{id.version}</span>
     </div>
   );
 }
@@ -291,62 +269,50 @@ export function AIBadgePill({ model }: { model: AIModel }) {
 export function AIPageBanner({ model }: { model: AIModel }) {
   const id = AI_IDENTITIES[model];
   return (
-    <div
-      className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${id.bg} p-5 flex items-center gap-5`}
-      style={{ boxShadow: `0 4px 32px ${id.glowColor}` }}
-    >
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Orbital rings */}
-        <div className="absolute right-6 top-1/2 -translate-y-1/2 size-40 rounded-full border border-white/5" />
-        <div className="absolute right-12 top-1/2 -translate-y-1/2 size-28 rounded-full border border-white/5" />
-        <div className="absolute right-20 top-1/2 -translate-y-1/2 size-16 rounded-full border border-white/8" />
-        {/* Dot grid */}
-        <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 400 80">
-          {Array.from({ length: 12 }, (_, x) =>
-            Array.from({ length: 4 }, (_, y) => (
-              <circle key={`${x}-${y}`} cx={x * 36 + 18} cy={y * 24 + 8} r="1" fill="white" />
-            ))
-          )}
-        </svg>
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 flex items-center gap-5">
+      {/* Subtle ambient tint using the model's secondary colour */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute -right-24 -top-32 size-72 rounded-full blur-3xl"
+          style={{ backgroundColor: id.c2, opacity: 0.07 }}
+        />
       </div>
 
       {/* Logo mark */}
       <div className="relative shrink-0">
-        <div className="size-16 rounded-2xl bg-white/10 backdrop-blur border border-white/15 flex items-center justify-center"
-          style={{ boxShadow: `0 0 20px ${id.glowColor}` }}>
+        <div className="size-16 rounded-2xl bg-muted flex items-center justify-center">
           <AILogo model={model} size={36} />
         </div>
         {/* Active pulse ring */}
-        <span className="absolute -top-1 -right-1 size-4 rounded-full border-2 border-slate-900 flex items-center justify-center">
-          <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="absolute -top-1 -right-1 size-4 rounded-full border-2 border-background flex items-center justify-center">
+          <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
         </span>
       </div>
 
       {/* Identity text */}
       <div className="relative flex-1 min-w-0">
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-white tracking-[0.2em] text-xl" style={{ fontWeight: 700 }}>
+        <div className="flex items-baseline gap-2">
+          <span className="text-xl tracking-tight font-semibold" style={{ fontWeight: 700 }}>
             {id.name}
           </span>
-          <span style={{ color: id.c2, fontSize: "1.1rem", fontWeight: 700, letterSpacing: "0.1em" }}>
+          <span style={{ color: id.c2, fontSize: "1.1rem", fontWeight: 700, letterSpacing: "0.08em" }}>
             {id.dot}
           </span>
-          <span className="text-white/30 text-xs ml-1 border border-white/15 rounded px-1.5 py-0.5">
+          <span className="text-xs text-muted-foreground ml-1 border border-border rounded px-1.5 py-0.5">
             {id.version}
           </span>
         </div>
-        <div className="text-white/60 text-sm mt-0.5">{id.tagline}</div>
-        <div className="text-white/35 text-xs mt-0.5">{id.sub}</div>
+        <div className="text-sm text-muted-foreground mt-0.5">{id.tagline}</div>
+        <div className="text-xs text-muted-foreground/70 mt-0.5">{id.sub}</div>
       </div>
 
       {/* Status */}
       <div className="relative shrink-0 text-right hidden sm:block">
-        <div className="flex items-center gap-1.5 text-emerald-400 text-xs">
-          <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+          <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
           Model online
         </div>
-        <div className="text-white/25 text-[10px] mt-1">Ready to process</div>
+        <div className="text-muted-foreground/70 text-[10px] mt-1">Ready to process</div>
       </div>
     </div>
   );
@@ -370,40 +336,14 @@ export function AILoadingOverlay({
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-5 rounded-xl overflow-hidden">
-      {/* Blurred dark backdrop */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${id.bg} opacity-95`} />
-
-      {/* Animated background particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 8 }, (_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full opacity-10 animate-pulse"
-            style={{
-              width: `${40 + i * 20}px`,
-              height: `${40 + i * 20}px`,
-              backgroundColor: id.c2,
-              left: `${10 + i * 12}%`,
-              top: `${5 + (i % 3) * 30}%`,
-              animationDelay: `${i * 0.3}s`,
-              animationDuration: `${2 + i * 0.5}s`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Scanning line */}
-      <div className="absolute inset-x-0 top-0 h-px opacity-60 animate-[scanline_2s_ease-in-out_infinite]"
-        style={{ background: `linear-gradient(to right, transparent, ${id.c2}, transparent)` }} />
+      {/* Blurred backdrop */}
+      <div className="absolute inset-0 bg-background/90 backdrop-blur-sm" />
 
       {/* Content */}
       <div className="relative flex flex-col items-center gap-4 px-8 text-center">
         {/* Pulsing logo container */}
         <div className="relative">
-          <div
-            className="size-20 rounded-2xl bg-white/10 border border-white/20 backdrop-blur flex items-center justify-center animate-pulse"
-            style={{ boxShadow: `0 0 40px ${id.glowColor}` }}
-          >
+          <div className="size-20 rounded-2xl border border-border bg-card flex items-center justify-center shadow-sm">
             <AILogo model={model} size={44} />
           </div>
           {/* Orbit ring animation */}
@@ -416,38 +356,34 @@ export function AILoadingOverlay({
         {/* Name */}
         <div>
           <div className="flex items-baseline gap-1.5 justify-center">
-            <span className="text-white tracking-[0.25em] text-2xl" style={{ fontWeight: 700 }}>
+            <span className="text-2xl font-semibold tracking-tight">
               {id.name}
             </span>
-            <span style={{ color: id.c2, fontSize: "1.3rem", fontWeight: 700, letterSpacing: "0.15em" }}>
+            <span style={{ color: id.c2, fontSize: "1.3rem", fontWeight: 700, letterSpacing: "0.12em" }}>
               {id.dot}
             </span>
           </div>
-          <div className="text-white/50 text-xs mt-1 tracking-wide">{id.tagline}</div>
+          <div className="text-muted-foreground text-xs mt-1 tracking-wide">{id.tagline}</div>
         </div>
 
         {/* Step message */}
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/15">
-          <span
-            className="size-2 rounded-full animate-pulse"
-            style={{ backgroundColor: id.c2 }}
-          />
-          <span className="text-white/80 text-sm">{message}</span>
+        <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card">
+          <span className="size-2 rounded-full animate-pulse" style={{ backgroundColor: id.c2 }} />
+          <span className="text-foreground/80 text-sm">{message}</span>
         </div>
 
         {/* Progress bar */}
         <div className="w-64 space-y-1.5">
-          <div className="flex justify-between text-xs text-white/40">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>Processing</span>
             <span>{progress}%</span>
           </div>
-          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-300"
               style={{
                 width: `${progress}%`,
                 background: `linear-gradient(to right, ${id.c1}, ${id.c2})`,
-                boxShadow: `0 0 8px ${id.c2}`,
               }}
             />
           </div>
@@ -460,22 +396,13 @@ export function AILoadingOverlay({
               key={i}
               className="size-1.5 rounded-full transition-all duration-300"
               style={{
-                backgroundColor: i <= step ? id.c2 : "rgba(255,255,255,0.15)",
+                backgroundColor: i <= step ? id.c2 : "var(--border)",
                 transform: i === step ? "scale(1.4)" : "scale(1)",
               }}
             />
           ))}
         </div>
       </div>
-
-      <style>{`
-        @keyframes scanline {
-          0%   { top: 0%; opacity: 0; }
-          10%  { opacity: 0.6; }
-          90%  { opacity: 0.6; }
-          100% { top: 100%; opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }
@@ -484,7 +411,7 @@ export function AILoadingOverlay({
 export function AIThinkingBadge({ model, label }: { model: AIModel; label?: string }) {
   const id = AI_IDENTITIES[model];
   return (
-    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-slate-900/80">
+    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card/80">
       <div className="flex gap-0.5">
         {[0, 1, 2].map((i) => (
           <span
@@ -495,8 +422,8 @@ export function AIThinkingBadge({ model, label }: { model: AIModel; label?: stri
         ))}
       </div>
       <AILogo model={model} size={16} />
-      <span className="text-xs text-white/70">{id.name}·AI</span>
-      {label && <span className="text-xs text-white/40">{label}</span>}
+      <span className="text-xs text-foreground/80 font-medium">{id.name}·AI</span>
+      {label && <span className="text-xs text-muted-foreground">{label}</span>}
     </div>
   );
 }
