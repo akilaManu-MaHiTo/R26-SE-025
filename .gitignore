@@ -76,3 +76,8 @@ Desktop.ini
 
 # ZIP archives
 *.zip
+
+.agents
+.claude
+.superpowers
+skills-lock.json
