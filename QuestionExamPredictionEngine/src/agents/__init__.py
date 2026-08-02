@@ -10,6 +10,7 @@ from src.agents.contracts import (
     QuestionMappingResult,
     SourceCitation,
 )
+from src.agents.question_knowledge_agent import QuestionKnowledgeAgent
 
 __all__ = [
     "AgentRunContext",
@@ -20,6 +21,7 @@ __all__ = [
     "CohortPredictionResult",
     "FutureTopicProbability",
     "Misconception",
+    "QuestionKnowledgeAgent",
     "QuestionMappingResult",
     "SourceCitation",
 ]
