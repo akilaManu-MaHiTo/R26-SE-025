@@ -1,7 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 import { Card } from "./ui/card";
-import { Button } from "./ui/button";
 import { AIPageBanner, AIBadgePill } from "./AIBrand";
 import type { AgentConfig } from "../routeConfig";
 
@@ -28,12 +27,9 @@ export function AgentOverview({ agent }: { agent: AgentConfig }) {
               {feature.subtitle && (
                 <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">{feature.subtitle}</p>
               )}
-              <Button
-                variant="ghost"
-                className="mt-3 px-0 text-blue-600 hover:text-blue-700 hover:bg-transparent group-hover:translate-x-1 transition-transform"
-              >
+              <span className="mt-3 inline-flex items-center text-blue-600 group-hover:translate-x-1 transition-transform">
                 Open <ArrowRight className="size-4 ml-1" />
-              </Button>
+              </span>
             </Card>
           </Link>
         ))}
