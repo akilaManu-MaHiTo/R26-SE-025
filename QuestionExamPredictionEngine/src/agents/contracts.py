@@ -55,6 +55,7 @@ class QuestionMappingResult(BaseModel):
     required_bloom_level: str | None = None
     source_citations: list[SourceCitation] = Field(default_factory=list)
     mapping_confidence: float = Field(default=0.0, ge=0, le=1)
+    bloom_confidence: float | None = Field(default=None, ge=0, le=1)
     status: AgentStatus = AgentStatus.SUCCESS
     warnings: list[AgentWarning] = Field(default_factory=list)
 

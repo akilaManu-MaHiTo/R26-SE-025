@@ -101,7 +101,7 @@ class OrchestratorTests(unittest.TestCase):
         result = orchestrator.run(self.exam, self.students)
 
         self.assertEqual(events, ["question", "answer", "cohort"])
-        self.assertEqual(result.context.model_versions, {"similarity": "v1"})
+        self.assertEqual(result.context.model_versions, {})
         self.assertEqual(result.status, AgentStatus.PARTIAL)
         self.assertEqual(len(result.question_mappings), 1)
 

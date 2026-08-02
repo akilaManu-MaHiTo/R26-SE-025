@@ -61,6 +61,12 @@ class ModelRegistry:
         return instance
 
     def try_get(self, name: str) -> tuple[Any | None, AgentWarning | None]:
+        if name not in self._registrations:
+            return None, AgentWarning(
+                code="model_not_registered",
+                message=f"No model is registered for capability: {name}",
+                capability=name,
+            )
         try:
             return self.get(name), None
         except ModelUnavailableError as exc:
@@ -72,6 +78,12 @@ class ModelRegistry:
                 message=str(exc),
                 capability=name,
             )
+
+    def loaded_versions(self) -> dict[str, str]:
+        return {
+            name: self._registrations[name].version
+            for name in self._instances
+        }
 
     def versions(self) -> dict[str, str]:
         return {
