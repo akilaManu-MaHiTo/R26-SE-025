@@ -2,6 +2,7 @@ import unittest
 
 from src.analysis.training.prepare_bloom_dataset import (
     build_review_records,
+    build_training_records,
     normalize_question,
     question_group_id,
     validate_source_rows,
@@ -19,6 +20,25 @@ def source_row(**overrides):
     }
     row.update(overrides)
     return row
+
+
+def review_row(question, approval):
+    normalized = normalize_question(question)
+    return {
+        "group_id": question_group_id(normalized),
+        "question": question,
+        "normalized_question": normalized,
+        "source_row_count": "1",
+        "observed_labels": "remember",
+        "label_counts": '{"remember": 1}',
+        "subjects": "Computer Science",
+        "topics": "Databases",
+        "subtopics": "Transactions",
+        "source_ids": "1",
+        "approved_bloom_level": approval,
+        "review_status": "approved" if approval else "needs_review",
+        "review_notes": "",
+    }
 
 
 class BloomDatasetPreparationTests(unittest.TestCase):
@@ -64,6 +84,57 @@ class BloomDatasetPreparationTests(unittest.TestCase):
         )
         self.assertEqual(review[0]["source_ids"], "1|2")
         self.assertEqual(review[0]["topics"], "Architecture|Databases")
+
+
+    def test_existing_review_is_preserved(self):
+        normalized = normalize_question("Explain ACID?")
+        existing = [{
+            "group_id": question_group_id(normalized),
+            "normalized_question": normalized,
+            "approved_bloom_level": "Understand",
+            "review_notes": "Checked by lecturer",
+        }]
+
+        review = build_review_records([source_row()], existing_reviews=existing)
+
+        self.assertEqual(review[0]["approved_bloom_level"], "understand")
+        self.assertEqual(review[0]["review_status"], "approved")
+        self.assertEqual(review[0]["review_notes"], "Checked by lecturer")
+
+
+    def test_training_rows_include_only_valid_approvals(self):
+        reviews = [
+            review_row("Explain ACID?", "Remember"),
+            review_row("Compare SQL and NoSQL.", ""),
+        ]
+
+        result = build_training_records(reviews)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["bloom_level"], "remember")
+        self.assertEqual(result[0]["review_status"], "approved")
+
+    def test_invalid_nonblank_approval_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "invalid approved Bloom label"):
+            build_training_records([review_row("Explain ACID?", "Invent")])
+
+    def test_complete_review_can_be_required(self):
+        with self.assertRaisesRegex(ValueError, "review is incomplete"):
+            build_training_records(
+                [review_row("Explain ACID?", "")],
+                require_complete=True,
+            )
+
+    def test_duplicate_review_group_ids_are_rejected(self):
+        row = review_row("Explain ACID?", "Remember")
+        with self.assertRaisesRegex(ValueError, "Duplicate review group_id"):
+            build_training_records([row, dict(row)])
+
+    def test_mismatched_review_group_id_is_rejected(self):
+        row = review_row("Explain ACID?", "Remember")
+        row["group_id"] = "bloom-not-the-question-hash"
+        with self.assertRaisesRegex(ValueError, "mismatched group_id"):
+            build_training_records([row])
 
 
 if __name__ == "__main__":

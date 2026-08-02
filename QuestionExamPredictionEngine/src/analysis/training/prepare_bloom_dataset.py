@@ -86,12 +86,33 @@ def _joined_values(rows: list[Mapping[str, object]], column: str) -> str:
     return "|".join(sorted(values, key=lambda value: (value.casefold(), value)))
 
 
+def _index_existing_reviews(
+    existing_reviews: list[Mapping[str, object]] | None,
+) -> dict[str, Mapping[str, object]]:
+    indexed = {}
+    for row_number, row in enumerate(existing_reviews or [], start=2):
+        normalized = normalize_question(row.get("normalized_question"))
+        group_id = str(row.get("group_id") or "").strip()
+        if group_id in indexed:
+            raise ValueError(f"Duplicate review group_id at row {row_number}: {group_id}")
+        if not normalized or group_id != question_group_id(normalized):
+            raise ValueError(f"Review row {row_number} has a mismatched group_id")
+
+        approval = str(row.get("approved_bloom_level") or "").strip().lower()
+        if approval and approval not in VALID_BLOOM_LEVELS:
+            raise ValueError(
+                f"Review row {row_number} has invalid approved Bloom label: {approval!r}"
+            )
+        indexed[group_id] = row
+    return indexed
+
+
 def build_review_records(
     rows: list[Mapping[str, object]],
     existing_reviews: list[Mapping[str, object]] | None = None,
 ) -> list[dict[str, object]]:
     validate_source_rows(rows)
-    del existing_reviews
+    existing_by_id = _index_existing_reviews(existing_reviews)
 
     grouped_rows: dict[str, list[Mapping[str, object]]] = defaultdict(list)
     for row in rows:
@@ -113,8 +134,11 @@ def build_review_records(
             question_variants,
             key=lambda value: (len(value), value.casefold(), value),
         )
+        group_id = question_group_id(normalized)
+        existing = existing_by_id.get(group_id, {})
+        approval = str(existing.get("approved_bloom_level") or "").strip().lower()
         review_records.append({
-            "group_id": question_group_id(normalized),
+            "group_id": group_id,
             "question": representative_question,
             "normalized_question": normalized,
             "source_row_count": len(group),
@@ -124,9 +148,76 @@ def build_review_records(
             "topics": _joined_values(group, "topic"),
             "subtopics": _joined_values(group, "subtopic"),
             "source_ids": _joined_values(group, "id"),
-            "approved_bloom_level": "",
-            "review_status": "needs_review",
-            "review_notes": "",
+            "approved_bloom_level": approval,
+            "review_status": "approved" if approval else "needs_review",
+            "review_notes": str(existing.get("review_notes") or "").strip(),
         })
 
     return review_records
+
+TRAIN_FIELDNAMES = (
+    "group_id",
+    "question",
+    "bloom_level",
+    "source_row_count",
+    "review_status",
+    "review_notes",
+)
+
+
+def validate_review_rows(rows: list[Mapping[str, object]]) -> None:
+    if not rows:
+        raise ValueError("Review dataset is empty")
+
+    seen_group_ids = set()
+    for row_number, row in enumerate(rows, start=2):
+        normalized = normalize_question(row.get("normalized_question"))
+        group_id = str(row.get("group_id") or "").strip()
+        if group_id in seen_group_ids:
+            raise ValueError(f"Duplicate review group_id at row {row_number}: {group_id}")
+        seen_group_ids.add(group_id)
+
+        if not normalized or group_id != question_group_id(normalized):
+            raise ValueError(f"Review row {row_number} has a mismatched group_id")
+
+        approval = str(row.get("approved_bloom_level") or "").strip().lower()
+        if approval and approval not in VALID_BLOOM_LEVELS:
+            raise ValueError(
+                f"Review row {row_number} has invalid approved Bloom label: {approval!r}"
+            )
+
+
+def build_training_records(
+    review_rows: list[Mapping[str, object]],
+    require_complete: bool = False,
+) -> list[dict[str, object]]:
+    validate_review_rows(review_rows)
+
+    unreviewed_count = sum(
+        1
+        for row in review_rows
+        if not str(row.get("approved_bloom_level") or "").strip()
+    )
+    if require_complete and unreviewed_count:
+        raise ValueError(
+            f"Bloom review is incomplete: {unreviewed_count} question groups remain"
+        )
+
+    training_records = []
+    for row in review_rows:
+        approval = str(row.get("approved_bloom_level") or "").strip().lower()
+        if not approval:
+            continue
+        training_records.append({
+            "group_id": str(row.get("group_id") or "").strip(),
+            "question": str(row.get("question") or "").strip(),
+            "bloom_level": approval,
+            "source_row_count": row.get("source_row_count") or "",
+            "review_status": "approved",
+            "review_notes": str(row.get("review_notes") or "").strip(),
+        })
+
+    return sorted(
+        training_records,
+        key=lambda row: (str(row["question"]).casefold(), str(row["group_id"])),
+    )
