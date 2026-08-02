@@ -1,6 +1,8 @@
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 
+from src.agents.contracts import AgentWorkflowResult
+
 
 class ErrorResponse(BaseModel):
     detail: str
@@ -103,3 +105,7 @@ class TrendSummary(BaseModel):
 
 class AnalyzeTrendsResponse(BaseModel):
     trends: dict[str, TrendSummary]
+
+
+class AgentWorkflowAnalyzeExamResponse(BaseModel):
+    result: AgentWorkflowResult
