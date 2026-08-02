@@ -49,8 +49,32 @@ with verified model answers as they become available for additional years.
 - `POST /predict/topic-match` - match text to existing topics.
 - `POST /predict/topics` - deprecated compatibility alias.
 - `POST /predict/trends` - summarize historical trends.
+- `POST /agent-workflows/analyze-exam` - run the typed three-agent workflow.
 - `GET /health` and `GET /models` - inspect service/model status.
 
+## Agent workflow foundation
+
+The Phase 1 workflow organizes current deterministic capabilities behind
+three typed agents:
+
+- `QuestionKnowledgeAgent` maps each question part to its current topic and
+  required Bloom level.
+- `AnswerMisconceptionAgent` preserves the existing marks, concept score,
+  cognitive score, and learning score while defining the boundary for future
+  misconception extraction.
+- `CohortPredictionAgent` runs the existing question, student, weak-topic,
+  misunderstood-question, cognitive-gap, and historical-trend analytics.
+
+`ExamAnalysisOrchestrator` executes the three agents in that order, reuses one
+question mapping across all answers for that part, records an input hash and
+model versions, and isolates item-level failures. The expected Phase 1 status
+is `partial` because knowledge retrieval, structured misconception extraction,
+and validated future-topic forecasting are explicit capability gaps.
+
+Historical trends remain descriptive. `future_topic_probabilities` stays empty
+until a temporally evaluated and calibrated forecasting model is configured.
+The existing `/grade`, `/analyze/exam`, and `/predict/*` endpoints remain
+supported without behavioral changes.
 ## Verification
 
 Run the automated regression suite:
