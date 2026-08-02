@@ -10,6 +10,7 @@ class Database:
     # We define the collection here so it's easy to access everywhere
     rubric_col = None
     submissions_col = None
+    courses_col = None
 
 db_instance = Database()
 
@@ -22,6 +23,8 @@ async def connect_to_mongo():
     db_instance.db = db_instance.client[os.getenv("DATABASE_NAME")] 
     db_instance.rubric_col = db_instance.db["rubricCollection"]
     db_instance.submissions_col = db_instance.db["submissions"]
+    db_instance.courses_col = db_instance.db["courses"]
+    await db_instance.courses_col.create_index("code", unique=True)
     print("Connected to MongoDB Atlas")
 
 async def close_mongo_connection():
