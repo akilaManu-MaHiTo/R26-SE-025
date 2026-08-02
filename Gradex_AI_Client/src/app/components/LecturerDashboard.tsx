@@ -2,7 +2,7 @@ import { Workflow, FileText, BarChart3, Video, ArrowRight, TrendingUp, Clock, Us
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import type { Page } from "./Sidebar";
+import { useNavigate } from "react-router";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 const trend = [
@@ -10,10 +10,11 @@ const trend = [
   { d: "Thu", v: 64 }, { d: "Fri", v: 58 }, { d: "Sat", v: 72 }, { d: "Sun", v: 81 },
 ];
 
-export function LecturerDashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
+export function LecturerDashboard() {
+  const navigate = useNavigate();
   const cards = [
     {
-      id: "grading-diagram" as Page,
+      path: "/diagram-evaluation/diagram-grading",
       title: "Grade Diagram Exams",
       desc: "Auto-extract shapes, labels and structure to grade ER diagrams, flowcharts and UML.",
       icon: Workflow,
@@ -22,7 +23,7 @@ export function LecturerDashboard({ onNavigate }: { onNavigate: (p: Page) => voi
       stat: "12 pending",
     },
     {
-      id: "grading-handwritten" as Page,
+      path: "/grading/handwritten-grading",
       title: "Grade Handwritten Exams",
       desc: "OCR + rubric matching for scanned answer sheets with AI confidence scoring.",
       icon: FileText,
@@ -31,7 +32,7 @@ export function LecturerDashboard({ onNavigate }: { onNavigate: (p: Page) => voi
       stat: "28 pending",
     },
     {
-      id: "analytics" as Page,
+      path: "/question-exam/analytics",
       title: "Student Analytics",
       desc: "Performance bands, cognitive gaps, topic mastery and at-risk early warnings.",
       icon: BarChart3,
@@ -40,7 +41,7 @@ export function LecturerDashboard({ onNavigate }: { onNavigate: (p: Page) => voi
       stat: "4 alerts",
     },
     {
-      id: "viva" as Page,
+      path: "/viva-evaluation/viva-assessment",
       title: "Viva Assessment",
       desc: "Upload viva recordings — get transcripts, key moments and rubric scoring.",
       icon: Video,
@@ -76,7 +77,7 @@ export function LecturerDashboard({ onNavigate }: { onNavigate: (p: Page) => voi
               You have <span className="text-white">46 papers</span> waiting and <span className="text-white">4 students</span> flagged as at-risk this week.
             </p>
           </div>
-          <Button className="bg-white text-blue-700 hover:bg-blue-50" onClick={() => onNavigate("grading-handwritten")}>
+          <Button className="bg-white text-blue-700 hover:bg-blue-50" onClick={() => navigate("/grading/handwritten-grading")}>
             Resume grading <ArrowRight className="size-4 ml-1" />
           </Button>
         </div>
@@ -105,7 +106,7 @@ export function LecturerDashboard({ onNavigate }: { onNavigate: (p: Page) => voi
           {cards.map((c) => {
             const Icon = c.icon;
             return (
-              <Card key={c.id} className="group p-6 border-slate-200 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-50 transition-all cursor-pointer" onClick={() => onNavigate(c.id)}>
+              <Card key={c.path} className="group p-6 border-slate-200 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-50 transition-all cursor-pointer" onClick={() => navigate(c.path)}>
                 <div className="flex items-start justify-between">
                   <div className={`size-12 rounded-xl bg-gradient-to-br ${c.color} flex items-center justify-center shadow-md shadow-slate-200`}>
                     <Icon className="size-6 text-white" />

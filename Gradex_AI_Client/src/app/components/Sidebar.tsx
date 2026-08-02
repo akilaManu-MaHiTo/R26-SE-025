@@ -1,39 +1,33 @@
-import { LayoutDashboard, FileCheck2, FileText, Video, BarChart3, GraduationCap, LogOut, Sparkles } from "lucide-react";
+import { LayoutDashboard, LogOut, Sparkles } from "lucide-react";
+import { NavLink } from "react-router";
 import { Button } from "./ui/button";
 import { cn } from "./ui/utils";
-
-export type Page =
-  | "dashboard"
-  | "grading-diagram"
-  | "grading-handwritten"
-  | "analytics"
-  | "exam-creator"
-  | "viva"
-  | "student-dashboard";
+import { AGENT_CONFIG } from "../routeConfig";
 
 interface SidebarProps {
-  current: Page;
-  onNavigate: (p: Page) => void;
   role: "lecturer" | "student";
   onLogout: () => void;
 }
 
-export function Sidebar({ current, onNavigate, role, onLogout }: SidebarProps) {
-  const lecturerItems: { id: Page; label: string; icon: any }[] = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "grading-diagram", label: "Diagram Grading", icon: FileCheck2 },
-    { id: "grading-handwritten", label: "Handwritten Grading", icon: FileText },
-    { id: "analytics", label: "Student Analytics", icon: BarChart3 },
-    { id: "exam-creator", label: "Exam Creator", icon: GraduationCap },
-    { id: "viva", label: "Viva Assessment", icon: Video },
-  ];
+const itemClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
+    isActive ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+  );
 
-  const studentItems: { id: Page; label: string; icon: any }[] = [
-    { id: "student-dashboard", label: "My Dashboard", icon: LayoutDashboard },
-  ];
+const headerClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    "w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium uppercase tracking-wider transition-colors",
+    isActive ? "text-blue-700" : "text-slate-400 hover:text-slate-600"
+  );
 
-  const items = role === "lecturer" ? lecturerItems : studentItems;
+const subItemClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+    isActive ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+  );
 
+export function Sidebar({ role, onLogout }: SidebarProps) {
   return (
     <aside className="w-64 shrink-0 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0">
       <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-2.5">
@@ -46,26 +40,41 @@ export function Sidebar({ current, onNavigate, role, onLogout }: SidebarProps) {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {items.map((it) => {
-          const Icon = it.icon;
-          const active = current === it.id;
-          return (
-            <button
-              key={it.id}
-              onClick={() => onNavigate(it.id)}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
-                active
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-              )}
-            >
-              <Icon className={cn("size-4", active && "text-blue-600")} />
-              <span>{it.label}</span>
-            </button>
-          );
-        })}
+      <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+        {role === "lecturer" ? (
+          <>
+            <NavLink to="/dashboard" end className={itemClass}>
+              <LayoutDashboard className="size-4" />
+              <span>Dashboard</span>
+            </NavLink>
+
+            <div className="space-y-1">
+              {AGENT_CONFIG.map((agent) => {
+                const Icon = agent.icon;
+                return (
+                  <div key={agent.id} className="space-y-0.5">
+                    <NavLink to={agent.basePath} className={headerClass}>
+                      <Icon className="size-4" />
+                      <span className="truncate">{agent.name}</span>
+                    </NavLink>
+                    <div className="ml-4 space-y-0.5 border-l border-slate-100 pl-2">
+                      {agent.features.map((feature) => (
+                        <NavLink key={feature.path} to={feature.path} end className={subItemClass}>
+                          <span className="truncate">{feature.label}</span>
+                        </NavLink>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <NavLink to="/student-dashboard" end className={itemClass}>
+            <LayoutDashboard className="size-4" />
+            <span>My Dashboard</span>
+          </NavLink>
+        )}
       </nav>
 
       <div className="p-3 border-t border-slate-100">
