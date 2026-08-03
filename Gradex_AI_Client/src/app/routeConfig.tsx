@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { FileText, Workflow, BarChart3, Video } from "lucide-react";
 import type { AIModel } from "./components/AIBrand";
 import { GradingPage } from "./components/GradingPage";
+import { DiagramGrading } from "./components/DiagramGrading";
 import { AnalyticsPage } from "./components/AnalyticsPage";
 import { ExamCreator } from "./components/ExamCreator";
 import { VivaPage } from "./components/VivaPage";
@@ -41,7 +42,7 @@ export const AGENT_CONFIG: AgentConfig[] = [
         label: "Diagram Grading",
         title: "Diagram Grading",
         subtitle: "AI-assisted assessment of structured diagrams",
-        element: <GradingPage mode="diagram" />,
+        element: <DiagramGrading mode="diagram" />,
       },
     ],
   },

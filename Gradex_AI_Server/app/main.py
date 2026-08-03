@@ -1,11 +1,14 @@
 from pathlib import Path
+from queue import Queue
 import sys
 import json
+from threading import Thread
 from uuid import uuid4
 from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENGINE_ROOT = PROJECT_ROOT / "DiagramEvaluationEngine"
@@ -14,6 +17,7 @@ for path in (PROJECT_ROOT, ENGINE_ROOT):
     if path_str not in sys.path:
         sys.path.append(path_str)
 
+from DiagramEvaluationEngine.predict import run_er_pipeline
 from Gradex_AI_Server.app.analytics_report import build_exam_report, run_exam_analysis
 
 app = FastAPI(title="Gradex AI Server", version="1.0.0")
@@ -41,9 +45,13 @@ def _save_json_upload(upload: UploadFile, destination: Path) -> None:
     destination.write_bytes(contents)
 
 
+def _sse_event(event: str, payload: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=True)}\n\n"
+
+
 @app.post("/api/digaram-evaluate")
 @app.post("/api/diagram-evaluate")
-async def diagram_evaluate(image: UploadFile = File(...)):
+async def diagram_evaluate(image: UploadFile = File(...), stream: bool = False):
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Only image uploads are supported.")
 
@@ -55,16 +63,41 @@ async def diagram_evaluate(image: UploadFile = File(...)):
     file_path = UPLOAD_DIR / f"{uuid4().hex}{ext}"
     file_path.write_bytes(contents)
 
-    try:
-        from DiagramEvaluationEngine.predict import run_er_pipeline
+    if not stream:
+        try:
+            return run_er_pipeline(file_path)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Evaluation failed: {exc}") from exc
 
-        result = run_er_pipeline(file_path)
-    except ModuleNotFoundError as exc:
-        raise HTTPException(status_code=503, detail=f"Diagram evaluation unavailable: {exc}") from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Evaluation failed: {exc}") from exc
+    event_queue: Queue = Queue()
+    sentinel = object()
 
-    return result
+    def worker() -> None:
+        try:
+            result = run_er_pipeline(file_path, progress_callback=event_queue.put)
+            event_queue.put({"type": "result", "payload": result})
+        except Exception as exc:
+            event_queue.put({"type": "error", "payload": str(exc)})
+        finally:
+            event_queue.put(sentinel)
+
+    Thread(target=worker, daemon=True).start()
+
+    async def stream_events():
+        while True:
+            item = await __import__("asyncio").to_thread(event_queue.get)
+            if item is sentinel:
+                break
+            if isinstance(item, dict) and item.get("type") == "error":
+                yield _sse_event("error", {"detail": item["payload"]})
+                break
+            if isinstance(item, dict) and item.get("type") == "result":
+                yield _sse_event("result", item["payload"])
+                continue
+            yield _sse_event("progress", item if isinstance(item, dict) else {"message": str(item)})
+
+    return StreamingResponse(stream_events(), media_type="text/event-stream")
+
 
 
 @app.get("/api/analytics/report")
