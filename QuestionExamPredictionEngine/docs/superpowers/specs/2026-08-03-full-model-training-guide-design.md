@@ -30,6 +30,44 @@ The guide will describe four domain agents plus one separate orchestrator:
 
 The guide must state that the repository currently contains three domain-agent classes (`QuestionKnowledgeAgent`, `AnswerMisconceptionAgent`, and `CohortPredictionAgent`). The target four-agent architecture requires splitting cohort analytics from future exam prediction/generation or adding a fourth agent without merging the orchestrator into that count.
 
+```mermaid
+flowchart TB
+    INPUT["Exam questions, rubric,<br/>student answers and history"]
+    ORCH["ExamAnalysisOrchestrator<br/>Separate workflow component<br/>Implemented; not trainable"]
+    RESULT["Combined result bundle<br/>warnings, evidence and model versions"]
+
+    INPUT --> ORCH
+
+    subgraph TARGET["Approved target: four domain agents"]
+        A1["1. Question and Rubric<br/>Knowledge Agent<br/><br/>Topic and rubric mapping<br/>Bloom classification<br/>Retrieval evidence"]
+        A2["2. Answer Grading and<br/>Misconception Agent<br/><br/>Answer similarity<br/>Deterministic grading<br/>Misconception detection"]
+        A3["3. Student and Cohort<br/>Cognitive Analytics Agent<br/><br/>Weak topics<br/>Cognitive gaps<br/>Cohort summaries"]
+        A4["4. Exam Prediction and<br/>Question Generation Agent<br/><br/>Future-topic forecasting<br/>Structure prediction<br/>Controlled generation"]
+
+        A1 -->|"QuestionMappingResult"| A2
+        A2 -->|"AnswerAnalysisResult"| A3
+        A3 -->|"Cohort evidence and history"| A4
+    end
+
+    ORCH --> A1
+    A1 --> ORCH
+    A2 --> ORCH
+    A3 --> ORCH
+    A4 --> ORCH
+    ORCH --> RESULT
+
+    subgraph CURRENT["Current implementation"]
+        C1["QuestionKnowledgeAgent<br/>Partial implementation of Agent 1"]
+        C2["AnswerMisconceptionAgent<br/>Partial implementation of Agent 2"]
+        C3["CohortPredictionAgent<br/>Currently combines Agent 3<br/>with an empty Agent 4 placeholder"]
+    end
+
+    C1 -. "evolves into" .-> A1
+    C2 -. "evolves into" .-> A2
+    C3 -. "split analytics into" .-> A3
+    C3 -. "move future capabilities into" .-> A4
+```
+
 ## 4. Model inventory
 
 Each model section will identify its owning agent, purpose, current implementation, training data, recommended first model, optional advanced model, artifact path, evaluation metrics, integration point, and completion gate.
@@ -103,7 +141,21 @@ The guide will explicitly prevent the following mistakes:
 - publishing forecast probabilities without temporal validation and calibration;
 - training from student data without documented privacy, consent, and anonymization controls.
 
-## 9. Verification
+## 9. Plan reconciliation
+
+Documentation must preserve the difference between the implemented three-agent phase and the approved four-agent target. Historical documents will not be deleted or rewritten as if the fourth agent already existed.
+
+Apply these exact actions:
+
+- Keep `docs/superpowers/specs/2026-08-02-agent-workflow-architecture-design.md`, add a prominent superseded-target notice, and retain its three-agent content as an accurate record of the implemented foundation.
+- Keep `docs/superpowers/plans/2026-08-02-agent-workflow-foundation.md`, mark it as a completed historical implementation plan, and link to this design for the active target.
+- Update `IMPLEMENTATION.md` so its three-agent statements are explicitly labelled current implementation, then add the approved four-domain-agent target and split of `CohortPredictionAgent` responsibilities.
+- Keep `PROPOSAL_IMPLEMENTATION_CHECKLIST.md` unchanged because its partial and not-started capability statuses remain accurate.
+- Keep the Bloom dataset preparation design and plan unchanged because they are independent of the agent-count decision.
+- Update `docs/superpowers/plans/2026-08-03-full-model-training-guide.md` and `FULL_MODEL_TRAINING_GUIDE.md` to contain the same target/current distinction and Mermaid diagram.
+- Delete no planning document during this reconciliation; preserving the historical plan provides an audit trail from implemented code to the new target.
+
+## 10. Verification
 
 Before completion, the final guide will be checked against:
 
@@ -116,6 +168,6 @@ Before completion, the final guide will be checked against:
 
 All existing commands included in the guide must be executed or checked through their CLI help. Proposed commands must be marked as future scaffolding. File links must resolve from the repository root, and all reported percentages must be reproducible from stated counts.
 
-## 10. Deliverable
+## 11. Deliverable
 
 Create `FULL_MODEL_TRAINING_GUIDE.md` at the repository root. It will be the single entry point for model ownership, current status, data preparation, local/Colab training, evaluation, integration, and the recommended research sequence.
