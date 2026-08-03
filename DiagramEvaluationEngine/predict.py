@@ -60,7 +60,15 @@ def _detect_lines(
     )
     if lines is None:
         return []
-    return [tuple(map(int, line[0])) for line in lines]
+
+    normalized_lines = []
+    for line in lines:
+        coords = np.asarray(line).reshape(-1)
+        if coords.size < 4:
+            continue
+        normalized_lines.append(tuple(int(value) for value in coords[:4]))
+
+    return normalized_lines
 
 
 def _bbox_center(box):
