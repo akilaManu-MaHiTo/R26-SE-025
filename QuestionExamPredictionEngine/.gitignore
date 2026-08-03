@@ -29,6 +29,10 @@ notebooks/
 
 /graphify-out
 /chroma_db
-/training_dataset
+/training_dataset/*
+!/training_dataset/processed/
+/training_dataset/processed/*
+!/training_dataset/processed/pone_bloom_v1.0/
+!/training_dataset/processed/pone_bloom_v1.0/**
 /docs
 /plans
