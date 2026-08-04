@@ -30,6 +30,10 @@ notebooks/
 /graphify-out
 /chroma_db
 /training_dataset/*
+!/training_dataset/BLOOM_DATASET_PREPARATION.md
+!/training_dataset/blooms_taxonomy_dataset_v1.csv
+!/training_dataset/blooms_taxonomy_dataset_v1_prepared.csv
+!/training_dataset/blooms_taxonomy_dataset_v1_novel.csv
 !/training_dataset/processed/
 /training_dataset/processed/*
 !/training_dataset/processed/pone_bloom_v1.0/

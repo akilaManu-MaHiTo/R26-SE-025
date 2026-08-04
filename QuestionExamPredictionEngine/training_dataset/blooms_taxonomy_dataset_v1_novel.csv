@@ -1,0 +1,416 @@
+row_id,question_group_id,question,bloom_level,source_category,source_document,quality_flags
+bloom-csv-row-26a196fdc7143188,bloom-csv-question-4afc7700a0d55cf7,Define four types of traceability,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-a3f7248225397b12,bloom-csv-question-f92a3c5bb7d859eb,Identify the correct definition of osmosis,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-b15458ffbd16e0a1,bloom-csv-question-02b6247ad7d0708d,Look at the symbol. What is the symbol's purpose on a map?,remember,BT1,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-e9a209ff6ce55bf2,bloom-csv-question-b0b3af1bc8198e59,Determine the author's point of view,understand,BT2,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-41d35ee352a77c69,bloom-csv-question-6a9b4b67e1b9ce0e,Demonstrate how your unit's specific student learning outcomes are linked to the mission of UAM.,apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-84c0e394d8359422,bloom-csv-question-5701433d56a8488c,"If notes are available on the professor's website, how should those notes be used?",apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-eadf27c87be88168,bloom-csv-question-cad2295579e22cc4,sketch a graph of velocity versus time for the upward and downward parts of a ball's flight,apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized|missing_context
+bloom-csv-row-ea2e659e9b677658,bloom-csv-question-5506244ed8f94556,Determine if a character's actions were heroic,evaluate,BT5,blooms_taxonomy_dataset_v1.csv,encoding_normalized|whitespace_normalized
+bloom-csv-row-f4f380310920a926,bloom-csv-question-22affd1d333c4103,udge aesthetic qualities and relationship to future values.,evaluate,BT5,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-6124df234aeeabe4,bloom-csv-question-5dde3b569638ab9f,What does ICT stands for,remember,BT1,blooms_taxonomy_dataset_v1.csv,possible_language_error
+bloom-csv-row-1e2e64744cc2cb1e,bloom-csv-question-ba2c1bd1efeac8d9,Summarize Jem's beliefs about Boo Radley,understand,BT2,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-b67e70d4588095d0,bloom-csv-question-d3589087a851f77c,Use Gauss' Law to find the electric field between the plates when the charge on them is Q,apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-ef741c0ff6fde65d,bloom-csv-question-c7b595785524dffe,"How do we construct agents that can deliver. ""good"" assistance",apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-c8ed5c94f9c6dc77,bloom-csv-question-5749bf8a55d960d0,"Inspect the pattern of GPS positions relative to the ""known"" published value",analyze,BT4,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-5fee222213bd6448,bloom-csv-question-52080884414adf1e,Why don't you devise your own way to deal with . . .?,create,BT6,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-57e20db50517c0e4,bloom-csv-question-7ae2562930cb6634,Can you tell me about the stages of grief according to Elisabeth Kübler-Ross?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-1adaff4c018b147e,bloom-csv-question-57e9c546fad1915d,An infinitely long plane uniform plate is bounded by two parallel edges in the y direction and an end at right angles to them.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-e400df534ba9eda8,bloom-csv-question-b0c06d2b78d304b9,List out FIVE (5) ways how manufacturing and service companies have commitment toward the environmental friendly practices.,remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-36ed30e3a3e377ad,bloom-csv-question-f94bc6aff5f1afe7,Write short notes on the structure of RNA.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-bc7d9c3eeb8c443f,bloom-csv-question-308271606233b961,A PIC 18 is connected to the 4MHz crystal oscillator.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-d06ca88b3028ca0d,bloom-csv-question-664a26167b26d2a9,What are the file access methods?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-d39e8121dd876b12,bloom-csv-question-cd19bcbfa4208771,"Referring to the advertisement design below, evaluate the usage of Dominance and Unity in principles of design.",evaluate,BT5,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-512206960ba5b7ee,bloom-csv-question-16019d7fc5ba7b9a,A fair coin is tossed 64 times.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-fcb0e6a0d9f4a03f,bloom-csv-question-a083dc5a11896462,What do you mean by Widmanstatten Structure?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-595d22f324e928d4,bloom-csv-question-b3d3a50bfdd841c2,Design a spring for a balance to measure 0 to 1000 N over a scale of length 80 mm.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-35d92ac8c01a5733,bloom-csv-question-0359ec7fb6499a9c,Give the specifications and applications of SCR.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-1ec21811f76b6059,bloom-csv-question-1c31d03892e463fc,Causes of Gear Tooth Failure explain in detail.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-1ff9df2489850958,bloom-csv-question-cabf9a17e6b03c98,Describe the types of vibrators used for compaction of concrete.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-8a2ded85a49977a6,bloom-csv-question-60a731f25132a54e,What are the causes of an earthquakes.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-ea4e7d7c9b122244,bloom-csv-question-df18d5c1a1e05c6a,What is Biomass?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-72a9d00c92ddf738,bloom-csv-question-74cf524c8bf027ab,Explain the use of for loop with syntax and suitable programming example in Java.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-b0c5b5c70b6b5812,bloom-csv-question-776cf20e1df36908,"Draw the band diagram of a reverse biased pn junction. With reference to the band diagram and charge carriers, explain why there is negligible current flow in the diode.",understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized|missing_context
+bloom-csv-row-bc6ac702df7703f9,bloom-csv-question-ad43468f6ac9c7ce,The pre-planning stage of a lesson takes into consideration several factors. Name FIVE (5) external factors and briefly explain the importance of each of the factors.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-10f3b6dbf915bc12,bloom-csv-question-3b7c5b663252ffcc,Differentiate between Convective and local Accelerations.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-c5d7dd9fe9749af1,bloom-csv-question-70b0be07dbbfc92a,Describe Packet format of IPv6 in detail with suitable diagram.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-efcf0de48d9b7d41,bloom-csv-question-1cbf3d49482c0b85,List FIVE (5) basic types of research.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-166b5293ab4d838f,bloom-csv-question-537913875ac5997e,Give the mechanism of nitration of benzene.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-64efd1803d6c9f1e,bloom-csv-question-df7044ff9dc630dc,What is the significance of coating on the material properties?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-b97cbf9ee8a4fcba,bloom-csv-question-44296c40b94677ba,Determine the doping levels in the respective regions.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-7eff02f89e4cff0a,bloom-csv-question-e180180a443b8f70,How is the equilibrium constant K related to the standard free energy change?,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-5e6e7eb62badf5ba,bloom-csv-question-98e1f0f195d1a06e,Write a short note on bearing materials.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-7df56946b67e128b,bloom-csv-question-30f48425c98eff85,Explain in detail the importance of preliminary geological exploration in civil engineering projects.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-a82428c7e613df22,bloom-csv-question-a4ded55530c523d8,Write short note on current boosting regulator.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-f586fb71e2b0ef16,bloom-csv-question-6bbcfcfb3f6c5ac8,Derive formula for numerical differentiation of first order using Newton’s forward interpolation technique.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-1501718b72c59137,bloom-csv-question-19e69b526d8c9001,Explain in brief the direct screen stencil making process.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-97e078cc56d1a16c,bloom-csv-question-512266ff4c3c867a,"Using the process approach in writing composition, describe the activities you would carry out to write a composition entitled 'A visit to a zoo in a Form 1 class.",understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-56ff4535294d7fdc,bloom-csv-question-fc8e1d910f18964f,Define Usability.,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-30752dff98fe46c2,bloom-csv-question-562446c4f905242e,State and explain the working principle of the DC generator along with a diagram.,remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized|missing_context
+bloom-csv-row-ba680e13bd8a1dc8,bloom-csv-question-f79e2202841a867c,Compare linear and switching mode power supply.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-03811b0ea603d69a,bloom-csv-question-6d2e45c84e45f1e6,Draw Production Possibilities Frontier and Trading Possibilities Frontier for China and Thailand. Clearly label the total output before specialization and total output after trade in the diagrams.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-f0b97be073bcf60d,bloom-csv-question-4d40870ec0ed20a4,Explain effective modular design with neat diagram.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-dfe228d762870c2b,bloom-csv-question-045cc3dcff57ddc8,Draw the ASM chart for the following state machine.,apply,BT3,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-d853cebfd44428be,bloom-csv-question-e06a234220f408c9,What is configuration identification in SCM?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-25981fc18d1e7ed9,bloom-csv-question-e7ba9d7e0fdbc57f,List and explain various features of virtual 8086 mode.,remember,BT1,blooms_taxonomy_dataset_v1.csv,source_duplicate
+bloom-csv-row-602a47dbd4b08921,bloom-csv-question-2d36e2e6103a734d,Explain model for network security.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-cebd1f0a817d6abb,bloom-csv-question-f730ce7babc406dc,Explain Demand and supply curve.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-d6c08fd015643ba5,bloom-csv-question-47841651ed7bdd88,Describe the THREE (3) causes of concrete blister.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-66bca2f818a4fbda,bloom-csv-question-11e66082eb57c0ef,Explain transfer function of an AC servo motor with suitable diagram.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-98217a6ab7822bd4,bloom-csv-question-1132f5a26615281b,What is Design?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-f0defb7b532869be,bloom-csv-question-b0893258a0c05d9f,Illustrate the THREE (3) advantages of silicon over germanium.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-c10ce2193d99cd85,bloom-csv-question-b20a93adec00f2e4,Explain the representation of polynomial using GLL.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-c272ff7b83e96eac,bloom-csv-question-a469e8bb59fa467b,State the different applications of contour lines.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-4b2276347699f910,bloom-csv-question-c7c63080549f5491,A girder or uniform section and constant depth is freely supported over a span of 200 Centimeters.,apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-9966d3c8b0065257,bloom-csv-question-c8fb97f8acc91b81,What is Decomposition Technique?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-a806bb6bb0bf00ff,bloom-csv-question-8536331c5de607da,Describe the historical development of wind turbine on global level.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-7b32c5039107efb4,bloom-csv-question-b68999cb6128dd4b,List the SEVEN (7) stages of the development process of a building project.,remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-4bffb90c35eca971,bloom-csv-question-381498606cb45caa,Draw and discuss the bimetallic thermometer.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-432fca3b37507cf7,bloom-csv-question-f515da7fbefb59a5,Explain in detail pipeline performance.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-61220677b5886986,bloom-csv-question-8c0fd0a10f686e4e,Describe the circumstances when tertiary treatment of wastewater is necessary.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-3edd05e211852d7c,bloom-csv-question-5b566d8d507792f0,Calculate the average holding and setup cost per year.,apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-9a24a9d39e159074,bloom-csv-question-921f42eae2e41eb9,"""The bullwhip measure can be used to analyze supply chains. Nevertheless, inaccurate measures taken in addressing variance amplification can have ramifications"". Explain this statement.",understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-c320f01d33c58b21,bloom-csv-question-75ee8546d125624c,Explain the working o single-phase full wave centre tapped rectifier with pure resistive laod.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-0861238174b42233,bloom-csv-question-27ed4978cacd0229,State the different patterns of counter showing natural features.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-bbc06b89fd865fcc,bloom-csv-question-f6c21fe4880e6a51,Explain the possible flow patterns in the culvert depending on the level of the rain water in the car park and the drain channel.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-f6df30c542f143df,bloom-csv-question-4b2851c040dd6369,Use minimum 8 functions of Deque STL.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-3764973b95bbe4ea,bloom-csv-question-c4806a33724edc8d,Evaluate 1 2 01dx x using Trapezoidal rule taking h = 1 4.,apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized|encoding_artifact
+bloom-csv-row-93a021cc517cac8d,bloom-csv-question-1bc62a590a3a12ca,Explore the role of various fields in Page Level Protection.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-0bde4252a350c1f6,bloom-csv-question-fed9f52612a7c055,Explain construction and working of RVDT with neat diagram.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-5b1d643f1dedaac2,bloom-csv-question-782d61659916d616,Elaborate the term of national income as used in building economics.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-ffd09204f32461be,bloom-csv-question-53b1cf2dcbfff621,Write short note on IEEE 802.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-8e1975df1c0a2d8d,bloom-csv-question-603f4d85e8cae58e,What are fractals?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-e79e767980e77f82,bloom-csv-question-cefe549997513355,What is SMPS? Explain working principle of it.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-6674544dde7de56c,bloom-csv-question-880a352c3f95bda3,Show that the vector Field.,evaluate,BT5,blooms_taxonomy_dataset_v1.csv,source_duplicate
+bloom-csv-row-7e235092ec86a01f,bloom-csv-question-4505b506a703a551,State Lambert and Beer laws and derive the combined law equation.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2a0fc69d51486977,bloom-csv-question-20304ca7e0ccac9a,Describe how soils are involved in the greenhouse effects.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-73743bcb27840376,bloom-csv-question-98e436706b7c6777,How folds are developed?,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2f562cbb71fa3517,bloom-csv-question-1632095dbd12d1e6,What is meant by multicore architecture?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-1257741639f727c6,bloom-csv-question-a1c82cf979a5e1eb,Discuss in detail preliminary geological work on dam and reservoir.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-b628d20b644a0370,bloom-csv-question-eedb3bf20583128f,What are the variants of recursion.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-11b8ff038fdb4d1b,bloom-csv-question-4db0d5ed4bc58698,With suitable diagram explain constructional details of 3 phase slipring induction motor,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-0926cea1a4d7987f,bloom-csv-question-ab3565403feee1ce,How Basic Arithmetic operations are performed using ALU IC 74181?,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-3214517991d2340c,bloom-csv-question-8120af81f58d5dc3,Explain the use of BSR mode of 8255.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-9a1ef18f4ede2f50,bloom-csv-question-b78a7585707d48e4,State the Characteristics of contour lines?,remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-8822cc50d0e7bd01,bloom-csv-question-fdea3df455aca760,Discuss “Swedish Slip Circle Method” for stability analysis of finite slope.,remember,BT1,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-46f8aaf98777e9f7,bloom-csv-question-adaf369504ec1b85,State TWO (2) subsystems of AIS.,remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-e517155fcd2faa8a,bloom-csv-question-57a065278a696c8b,What is Remote sensing?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-14b6e69b485d9f60,bloom-csv-question-c83d83c70a072a2f,What is the necessity of ventilation and explain types of ventilation?,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-7dda00135343fdef,bloom-csv-question-7b1e29a752e674ff,Draw and explain block diagram of SMPS.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-477b0604334b3216,bloom-csv-question-3226c2286d27a1f7,Find the inverse Laplace transform of given network given F( s).,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-13e52cf5000a0499,bloom-csv-question-292fc66104447007,National income can be calculated using three approaches. State the THREE (3) approaches.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-c00df383376ee06b,bloom-csv-question-c7c12783005867af,"As a project manager, you are evaluating the building design for its compliance to intended function as a private college accommodating over 2000 students. Analyze the problems and propose the building performance to meet these functions.",create,BT6,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-b31a2bc60c7479f9,bloom-csv-question-7dfb314ad05a18b0,Explain 1860 with block diagram.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-1a8cc4c07219cdf7,bloom-csv-question-8fddf7a05535e56d,Explain qualitative and quantitative data.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-f4138ba191426fad,bloom-csv-question-9a40156c4fd54d76,Explain why a sustained inflation is a purely monetary phenomenon and cannot exist without the cooperation of the Bank Negara Malaysia (BNM).,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-c1dd44736e1baa99,bloom-csv-question-b209b18d5ab55424,Explain different methods to handle multiple interrupt request.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-0e790fd7695338ff,bloom-csv-question-f3581132cf2aab61,List various types of flow control valve.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-08beffe4d8187b34,bloom-csv-question-c4bf5aa9be2d80b7,What is Sub Zero Treatment and why is it necessary?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-faba2a23a55d3590,bloom-csv-question-405e5f9233166778,Write a short note on control system and electronics.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-a270592ad40dd2c0,bloom-csv-question-939ea068fce8ac25,Explain Landslides causes and remedial measures.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-413ecd625cd2627d,bloom-csv-question-6c38a2b46f0ca99e,Explain Soft and hard solder.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-c345bda46f3b2b36,bloom-csv-question-a0315b9923a21e01,What is BGP?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-e8e46c3b0794da03,bloom-csv-question-add72ac1e8f88319,Explain the function of International Monetary Fund (IMF).,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-1d014969d9c48f09,bloom-csv-question-69262867177a7191,List the advantages and disadvantages of FM over AM.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-786629f59bbfa358,bloom-csv-question-cd9b15e119e82638,Barbie Dolls have been banned in some of countries. Provide FOUR (4) countries and evaluate the reason behind the ban.,evaluate,BT5,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-3612c9e98380f7dd,bloom-csv-question-47c9fbc66d4324dc,"The Malaysian economy is currently operating at the natural level of output. In order to be a high-income country in 2020, government of Malaysia decides to increase the government spending. Discuss the effects of the event on the price level, unemployment and output in the long run and short run in Malaysia with appropriate diagrams.",understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-c135b52730c216d2,bloom-csv-question-c139fc514edb9feb,Describe the historical development of wind turbine on Indian level.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-8e9ac5d5a3c3d317,bloom-csv-question-98b172ed2f9c6cdd,Depict the figure showing he feeder pathways for glycolysis.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-541c2750d2ebd59f,bloom-csv-question-0a1af9e24bf249c7,Describe Logical Programming.,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-ed69782128301c28,bloom-csv-question-1ff7de69656a2cb1,State and prove sampling theorem with suitable waveform and mathematical expression?,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-9a80d6fbff4425af,bloom-csv-question-84434acf371195db,Define graphic design and product design.,remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-119f82089da250b9,bloom-csv-question-8e4513c779a0db5f,Describe V AT Polymerization process in short.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-fb86ec7a2d9aee7d,bloom-csv-question-6455c7381e26e445,Explain and differentiate between TWO types of aggregations when colloidal particles are unstable.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-17f1a6616292c527,bloom-csv-question-81412571df28c2de,Define Draft tube.,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-1cc9df188e031876,bloom-csv-question-73f5eb60978884a4,What is perspective projection?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-7ca515ca9299c8ba,bloom-csv-question-449774d8acdb15ad,State following statements are True of False.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-2cd6d17a8e0bd527,bloom-csv-question-2ec3e721032d591c,"Write recursive function for in-order, pre-order and post-order traversal of Binary tree.",apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-427452e8a649724f,bloom-csv-question-42164d2441fd9d46,Define transducer and state detailed classification of transducers.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-8015c06a36e9ed89,bloom-csv-question-c3826b81d1ff9e26,A badminton hall to be provided with a lighting installation.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-8a4a553406900dab,bloom-csv-question-1b03f06cdc70bbba,What is Template?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short|source_duplicate
+bloom-csv-row-bad90145b2f9b1f3,bloom-csv-question-d0f8491497408b73,Show that the wavefunction of a free particle is a plane wave.,apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-f07f984138fe039e,bloom-csv-question-2167b8750240e1a9,Draw and explain the ARM family core architecture?,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-84b429563e320298,bloom-csv-question-6063a5bbb746c370,What is MOD counter ?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-b78a81a15ab23e54,bloom-csv-question-955898cd46b44d94,Explain Calorific Value.,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-9c68a4ca86dc2d08,bloom-csv-question-ac9dd9eecfb44c5a,What is File?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-b145dde4c1a6ff8c,bloom-csv-question-8b86d243eba34283,Explain fiber reinforced composites and particle reinforced composites.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-37536e00ae1a2128,bloom-csv-question-443a260c90d064d3,"""Firms can use existing brand names or create new brands on the internet"". Evaluate the above statement.",evaluate,BT5,blooms_taxonomy_dataset_v1.csv,whitespace_normalized|missing_context
+bloom-csv-row-3a8d1da29405a611,bloom-csv-question-76a01b187d303cef,Write a short note on Saytzeff rule.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-44a8256b609d680f,bloom-csv-question-e91ebb9d3860769f,State the necessary conditions for parallel operation of transformers.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-baac94665a85242e,bloom-csv-question-d1b7aee449534867,Describe MOST with suitable illustration.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-709505da88984494,bloom-csv-question-64d2cd727e10ef19,Explain the properties of instantaneous centre of rotation.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2e510a6a8670ba93,bloom-csv-question-6fbc10edf28543a5,Explain Kinematic modeling in Virtual Reality.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-e8501b2b9f027661,bloom-csv-question-fdb2fb97ad6e6b58,"The correlation between the S&P 500 index fund and the emerging market fund is zero. Consider portfolio A, which consists of 80% of the S&P index fund and 20% of the emerging-market fund. Calculate portfolio A's expected return and standard deviation.",apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-4f490610784f5559,bloom-csv-question-0d0a85ccee00130e,What are Pumps and Compressor used in Hydraulic and Pneumatic Systems?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-4514b92bfecf1182,bloom-csv-question-0065ab7878f9159c,Illustrate with example the FOUR (4) advantages of photography.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-2fadcdd8b0388572,bloom-csv-question-894be4631b390ee0,Enlist different names of satellite and state features of any two of them.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-c214ffb0c2788bd6,bloom-csv-question-2e6a461b67da2afb,Define economic threshold and its use.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-a02c059cd496a25a,bloom-csv-question-b3d312e1e7519a6b,Construct the binary search tree (BST) from the following elements.,apply,BT3,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-58353f88a0b52f7a,bloom-csv-question-91f34b319bb85571,Evaluate the first and second derivative of √x at x=15 from the following data,apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized|missing_context
+bloom-csv-row-5ae49f10e5e655eb,bloom-csv-question-8188c843e8c5cce2,Draw & explain the working principle of bubble type level measurement. State the equation for it.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-3eef01d2db222738,bloom-csv-question-1f655629e3a44d89,Derive the relation between maximum permissible tension and centrifugal tension in belt so that it can transmit maximum power.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-4065f5d5d48238b4,bloom-csv-question-1336c1c6de204c06,Describe the TWO (2) conditions that lead to bank failures. Provide the examples of bank failures that happened in the past with a specific time frame.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-7c176b23df0ec1de,bloom-csv-question-6961db3623b7ddfe,A centrifugal pump having outer diameter equal to two times the inner diameter and running at 1000 r.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-79f769da49780bc8,bloom-csv-question-fdbf0582b8889886,Derive the torque equation of DC motor with usual notations.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-d7f24c33395bbd12,bloom-csv-question-3675c4dc20413cdd,Explain the different conditions for spontaneity by using Gibbs free energy.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-5924335c7b0198e7,bloom-csv-question-535ddde61400f20a,How wind and ice loading affect the presence of sag.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-b4b48ed12aee2eb4,bloom-csv-question-8b451b19b8e47916,Sketch and label the section of the ground floor slab. Explain the purpose of each labelled component.,apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-65f5d04331703925,bloom-csv-question-c08987787f6f3937,Predict the effects of excess application of nitrogen fertilizer into the soil.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-87cadd1d6776236e,bloom-csv-question-6e47d9711d4b5094,Explain how the verticality of tall building is checked?,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-409e8be8da6ef62c,bloom-csv-question-7d6d0ef8a56deb68,Draw and explain the working of a Digital kilo watt Hour Meter.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-75d4d2a7bed4ae68,bloom-csv-question-e298e14a34e7e0b5,Derive the expression for loop inductance of single phase overhead lines.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-7dc7272f9cc63233,bloom-csv-question-05a654be5f9fc837,"Solve the one dimensional heat equation 2 2y uktx subject to conditions. i) u is finite .t ii) u (0, t) = 0, iii) u(, t) = 0, iv) u( x, 0) = x – x2 0.x",apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized|whitespace_normalized|encoding_artifact
+bloom-csv-row-6e2a46afd29a0f8a,bloom-csv-question-e622c26ad089af0c,Draw and explain magnetization curve for a ferromagnetic material and hence define with uints,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-91f160a0f689c145,bloom-csv-question-f1d1a3bd4674e2d2,What are pipeline hagards?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-aec0e08d452d666f,bloom-csv-question-f9e2ebcef3e79d7d,"With the aid of a diagram, briefly show how the width of a FinFET is estimated.",apply,BT3,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-b6f6c4639156fa29,bloom-csv-question-dfff47970268d2f5,Define exception.,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-d13ae177d2e55326,bloom-csv-question-647898ca310b1963,Classify insulating materials and hence write properties and applications of any two materials from Class C type.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-a20e6e32fbef6bd9,bloom-csv-question-b75492e9c2767930,"In their efforts to achieve their macroeconomic objectives, all governments, regardless of political persuasion, employ the same types of policy instrument. Discuss.",understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-5a56b78b37a66194,bloom-csv-question-c41a02e835615b89,What are elastic pressure transducers?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-09db08ac4325c51b,bloom-csv-question-cdb5d6ac94a93d1b,Write short note on stainless steel?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-8e856f69ebbdee99,bloom-csv-question-ec4f2b937c40e8aa,Explain the page translation process in 80386.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-9306bb7daa9412f0,bloom-csv-question-2a4389dfc1d2a0f8,Write algorithms to create and delete a segment.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2d70ef211df6a7c6,bloom-csv-question-ca0b8557fa64d6dc,"Suppose milk and yogurt are within Sophie's budget and she views yogurt as an inferior good. Using indifference curve and budget line, explain the substitution, income and total effects when the price of yogurt falls.",apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-64287b6406594753,bloom-csv-question-0e1099f079cb6be8,Draw a diagram to illustrate the Edman degradation reaction in protein sequencing. Describe some potential complications during Edman degradation protein sequencing.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized|missing_context
+bloom-csv-row-780cdd6f1d63a3b2,bloom-csv-question-46f30cd4f0e6a542,Explain file attributes.,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-da3f0e57437ca145,bloom-csv-question-f3ffabdc4a17a6bd,Describe the construction of foil type strain gauges and explain their advantages over wire wound strain gauge.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-08aa17177dad190f,bloom-csv-question-9f1b4690d3694f7b,Draw and label an activity temperature profile for mesophilic and thermophilic enzymes. Provide explanation to this phenomenon.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-97144823cdd40544,bloom-csv-question-8461fbb3417d4778,Describe consumer behaviour.,remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized|very_short
+bloom-csv-row-ab844e07392cd1ab,bloom-csv-question-19777f3c442dc2a8,"Mr. Vilas brough an air-conditioner for Rs. 20,000; he paid tax of Rs. 2,000 and Rs. 200 for trnsport. If he sold it to a customer forRs. 22,500, what is the percentage profit or loss?",apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-f0ea9aa11945b376,bloom-csv-question-76ffe0be42625021,Explain the following in relation with filters.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-24bf7570c3bcc751,bloom-csv-question-57a1e77648ceaa22,Banker’s algorithm is used for deadlock avoidance. Explain.,remember,BT1,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-95bad2e22e841f0d,bloom-csv-question-02495fb622cd35d2,What are the requirements for Linux system administrator?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-b6022fbd4e70f695,bloom-csv-question-eadc43a3ab617e25,Implement a full-adder using Demultiplexer.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2926f9b61347ef3a,bloom-csv-question-a0a2220d5e0d5b79,What do you mean by Earned Value Analysis?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-91c0265db195e6f7,bloom-csv-question-9bcc90b0f9ba877e,"SUBWAY brand is the world's largest submarine sandwich chain with more than 44,000 locations around the world. This November, Subway is introducing two new combos as in the image provided below. Propose a rough layout of a poster to promote these new combos.",create,BT6,blooms_taxonomy_dataset_v1.csv,whitespace_normalized|missing_context
+bloom-csv-row-28868bc9584a49e5,bloom-csv-question-a512ffabd7c47c47,Explain briefly the media usage in advertising effectiveness.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-5a8128f1ea48c4ac,bloom-csv-question-ac6eb09df7116921,What is the purpose of Leaky bucket and token bucket algorithms?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-3705d91f5a14ab34,bloom-csv-question-c659f7c18c7f63ec,Explain the working of full wave precision rectifier with neat diagrams.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-edf6b0fdd422d5d4,bloom-csv-question-0fc25c9dc4d331ec,A Rankine cycle operates between pressure of 80 bar and 0.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-34b8c9b5b6768db0,bloom-csv-question-bdde7c172c9bcdfb,What is runtime polymorphism?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-4b0918ad5d7b6a12,bloom-csv-question-0ab20de63c8828fd,How does the falling and rolling ball viscometer used to measure the viscosity?,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-1fb68182633edec8,bloom-csv-question-6905efd4de43edc7,Explain the concept of Available and Unavailable energy.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-7d8a16ff0b95e9c3,bloom-csv-question-ce2aa3b08755e0a8,What is stream?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-211eabcb9e712944,bloom-csv-question-8fbe992f298bb99f,Evaluate ()11 00xyd x d y + using Simpsons 1/3rd rule with h=k=1/2,apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized|encoding_artifact
+bloom-csv-row-9548089c6a99b844,bloom-csv-question-fcb303197c404359,Index for 87 divisions by compound indexing using following Brown and Sharpe Plate.,apply,BT3,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-d5fd6cf033705732,bloom-csv-question-276fa96b19c832f0,Compute the intensity of active earth pressure at a depth of 8 m in dry cohesionless sand with an angle of internal friction 300 and unit weight of 18 kN/m3.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-695c0b43ba752296,bloom-csv-question-4dbf12dd71557d86,What are the rules for overloading operators?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-16281d23f729fd0a,bloom-csv-question-6a0f0195d3d6263d,Differentiate between Reciprocating and Rotary Compressors.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-456ddedb4a14b86f,bloom-csv-question-4061c62484584321,"In a BJT, the width of the base quasineutral region has to be small compared to the minority carrier diffusion length. Explain why this is important",understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-152d9c139ced4b50,bloom-csv-question-2b3a9ec614da33f5,Give the Dirichlet conditions for Continuous time Fourier Series.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-804497169c411727,bloom-csv-question-7cfbb1dbc104543f,Explain process reaction curve tuning method in detail.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-1bad8c7e3e49762a,bloom-csv-question-a8021c8292a1c3ca,Illustrate the following Map methods with an example.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-80ff2dddd0abc5cb,bloom-csv-question-37cd8bdcede1255a,A tacheometer with analystic lens.Having the multiplying constant 100 was used and the following observations were made on staff held vertical.,apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized|missing_context
+bloom-csv-row-f9db7e5155d8dcbc,bloom-csv-question-672728e74e4e0bcb,Explain any one method of viscosity measurement.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-8f62f3cecb5702e6,bloom-csv-question-6a9a9bd2a1989029,Explain mechanism of universal indexing head.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-e5eb9aa7c72871e4,bloom-csv-question-466b7da5fa4a318d,Evaluate .,evaluate,BT5,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-a345e84f1fea8a12,bloom-csv-question-7876bf04088917d3,Explain the construction and working principle of universal motor.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-cd7a92bc336d9d2b,bloom-csv-question-18bccf5d4c9e0265,A solution was prepared by dissolving certain amount of compound in 31.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-027e3684f025bf20,bloom-csv-question-8ba992847482bf2a,Explain working of Ports in 8051 microcontroller.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-4e0b045aa8b1e343,bloom-csv-question-8c74515cc2ddae92,Analyse the bent shown in figure 4 by slope deflection method.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-3a84e2974b82138f,bloom-csv-question-e707f995e10dacf9,Explain casement window in detail.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-9923513eb2a41b8a,bloom-csv-question-a3a68af1448d7c62,Give basic definition of Y parameters explain why Y parameters are called short circuit admittance parameters.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2c08e804bacb67c2,bloom-csv-question-66b7c4cb30fa59da,Draw the architecture of 8086. And enlist the features of it.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-87e3fb9f6c2ef016,bloom-csv-question-c4d26434fff2bb0b,Briefly describe how poultry sexing is commonly carried out in a hatchery.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-134580b7717fc63d,bloom-csv-question-c7d9ece4352fcd84,Sketch a diagram to illustrate the activities and products in the construction industry.,apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized|missing_context
+bloom-csv-row-3696fe5327613019,bloom-csv-question-8525209ad082115e,Explain the differences between forward and futures contract.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-e41e6b03ccda6e48,bloom-csv-question-57ea68ac19b50409,The design rules are usually described in TWO (2) ways. Describe these TWO (2) ways.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-c6ea79f8738bd544,bloom-csv-question-f842df24f794b947,What are types of condensation?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-82311f5c5835b480,bloom-csv-question-6d78610e9fb21307,Derive expression for the pressure drop for a steady laminar flow through circular pipe.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-1aeb5f7b66a2c33a,bloom-csv-question-2650d6f3dd8b56c6,What do you mean by spontaneous magnetization?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-6ac108254aaa0b45,bloom-csv-question-2074587a83768750,Differentiate between “trial pits' and 'boreholes”.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,encoding_normalized|whitespace_normalized
+bloom-csv-row-06fb287221ccccdf,bloom-csv-question-1240ab6246dcab7b,Define put-call parity. Discuss its implications and how arbitrageurs could take advantage of arbitrage opportunities for both options.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-1a503dff780d3896,bloom-csv-question-8827cd366d6ddd27,Describe the operation of timer 555 with suitable block diagram.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-75fa888a07afa2a1,bloom-csv-question-1ece614c733f74e7,A 300 volt DC Shunt motor has armature resistance of 0.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-96067581db215b9f,bloom-csv-question-9c1d00934b36b40d,Define software testing?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-7fdbe799b082b496,bloom-csv-question-ddc76c6a04650a01,Explain a ‘C’ function to insert node in BST (Binary Search Tree).,apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-eaec694a176d905a,bloom-csv-question-c97954bd24575e92,Explain seismic waves in detail.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-56d2221aebf199a1,bloom-csv-question-359f4d282f3932ee,All partition walls are of 150 mm thick.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-570a7ccbac7873f0,bloom-csv-question-bca35d22af779cf8,"Besides silicon and germanium, name ONE (1) other material that can be used as the substrate of a transistor.",understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-5b18fdd5edd7f37e,bloom-csv-question-da9c13937e3fe219,Describe price feedback effect by using relevant example.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-0c18e768c0637391,bloom-csv-question-64b2e9b1b3fd5ef0,Define stack as an ADT.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-236b7ba99c8d68cc,bloom-csv-question-0adfe5d8ec65095a,What is logic family?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-75c80e60017ee22a,bloom-csv-question-dd5183db7ca52732,"Explain how the ionic, metallic, covalent, and mixed states solids are formed. Give an example of each solid and compare the electrical conductivity of the four types of solid.",understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-742dcf4e2261bdf4,bloom-csv-question-4286de4b0497a25a,Compare Linear V oltage regulators with SMPS.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-7b2fd7a072d63952,bloom-csv-question-3b699ed8c3ae837f,Assuming that the diameters of 1000 brass plugs taken consecutively from a machine form a normal distribution with mean 0.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2a0b4ceb09387c3e,bloom-csv-question-c9f3e3865ca113c6,What are types of acceleration?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-5dff996da3bbc52c,bloom-csv-question-3be436b2734d2c72,With the help of diagram explain the diesel power plant.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-b61859121f4792db,bloom-csv-question-805b37734dbe891e,Describe Adaptive Delta modulation with neat diagram.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-d2664c0b72dc72c5,bloom-csv-question-bc6fe82b705bff01,Explain file functions for text file and binary file operations.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-8e7bf2bb73869c84,bloom-csv-question-5da14686eb855ffe,Explain THREE (3) purposes of architectural drawings to architects and other parties in the construction team.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-a49c1b9398763248,bloom-csv-question-bd56a42c16ada89e,Identify FOUR (4) factors that influence consumer behaviour.,remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-9a5acf375cffd780,bloom-csv-question-44c64a8cba9b6c5d,Explain the necessity of providing fire protection system in building.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-471fe2418ce91358,bloom-csv-question-a678e11e9c24a395,Define and explain the following op-Amppovameter,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-c3892bd5253c3ac3,bloom-csv-question-0457a328bf7fb223,What do you mean by triangulation and trilateration in geodetic survey?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-3ad6788e1e779e31,bloom-csv-question-240759ba8e71c18a,Define terms.,understand,BT2,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-5726a8166b6d91e3,bloom-csv-question-544c97b11cc5c3e3,What is a solar collector?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2412f2159f665c03,bloom-csv-question-a582c9bf35060ee9,Write short note on lamination methods.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-89cbfce2b789acd9,bloom-csv-question-4957abaa4d7bf4da,Analyze SIX (6) types of modern construction problems as to how they negatively impact the various building functions.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-f6397555b5db69a0,bloom-csv-question-a043b185f89d3dc6,Outline the FIVE (5) options marketers have when it comes to Agency Selection.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-651186f12b4ea9d2,bloom-csv-question-a7c114f7d21fc53b,Describe with neat diagram molecular machines.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-ef380eb1384fbe09,bloom-csv-question-57ba3e4dc541252f,Design an adjustable voltage regulator using LM317 for output voltage 1.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-6471c31bf488b14d,bloom-csv-question-df30edec48600d52,Explain following pins of 8051.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-dd770a898349f911,bloom-csv-question-240b82d385393400,Draw and explain IPV4 header format.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-160033c11d0a0cb3,bloom-csv-question-697872585ebd88cb,A T section with 200 mm X 50 mm and web 200 mm X 50 mm as shown in figure 1 is subjected to vertical shear force of 200 KN.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-99544a06335c547b,bloom-csv-question-7fd2f8c275d19996,Enlist the feature of the Programmable Interrupt Controller Intel 82C59A.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-c348f8830b7bff03,bloom-csv-question-6d626434e7056a45,A thermos flask with evacuated space to reduce the heat losses having surfaces facing each other of emissivity 0.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-38a9649f9d42cd59,bloom-csv-question-7f6d617a690c59d0,"As an educator, evaluate FIVE (5) advantages and FIVE (5) disadvantages of using technology in education.",evaluate,BT5,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-03f2cef6f1cb946f,bloom-csv-question-afe272b56710219f,List and briefly describe the FOUR soil forming processes.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-82a7efa91736562a,bloom-csv-question-0b3b582dd37ecb69,The breakdown voltage of the gaseous insulating material experiment was carried out at the material science laboratory.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-90833dd85ff9bcb2,bloom-csv-question-72228331803c9a23,Explain working of single phase half wave rectifier with RL load.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-db0a6abaaa53d886,bloom-csv-question-b363c24e2e56e7b1,Support your answers with ONE (1) example in everyday life for EACH perspective.,evaluate,BT5,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-41d4ce05dafc7b68,bloom-csv-question-e663f887e728f031,Elaborate on the design and production process including the rational and economic use of resources that influence the development of a building.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-718e8da60546d0bc,bloom-csv-question-86512c242663b916,Explain with neat sketch battery ignition system.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-6f39b029a46a60fd,bloom-csv-question-264242b9e2a85e39,Draw and explain operational model of network security.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-09c3c4d6b33a1154,bloom-csv-question-94e172ad57e66b5b,Company directors remain the most important group of people who monitor and control the company on behalf of the shareholders. Explain the SIX (6) roles of company directors.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-02337ac21eddd885,bloom-csv-question-d21eca9e5709fafa,An axial pull of 25 kN along with a shear force of 20 kN is applied to a circular bar of 20 mm diameter.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-803702c7bf1d3f7b,bloom-csv-question-5b07acad3af2760e,Calculate first four moments about the mean of the following distribution.,apply,BT3,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-f38ffbab0c1fa579,bloom-csv-question-54b887a722cfb9af,Suggest a technique that can overcome the problem of non-reusability for industrial enzyme applications.,create,BT6,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-259a09f0f75febf2,bloom-csv-question-e923e2a4d0c8d0f5,Define functional dependency.,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-856d98da6c6019fe,bloom-csv-question-fcb6d06aef7d2256,Enlist features of a good hash function.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-ea58c92690cc3e5f,bloom-csv-question-7177c1ba99c6e51d,Give the composition of duralumin.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-40998836a8e7878a,bloom-csv-question-6f76a025fa1c49b7,A 230 V DC shunt motor runs at 800 rpm and takes armature current of 50 A.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-7a76b76eeddb9958,bloom-csv-question-a58d22155469ff4e,Construct the binary search tree (BST) from the following elements:,apply,BT3,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-e4eb8172fc7ec59f,bloom-csv-question-dd433fa7fad811a3,Identify FIVE (5) strategies to make hypermarket retail layout to be more attractive in responding to customers' various shopping behaviors.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-00c44b5333be6f8b,bloom-csv-question-ed324638dbef4d62,"In a table, list EIGHT differences between GenBank and RefSeq DNA sequences.",understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized|missing_context
+bloom-csv-row-16809faac23d4327,bloom-csv-question-1fef9b4b7b192784,What is Mutual Exclusion?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-d75b0f2495ffd7ba,bloom-csv-question-3fca812597393479,Write a short note on topological sorting.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-6412e2c01cd2ee49,bloom-csv-question-a4acbc3e390cd2e6,List the steps involved in programming PIC microcontroller in capture mode.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-ff6f3416c3fa88c5,bloom-csv-question-3f04f186fe659519,Explain typical connections of 78XX and 79XX regulators with circuit diagram.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-15dcf3a56e94d18c,bloom-csv-question-b056e018f3eee480,Write one important feature and an application each of the following motors.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-c4b0e5235af5e461,bloom-csv-question-da1470195b5b3b54,Explain the TSS descriptor and its role in multitasking.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2ef4493d37553784,bloom-csv-question-da21942085f66bcb,Describe the objective and classification of triangulation survey.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-05328ec8a7f92993,bloom-csv-question-f8e5c4cc927b6775,What are the different types of Financial Analysis?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-8efe1e3eb5359383,bloom-csv-question-66de178a23e88cfb,Short term and long term incentives have their own merits in promoting corporate performance. Compare and contrast the problems associated with both short term and long term incentives.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-1da0d51de141df9f,bloom-csv-question-e41b9393067bdcd5,Identify THREE (3) types of securities that are issued by Malaysian government. Explain each in detail.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-b42e904ef9f35786,bloom-csv-question-ca48129d1806d32a,Elaborate on detectors used in AC bridges.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-f1ef1f007ddd156e,bloom-csv-question-6b8d56a2412646d3,For the configuration shown in the following fig.,apply,BT3,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-701adbf155d56688,bloom-csv-question-1a25082b3985ffce,What is the need of hidden surface algorithm?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-ac62f0637d267f0c,bloom-csv-question-ffdd7373d3b13f42,"Explain in detail the working of dynamometer types wattmeter with a neat diagram. Also, state its advantages and disadvantages.",remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-320f58e2eca649dc,bloom-csv-question-e41cbfc25b87e212,Summarize different access controls in Java.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-27f7c07b2b2ece64,bloom-csv-question-9f9acaf0103f2675,Explain the working principle of McLeod low pressure vacuum gauge. With neat sketch.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-aaa7ebdfd74786f3,bloom-csv-question-a86789246374b664,Discuss the best practices to reduce construction demolition and waste for sustainability.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-b62f6d13e643d898,bloom-csv-question-285328cc5381d916,Illustrate the effect of an expansionary monetary policy. Justify your answer with an appropriate diagram.,evaluate,BT5,blooms_taxonomy_dataset_v1.csv,whitespace_normalized|missing_context
+bloom-csv-row-6faf2559776ec741,bloom-csv-question-e20607a45189aed3,How pressure regulation is done pneumatic circuits?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-e731a05f29e2d22b,bloom-csv-question-1c6f547a7efd9311,"You attempt to purify a single protein X from a complex mixture of proteins. Protein X has a large number of aspartic and glutamic acid residues and no lysine, arginine or histidine residues. Suggest and explain a method to elute protein X from the column.",create,BT6,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-5d028c0cf4e6f76c,bloom-csv-question-e690528255f857ef,What is ADT?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-4f5a0a02cd3cf20e,bloom-csv-question-c25c8d405675d8d5,What are the factors that must be considered for deciding the instruction length.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-3b6a8daccce06e3c,bloom-csv-question-24f8bb727fc38523,"Discuss in detail the Sharpe, Treynor, and Jensen measures of portfolio performance evaluation, by identifying the situations in which each measure is the most appropriate measure.",apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-40bc85a0e7724532,bloom-csv-question-6ce0ad32a9e13f62,List the SEVEN (7) factors to be considered in the method of excavation and timbering.,remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-e6bdfbdc96db6928,bloom-csv-question-75a4a4d4d2ab2d39,"Within an organization, each employee holds different roles in the informal communication networks. Explain any FOUR (4) roles with an example for each role.",apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-04511bdba5b11e54,bloom-csv-question-81cbea302d20ea2f,Mass media regularly use women in the mediuin of marketing and advertising. Discuss the possible negative consequences for various segments of the population and society.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-3d375401a6d043c7,bloom-csv-question-1a7bf6b4f5531892,Explain indexed sequential file organization.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-c4a7a6ee55e92078,bloom-csv-question-ef24d467ebc8dbe2,Describe and sketch the THREE (3) types of brick bonding.,apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-d0e06d65e8311baf,bloom-csv-question-5830d42d96823e40,State and explain rules of inference.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-1cf053033ada6bb7,bloom-csv-question-589083033b22f637,Define :,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-be779fe810e49391,bloom-csv-question-85054e29cf3efe91,The internet is ideal for gathering people from all corners of the globe into communities with similar interests and tasks. Recommend THREE (3) ways that can be used to target online communities.,create,BT6,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-89a9e72cc11323fe,bloom-csv-question-d36fa078655682d8,Explain the principle of autoclaving with its applications.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-55d439fa10dd2498,bloom-csv-question-7bc2845bb496436b,Explain various process management system calls in Linux with example.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-bf8b79b501173c37,bloom-csv-question-3a570422a5418c50,"List FIVE (5) suggestions on how Malaysian public listed company director in Malaysia can perform 'Duty to use Reasonable Care, Skill & Diligence'.",remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-4c1e3015a134814e,bloom-csv-question-93fe78dfa643346d,A rectangular beam of breadth 100 mm and depth 200 mm is simply supported over a span of 4 m.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-e0ba911ed6b47f94,bloom-csv-question-ad53163a5b76abae,What are the salient features of engineering student's hostel building?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-cb680c506fe4b1f9,bloom-csv-question-99bdf805f4fd5261,Derive Lagrange’s Interpolation formula for unequally spaced data points.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-7d8d2f9ed38f99b6,bloom-csv-question-4d6ce38136dc038f,Differentiate between Gibbs adsorption equation and dynamic surface tension in the study of adsorption at interfaces.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-4823ddc0a77edaba,bloom-csv-question-428e2d817b185719,Name FOUR enzymes in DNA replication and state their functions.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-c39657079fbedabf,bloom-csv-question-3f20fa4856e02e57,Write a note on SRAM.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-265a6da8f54aebb1,bloom-csv-question-b7c5fb6d42caf936,What is meant by back emf in DC motor? State the equation of back emf. Also explain how back emf acts as a regulating mechanism whenload on DC motor changes.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-08307658d4c12427,bloom-csv-question-9f89e929bf5f4c75,Derive an expression for LMTD for parallel flow heat exchanger with neat sketch.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-ecdce662c83c1941,bloom-csv-question-3cd99483774ddb37,Explain a ‘C’ function to Insert a number in doubly linked list.,apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized
+bloom-csv-row-96db217e418c1b93,bloom-csv-question-e62af7b95fd7269f,Enlist and draw different types of polygon?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-743914d5363873a1,bloom-csv-question-c14e247206e551cb,What is RTD?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-6b713e41b2ed8303,bloom-csv-question-bf52b21faf753563,Define following terms,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context|very_short
+bloom-csv-row-29de77c658cd00e7,bloom-csv-question-72b70a33d7bb0a50,How packaging is providing protection to product from biological effects.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-9dea1d14b35bfa3a,bloom-csv-question-8f9b7602c59949e0,Explain the behaviour of ferromagnetic material under curie temperature.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-5c83442383176772,bloom-csv-question-c7a5fc4c15f4da20,In an engine mechanism as shown in figure.,evaluate,BT5,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-65a50b4ecfd86a6f,bloom-csv-question-5bffa4f52edeb00b,Derive the expression for armature torque developed in a DC motor.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-e07943960950aae6,bloom-csv-question-d2518e18261ff494,Explain the features of LISP programming.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-98d269600b97facb,bloom-csv-question-115522aba5768402,Suppose the two countries wish to specialize and trade. Specifically determine and explain which country enjoys comparative advantage in the production of sugar cane and blue agave.,apply,BT3,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-7dfaf54d18b6f572,bloom-csv-question-99487ea84d93f82e,Explain quick sort algorithm with suitable example.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-a60aec2afba872c7,bloom-csv-question-5612b51699aa42c2,What is tree structured directory?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-6a1deab20b891a58,bloom-csv-question-f64d3b14690cd547,What are the parameters considered for writing a good defect report?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-73a4c3b618a1d962,bloom-csv-question-ae8c9e4a5ea9a381,Obtain regression lines for the following data.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-920eeb5a822f586f,bloom-csv-question-20b115d2ba9db947,A four pole lap wound DC motor has 540 conductors.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-c4f4dc2a1564be3f,bloom-csv-question-43438dacce52d17d,Write a short note on capacity control of compressors.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-e096b1cc15e5aba7,bloom-csv-question-3a301e15a1719117,Describe the properties and application of the following materials.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-21dd795aa53eed18,bloom-csv-question-2d0288f447400b39,Differentiate between Symmetric and Asymmetric Key Cryptography.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-ed14d81ecd40e3ef,bloom-csv-question-bd394f9f535c685c,List and explain the FIVE (5) institutional structures that can promote and sustained economic growth.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-1b3f12120ce34cae,bloom-csv-question-b36a07a000c85392,Explain the types of HMI.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-21f160e5bc6c3d00,bloom-csv-question-1247b6f0b5db02c0,The crank of an engine is 200 mm long and the ratio of connecting rod length to the crank radius is 4.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-aff057075577c9b7,bloom-csv-question-6405cf0c2f2418e2,Mr.,apply,BT3,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-2ba6daeb992f1103,bloom-csv-question-18e3662a25844171,What is LANDSLIDE?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-a7405d23dcf95438,bloom-csv-question-812df069d93da1fc,Draw & explain TCON register.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-631019b34346ae1c,bloom-csv-question-ec4a44fdfee59ebd,Explain the following operations performed on lathe with suitable sketch.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-304466a8e78ce674,bloom-csv-question-fa63f8471e8a5336,Define briefly the role of marketing in advertising effectiveness.,remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-fe0be4359f50153e,bloom-csv-question-cb2c114313aadd73,What are Electroactive Polymers?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-97d4b6381cbdf29b,bloom-csv-question-7064415b1e1f9f7d,"With the neat diagram, explain the working operation of 4-bit SISO.",remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-821a5e9c0e2240fa,bloom-csv-question-d5b91e42f4b010c9,Which raw materials are used for manufacture of nitrogeneous fertilizers produced from Ammonia.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-7435c09820f23fe5,bloom-csv-question-2fad59d5941b39ba,Explain electronic energy meter with a neat diagram.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-159f4c4fa5d60ce6,bloom-csv-question-eb052d40a42ed3ea,Explain in brief the mesh selection criteria for screen printing applications.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-8407a091006dffba,bloom-csv-question-941c4360dda50cc9,Write in details FIVE (5) phases of design process.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-6cff627e3a32bae6,bloom-csv-question-0389e099d86c2d78,Compare pulse Amplitude modulation and pulse position modulation.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-89cd0f4dc36bd21e,bloom-csv-question-ba6f100768933aea,With suitable circuit diagram and phasor diagram explain one wattmeter method for measurement of reactive power.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-adc213f7aafe91dd,bloom-csv-question-c244442bbe85b899,State and explain basic components of ASM chart.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-6fdb9e33e47476f6,bloom-csv-question-7143aaa7d48f8196,Explain low drop out regulator with neat diagram in detail.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-611ceadbb93c2a63,bloom-csv-question-1fa5b83adfe48380,"Find the directional derivative of xy yz xzφ=++ at (1, 1, 1) along line 111 212x yz −−−== .",apply,BT3,blooms_taxonomy_dataset_v1.csv,encoding_normalized|whitespace_normalized
+bloom-csv-row-abb3a17a25e6b5ae,bloom-csv-question-7886afba0ce3a08b,"Based on your knowledge on the physics of semiconductors, evaluate the limit for the minimum feature size of silicon MOSFET.",evaluate,BT5,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-878403793fad7271,bloom-csv-question-48a5302ac28685e8,Write a short note on survey for drainage line work?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-e02fe88b57606d48,bloom-csv-question-33676fe365e120ff,What are the advantages of digital instruments over analog instruments.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-0877d594992c9077,bloom-csv-question-f259e03ec0cd02e9,What is Exception handing? How to handle Exception in Java?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-157d7eb95fe258bc,bloom-csv-question-b3f85ef415057a9c,What is aliasing? How can it be avoided.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-c23e16695f00a91b,bloom-csv-question-7a3900a261a21723,Differentiate between Microscopy and Macroscopy.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-42be216b1fcbb375,bloom-csv-question-ce4d2ac948ea2075,Provide FOUR (4) reasons of using aggregate in concrete production.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-bc95f61d880ed7e3,bloom-csv-question-ed09bd4cc713c1a6,What improvements needs to be done for packaging waste.,evaluate,BT5,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-edcddca67c4cda84,bloom-csv-question-4fabca3797010f04,Elaborate THREE (3) channels of the transmission process for monetary policy.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-e38945381f0eb8aa,bloom-csv-question-924631234c51d049,Explain the working of circular queue.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-873d9fb0ebc9838c,bloom-csv-question-56c57502cdcfc2db,Define package used in Java.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-319010cc214a9209,bloom-csv-question-628edd2fa3be53a2,Suggest FOUR (4) recommendations in dealing with intersexes.,create,BT6,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-c798410d3e173418,bloom-csv-question-93f8a84c592c03ea,What is a doubly linked list?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-c276aa07ec6b668c,bloom-csv-question-108bc724c5ac07cc,Explain the function of 78XX and 79XX voltage regulator.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-95a151ac4e9243e8,bloom-csv-question-3083711893426427,What is instruction hazard?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-8eb7534d1d515d28,bloom-csv-question-cd42b328b30a43aa,Describe the assumptions of monopolistic competitive market.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-73612f268cdaec10,bloom-csv-question-8e4bff87781224d2,List the features of 8086 microprocessor.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-e1284db9583f32ce,bloom-csv-question-ae7a73487ac08a73,"KOMUGI offers a deliciously authentic variety of handmade Japanese breads, cakes and confectioneries. In 23th December 2017, KOMUGI will launch its first outlets in Perak which will be located in Jusco Kinta City, Ipoh. Your client KOMUGI would like to run a coupon promotion for perakian. Design a creative coupon with catchy messages, slogans and offers to attract the perakian.",create,BT6,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-52367f7d7c9e1bfb,bloom-csv-question-50e13f7a9d655e00,Identify FOUR (4) major crisis variables in organizing and analyzing crisis evolution data. Support your answer with explanation and ONE (1) example for each variable.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-582b0e7c91b84e0b,bloom-csv-question-53e572cc8019aab8,State and explain types of belts.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-85a7efef206c3a8b,bloom-csv-question-0a0449add8389243,Explain static and dynamic tree tables with suitable example.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-6e25319f4eee7955,bloom-csv-question-22765ed231c27fe4,Draw and explain block diagram of 8051 in detail.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-35d232fa1277eddd,bloom-csv-question-685ed9d81f5f166b,A hollow circular shaft has external and internal diameter as 100 mm and 60 mm respectively.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-0995453858b58500,bloom-csv-question-8e9d787d18453821,Differentiate between Putlog and Independent Scaffold.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-07d3bafa98ad8c87,bloom-csv-question-b0ead7b44cd0ca70,Explain the Media Richness Model. Use the model to discuss how managers can pick the best channel in communicating with staff and support your discussion with a scenario.,evaluate,BT5,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-746d07271f0ff359,bloom-csv-question-90f00b496125119f,State the advantage of applying each step in the purification scheme.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-7d70371f76403b59,bloom-csv-question-1df440f359ba76d1,State various materials used in reinforcement of plastics.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-0406be5d5b0ca5f5,bloom-csv-question-b32c2d776ebd14b3,Define pyrolysis and cracking in petroleum refining process.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-76a5b4217555bab2,bloom-csv-question-a22b9f1fdda32045,Identify any FIVE (5) significances of nonverbal communication in organization.,remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-30c61d7fb61dcf7b,bloom-csv-question-0c8c92d33659edeb,Enlist any four types of flooring.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-33a9106407647642,bloom-csv-question-46372d676260f9cd,What is DMA?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-db0629b889cd4f20,bloom-csv-question-338a01bae4288c6d,Money growth is always interrelated with inflation phenomenon. Explain how the growth of money will affect the economy when the economy is operating at the full capacity. Illustrate by using an appropriate diagram.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-3847b70b0415b230,bloom-csv-question-e5c6bf92c56fd1b1,What is SCM?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-60d0e8d2ec3787ab,bloom-csv-question-4c366c98337749a5,Explain the Bezier curve.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2a617aa1dd43692e,bloom-csv-question-361fe4fa42082c32,Derive an expression of velocity and shear stress distribution for laminar flow between fixed parallel plates.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-dab8ced17bdde4e4,bloom-csv-question-38566d0cdb4d19ef,Describe the THREE (3) roles for social media in branding.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-83cb143e9d7495d0,bloom-csv-question-5136ef205894df31,Apply the block digram reduction rules to reduce the following system into canonical form and determine its control ratio.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-22eb86894898e8b5,bloom-csv-question-4271443d4486a9a6,Assume that Japan is currently operating at the natural level of output. Investor is optimistic about the future due to the outstanding performance in the stock market. Explain the effect of event to the price level and output level in the short run and long run in Japan by using an appropriate diagram.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-8d328781663f9f8b,bloom-csv-question-0cdc061516e4f06f,"In maintaining concrete quality, identify SEVEN (7) good practices on site.",remember,BT1,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-c6e76d4a0f2c500c,bloom-csv-question-c8f929778a3997e1,An infinite slope is made of clay with the following properties:,apply,BT3,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-00776c9899009513,bloom-csv-question-e283856d80915a67,What are the salient features of vegetable market building.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2e69bfc6541d9b6f,bloom-csv-question-5596924a4ace0b8d,What is Inheritance?,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-281296cdaec10b4e,bloom-csv-question-092d28229a9faf42,Discuss following terms.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context|very_short
+bloom-csv-row-4255cdf5db233e28,bloom-csv-question-39ef053660adc4fc,Find the Laplace Transform and ROC of Unit Step function and Unit Ramp function.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-b12b93797eaba216,bloom-csv-question-b9f11cb554fa4652,Name the four different types of interactions involved in building the tertiary structure of proteins and give one denaturing agent for each.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-09ea0a58d70c4c53,bloom-csv-question-2a913121ac07fede,Explain FOUR (4) benefits of using Digital-Out-Of-Home in advertising.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-8798d5f465f11828,bloom-csv-question-38ba9fe8f6bda27a,Write short note on external sort.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-bc12401076eba23f,bloom-csv-question-8086d069b8e19215,Explain in brief reactions involved in manufacture of silicone rubbers with mechanisms.,apply,BT3,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-5440320fb31b4b72,bloom-csv-question-8f03a322e8f4cd19,Give dimensionless numbers in case of natural and forced convection.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-bc8e3a92ad068496,bloom-csv-question-482861ecac5f2fce,Banks act as an important institution in the financial system. Briefly explain what a bank run is and provide THREE (3) causes that lead to its occurrence.,understand,BT2,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-c6ba5d11413b85da,bloom-csv-question-2fc17fc0e024a7d3,Explain Network stability.,remember,BT1,blooms_taxonomy_dataset_v1.csv,very_short
+bloom-csv-row-902d2026f137f661,bloom-csv-question-ddd170bb9889c12d,List TEN (10) components of an effective crisis communication plan.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-0f29ef8821148c30,bloom-csv-question-35ef6f0465719442,Explain in brief the exposure time calculation method for screen stencil making process.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-ac4d543d798d93e0,bloom-csv-question-cd86b570da859f14,Write a note on User Interface Design.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2322d02b4b7c36b2,bloom-csv-question-2dcde50d974b9610,Discuss in detail with a case history how geological investigations have helped for proper site of Dam.,analyze,BT4,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-0dc0f0a9e1b97b35,bloom-csv-question-40848644fea53059,"Construct a DNA based cladogram using neighbour-joining approach, and suggest the relationship of S, M, and D species.",create,BT6,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-bb0eccca25b2703c,bloom-csv-question-915144e4fc5b0eac,Describe the basic Qlassic inspection tools used and how they are used to detect the various types of defects for their assessment of quality.,understand,BT2,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-2e2c536c1df6d859,bloom-csv-question-1243d771b7995d9b,Explain Intel i860 processor with block diagram.,remember,BT1,blooms_taxonomy_dataset_v1.csv,missing_context
+bloom-csv-row-27e05846edb65ae2,bloom-csv-question-cabfb33fd26bbb46,Propose TWO (2) strategies that a minority opinion can overtake the majority and be accepted.,create,BT6,blooms_taxonomy_dataset_v1.csv,whitespace_normalized
+bloom-csv-row-cc066bad7343f222,bloom-csv-question-f2a73baa19c46f84,How are polymers classified on the basis of their structure?,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-3394dc7f625c90e9,bloom-csv-question-707b56c63e7c6dc6,Discuss the different types of threads used in power screw.,remember,BT1,blooms_taxonomy_dataset_v1.csv,none
+bloom-csv-row-55bf8a1c8df22632,bloom-csv-question-fdb91bb563fc17cd,Draw a block diagram of electronic energy meter and explain how it operates.,understand,BT2,blooms_taxonomy_dataset_v1.csv,missing_context
