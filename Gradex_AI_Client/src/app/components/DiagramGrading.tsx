@@ -11,8 +11,26 @@ import {
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import { Progress } from "./ui/progress";
 import { Separator } from "./ui/separator";
+import {
+  MONTH_OPTIONS,
+  SEMESTER_OPTIONS,
+  SESSION_OPTIONS,
+  getLatestFiveYears,
+} from "../utils/dateOptions";
+import { fetchCourses, formatCourseLabel, SAMPLE_COURSES, type CourseItem } from "../utils/courseOptions.ts";
+import {
+  buildDiagramEvaluationSavePayload,
+  saveDiagramEvaluation,
+} from "../api/diagramEvaluationApi.ts";
 
 const API_BASE_URL =
   (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ??
@@ -162,6 +180,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
+  const yearOptions = useMemo(() => getLatestFiveYears(), []);
 
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -169,12 +188,30 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     width: number;
     height: number;
   } | null>(null);
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [selectedYear, setSelectedYear] = useState<string>(() =>
+    String(new Date().getFullYear()),
+  );
+  const [selectedMonth, setSelectedMonth] = useState<string>(() =>
+    String(new Date().getMonth() + 1),
+  );
+  const [selectedSemester, setSelectedSemester] = useState<string>(
+    SEMESTER_OPTIONS[0]?.value ?? "first",
+  );
+  const [selectedSession, setSelectedSession] = useState<string>(
+    SESSION_OPTIONS[0]?.value ?? "final",
+  );
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DiagramApiResponse | null>(null);
   const [progressState, setProgressState] =
     useState<DiagramProgressState | null>(null);
+  const [saveState, setSaveState] = useState<string | null>(null);
   const [activeDetailTab, setActiveDetailTab] = useState<
     "labels" | "structure"
   >("labels");
@@ -187,9 +224,47 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     };
   }, []);
 
+  useEffect(() => {
+    let isActive = true;
+
+    const loadCourses = async () => {
+      setCoursesLoading(true);
+      try {
+        const list = await fetchCourses();
+        if (!isActive) return;
+        setCourses(list);
+        setSelectedCourse((prev) => {
+          if (prev && list.some((course: CourseItem) => course.code === prev)) return prev;
+          return list[0]?.code ?? "";
+        });
+      } catch {
+        if (!isActive) return;
+        setCourses([]);
+      } finally {
+        if (isActive) {
+          setCoursesLoading(false);
+        }
+      }
+    };
+
+    void loadCourses();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   const detections = result?.detections ?? [];
   const entityEntries = Object.entries(result?.structure?.entities ?? {});
   const relationshipEntries = result?.structure?.relationships ?? [];
+  const selectedCourseItem = useMemo(
+    () =>
+      (courses.length > 0 ? courses : SAMPLE_COURSES).find(
+        (course: CourseItem) => course.code === selectedCourse,
+      ) ?? null,
+    [courses, selectedCourse],
+  );
+  const courseList = courses.length > 0 ? courses : SAMPLE_COURSES;
 
   const summary = useMemo(
     () => ({
@@ -212,6 +287,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     setError(null);
     setResult(null);
     setProgressState(null);
+    setSaveState(null);
   };
 
   const handleFileChange = (nextFile?: File) => {
@@ -229,6 +305,42 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     handleFileChange(event.dataTransfer.files?.[0]);
   };
 
+  const persistEvaluation = async (nextResult: DiagramApiResponse) => {
+    const activeCourse =
+      courseList.find((course) => course.code === selectedCourse) ??
+      courseList[0] ??
+      null;
+
+    const payload = buildDiagramEvaluationSavePayload({
+      result: nextResult,
+      course: activeCourse,
+      studentId,
+      subjectCode: activeCourse?.code ?? selectedCourse,
+      subjectName: activeCourse?.name ?? "",
+      year: selectedYear,
+      month: selectedMonth,
+      semester: selectedSemester,
+      sessionName:
+        selectedSession === "mid-term" ? "Mid Term" : "Final Examination",
+      diagramMarks: nextResult.detections?.length ?? 0,
+      remarks: nextResult.ocr_error ?? "",
+    });
+
+    setSaving(true);
+    setSaveState(null);
+
+    try {
+      await saveDiagramEvaluation(payload);
+      setSaveState("Saved to MongoDB");
+    } catch (saveError) {
+      setSaveState(
+        saveError instanceof Error ? saveError.message : "Save failed.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const analyzeDiagram = async () => {
     if (!file) {
       setError("Upload a diagram image first.");
@@ -237,6 +349,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
 
     setLoading(true);
     setError(null);
+    setSaveState(null);
     setProgressState({
       stage: "starting",
       message: "Preparing diagram evaluation...",
@@ -368,6 +481,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     setImageSize(null);
     setError(null);
     setResult(null);
+    setSaveState(null);
   };
 
   return (
@@ -437,6 +551,128 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
                     <>Evaluate diagram</>
                   )}
                 </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Student ID
+                </label>
+                <input
+                  value={studentId}
+                  onChange={(event) => setStudentId(event.target.value)}
+                  placeholder="Enter student ID"
+                  className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Subject Code
+                </label>
+                <Select
+                  value={selectedCourse}
+                  onValueChange={setSelectedCourse}
+                  disabled={coursesLoading && courseList.length === 0}
+                >
+                  <SelectTrigger className="w-full bg-card">
+                    <SelectValue
+                      placeholder={
+                        coursesLoading
+                          ? "Loading courses..."
+                          : courseList.length
+                            ? "Select subject code"
+                            : "No courses available"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courseList.map((course) => (
+                      <SelectItem key={course._id} value={course.code}>
+                        {formatCourseLabel(course)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Year
+                </label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-full bg-card">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Month
+                </label>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-full bg-card">
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTH_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Semester
+                </label>
+                <Select
+                  value={selectedSemester}
+                  onValueChange={setSelectedSemester}
+                >
+                  <SelectTrigger className="w-full bg-card">
+                    <SelectValue placeholder="Select semester" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEMESTER_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Session
+                </label>
+                <Select
+                  value={selectedSession}
+                  onValueChange={setSelectedSession}
+                >
+                  <SelectTrigger className="w-full bg-card">
+                    <SelectValue placeholder="Select session" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SESSION_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -731,9 +967,76 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
                 Evaluation summary
               </div>
             </div>
-            <Badge className="bg-accent text-muted-foreground border-0">
-              {summary.labelCount} labels
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-accent text-muted-foreground border-0">
+                {summary.labelCount} labels
+              </Badge>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!result) return;
+                  void persistEvaluation(result);
+                }}
+                disabled={!result || loading || saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    Saving to MongoDB...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="size-4 mr-2" />
+                    Save to MongoDB
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {saveState && (
+            <div className="mt-3 rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              {saveState}
+            </div>
+          )}
+
+          <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl bg-muted/40 px-3 py-2">
+              <div className="uppercase tracking-wide">Subject Code</div>
+              <div className="mt-1 text-foreground">
+                {selectedCourseItem
+                  ? formatCourseLabel(selectedCourseItem)
+                  : selectedCourse || "No course selected"}
+              </div>
+            </div>
+            <div className="rounded-xl bg-muted/40 px-3 py-2">
+              <div className="uppercase tracking-wide">Year</div>
+              <div className="mt-1 text-foreground">{selectedYear}</div>
+            </div>
+            <div className="rounded-xl bg-muted/40 px-3 py-2">
+              <div className="uppercase tracking-wide">Month</div>
+              <div className="mt-1 text-foreground">
+                {MONTH_OPTIONS.find((option) => option.value === selectedMonth)
+                  ?.label ?? selectedMonth}
+              </div>
+            </div>
+            <div className="rounded-xl bg-muted/40 px-3 py-2">
+              <div className="uppercase tracking-wide">Semester</div>
+              <div className="mt-1 text-foreground">
+                {SEMESTER_OPTIONS.find(
+                  (option) => option.value === selectedSemester,
+                )?.label ?? selectedSemester}
+              </div>
+            </div>
+            <div className="rounded-xl bg-muted/40 px-3 py-2">
+              <div className="uppercase tracking-wide">Session</div>
+              <div className="mt-1 text-foreground">
+                {SESSION_OPTIONS.find((option) => option.value === selectedSession)
+                  ?.label ?? selectedSession}
+              </div>
+            </div>
           </div>
 
           <Separator className="my-4" />

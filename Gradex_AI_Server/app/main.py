@@ -2,13 +2,15 @@ from pathlib import Path
 from queue import Queue
 import sys
 import json
+from datetime import datetime, timezone
 from threading import Thread
 from uuid import uuid4
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENGINE_ROOT = PROJECT_ROOT / "DiagramEvaluationEngine"
@@ -19,6 +21,7 @@ for path in (PROJECT_ROOT, ENGINE_ROOT):
 
 from DiagramEvaluationEngine.predict import run_er_pipeline
 from Gradex_AI_Server.app.analytics_report import build_exam_report, run_exam_analysis
+from Gradex_AI_Server.app.mongodb import insert_diagram_evaluation, list_diagram_evaluations
 
 app = FastAPI(title="Gradex AI Server", version="1.0.0")
 
@@ -32,7 +35,6 @@ app.add_middleware(
 
 UPLOAD_DIR = PROJECT_ROOT / "Gradex_AI_Server" / "app" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
 ENGINE_DATA_EXAM = PROJECT_ROOT / "QuestionExamPredictionEngine" / "data" / "exams" / "exam2022.json"
 ENGINE_DATA_ANSWERS = PROJECT_ROOT / "QuestionExamPredictionEngine" / "data" / "answers" / "student_answers2022.json"
 
@@ -48,6 +50,81 @@ def _save_json_upload(upload: UploadFile, destination: Path) -> None:
 def _sse_event(event: str, payload: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=True)}\n\n"
 
+
+class DiagramEvaluationSaveRequest(BaseModel):
+    student_id: str = ""
+    subject_code: str = ""
+    subject_name: str = ""
+    year: int
+    month: int
+    semester: int
+    session_name: str = ""
+    diagram_marks: int = 0
+    diagram_details: dict[str, Any] = Field(default_factory=dict)
+    diagram_entity_relations: list[dict[str, Any]] = Field(default_factory=list)
+    diagram_relations: list[dict[str, Any]] = Field(default_factory=list)
+    remarks: str = ""
+    evaluation_result: dict[str, Any] = Field(default_factory=dict)
+
+
+def _normalize_text(value: str, fallback: str = "") -> str:
+    trimmed = value.strip() if isinstance(value, str) else ""
+    return trimmed or fallback
+
+
+def _normalize_record(payload: DiagramEvaluationSaveRequest) -> dict[str, Any]:
+    now = datetime.now(timezone.utc).isoformat()
+    details = payload.diagram_details if isinstance(payload.diagram_details, dict) else {}
+    if isinstance(details, dict):
+        details = {key: value for key, value in details.items() if key != "annotated_image"}
+
+    evaluation_result = payload.evaluation_result if isinstance(payload.evaluation_result, dict) else {}
+    if isinstance(evaluation_result, dict):
+        evaluation_result = {
+            key: value
+            for key, value in evaluation_result.items()
+            if key != "annotated_image"
+        }
+
+    entity_relations = (
+        payload.diagram_entity_relations
+        if isinstance(payload.diagram_entity_relations, list)
+        else []
+    )
+    relations = (
+        payload.diagram_relations
+        if isinstance(payload.diagram_relations, list)
+        else []
+    )
+
+    return {
+        "student_id": _normalize_text(payload.student_id, "UNKNOWN"),
+        "subject_code": _normalize_text(payload.subject_code),
+        "subject_name": _normalize_text(payload.subject_name),
+        "year": int(payload.year),
+        "month": int(payload.month),
+        "semester": int(payload.semester),
+        "session_name": _normalize_text(payload.session_name, "Final Examination"),
+        "diagram_marks": int(payload.diagram_marks),
+        "diagram_details": details,
+        "diagram_entity_relations": entity_relations,
+        "diagram_relations": relations,
+        "remarks": _normalize_text(payload.remarks),
+        "evaluation_result": evaluation_result,
+        "created_at": now,
+        "updated_at": now,
+        "source": "diagram-evaluation",
+    }
+
+
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if value.__class__.__name__ == "ObjectId":
+        return str(value)
+    return value
 
 @app.post("/api/digaram-evaluate")
 @app.post("/api/diagram-evaluate")
@@ -98,6 +175,27 @@ async def diagram_evaluate(image: UploadFile = File(...), stream: bool = False):
 
     return StreamingResponse(stream_events(), media_type="text/event-stream")
 
+
+@app.post("/api/diagram-evaluate-save")
+async def diagram_evaluate_save(payload: DiagramEvaluationSaveRequest):
+    try:
+        record = _normalize_record(payload)
+        inserted_id = insert_diagram_evaluation(record)
+        return _json_safe({
+            "status": "saved",
+            "inserted_id": str(inserted_id),
+            "record": record,
+        })
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to save diagram evaluation: {exc}") from exc
+
+@app.get("/api/diagram-evaluate-details")
+async def diagram_evaluate_details():
+    try:
+        return _json_safe(list_diagram_evaluations())
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    
 
 
 @app.get("/api/analytics/report")
