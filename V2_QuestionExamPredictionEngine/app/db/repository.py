@@ -57,6 +57,11 @@ async def save_recommendations(db: AsyncIOMotorDatabase, docs: list[dict]) -> No
         await db["exam_recommendations"].replace_one({"recommendation_id": doc["recommendation_id"]}, doc, upsert=True)
 
 
+async def find_recommendations(db: AsyncIOMotorDatabase, run_id: str) -> list[dict]:
+    cursor = db["exam_recommendations"].find({"run_id": run_id}).sort("priority_score", -1)
+    return await cursor.to_list(length=None)
+
+
 async def save_run(db: AsyncIOMotorDatabase, doc: dict) -> None:
     await db["analysis_runs"].replace_one({"run_id": doc["run_id"]}, doc, upsert=True)
 
