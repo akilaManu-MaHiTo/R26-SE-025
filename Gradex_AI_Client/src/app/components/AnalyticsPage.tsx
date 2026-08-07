@@ -1581,7 +1581,7 @@ export function AnalyticsPage() {
                       <div key={`drill-exam-${i}`} className="rounded-lg border border-border p-3">
                         <div className="text-sm text-foreground">{e.exam_id}</div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {Math.round(e.percentage * 100)}% · {e.grade} · {e.total_awarded}/{e.total_max} marks
+                          {Math.round(e.percentage)}% · {e.grade} · {e.total_awarded}/{e.total_max} marks
                         </div>
                       </div>
                     ))}
