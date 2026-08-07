@@ -23,6 +23,7 @@ import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Progress } from "./ui/progress";
 import { Separator } from "./ui/separator";
 import { AIPageBanner, AILoadingOverlay, AIBadgePill } from "./AIBrand";
@@ -893,6 +894,31 @@ export function AnalyticsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
 
+  const [drillStudent, setDrillStudent] = useState<string>("");
+  const [drillData, setDrillData] = useState<any | null>(null);
+  const [drillLoading, setDrillLoading] = useState(false);
+  const [drillError, setDrillError] = useState<string | null>(null);
+
+  const loadDrill = async (studentKey: string) => {
+    setDrillStudent(studentKey);
+    setDrillLoading(true);
+    setDrillError(null);
+    setDrillData(null);
+    try {
+      const response = await fetch(
+        `${backendBaseUrl}/api/predict/students/${encodeURIComponent(studentKey)}/dashboard?include_llm=false`,
+      );
+      if (!response.ok) {
+        throw new Error((await response.text()) || "Dashboard load failed.");
+      }
+      setDrillData(await response.json());
+    } catch (error) {
+      setDrillError(error instanceof Error ? error.message : "Dashboard load failed.");
+    } finally {
+      setDrillLoading(false);
+    }
+  };
+
   /* ─── Student Details Modal & Charts ─────────────────────────────────────── */
   function SimpleBarChart({ data = [], labels = [], height = 80 }: { data?: number[]; labels?: string[]; height?: number }) {
     const chartData = labels.map((l, i) => ({ k: l, v: data[i] ?? 0 }));
@@ -1455,6 +1481,122 @@ export function AnalyticsPage() {
           );
         })}
       </div>
+
+      {/* Student drill-down */}
+      <Card className="border-border">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-foreground">Student drill-down</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Per-student evidence, study actions, and cohort comparison from the V2 engine.
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={drillStudent} onValueChange={(v) => void loadDrill(v)}>
+              <SelectTrigger className="w-48"><SelectValue placeholder="Select a student" /></SelectTrigger>
+              <SelectContent>
+                {students.map((s: { id: string }) => (
+                  <SelectItem key={s.id} value={s.id}>{s.id}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {drillLoading && (
+              <Badge className="bg-accent text-primary border-0">
+                <RefreshCw className="size-3 mr-1 animate-spin" /> Loading
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <div className="p-5">
+          {!drillStudent && (
+            <p className="text-sm text-muted-foreground">
+              Select a student to load their V2 dashboard.
+            </p>
+          )}
+          {drillError && (
+            <p className="text-sm text-red-500">{drillError}</p>
+          )}
+          {drillData && (
+            <div className="grid lg:grid-cols-2 gap-4">
+              <Card className="p-4 border-border bg-card">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Study actions</div>
+                <div className="mt-2 space-y-2">
+                  {(drillData.recommendations ?? []).map((rec: any, i: number) => (
+                    <div key={`drill-action-${i}`} className="rounded-lg border border-border p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-foreground">{rec.action}</span>
+                        <Badge className="bg-accent text-primary border-0 ml-auto">
+                          {rec.source ?? "deterministic"}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {rec.topic}
+                        {rec.rationale ? ` — ${rec.rationale}` : ""}
+                      </div>
+                      {rec.practice_topics?.length > 0 && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Practice: {(rec.practice_topics ?? []).join(", ")}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              <Card className="p-4 border-border bg-card">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Weakest topics</div>
+                <div className="mt-2 space-y-2">
+                  {(drillData.weakest_topics ?? []).map((t: string, i: number) => (
+                    <div key={`drill-weak-${i}`} className="flex items-center gap-2">
+                      <span className="size-5 rounded-md bg-accent text-primary flex items-center justify-center text-xs shrink-0">
+                        {i + 1}
+                      </span>
+                      <span className="text-sm text-foreground">{t}</span>
+                    </div>
+                  ))}
+                </div>
+                <Separator className="my-3" />
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Topic skills</div>
+                <div className="mt-2 space-y-2">
+                  {(drillData.topic_skills ?? []).map((t: any, i: number) => (
+                    <div key={`drill-topic-${i}`}>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-foreground">{t.topic}</span>
+                        <span className="text-muted-foreground">
+                          {t.mastery != null ? `${Math.round(t.mastery * 100)}%` : "—"} · {t.evidence_status}
+                        </span>
+                      </div>
+                      <Progress value={t.mastery != null ? Math.round(t.mastery * 100) : 0} className="h-1.5 mt-1.5" />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {(drillData.exams ?? []).length > 0 && (
+                <Card className="p-4 border-border bg-card lg:col-span-2">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Exams</div>
+                  <div className="mt-2 grid sm:grid-cols-2 gap-2">
+                    {(drillData.exams ?? []).map((e: any, i: number) => (
+                      <div key={`drill-exam-${i}`} className="rounded-lg border border-border p-3">
+                        <div className="text-sm text-foreground">{e.exam_id}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {Math.round(e.percentage * 100)}% · {e.grade} · {e.total_awarded}/{e.total_max} marks
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {drillData.cohort_comparison && (
+                    <div className="text-xs text-muted-foreground mt-3">
+                      Cohort comparison: {JSON.stringify(drillData.cohort_comparison)}
+                    </div>
+                  )}
+                </Card>
+              )}
+            </div>
+          )}
+        </div>
+      </Card>
 
       {selectedSession && (
         <Card className="border-border overflow-hidden">
