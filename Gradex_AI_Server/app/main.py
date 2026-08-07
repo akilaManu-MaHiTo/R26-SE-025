@@ -9,12 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENGINE_ROOT = PROJECT_ROOT / "DiagramEvaluationEngine"
-for path in (PROJECT_ROOT, ENGINE_ROOT):
+V2_ROOT = PROJECT_ROOT / "V2_QuestionExamPredictionEngine"
+for path in (PROJECT_ROOT, ENGINE_ROOT, V2_ROOT):
     path_str = str(path)
     if path_str not in sys.path:
         sys.path.append(path_str)
 
 from Gradex_AI_Server.app.analytics_report import build_exam_report, run_exam_analysis
+from Gradex_AI_Server.app.predict_api import router as predict_router
 
 app = FastAPI(title="Gradex AI Server", version="1.0.0")
 
@@ -25,6 +27,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(predict_router)
 
 UPLOAD_DIR = PROJECT_ROOT / "Gradex_AI_Server" / "app" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
