@@ -1,0 +1,411 @@
+{
+  "_id": "ObjectId('...')",
+  "rubric_ref": "ObjectId('...')",
+  "session_name": "Final Examination 2021",
+  "subject_code": "IT2040",
+  "student_id": "IT21001237",
+  "max_marks_paper_total": 100.0,
+  "max_marks_per_question": [
+    {
+      "question_no": "01",
+      "max_marks": 8.0
+    },
+    {
+      "question_no": "02",
+      "max_marks": 12.0
+    },
+    {
+      "question_no": "03",
+      "max_marks": 6.0
+    },
+    {
+      "question_no": "04",
+      "max_marks": 5.0
+    },
+    {
+      "question_no": "05",
+      "max_marks": 9.0
+    },
+    {
+      "question_no": "06",
+      "max_marks": 8.0
+    },
+    {
+      "question_no": "07",
+      "max_marks": 10.0
+    },
+    {
+      "question_no": "08",
+      "max_marks": 7.0
+    },
+    {
+      "question_no": "09",
+      "max_marks": 10.0
+    },
+    {
+      "question_no": "10",
+      "max_marks": 10.0
+    },
+    {
+      "question_no": "11",
+      "max_marks": 15.0
+    }
+  ],
+  "raw_ocr_transcript": "Q1 a)\nConceptual design involves creating an ER diagram. It is independent of the database. Logical design maps the ER diagram into tables, defining primary keys. Physical design is the actual implementation, like creating indexes in SQL Server.\n\nQ1 b)\nEER stands for Enhanced Entity Relationship model. It extends ER with concepts like specialization and generalization. Specialization is the process of designating subgroups within an entity set. For example, Employee can be specialized into Manager or Engineer. Generalization is the reverse, combining Manager and Engineer into a generic Employee entity. ISA hierarchy defines the parent-child relationship between these entities.\n\nQ2 a)\nR(StudentID, Name, Dept, DeptHead, Course, Grade, Instructor). Candidate key calculation: (StudentID, Course)+ = StudentID, Name, Dept, DeptHead, Course, Instructor, Grade. So the candidate key is StudentID, Course.\n\nQ2 b)\nThe relation is not in 3NF. This is because Dept depends on StudentID, which is part of the key, but DeptHead depends on Dept, which is not a key. So there is a transitive dependency.\n\nQ2 c)\nTo convert to BCNF:\nStep 1: Dept -> DeptHead violates BCNF. Decompose into R1(Dept, DeptHead) and R2(StudentID, Name, Dept, Course, Grade, Instructor).\nStep 2: In R2, StudentID -> Name, Dept violates BCNF? No, but Course -> Instructor violates BCNF. Decompose R2 into R3(Course, Instructor) and R4(StudentID, Name, Dept, Course, Grade).\nFinal relations: R1, R3, R4.\n\nQ3 a)\nThe four JDBC drivers are:\n1. Type-1: ODBC-JDBC bridge. Requires ODBC driver.\n2. Type-2: Native API driver. Uses client-side libraries of the database.\n3. Type-3: Network Protocol driver. Translates JDBC to middleware protocol.\n4. Type-4: Thin driver. 100% Java, connects directly to database.\nType-4 is most common because it is purely Java, no client installation needed, and best performance.\n\nQ3 b)\nStatement is used for static SQL. PreparedStatement is precompiled and used for parameterized queries, preventing SQL injection. CallableStatement is for calling stored procedures.\n\nQ3 c)\nString sql = \"INSERT INTO Student VALUES (?, ?, ?)\";\nPreparedStatement pstmt = con.prepareStatement(sql);\npstmt.setInt(1, 101);\npstmt.setString(2, 'John');\npstmt.executeUpdate();\n\nQ4 a)\n(i) SELECT M.Name, M.Email FROM Member M JOIN Loan L ON M.MemberID = L.MemberID WHERE L.DueDate < GETDATE();\n(ii) SELECT MemberID, COUNT(*) AS TotalBooks FROM Loan GROUP BY MemberID;\n\nQ4 b)\nCREATE FUNCTION dbo.CalcFine (@DaysOverdue INT)\nRETURNS INT\nAS\nBEGIN\n  RETURN @DaysOverdue * 50\nEND\n\nQ4 c)\nAuthentication verifies the user identity, usually via login. Authorization assigns permissions to the login. Login is created at the server level, User at the database level.\nCREATE LOGIN JohnDoe WITH PASSWORD = 'p@ssword';\nCREATE USER JohnDoe FOR LOGIN JohnDoe;\nEXEC sp_addrolemember 'db_datareader', 'JohnDoe';",
+  "evaluation": {
+    "total_score": 28.7,
+    "max_score": 100.0,
+    "justification": "Weak on functional dependencies and normalization; better on conceptual and driver questions.",
+    "feedback": "Auto-generated sample variant for multi-student demo.",
+    "results": [
+      {
+        "q_no": "01",
+        "score": 3.7,
+        "criteria_breakdown": [
+          {
+            "point": "Explains Conceptual Design",
+            "marks": 3,
+            "earned": 1.5
+          },
+          {
+            "point": "Explains Logical Design",
+            "marks": 3,
+            "earned": 1.5
+          },
+          {
+            "point": "Explains Physical Design",
+            "marks": 2,
+            "earned": 0.6
+          }
+        ],
+        "justification": "Definitions are generally correct but lack specific examples for physical design.",
+        "feedback": "Mention specific physical design elements like partitioning or indexes."
+      },
+      {
+        "q_no": "02",
+        "score": 4.1,
+        "criteria_breakdown": [
+          {
+            "point": "Definition of EER model",
+            "marks": 2,
+            "earned": 1.0
+          },
+          {
+            "point": "Explanation of Specialization",
+            "marks": 3,
+            "earned": 1.0
+          },
+          {
+            "point": "Explanation of Generalization",
+            "marks": 3,
+            "earned": 1.0
+          },
+          {
+            "point": "Explanation of ISA hierarchy constraints",
+            "marks": 4,
+            "earned": 1.0
+          }
+        ],
+        "justification": "Examples provided, but the constraints of ISA (e.g., disjoint, overlapping) were omitted.",
+        "feedback": "Expand on ISA hierarchy constraints like disjoint vs overlapping."
+      },
+      {
+        "q_no": "03",
+        "score": 1.8,
+        "criteria_breakdown": [
+          {
+            "point": "Correctly identifies minimal set",
+            "marks": 2,
+            "earned": 0.7
+          },
+          {
+            "point": "Correct closure calculation",
+            "marks": 3,
+            "earned": 0.7
+          },
+          {
+            "point": "Declares correct candidate key",
+            "marks": 1,
+            "earned": 0.4
+          }
+        ],
+        "justification": "Correct answer but closure steps are implied rather than shown step-by-step.",
+        "feedback": "Show each step of the closure calculation for full marks."
+      },
+      {
+        "q_no": "04",
+        "score": 1.2,
+        "criteria_breakdown": [
+          {
+            "point": "Correctly identifies NOT in 3NF",
+            "marks": 1,
+            "earned": 0.2
+          },
+          {
+            "point": "Justifies with transitive dependency",
+            "marks": 4,
+            "earned": 1.0
+          }
+        ],
+        "justification": "Excellent reasoning regarding the transitive dependency.",
+        "feedback": "Perfect."
+      },
+      {
+        "q_no": "05",
+        "score": 2.2,
+        "criteria_breakdown": [
+          {
+            "point": "Decomposes Dept \u2192 DeptHead",
+            "marks": 3,
+            "earned": 1.3
+          },
+          {
+            "point": "Decomposes StudentID \u2192 Name, Dept",
+            "marks": 3,
+            "earned": 0.0
+          },
+          {
+            "point": "Final schema includes correct tables",
+            "marks": 3,
+            "earned": 0.9
+          }
+        ],
+        "justification": "The student incorrectly decomposed based on Course->Instructor instead of StudentID->Name,Dept, leading to missing R2 table.",
+        "feedback": "Check your BCNF steps. StudentID \u2192 Name, Dept is a functional dependency that violates BCNF and must be decomposed."
+      },
+      {
+        "q_no": "06",
+        "score": 3.7,
+        "criteria_breakdown": [
+          {
+            "point": "Describes Type-1",
+            "marks": 1,
+            "earned": 0.3
+          },
+          {
+            "point": "Describes Type-2",
+            "marks": 1,
+            "earned": 0.3
+          },
+          {
+            "point": "Describes Type-3",
+            "marks": 1,
+            "earned": 0.3
+          },
+          {
+            "point": "Describes Type-4 & identifies best",
+            "marks": 3,
+            "earned": 1.5
+          },
+          {
+            "point": "Justifies Type-4 selection",
+            "marks": 2,
+            "earned": 1.2
+          }
+        ],
+        "justification": "Driver definitions are concise. Type-4 is correctly identified as preferred.",
+        "feedback": "Elaborate slightly on the exact protocol differences between types."
+      },
+      {
+        "q_no": "07",
+        "score": 2.6,
+        "criteria_breakdown": [
+          {
+            "point": "Statement desc/example",
+            "marks": 3,
+            "earned": 0.7
+          },
+          {
+            "point": "PreparedStatement desc/example",
+            "marks": 4,
+            "earned": 1.1
+          },
+          {
+            "point": "CallableStatement desc/example",
+            "marks": 3,
+            "earned": 0.7
+          }
+        ],
+        "justification": "Good comparison but lacking concrete Java code examples for Statement and CallableStatement.",
+        "feedback": "Include short code snippets for each to secure full marks."
+      },
+      {
+        "q_no": "08",
+        "score": 2.7,
+        "criteria_breakdown": [
+          {
+            "point": "Driver loading/DataSource",
+            "marks": 1,
+            "earned": 0.0
+          },
+          {
+            "point": "Connection syntax",
+            "marks": 1,
+            "earned": 0.0
+          },
+          {
+            "point": "PreparedStatement creation",
+            "marks": 2,
+            "earned": 1.1
+          },
+          {
+            "point": "Set parameters",
+            "marks": 2,
+            "earned": 1.1
+          },
+          {
+            "point": "Execute & close resources",
+            "marks": 1,
+            "earned": 0.5
+          }
+        ],
+        "justification": "The core PreparedStatement logic is correct, but the connection setup (Driver/Connection string) was omitted.",
+        "feedback": "Always include the full boilerplate code for connection establishment."
+      },
+      {
+        "q_no": "09",
+        "score": 2.1,
+        "criteria_breakdown": [
+          {
+            "point": "Query (i) JOINs/WHERE",
+            "marks": 5,
+            "earned": 1.2
+          },
+          {
+            "point": "Query (ii) GROUP BY/COUNT",
+            "marks": 5,
+            "earned": 0.9
+          }
+        ],
+        "justification": "Query (i) is mostly right but date function is dialect-specific. Query (ii) misses grouping by member name.",
+        "feedback": "If you need the member name, include it in the GROUP BY clause."
+      },
+      {
+        "q_no": "10",
+        "score": 2.8,
+        "criteria_breakdown": [
+          {
+            "point": "CREATE FUNCTION syntax",
+            "marks": 2,
+            "earned": 1.1
+          },
+          {
+            "point": "Return type",
+            "marks": 1,
+            "earned": 0.6
+          },
+          {
+            "point": "Correct calculation",
+            "marks": 3,
+            "earned": 1.1
+          },
+          {
+            "point": "Handling negative/NULL",
+            "marks": 2,
+            "earned": 0.0
+          },
+          {
+            "point": "Executable syntax",
+            "marks": 2,
+            "earned": 0.0
+          }
+        ],
+        "justification": "The function is correct for basic logic but assumes input is always positive integer. Missing RETURN variable or direct calculation syntax.",
+        "feedback": "The function logic is sound but must handle negative inputs (return 0). Check exact T-SQL syntax."
+      },
+      {
+        "q_no": "11",
+        "score": 1.8,
+        "criteria_breakdown": [
+          {
+            "point": "Authentication explanation",
+            "marks": 4,
+            "earned": 0.7
+          },
+          {
+            "point": "Authorization explanation",
+            "marks": 4,
+            "earned": 0.7
+          },
+          {
+            "point": "CREATE LOGIN syntax",
+            "marks": 3,
+            "earned": 0.4
+          },
+          {
+            "point": "CREATE USER syntax",
+            "marks": 2,
+            "earned": 0.0
+          },
+          {
+            "point": "Assign role/member",
+            "marks": 2,
+            "earned": 0.0
+          }
+        ],
+        "justification": "T-SQL syntax is incomplete; CREATE USER and full role assignment script is missing.",
+        "feedback": "Review the full T-SQL chain: CREATE LOGIN, CREATE USER, and EXEC sp_addrolemember."
+      }
+    ],
+    "grading_source": "colab",
+    "rag_context_used": true,
+    "rag_chunks": 6,
+    "rag_course": "IT2040",
+    "rag_per_question": {
+      "01": {
+        "rag_chunks": 1,
+        "rag_context_used": true
+      },
+      "02": {
+        "rag_chunks": 1,
+        "rag_context_used": true
+      },
+      "03": {
+        "rag_chunks": 1,
+        "rag_context_used": true
+      },
+      "04": {
+        "rag_chunks": 1,
+        "rag_context_used": true
+      },
+      "05": {
+        "rag_chunks": 1,
+        "rag_context_used": true
+      },
+      "06": {
+        "rag_chunks": 1,
+        "rag_context_used": true
+      }
+    },
+    "answer_split": {
+      "buckets_found": [
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "11"
+      ],
+      "per_question_source": {
+        "01": "split",
+        "02": "split",
+        "03": "split",
+        "04": "split",
+        "05": "split",
+        "06": "split",
+        "07": "split",
+        "08": "split",
+        "09": "split",
+        "10": "split",
+        "11": "split"
+      }
+    }
+  },
+  "status": "graded",
+  "processed_at": "2026-07-26T05:12:00.000Z"
+}
