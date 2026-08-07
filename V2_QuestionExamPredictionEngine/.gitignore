@@ -1,0 +1,7 @@
+.superpowers/
+.venv/
+.env
+__pycache__/
+.pytest_cache/
+
+graphify-out
