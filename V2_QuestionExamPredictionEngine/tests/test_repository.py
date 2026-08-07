@@ -61,3 +61,54 @@ async def test_latest_run_id_returns_most_recent(test_db):
 async def test_latest_run_id_empty_returns_none(test_db):
     await test_db["analysis_runs"].delete_many({})
     assert await latest_run_id(test_db) is None
+
+
+from app.db.repository import find_recommendations, save_recommendations
+
+
+async def test_find_recommendations_returns_sorted_by_priority(test_db):
+    await test_db["exam_recommendations"].delete_many({})
+    await save_recommendations(
+        test_db,
+        [
+            {
+                "recommendation_id": "r-low",
+                "run_id": "run-1",
+                "course_code": "SE2032",
+                "exam_id": "e1",
+                "topic": "SQL",
+                "bloom_level": "Apply",
+                "priority_score": 0.3,
+            },
+            {
+                "recommendation_id": "r-high",
+                "run_id": "run-1",
+                "course_code": "SE2032",
+                "exam_id": "e1",
+                "topic": "Schema Refinement",
+                "bloom_level": "Analyze",
+                "priority_score": 0.9,
+            },
+        ],
+    )
+    recs = await find_recommendations(test_db, "run-1")
+    assert [r["recommendation_id"] for r in recs] == ["r-high", "r-low"]
+
+
+async def test_find_recommendations_other_run_returns_empty(test_db):
+    await test_db["exam_recommendations"].delete_many({})
+    await save_recommendations(
+        test_db,
+        [
+            {
+                "recommendation_id": "r-other",
+                "run_id": "run-other",
+                "course_code": "SE2032",
+                "exam_id": "e1",
+                "topic": "SQL",
+                "bloom_level": "Apply",
+                "priority_score": 0.5,
+            }
+        ],
+    )
+    assert await find_recommendations(test_db, "run-1") == []
