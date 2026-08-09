@@ -1,1 +1,4 @@
 .venv/
+
+# Ignore Claude guidance files
+**/CLAUDE.md
