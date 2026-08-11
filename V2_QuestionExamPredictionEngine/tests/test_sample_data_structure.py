@@ -1,3 +1,7 @@
+import shutil
+from pathlib import Path
+
+import migrate_sample_v2
 from run_sample import load_raw_sample_documents
 
 
@@ -39,6 +43,23 @@ def test_submissions_have_v2_shape_and_graded_status():
             for criterion in result["criteria_breakdown"]:
                 assert "earned" not in criterion
                 assert "marks" not in criterion
+                assert "point" in criterion
                 assert "awarded_marks" in criterion
                 assert criterion["awarded_marks"] >= 0
                 assert "reason" in criterion
+
+
+def test_migrate_sample_v2_is_idempotent(tmp_path, monkeypatch):
+    dest = tmp_path / "sample_data"
+    shutil.copytree(Path("app/sample_data"), dest)
+    monkeypatch.setattr(migrate_sample_v2, "SAMPLE_DIR", dest)
+
+    def snapshot() -> dict[str, bytes]:
+        return {
+            p.name: p.read_bytes() for p in sorted(dest.iterdir()) if p.is_file()
+        }
+
+    migrate_sample_v2.main()
+    first = snapshot()
+    migrate_sample_v2.main()
+    assert snapshot() == first
