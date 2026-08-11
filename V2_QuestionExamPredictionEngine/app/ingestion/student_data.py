@@ -70,7 +70,7 @@ def _criteria_for_question(rubric_question: dict, result: dict) -> list[Normaliz
                 f"{normalize_question_no(rubric_question.get('question_no'))}"
             )
         awarded_marks = _as_float(
-            matched.get("earned", matched.get("awarded_marks", 0)),
+            matched.get("awarded_marks", matched.get("earned", 0)),
             "awarded criterion marks",
         )
         if awarded_marks < 0 or awarded_marks > max_marks:
