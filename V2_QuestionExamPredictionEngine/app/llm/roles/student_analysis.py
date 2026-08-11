@@ -1,8 +1,11 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.schemas.student import BloomLevel
+
+
+NonBlankText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 class QuestionSemantics(BaseModel):
@@ -19,9 +22,9 @@ class InsightRecommendation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     priority: Literal["High", "Medium", "Low"]
-    topic: str
+    topic: NonBlankText
     bloom_level: BloomLevel
-    action: str
+    action: NonBlankText
 
 
 class GenerationTarget(BaseModel):

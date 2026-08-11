@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from app.config import settings
+from app.llm.ollama import OllamaUnavailable
 from app.schemas.student import StudentAnalyticsDocument
 from app.services import student_pipeline
 from app.services.student_pipeline import materialize_student_analytics
@@ -299,6 +300,192 @@ async def test_qwen_insights_replace_only_semantic_fallback_fields(monkeypatch):
         for item in saved["bloom_performance"]
     )
     StudentAnalyticsDocument.model_validate(saved)
+
+
+async def test_blank_qwen_recommendation_degrades_to_deterministic_fallback(
+    monkeypatch,
+):
+    db = install_repository_boundaries(monkeypatch, [submission("student-17")])
+    monkeypatch.setattr(
+        student_pipeline,
+        "classify_question_semantics",
+        AsyncMock(side_effect=lambda _course, question, _criteria: ok_semantics(question)),
+    )
+    monkeypatch.setattr(
+        student_pipeline,
+        "generate_student_insights",
+        AsyncMock(
+            return_value={
+                "status": "ok",
+                "learning_gaps": ["This invalid response must not be used."],
+                "recommendations": [
+                    {
+                        "priority": "High",
+                        "topic": "   ",
+                        "bloom_level": "Apply",
+                        "action": "",
+                    }
+                ],
+                "generation_target": {
+                    "recommended_bloom_level": "Analyze",
+                    "recommended_difficulty": "Hard",
+                    "recommended_topics": ["Joins"],
+                },
+            }
+        ),
+    )
+
+    result = await materialize_student_analytics(db)
+
+    assert result.saved == ["student-17"]
+    assert result.failures == []
+    saved = db.saved[0]
+    assert saved["learning_analysis"]["learning_gaps"] == [
+        "Review Uses the correct query in Joins.",
+        "Review Explains the concept in Concept Explanation.",
+    ]
+    assert saved["recommendations"][0]["topic"] == "SQL"
+    assert saved["recommendations"][0]["action"]
+    assert saved["next_question_generation"]["number_of_questions"] == 5
+    StudentAnalyticsDocument.model_validate(saved)
+
+
+async def test_expected_model_availability_error_uses_fallback(monkeypatch):
+    db = install_repository_boundaries(monkeypatch, [submission("student-17")])
+    monkeypatch.setattr(
+        student_pipeline,
+        "classify_question_semantics",
+        AsyncMock(side_effect=OllamaUnavailable("offline")),
+    )
+    monkeypatch.setattr(
+        student_pipeline,
+        "generate_student_insights",
+        AsyncMock(side_effect=OllamaUnavailable("offline")),
+    )
+
+    result = await materialize_student_analytics(db)
+
+    assert result.saved == ["student-17"]
+    assert result.failures == []
+    StudentAnalyticsDocument.model_validate(db.saved[0])
+
+
+async def test_unexpected_classifier_error_isolated_as_submission_failure(monkeypatch):
+    db = install_repository_boundaries(
+        monkeypatch,
+        [submission("broken-student"), submission("valid-student")],
+    )
+    monkeypatch.setattr(
+        student_pipeline,
+        "classify_question_semantics",
+        AsyncMock(
+            side_effect=[
+                RuntimeError("classifier programming defect"),
+                ok_semantics("Apply SELECT and JOIN to retrieve rows."),
+                ok_semantics("Explain an unfamiliar database concept."),
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        student_pipeline,
+        "generate_student_insights",
+        AsyncMock(return_value={"status": "degraded", "reason": "schema_failure"}),
+    )
+
+    result = await materialize_student_analytics(db)
+
+    assert result.saved == ["valid-student"]
+    assert [failure.student_id for failure in result.failures] == ["broken-student"]
+    assert "classifier programming defect" in result.failures[0].reason
+    assert [document["student_id"] for document in db.saved] == ["valid-student"]
+
+
+async def test_unexpected_insight_error_isolated_as_submission_failure(monkeypatch):
+    db = install_repository_boundaries(
+        monkeypatch,
+        [submission("broken-student"), submission("valid-student")],
+    )
+    monkeypatch.setattr(
+        student_pipeline,
+        "classify_question_semantics",
+        AsyncMock(side_effect=lambda _course, question, _criteria: ok_semantics(question)),
+    )
+    monkeypatch.setattr(
+        student_pipeline,
+        "generate_student_insights",
+        AsyncMock(
+            side_effect=[
+                RuntimeError("insight programming defect"),
+                {"status": "degraded", "reason": "schema_failure"},
+            ]
+        ),
+    )
+
+    result = await materialize_student_analytics(db)
+
+    assert result.saved == ["valid-student"]
+    assert [failure.student_id for failure in result.failures] == ["broken-student"]
+    assert "insight programming defect" in result.failures[0].reason
+    assert [document["student_id"] for document in db.saved] == ["valid-student"]
+
+
+async def test_model_metadata_uses_config_and_parses_source_boolean(monkeypatch):
+    source = submission("student-17")
+    source["evaluation"]["grading_source"] = "external-grader"
+    source["evaluation"]["rag_context_used"] = "false"
+    db = install_repository_boundaries(monkeypatch, [source])
+    monkeypatch.setattr(
+        student_pipeline,
+        "settings",
+        SimpleNamespace(
+            ollama_model="course-qwen:latest",
+            ollama_model_type="fine-tuned",
+        ),
+    )
+    monkeypatch.setattr(
+        student_pipeline,
+        "classify_question_semantics",
+        AsyncMock(side_effect=lambda _course, question, _criteria: ok_semantics(question)),
+    )
+    monkeypatch.setattr(
+        student_pipeline,
+        "generate_student_insights",
+        AsyncMock(return_value={"status": "degraded", "reason": "schema_failure"}),
+    )
+
+    result = await materialize_student_analytics(db)
+
+    assert result.saved == ["student-17"]
+    assert db.saved[0]["model_metadata"] == {
+        "bloom_model": "course-qwen:latest",
+        "bloom_model_type": "fine-tuned",
+        "grading_source": "external-grader",
+        "rag_context_used": False,
+    }
+
+
+async def test_missing_source_metadata_fails_without_invented_defaults(monkeypatch):
+    source = submission("student-17")
+    source["evaluation"].pop("grading_source")
+    source["evaluation"].pop("rag_context_used")
+    db = install_repository_boundaries(monkeypatch, [source])
+    monkeypatch.setattr(
+        student_pipeline,
+        "classify_question_semantics",
+        AsyncMock(side_effect=lambda _course, question, _criteria: ok_semantics(question)),
+    )
+    monkeypatch.setattr(
+        student_pipeline,
+        "generate_student_insights",
+        AsyncMock(return_value={"status": "degraded", "reason": "schema_failure"}),
+    )
+
+    result = await materialize_student_analytics(db)
+
+    assert result.saved == []
+    assert [failure.student_id for failure in result.failures] == ["student-17"]
+    assert "grading_source" in result.failures[0].reason
+    assert db.saved == []
 
 
 async def test_pipeline_isolates_invalid_submission(monkeypatch):

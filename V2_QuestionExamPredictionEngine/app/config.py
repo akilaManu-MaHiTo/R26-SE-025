@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     env: str = "development"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:3b-instruct"
+    ollama_model_type: str = "base"
     ollama_timeout: float = 120
     ollama_classify_temperature: float = 0.2
     ollama_generate_temperature: float = 0.8

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from app.analytics.student_document import NumericStudentAnalysis, build_numeric_analysis
 from app.classifier.rules import classify_by_rules
@@ -14,6 +14,7 @@ from app.db.repository import (
     upsert_student_analytics,
 )
 from app.ingestion.student_data import NormalizedStudentInput, normalize_student_submission
+from app.llm.ollama import OllamaUnavailable
 from app.llm.roles.student_analysis import QuestionSemantics, StudentInsightResponse
 from app.schemas.student import StudentAnalyticsDocument
 from app.services.llm_service import (
@@ -75,11 +76,8 @@ async def _classify_questions(
                     question.question_text,
                     [criterion.criterion for criterion in question.criteria],
                 )
-            except Exception as exc:
-                response = {
-                    "status": "degraded",
-                    "reason": f"classification_error:{type(exc).__name__}",
-                }
+            except OllamaUnavailable:
+                response = {"status": "degraded", "reason": "ollama_unavailable"}
 
             if response.get("status") == "ok":
                 try:
@@ -145,20 +143,29 @@ def _assemble_document(
     else:
         document["next_question_generation"]["number_of_questions"] = 5
 
-    evaluation = submission.get("evaluation")
-    evaluation_metadata = evaluation if isinstance(evaluation, dict) else {}
+    evaluation_metadata = submission.get("evaluation")
+    if not isinstance(evaluation_metadata, dict):
+        raise ValueError("missing submission evaluation metadata")
+    grading_source = str(evaluation_metadata.get("grading_source") or "").strip()
+    if not grading_source:
+        raise ValueError("missing evaluation grading_source")
+    if "rag_context_used" not in evaluation_metadata:
+        raise ValueError("missing evaluation rag_context_used")
+    try:
+        rag_context_used = TypeAdapter(bool).validate_python(
+            evaluation_metadata["rag_context_used"]
+        )
+    except ValidationError as exc:
+        raise ValueError("invalid evaluation rag_context_used") from exc
+
     document.update(
         student_id=normalized.student_id,
         course={"code": normalized.course_code, "name": normalized.course_name},
         model_metadata={
             "bloom_model": settings.ollama_model,
-            "bloom_model_type": "base",
-            "grading_source": str(
-                evaluation_metadata.get("grading_source") or "rubric"
-            ),
-            "rag_context_used": bool(
-                evaluation_metadata.get("rag_context_used", False)
-            ),
+            "bloom_model_type": settings.ollama_model_type,
+            "grading_source": grading_source,
+            "rag_context_used": rag_context_used,
         },
     )
     return document
@@ -188,8 +195,11 @@ async def materialize_student_analytics(
                 insights = await generate_student_insights(
                     normalized.student_id, numeric.evidence()
                 )
-            except Exception:
-                insights = {"status": "degraded", "reason": "insight_error"}
+            except OllamaUnavailable:
+                insights = {
+                    "status": "degraded",
+                    "reason": "ollama_unavailable",
+                }
             document = _assemble_document(normalized, numeric, insights, submission)
             validated = StudentAnalyticsDocument.model_validate(document)
             await upsert_student_analytics(db, validated.model_dump(mode="json"))
