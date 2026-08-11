@@ -110,6 +110,28 @@ def test_student_insight_schema_rejects_invalid_priority():
         )
 
 
+@pytest.mark.parametrize(("field", "value"), [("topic", "   "), ("action", "")])
+def test_student_insight_schema_rejects_blank_recommendation_fields(field, value):
+    recommendation = {
+        "priority": "High",
+        "topic": "Transactions",
+        "bloom_level": "Understand",
+        "action": "Review isolation levels.",
+    }
+    recommendation[field] = value
+
+    with pytest.raises(ValidationError):
+        StudentInsightResponse(
+            learning_gaps=[],
+            recommendations=[recommendation],
+            generation_target={
+                "recommended_bloom_level": "Understand",
+                "recommended_difficulty": "Easy",
+                "recommended_topics": ["Transactions"],
+            },
+        )
+
+
 def test_question_semantics_schema_rejects_forbidden_score_field():
     with pytest.raises(ValidationError):
         QuestionSemantics(
