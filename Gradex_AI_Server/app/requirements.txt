@@ -6,3 +6,5 @@ opencv-python
 numpy
 scikit-learn>=1.5.0
 joblib>=1.4.2
+motor
+python-dotenv
