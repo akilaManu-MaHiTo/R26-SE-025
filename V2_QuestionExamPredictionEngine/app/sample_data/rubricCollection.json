@@ -1,5 +1,4 @@
 {
-  "_id": "ObjectId('...')",
   "session_name": "Final Examination 2021",
   "subject_code": "IT2040",
   "filename": "IT2040_DBMS_Final_2021_Rubric.pdf",
@@ -10,9 +9,18 @@
       "question_text": "Explain the differences between Conceptual Database Design, Logical Database Design, and Physical Database Design.",
       "max_marks": 8,
       "criteria": [
-        { "point": "Explains Conceptual Design (focus on entities, relationships, independence from DBMS)", "marks": 3 },
-        { "point": "Explains Logical Design (translation to tables, keys, normalization, target data model)", "marks": 3 },
-        { "point": "Explains Physical Design (indexing, storage, specific DBMS features)", "marks": 2 }
+        {
+          "point": "Explains Conceptual Design (focus on entities, relationships, independence from DBMS)",
+          "marks": 3
+        },
+        {
+          "point": "Explains Logical Design (translation to tables, keys, normalization, target data model)",
+          "marks": 3
+        },
+        {
+          "point": "Explains Physical Design (indexing, storage, specific DBMS features)",
+          "marks": 2
+        }
       ]
     },
     {
@@ -20,10 +28,22 @@
       "question_text": "What is an Enhanced Entity-Relationship (EER) model? Explain specialization, generalization, and ISA hierarchy with suitable examples.",
       "max_marks": 12,
       "criteria": [
-        { "point": "Definition of EER model and its purpose", "marks": 2 },
-        { "point": "Explanation of Specialization with a correct example", "marks": 3 },
-        { "point": "Explanation of Generalization with a correct example", "marks": 3 },
-        { "point": "Explanation of ISA hierarchy (constraints like disjoint/overlapping, total/partial)", "marks": 4 }
+        {
+          "point": "Definition of EER model and its purpose",
+          "marks": 2
+        },
+        {
+          "point": "Explanation of Specialization with a correct example",
+          "marks": 3
+        },
+        {
+          "point": "Explanation of Generalization with a correct example",
+          "marks": 3
+        },
+        {
+          "point": "Explanation of ISA hierarchy (constraints like disjoint/overlapping, total/partial)",
+          "marks": 4
+        }
       ]
     },
     {
@@ -31,9 +51,18 @@
       "question_text": "Consider the relation R (StudentID, Name, Dept, DeptHead, Course, Grade, Instructor). Given the functional dependencies: StudentID → Name, Dept; Dept → DeptHead; Course → Instructor. Find the candidate keys using attribute closure method.",
       "max_marks": 6,
       "criteria": [
-        { "point": "Correctly identifies the minimal set of attributes to start closure (StudentID, Course)", "marks": 2 },
-        { "point": "Shows correct closure calculation leading to all attributes", "marks": 3 },
-        { "point": "Declares {StudentID, Course} as the candidate key", "marks": 1 }
+        {
+          "point": "Correctly identifies the minimal set of attributes to start closure (StudentID, Course)",
+          "marks": 2
+        },
+        {
+          "point": "Shows correct closure calculation leading to all attributes",
+          "marks": 3
+        },
+        {
+          "point": "Declares {StudentID, Course} as the candidate key",
+          "marks": 1
+        }
       ]
     },
     {
@@ -41,8 +70,14 @@
       "question_text": "Is the relation in Question 3 in 3NF? Justify your answer.",
       "max_marks": 5,
       "criteria": [
-        { "point": "Correctly identifies that the relation is NOT in 3NF", "marks": 1 },
-        { "point": "Justifies by identifying the transitive dependency (StudentID → Dept → DeptHead) or partial dependency reasoning", "marks": 4 }
+        {
+          "point": "Correctly identifies that the relation is NOT in 3NF",
+          "marks": 1
+        },
+        {
+          "point": "Justifies by identifying the transitive dependency (StudentID → Dept → DeptHead) or partial dependency reasoning",
+          "marks": 4
+        }
       ]
     },
     {
@@ -50,9 +85,18 @@
       "question_text": "Convert the relation in Question 3 into BCNF. Show all steps clearly.",
       "max_marks": 9,
       "criteria": [
-        { "point": "Decomposes based on non-superkey FD: Dept → DeptHead (creates R1(Dept, DeptHead))", "marks": 3 },
-        { "point": "Decomposes based on non-superkey FD: StudentID → Name, Dept (creates R2(StudentID, Name, Dept))", "marks": 3 },
-        { "point": "Final schema includes R3(StudentID, Course, Grade, Instructor) and R4(Course, Instructor)", "marks": 3 }
+        {
+          "point": "Decomposes based on non-superkey FD: Dept → DeptHead (creates R1(Dept, DeptHead))",
+          "marks": 3
+        },
+        {
+          "point": "Decomposes based on non-superkey FD: StudentID → Name, Dept (creates R2(StudentID, Name, Dept))",
+          "marks": 3
+        },
+        {
+          "point": "Final schema includes R3(StudentID, Course, Grade, Instructor) and R4(Course, Instructor)",
+          "marks": 3
+        }
       ]
     },
     {
@@ -60,11 +104,26 @@
       "question_text": "Explain the four types of JDBC drivers. Which driver is most commonly used in production and why?",
       "max_marks": 8,
       "criteria": [
-        { "point": "Describes Type-1 (ODBC-JDBC Bridge) and its drawbacks", "marks": 1 },
-        { "point": "Describes Type-2 (Native-API) and its limitations", "marks": 1 },
-        { "point": "Describes Type-3 (Network Protocol) and use case", "marks": 1 },
-        { "point": "Describes Type-4 (Thin Driver) and identifies it as most commonly used", "marks": 3 },
-        { "point": "Justifies Type-4 selection (100% Java, no client config, portable)", "marks": 2 }
+        {
+          "point": "Describes Type-1 (ODBC-JDBC Bridge) and its drawbacks",
+          "marks": 1
+        },
+        {
+          "point": "Describes Type-2 (Native-API) and its limitations",
+          "marks": 1
+        },
+        {
+          "point": "Describes Type-3 (Network Protocol) and use case",
+          "marks": 1
+        },
+        {
+          "point": "Describes Type-4 (Thin Driver) and identifies it as most commonly used",
+          "marks": 3
+        },
+        {
+          "point": "Justifies Type-4 selection (100% Java, no client config, portable)",
+          "marks": 2
+        }
       ]
     },
     {
@@ -72,9 +131,18 @@
       "question_text": "Differentiate between Statement, PreparedStatement, and CallableStatement in JDBC with examples.",
       "max_marks": 10,
       "criteria": [
-        { "point": "Description and example of Statement (static SQL, performance issues, SQL injection risk)", "marks": 3 },
-        { "point": "Description and example of PreparedStatement (pre-compiled, parameterized, prevents injection)", "marks": 4 },
-        { "point": "Description and example of CallableStatement (stored procedures, IN/OUT params)", "marks": 3 }
+        {
+          "point": "Description and example of Statement (static SQL, performance issues, SQL injection risk)",
+          "marks": 3
+        },
+        {
+          "point": "Description and example of PreparedStatement (pre-compiled, parameterized, prevents injection)",
+          "marks": 4
+        },
+        {
+          "point": "Description and example of CallableStatement (stored procedures, IN/OUT params)",
+          "marks": 3
+        }
       ]
     },
     {
@@ -82,11 +150,26 @@
       "question_text": "Write a JDBC code snippet to insert a new student record into the Student table using PreparedStatement.",
       "max_marks": 7,
       "criteria": [
-        { "point": "Correct loading/registration of driver or using DataSource", "marks": 1 },
-        { "point": "Establishing connection string syntax", "marks": 1 },
-        { "point": "Syntax for creating PreparedStatement with INSERT query", "marks": 2 },
-        { "point": "Correctly setting parameters using setString/setInt", "marks": 2 },
-        { "point": "Executing update and closing resources (in finally or try-with-resources)", "marks": 1 }
+        {
+          "point": "Correct loading/registration of driver or using DataSource",
+          "marks": 1
+        },
+        {
+          "point": "Establishing connection string syntax",
+          "marks": 1
+        },
+        {
+          "point": "Syntax for creating PreparedStatement with INSERT query",
+          "marks": 2
+        },
+        {
+          "point": "Correctly setting parameters using setString/setInt",
+          "marks": 2
+        },
+        {
+          "point": "Executing update and closing resources (in finally or try-with-resources)",
+          "marks": 1
+        }
       ]
     },
     {
@@ -94,8 +177,14 @@
       "question_text": "Write SQL queries for the following on the Library schema: (i) Find the names and emails of members who have overdue books. (ii) Find the total number of books borrowed by each member.",
       "max_marks": 10,
       "criteria": [
-        { "point": "Query (i) uses correct JOINs (Member, Loan) and WHERE clause for overdue condition", "marks": 5 },
-        { "point": "Query (ii) uses GROUP BY with COUNT function and correct table references", "marks": 5 }
+        {
+          "point": "Query (i) uses correct JOINs (Member, Loan) and WHERE clause for overdue condition",
+          "marks": 5
+        },
+        {
+          "point": "Query (ii) uses GROUP BY with COUNT function and correct table references",
+          "marks": 5
+        }
       ]
     },
     {
@@ -103,11 +192,26 @@
       "question_text": "Create a user-defined function to calculate the fine for a loan based on the number of days overdue (Rs. 50 per day).",
       "max_marks": 10,
       "criteria": [
-        { "point": "Correct CREATE FUNCTION syntax with input parameters", "marks": 2 },
-        { "point": "Correct return data type declaration", "marks": 1 },
-        { "point": "Correct calculation logic (Days * 50)", "marks": 3 },
-        { "point": "Handling of negative days (no fine) or NULL logic", "marks": 2 },
-        { "point": "Overall script is executable syntactically", "marks": 2 }
+        {
+          "point": "Correct CREATE FUNCTION syntax with input parameters",
+          "marks": 2
+        },
+        {
+          "point": "Correct return data type declaration",
+          "marks": 1
+        },
+        {
+          "point": "Correct calculation logic (Days * 50)",
+          "marks": 3
+        },
+        {
+          "point": "Handling of negative days (no fine) or NULL logic",
+          "marks": 2
+        },
+        {
+          "point": "Overall script is executable syntactically",
+          "marks": 2
+        }
       ]
     },
     {
@@ -115,12 +219,39 @@
       "question_text": "Explain how authentication and authorization work in SQL Server. Write T-SQL statements to create a login and assign appropriate roles.",
       "max_marks": 15,
       "criteria": [
-        { "point": "Explanation of Authentication (Windows vs SQL Server mode, login creation)", "marks": 4 },
-        { "point": "Explanation of Authorization (Server roles vs Database roles, principal concept)", "marks": 4 },
-        { "point": "T-SQL: CREATE LOGIN syntax correctly used", "marks": 3 },
-        { "point": "T-SQL: CREATE USER for database mapping", "marks": 2 },
-        { "point": "T-SQL: sp_addrolemember or ALTER ROLE to assign permissions", "marks": 2 }
+        {
+          "point": "Explanation of Authentication (Windows vs SQL Server mode, login creation)",
+          "marks": 4
+        },
+        {
+          "point": "Explanation of Authorization (Server roles vs Database roles, principal concept)",
+          "marks": 4
+        },
+        {
+          "point": "T-SQL: CREATE LOGIN syntax correctly used",
+          "marks": 3
+        },
+        {
+          "point": "T-SQL: CREATE USER for database mapping",
+          "marks": 2
+        },
+        {
+          "point": "T-SQL: sp_addrolemember or ALTER ROLE to assign permissions",
+          "marks": 2
+        }
       ]
     }
-  ]
+  ],
+  "subject_name": "Database Management Systems",
+  "year": 2021,
+  "month": "December",
+  "semester": "Semester 1",
+  "exam_roster": [
+    "IT21001234",
+    "IT21001235",
+    "IT21001236",
+    "IT21001237",
+    "IT21001238"
+  ],
+  "_id": "ObjectId('...')"
 }
