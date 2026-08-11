@@ -46,7 +46,10 @@ def test_load_raw_sample_documents_loads_every_submission():
 def _sample_identity():
     courses, rubrics, submissions = load_raw_sample_documents()
     return {
-        "course_codes": [course.get("subject_code", "IT2040") for course in courses],
+        "course_codes": [
+            course.get("code") or course.get("subject_code") or "IT2040"
+            for course in courses
+        ],
         "sessions": [rubric["session_name"] for rubric in rubrics],
         "student_ids": [submission["student_id"] for submission in submissions],
     }
@@ -59,7 +62,12 @@ async def _clean_sample_documents(db):
         "session_name": {"$in": identity["sessions"]},
     }
     await db["courses"].delete_many(
-        {"subject_code": {"$in": identity["course_codes"]}}
+        {
+            "$or": [
+                {"subject_code": {"$in": identity["course_codes"]}},
+                {"code": {"$in": identity["course_codes"]}},
+            ]
+        }
     )
     await db["rubricCollection"].delete_many(raw_filter)
     await db["submissions"].delete_many(
@@ -83,7 +91,12 @@ async def test_seed_raw_samples_idempotently_upserts_sample_documents(test_db):
 
         identity = _sample_identity()
         assert await test_db["courses"].count_documents(
-            {"subject_code": {"$in": identity["course_codes"]}}
+            {
+                "$or": [
+                    {"subject_code": {"$in": identity["course_codes"]}},
+                    {"code": {"$in": identity["course_codes"]}},
+                ]
+            }
         ) == 1
         assert await test_db["rubricCollection"].count_documents(
             {

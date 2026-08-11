@@ -32,8 +32,9 @@ async def seed_raw_samples(db) -> dict[str, int]:
 
     for course in courses:
         course_document = {key: value for key, value in course.items() if key != "_id"}
+        course_key = course.get("code") or course.get("subject_code") or "IT2040"
         await db["courses"].replace_one(
-            {"subject_code": course.get("subject_code", "IT2040")},
+            {"$or": [{"code": course_key}, {"subject_code": course_key}]},
             course_document,
             upsert=True,
         )
