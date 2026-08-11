@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from motor.motor_asyncio import AsyncIOMotorClient
+from tqdm import tqdm
 
 from app.config import settings
 from app.db.repository import create_indexes
@@ -69,6 +70,21 @@ async def seed_raw_samples(db) -> dict[str, int]:
 async def main(db_name: str) -> int:
     client = AsyncIOMotorClient(settings.mongodb_uri)
     db = client[db_name]
+    progress_bar: tqdm | None = None
+
+    def on_progress(done: int, total: int, phase: str) -> None:
+        nonlocal progress_bar
+        if progress_bar is None:
+            progress_bar = tqdm(
+                total=total,
+                desc="analyzing",
+                unit="step",
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
+            )
+        progress_bar.set_description(f"analyzing ({phase})")
+        progress_bar.n = done
+        progress_bar.refresh()
+
     try:
         print(f"database={db_name}")
         _, _, sample_submissions = load_raw_sample_documents()
@@ -81,7 +97,13 @@ async def main(db_name: str) -> int:
             f"submissions={counts['submissions']}"
         )
 
-        result = await materialize_student_analytics(db, submissions=sample_submissions)
+        result = await materialize_student_analytics(
+            db,
+            submissions=sample_submissions,
+            progress_callback=on_progress,
+        )
+        if progress_bar is not None:
+            progress_bar.close()
         saved_summary = ", ".join(result.saved) if result.saved else "none"
         print(f"saved student_ids: {saved_summary}")
         print(f"failures: {len(result.failures)}")
@@ -105,6 +127,8 @@ async def main(db_name: str) -> int:
         print(f"student_analytics count={saved_count}")
         return 1 if result.failures else 0
     finally:
+        if progress_bar is not None:
+            progress_bar.close()
         client.close()
 
 

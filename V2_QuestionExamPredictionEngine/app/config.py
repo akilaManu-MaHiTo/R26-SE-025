@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     ollama_timeout: float = 120
     ollama_classify_temperature: float = 0.2
     ollama_generate_temperature: float = 0.8
+    ollama_api_key: str = ""
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_available: bool = True
     candidate_similarity_threshold: float = 0.85

@@ -25,9 +25,12 @@ async def generate(prompt: str, *, temperature: float | None = None) -> dict:
             "num_predict": 2048,
         },
     }
+    headers = {}
+    if settings.ollama_api_key:
+        headers["Authorization"] = f"Bearer {settings.ollama_api_key}"
     try:
         async with httpx.AsyncClient(timeout=settings.ollama_timeout) as client:
-            response = await client.post(url, json=body)
+            response = await client.post(url, json=body, headers=headers)
             if response.status_code >= 400:
                 raise OllamaUnavailable(f"Ollama returned HTTP {response.status_code}")
             data = response.json()

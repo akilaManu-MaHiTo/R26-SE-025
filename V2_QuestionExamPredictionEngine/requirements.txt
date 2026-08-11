@@ -8,3 +8,4 @@ uvicorn
 pytest==9.1.1
 pytest-asyncio==1.4.0
 httpx==0.28.1
+tqdm==4.70.0
