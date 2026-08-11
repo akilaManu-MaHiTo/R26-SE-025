@@ -70,7 +70,7 @@ class QuestionAnalysis(BaseModel):
 
 class TopicPerformance(BaseModel):
     topic: str = Field(min_length=1)
-    question_count: int = Field(ge=0)
+    questions_attempted: int = Field(ge=0)
     score: float = Field(ge=0)
     max_score: float = Field(gt=0)
     percentage: float = Field(ge=0, le=100)
@@ -85,7 +85,7 @@ class TopicPerformance(BaseModel):
 
 class BloomPerformance(BaseModel):
     level: BloomLevel
-    question_count: int = Field(ge=0)
+    questions_attempted: int = Field(ge=0)
     average_score: float = Field(ge=0, le=100)
     status: PerformanceStatus
 

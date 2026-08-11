@@ -10,8 +10,8 @@ def valid_document() -> dict:
         "course": {"code": "SE3040", "name": "Software Engineering"},
         "assessment": {"session_name": "Semester 1 Final Exam", "rubric_ref": "rubric-001", "total_score": 6.0, "max_score": 10.0, "percentage": 60.0},
         "question_analysis": [{"question_no": "01", "question": "Explain unit testing.", "topic": "Testing", "subtopic": "Unit testing", "bloom_analysis": {"level": "Understand", "confidence": 0.9, "reason": "It asks for an explanation."}, "performance": {"score": 6.0, "max_score": 10.0, "percentage": 60.0}, "criteria_performance": [{"criterion": "Defines unit testing", "max_marks": 4.0, "awarded_marks": 2.0, "achieved": True}, {"criterion": "Explains its purpose", "max_marks": 6.0, "awarded_marks": 4.0, "achieved": True}]}],
-        "topic_performance": [{"topic": "Testing", "question_count": 1, "score": 6.0, "max_score": 10.0, "percentage": 60.0, "status": "Needs Improvement"}],
-        "bloom_performance": [{"level": "Understand", "question_count": 1, "average_score": 60.0, "status": "Needs Improvement"}],
+        "topic_performance": [{"topic": "Testing", "questions_attempted": 1, "score": 6.0, "max_score": 10.0, "percentage": 60.0, "status": "Needs Improvement"}],
+        "bloom_performance": [{"level": "Understand", "questions_attempted": 1, "average_score": 60.0, "status": "Needs Improvement"}],
         "learning_analysis": {"overall_performance": "Needs Improvement", "weak_topics": ["Testing"], "strong_topics": [], "weak_bloom_levels": ["Understand"], "weak_subtopics": ["Unit testing"], "learning_gaps": ["Review why unit tests isolate behavior."]},
         "recommendations": [{"priority": "High", "topic": "Testing", "bloom_level": "Understand", "action": "Practice explaining unit-test purposes."}],
         "next_question_generation": {"recommended_bloom_level": "Apply", "recommended_difficulty": "Medium", "recommended_topics": ["Testing", "Unit testing"], "number_of_questions": 5},
@@ -29,6 +29,12 @@ def test_student_analytics_serializes_exact_top_level_contract():
     assert "bloom_model_name" not in metadata
     assert "model_type" not in metadata
 
+    topic = document.model_dump(mode="json")["topic_performance"][0]
+    bloom = document.model_dump(mode="json")["bloom_performance"][0]
+    assert set(topic) == {"topic", "questions_attempted", "score", "max_score", "percentage", "status"}
+    assert set(bloom) == {"level", "questions_attempted", "average_score", "status"}
+    assert "question_count" not in topic
+    assert "question_count" not in bloom
 
 def test_student_analytics_rejects_invalid_performance_percentage():
     data = valid_document()
