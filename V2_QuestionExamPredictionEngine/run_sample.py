@@ -1,56 +1,98 @@
 import asyncio
 import json
 import sys
-from uuid import uuid4
+from pathlib import Path
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.config import settings
 from app.db.repository import create_indexes
-from app.sample_data.loader import load_real
-from app.services.analytics import run_analytics
-
-RUN_ID = f"sample-{uuid4().hex[:6]}"
+from app.services.student_pipeline import materialize_student_analytics
+SAMPLE_DIR = Path(__file__).resolve().parent / "app" / "sample_data"
 
 
-async def main(db_name: str) -> None:
-    client = AsyncIOMotorClient(settings.mongodb_uri)
-    db = client[db_name]
-    await create_indexes(db)
-    print(f"writing to db='{db_name}'  uri={settings.mongodb_uri}")
+def load_raw_sample_documents() -> tuple[list[dict], list[dict], list[dict]]:
+    """Load the checked-in raw MongoDB sample documents."""
 
-    course, papers, submissions = load_real()
-    run = await run_analytics(
-        db,
-        run_id=RUN_ID,
-        course=course,
-        papers=papers,
-        submissions=submissions,
-    )
-    print(f"run.status = {run.status}  run_id={RUN_ID}")
-    print(f"  catalog={run.data_counts['catalog']}  attempts={run.data_counts['attempts']}")
+    def load(path: Path) -> dict:
+        return json.loads(path.read_text(encoding="utf-8"))
 
-    catalog = await db["question_catalog"].find({}).to_list(length=None)
-    print("\n--- question_catalog ---")
-    for doc in catalog:
-        print(
-            f"  {doc['exam_id']}-{doc['question_number']}{doc['part']}  "
-            f"{doc['bloom_level']:10s} {doc['question_type']:15s}  "
-            f"model_output={json.dumps(doc.get('model_output'))}"
+    courses = [load(SAMPLE_DIR / "courses.json")]
+    rubrics = [load(SAMPLE_DIR / "rubricCollection.json")]
+    submissions = [load(path) for path in sorted(SAMPLE_DIR.glob("submission*.json"))]
+    return courses, rubrics, submissions
+
+
+async def seed_raw_samples(db) -> dict[str, int]:
+    """Idempotently upsert the checked-in raw sample documents."""
+    courses, rubrics, submissions = load_raw_sample_documents()
+
+    for course in courses:
+        course_document = {key: value for key, value in course.items() if key != "_id"}
+        await db["courses"].replace_one(
+            {"subject_code": course.get("subject_code", "IT2040")},
+            course_document,
+            upsert=True,
+        )
+    for rubric in rubrics:
+        rubric_document = {key: value for key, value in rubric.items() if key != "_id"}
+        await db["rubricCollection"].replace_one(
+            {
+                "subject_code": rubric["subject_code"],
+                "session_name": rubric["session_name"],
+            },
+            rubric_document,
+            upsert=True,
+        )
+    for submission in submissions:
+        submission_document = {
+            key: value for key, value in submission.items() if key != "_id"
+        }
+        await db["submissions"].replace_one(
+            {
+                "student_id": submission["student_id"],
+                "subject_code": submission["subject_code"],
+                "session_name": submission["session_name"],
+            },
+            submission_document,
+            upsert=True,
         )
 
-    snapshot = await db["analytics_snapshots"].find_one({"run_id": RUN_ID})
-    print(f"\nsnapshot: students={snapshot['cohort_metrics']['student_count']} "
-          f"evidence={snapshot['evidence_statuses']}")
+    return {
+        "courses": len(courses),
+        "rubrics": len(rubrics),
+        "submissions": len(submissions),
+    }
 
-    recs = await db["exam_recommendations"].find({"run_id": RUN_ID}).to_list(length=None)
-    print(f"\n--- top recommendations ({len(recs)}) ---")
-    for r in recs[:3]:
-        print(f"  {r['topic']} / {r['bloom_level']} priority={r['priority_score']}")
 
-    client.close()
+async def main(db_name: str) -> int:
+    client = AsyncIOMotorClient(settings.mongodb_uri)
+    db = client[db_name]
+    try:
+        print(f"database={db_name}")
+        await create_indexes(db)
+        counts = await seed_raw_samples(db)
+        print(
+            "seeded "
+            f"courses={counts['courses']} "
+            f"rubrics={counts['rubrics']} "
+            f"submissions={counts['submissions']}"
+        )
+
+        result = await materialize_student_analytics(db)
+        saved_summary = ", ".join(result.saved) if result.saved else "none"
+        print(f"saved student_ids: {saved_summary}")
+        print(f"failures: {len(result.failures)}")
+        for failure in result.failures:
+            print(f"  {failure.student_id}: {failure.reason}")
+
+        saved_count = await db["student_analytics"].count_documents({})
+        print(f"student_analytics count={saved_count}")
+        return 1 if result.failures else 0
+    finally:
+        client.close()
 
 
 if __name__ == "__main__":
     db_name = sys.argv[1] if len(sys.argv) > 1 else "dbms_analytics_test"
-    asyncio.run(main(db_name))
+    raise SystemExit(asyncio.run(main(db_name)))
