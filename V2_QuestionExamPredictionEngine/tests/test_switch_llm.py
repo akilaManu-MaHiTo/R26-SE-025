@@ -40,8 +40,9 @@ def test_switch_to_colab_sets_only_ollama_lines(tmp_path):
     assert "MONGODB_URI=mongodb+srv://user:pass@cluster" in content
     assert "PASS_THRESHOLD=0.5" in content
     parsed = _read(env_path)
+    assert parsed["ENV"] == "colab"
     assert parsed["OLLAMA_BASE_URL"] == "https://abc.trycloudflare.com"
-    assert parsed["OLLAMA_MODEL"] == "qwen3:8b"
+    assert parsed["OLLAMA_MODEL"] == "qwen2.5:3b-instruct"
     assert parsed["OLLAMA_API_KEY"] == "sekret"
 
 
@@ -59,9 +60,10 @@ def test_switch_to_colab_without_key_clears_api_key(tmp_path):
     env.set_colab("https://abc.trycloudflare.com", None)
 
     parsed = _read(env_path)
+    assert parsed["ENV"] == "colab"
     assert parsed["OLLAMA_API_KEY"] == ""
     assert parsed["OLLAMA_BASE_URL"] == "https://abc.trycloudflare.com"
-    assert parsed["OLLAMA_MODEL"] == "qwen3:8b"
+    assert parsed["OLLAMA_MODEL"] == "qwen2.5:3b-instruct"
 
 
 def test_switch_to_local_restores_defaults(tmp_path):
@@ -78,6 +80,7 @@ def test_switch_to_local_restores_defaults(tmp_path):
     env.set_local()
 
     parsed = _read(env_path)
+    assert parsed["ENV"] == "local"
     assert parsed["OLLAMA_BASE_URL"] == "http://localhost:11434"
     assert parsed["OLLAMA_MODEL"] == "qwen2.5:3b-instruct"
     assert parsed["OLLAMA_API_KEY"] == ""
@@ -107,6 +110,7 @@ def test_adds_missing_ollama_lines(tmp_path):
     env.set_local()
 
     parsed = _read(env_path)
+    assert parsed["ENV"] == "local"
     assert parsed["OLLAMA_BASE_URL"] == "http://localhost:11434"
     assert parsed["MONGODB_URI"] == "mongodb://x"
 
@@ -138,4 +142,4 @@ def test_preserves_lf_line_endings(tmp_path):
 
     raw = env_path.read_bytes()
     assert b"\r\n" not in raw
-    assert raw.count(b"\n") == 5
+    assert raw.count(b"\n") == 6

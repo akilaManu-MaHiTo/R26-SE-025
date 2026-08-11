@@ -16,6 +16,7 @@ LOCAL_MODEL = "qwen2.5:3b-instruct"
 COLAB_MODEL = "qwen3:8b"
 
 LLM_LINES = (
+    "ENV",
     "OLLAMA_BASE_URL",
     "OLLAMA_MODEL",
     "OLLAMA_API_KEY",
@@ -60,8 +61,9 @@ class SwitchableEnv:
     def set_colab(self, base_url: str, api_key: str | None) -> None:
         self._rewrite(
             {
+                "ENV": "colab",
                 "OLLAMA_BASE_URL": base_url,
-                "OLLAMA_MODEL": COLAB_MODEL,
+                "OLLAMA_MODEL": LOCAL_MODEL,
                 "OLLAMA_API_KEY": api_key or "",
             }
         )
@@ -69,6 +71,7 @@ class SwitchableEnv:
     def set_local(self) -> None:
         self._rewrite(
             {
+                "ENV": "local",
                 "OLLAMA_BASE_URL": LOCAL_BASE_URL,
                 "OLLAMA_MODEL": LOCAL_MODEL,
                 "OLLAMA_API_KEY": "",
@@ -91,8 +94,17 @@ def main(argv: list[str] | None = None) -> int:
         command = args[0] if args else ""
         if command == "status":
             values = env.values()
-            for key in LLM_LINES:
-                print(f"{key}={values.get(key, '')}")
+            run_env = values.get("ENV") or "local"
+            if run_env == "colab":
+                base_url = values.get("OLLAMA_BASE_URL", "")
+                model = values.get("COLAB_MODEL") or COLAB_MODEL
+            else:
+                base_url = LOCAL_BASE_URL
+                model = values.get("OLLAMA_MODEL") or LOCAL_MODEL
+            print(f"ENV={run_env}")
+            print(f"LLM_BASE_URL={base_url}")
+            print(f"LLM_MODEL={model}")
+            print(f"OLLAMA_API_KEY={values.get('OLLAMA_API_KEY', '')}")
             return 0
         if command == "colab":
             if len(args) < 2:

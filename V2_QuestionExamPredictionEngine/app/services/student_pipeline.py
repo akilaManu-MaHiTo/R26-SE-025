@@ -169,7 +169,7 @@ def _assemble_document(
         student_id=normalized.student_id,
         course={"code": normalized.course_code, "name": normalized.course_name},
         model_metadata={
-            "bloom_model": settings.ollama_model,
+            "bloom_model": settings.llm_model,
             "bloom_model_type": settings.ollama_model_type,
             "grading_source": grading_source,
             "rag_context_used": rag_context_used,
