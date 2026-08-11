@@ -37,8 +37,44 @@ class NumericStudentAnalysis(BaseModel):
     next_question_generation: NextQuestionGeneration
 
     def evidence(self) -> dict:
-        """Return validated backend evidence suitable for an insight prompt."""
-        return self.model_dump(mode="json")
+        """Return compact backend evidence suitable for the LLM insight prompt.
+
+        Rule-computed summaries and verbose per-question records are excluded:
+        their keys collide with the insight output schema, which causes models
+        to echo them. A flat topic/bloom summary plus the list of lost criteria
+        lets the model derive qualitative insights instead.
+        """
+        return {
+            "assessment": {
+                "session_name": self.assessment.session_name,
+                "percentage": self.assessment.percentage,
+            },
+            "topic_performance": [
+                {
+                    "topic": topic.topic,
+                    "percentage": topic.percentage,
+                    "status": topic.status,
+                }
+                for topic in self.topic_performance
+            ],
+            "bloom_performance": [
+                {
+                    "level": level.level,
+                    "average_score": level.average_score,
+                    "status": level.status,
+                }
+                for level in self.bloom_performance
+            ],
+            "weak_criteria": [
+                {
+                    "topic": question.topic,
+                    "criterion": criterion.criterion,
+                }
+                for question in self.question_analysis
+                for criterion in question.criteria_performance
+                if criterion.awarded_marks < criterion.max_marks
+            ],
+        }
 
 
 def percentage(score: float, max_score: float) -> float:

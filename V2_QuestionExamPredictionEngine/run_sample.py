@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from app.config import settings
 from app.db.repository import create_indexes
+from app.llm.ollama import check_llm_health
 from app.services.student_pipeline import materialize_student_analytics
 
 SAMPLE_DIR = Path(__file__).resolve().parent / "app" / "sample_data"
@@ -68,6 +69,14 @@ async def seed_raw_samples(db) -> dict[str, int]:
 
 
 async def main(db_name: str) -> int:
+    healthy, detail = await check_llm_health()
+    if not healthy:
+        print(f"LLM backend unreachable at {settings.llm_base_url}: {detail}")
+        print("Every question would silently fall back to rule-based analysis.")
+        print("Restart the Colab notebook, copy the printed OLLAMA_BASE_URL and OLLAMA_API_KEY,")
+        print("then run: python switch_llm.py colab <new-url> <new-key>")
+        return 2
+
     client = AsyncIOMotorClient(settings.mongodb_uri)
     db = client[db_name]
     progress_bar: tqdm | None = None

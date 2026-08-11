@@ -102,6 +102,35 @@ def test_numeric_analysis_recalculates_totals_and_weighted_groups():
     assert analysis.bloom_performance[0].average_score == 40.0
 
 
+def test_numeric_evidence_excludes_rule_computed_summaries():
+    normalized = two_question_input(first=(3.0, 5.0), second=(1.0, 5.0))
+
+    evidence = build_numeric_analysis(normalized, semantics()).evidence()
+
+    assert "assessment" in evidence
+    assert "topic_performance" in evidence
+    assert "bloom_performance" in evidence
+    assert "weak_criteria" in evidence
+    assert "question_analysis" not in evidence
+    assert "learning_analysis" not in evidence
+    assert "recommendations" not in evidence
+    assert "next_question_generation" not in evidence
+
+
+def test_numeric_evidence_lists_only_lost_criteria():
+    normalized = two_question_input(first=(3.0, 5.0), second=(5.0, 5.0))
+    evidence = build_numeric_analysis(normalized, semantics()).evidence()
+
+    assert any(
+        item["criterion"] == "Identifies the growing phase"
+        for item in evidence["weak_criteria"]
+    )
+    assert all(
+        item["criterion"] != "Selects a victim"
+        for item in evidence["weak_criteria"]
+    )
+
+
 def test_group_percentages_are_weighted_by_maximum_marks():
     normalized = two_question_input(first=(5.0, 5.0), second=(1.0, 5.0))
     normalized.questions[1].max_score = 15.0

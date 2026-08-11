@@ -123,7 +123,9 @@ async def classify_question_semantics(
         "The supplied course, question, and rubric criteria are authoritative backend evidence. "
         "Do not alter or invent that evidence. The response schema contains no score, percentage, "
         "marks, average, or other numeric performance calculations; do not perform any.\n"
-        "Respond ONLY with JSON matching the provided QuestionSemantics schema.\n"
+        "Respond ONLY with JSON matching this schema:\n"
+        '{"level": "Remember|Understand|Apply|Analyze|Evaluate|Create", "topic": str, '
+        '"subtopic": str, "confidence": float, "reason": str}\n'
         f"COURSE: {json.dumps(course, ensure_ascii=False)}\n"
         f"QUESTION: {json.dumps(question, ensure_ascii=False)}\n"
         f"RUBRIC_CRITERIA: {json.dumps(criteria, ensure_ascii=False)}"
@@ -147,7 +149,18 @@ async def generate_student_insights(student_id: str, evidence: dict) -> dict:
         "The student identifier and backend evidence are authoritative; do not recalculate, alter, "
         "or invent evidence. The response schema contains no score, percentage, marks, average, or "
         "other numeric performance calculations; perform no numeric performance calculations.\n"
-        "Respond ONLY with JSON matching the provided StudentInsightResponse schema.\n"
+        "Respond ONLY with JSON matching this schema:\n"
+        '{"learning_gaps": [str], "recommendations": [{"priority": "High|Medium|Low", '
+        '"topic": str, "bloom_level": "Remember|Understand|Apply|Analyze|Evaluate|Create", '
+        '"action": str}], "generation_target": {"recommended_bloom_level": '
+        '"Remember|Understand|Apply|Analyze|Evaluate|Create", "recommended_difficulty": '
+        '"Easy|Medium|Hard", "recommended_topics": [str]}}\n'
+        "Example output:\n"
+        '{"learning_gaps": ["Review Describes Type-4 (Thin Driver) in Java Database Connectivity (JDBC)."], '
+        '"recommendations": [{"priority": "High", "topic": "SQL", "bloom_level": "Understand", '
+        '"action": "Review SQL and practice Understand questions."}], "generation_target": '
+        '{"recommended_bloom_level": "Understand", "recommended_difficulty": "Medium", '
+        '"recommended_topics": ["SQL", "Java Database Connectivity (JDBC)"]}}\n'
         f"STUDENT_ID: {json.dumps(student_id, ensure_ascii=False)}\n"
         f"BACKEND_EVIDENCE: {json.dumps(evidence, ensure_ascii=False)}"
     )

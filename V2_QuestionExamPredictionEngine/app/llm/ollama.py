@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import TypeVar
 
 import httpx
@@ -8,9 +9,27 @@ from app.config import settings
 
 T = TypeVar("T", bound=BaseModel)
 
+logger = logging.getLogger(__name__)
+
 
 class OllamaUnavailable(Exception):
     pass
+
+
+async def check_llm_health(timeout: float = 10.0) -> tuple[bool, str]:
+    """Probe the configured LLM endpoint; returns (healthy, detail)."""
+    url = f"{settings.llm_base_url}/api/version"
+    headers = {}
+    if settings.ollama_api_key:
+        headers["Authorization"] = f"Bearer {settings.ollama_api_key}"
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.get(url, headers=headers)
+    except httpx.HTTPError as exc:
+        return False, f"{type(exc).__name__}: {exc}"
+    if response.status_code == 200:
+        return True, "ok"
+    return False, f"HTTP {response.status_code}"
 
 
 async def generate(prompt: str, *, temperature: float | None = None) -> dict:
@@ -20,6 +39,7 @@ async def generate(prompt: str, *, temperature: float | None = None) -> dict:
         "prompt": prompt,
         "stream": False,
         "format": "json",
+        "think": False,
         "options": {
             "temperature": settings.ollama_classify_temperature if temperature is None else temperature,
             "num_predict": 2048,
@@ -54,6 +74,13 @@ async def validate_with_retry(
             raw = await generate(prompt, temperature=temperature)
             return schema.model_validate(raw), raw, False
         except ValidationError as exc:
+            logger.error(
+                "LLM output failed %s schema validation (attempt %d): %s\nraw=%s",
+                schema.__name__,
+                attempt + 1,
+                exc,
+                json.dumps(raw, ensure_ascii=False),
+            )
             if attempt == max_attempts - 1:
                 return None, raw, True
             prompt = f"{prompt}\nYour previous JSON did not match this schema: {exc}. Retry and output ONLY valid JSON matching the schema."
