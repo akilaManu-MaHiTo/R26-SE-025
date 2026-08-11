@@ -1,5 +1,4 @@
 {
-  "_id": "ObjectId('...')",
   "rubric_ref": "ObjectId('...')",
   "session_name": "Final Examination 2021",
   "subject_code": "IT2040",
@@ -64,18 +63,18 @@
         "criteria_breakdown": [
           {
             "point": "Explains Conceptual Design",
-            "marks": 3,
-            "earned": 1.8
+            "awarded_marks": 1.8,
+            "reason": "Partial credit"
           },
           {
             "point": "Explains Logical Design",
-            "marks": 3,
-            "earned": 1.8
+            "awarded_marks": 1.8,
+            "reason": "Partial credit"
           },
           {
             "point": "Explains Physical Design",
-            "marks": 2,
-            "earned": 0.7
+            "awarded_marks": 0.7,
+            "reason": "Partial credit"
           }
         ],
         "justification": "Definitions are generally correct but lack specific examples for physical design.",
@@ -87,23 +86,23 @@
         "criteria_breakdown": [
           {
             "point": "Definition of EER model",
-            "marks": 2,
-            "earned": 1.6
+            "awarded_marks": 1.6,
+            "reason": "Partial credit"
           },
           {
             "point": "Explanation of Specialization",
-            "marks": 3,
-            "earned": 1.6
+            "awarded_marks": 1.6,
+            "reason": "Partial credit"
           },
           {
             "point": "Explanation of Generalization",
-            "marks": 3,
-            "earned": 1.6
+            "awarded_marks": 1.6,
+            "reason": "Partial credit"
           },
           {
             "point": "Explanation of ISA hierarchy constraints",
-            "marks": 4,
-            "earned": 1.6
+            "awarded_marks": 1.6,
+            "reason": "Partial credit"
           }
         ],
         "justification": "Examples provided, but the constraints of ISA (e.g., disjoint, overlapping) were omitted.",
@@ -115,18 +114,18 @@
         "criteria_breakdown": [
           {
             "point": "Correctly identifies minimal set",
-            "marks": 2,
-            "earned": 1.6
+            "awarded_marks": 1.6,
+            "reason": "Partial credit"
           },
           {
             "point": "Correct closure calculation",
-            "marks": 3,
-            "earned": 1.6
+            "awarded_marks": 1.6,
+            "reason": "Partial credit"
           },
           {
             "point": "Declares correct candidate key",
-            "marks": 1,
-            "earned": 0.8
+            "awarded_marks": 0.8,
+            "reason": "Partial credit"
           }
         ],
         "justification": "Correct answer but closure steps are implied rather than shown step-by-step.",
@@ -138,13 +137,13 @@
         "criteria_breakdown": [
           {
             "point": "Correctly identifies NOT in 3NF",
-            "marks": 1,
-            "earned": 0.7
+            "awarded_marks": 0.7,
+            "reason": "Partial credit"
           },
           {
             "point": "Justifies with transitive dependency",
-            "marks": 4,
-            "earned": 2.9
+            "awarded_marks": 2.9,
+            "reason": "Partial credit"
           }
         ],
         "justification": "Excellent reasoning regarding the transitive dependency.",
@@ -155,23 +154,23 @@
         "score": 3.1,
         "criteria_breakdown": [
           {
-            "point": "Decomposes Dept \u2192 DeptHead",
-            "marks": 3,
-            "earned": 1.9
+            "point": "Decomposes Dept → DeptHead",
+            "awarded_marks": 1.9,
+            "reason": "Partial credit"
           },
           {
-            "point": "Decomposes StudentID \u2192 Name, Dept",
-            "marks": 3,
-            "earned": 0.0
+            "point": "Decomposes StudentID → Name, Dept",
+            "awarded_marks": 0.0,
+            "reason": "No marks awarded"
           },
           {
             "point": "Final schema includes correct tables",
-            "marks": 3,
-            "earned": 1.2
+            "awarded_marks": 1.2,
+            "reason": "Partial credit"
           }
         ],
         "justification": "The student incorrectly decomposed based on Course->Instructor instead of StudentID->Name,Dept, leading to missing R2 table.",
-        "feedback": "Check your BCNF steps. StudentID \u2192 Name, Dept is a functional dependency that violates BCNF and must be decomposed."
+        "feedback": "Check your BCNF steps. StudentID → Name, Dept is a functional dependency that violates BCNF and must be decomposed."
       },
       {
         "q_no": "06",
@@ -179,28 +178,28 @@
         "criteria_breakdown": [
           {
             "point": "Describes Type-1",
-            "marks": 1,
-            "earned": 0.4
+            "awarded_marks": 0.4,
+            "reason": "Partial credit"
           },
           {
             "point": "Describes Type-2",
-            "marks": 1,
-            "earned": 0.4
+            "awarded_marks": 0.4,
+            "reason": "Partial credit"
           },
           {
             "point": "Describes Type-3",
-            "marks": 1,
-            "earned": 0.4
+            "awarded_marks": 0.4,
+            "reason": "Partial credit"
           },
           {
             "point": "Describes Type-4 & identifies best",
-            "marks": 3,
-            "earned": 2.2
+            "awarded_marks": 2.2,
+            "reason": "Partial credit"
           },
           {
             "point": "Justifies Type-4 selection",
-            "marks": 2,
-            "earned": 1.8
+            "awarded_marks": 1.8,
+            "reason": "Partial credit"
           }
         ],
         "justification": "Driver definitions are concise. Type-4 is correctly identified as preferred.",
@@ -212,18 +211,18 @@
         "criteria_breakdown": [
           {
             "point": "Statement desc/example",
-            "marks": 3,
-            "earned": 1.4
+            "awarded_marks": 1.4,
+            "reason": "Partial credit"
           },
           {
             "point": "PreparedStatement desc/example",
-            "marks": 4,
-            "earned": 2.1
+            "awarded_marks": 2.1,
+            "reason": "Partial credit"
           },
           {
             "point": "CallableStatement desc/example",
-            "marks": 3,
-            "earned": 1.4
+            "awarded_marks": 1.4,
+            "reason": "Partial credit"
           }
         ],
         "justification": "Good comparison but lacking concrete Java code examples for Statement and CallableStatement.",
@@ -235,28 +234,28 @@
         "criteria_breakdown": [
           {
             "point": "Driver loading/DataSource",
-            "marks": 1,
-            "earned": 0.0
+            "awarded_marks": 0.0,
+            "reason": "No marks awarded"
           },
           {
             "point": "Connection syntax",
-            "marks": 1,
-            "earned": 0.0
+            "awarded_marks": 0.0,
+            "reason": "No marks awarded"
           },
           {
             "point": "PreparedStatement creation",
-            "marks": 2,
-            "earned": 1.9
+            "awarded_marks": 1.9,
+            "reason": "Partial credit"
           },
           {
             "point": "Set parameters",
-            "marks": 2,
-            "earned": 1.9
+            "awarded_marks": 1.9,
+            "reason": "Partial credit"
           },
           {
             "point": "Execute & close resources",
-            "marks": 1,
-            "earned": 1
+            "awarded_marks": 1.0,
+            "reason": "Full marks"
           }
         ],
         "justification": "The core PreparedStatement logic is correct, but the connection setup (Driver/Connection string) was omitted.",
@@ -268,13 +267,13 @@
         "criteria_breakdown": [
           {
             "point": "Query (i) JOINs/WHERE",
-            "marks": 5,
-            "earned": 3.4
+            "awarded_marks": 3.4,
+            "reason": "Partial credit"
           },
           {
             "point": "Query (ii) GROUP BY/COUNT",
-            "marks": 5,
-            "earned": 2.6
+            "awarded_marks": 2.6,
+            "reason": "Partial credit"
           }
         ],
         "justification": "Query (i) is mostly right but date function is dialect-specific. Query (ii) misses grouping by member name.",
@@ -286,28 +285,28 @@
         "criteria_breakdown": [
           {
             "point": "CREATE FUNCTION syntax",
-            "marks": 2,
-            "earned": 1.0
+            "awarded_marks": 1.0,
+            "reason": "Partial credit"
           },
           {
             "point": "Return type",
-            "marks": 1,
-            "earned": 0.5
+            "awarded_marks": 0.5,
+            "reason": "Partial credit"
           },
           {
             "point": "Correct calculation",
-            "marks": 3,
-            "earned": 1.0
+            "awarded_marks": 1.0,
+            "reason": "Partial credit"
           },
           {
             "point": "Handling negative/NULL",
-            "marks": 2,
-            "earned": 0.0
+            "awarded_marks": 0.0,
+            "reason": "No marks awarded"
           },
           {
             "point": "Executable syntax",
-            "marks": 2,
-            "earned": 0.0
+            "awarded_marks": 0.0,
+            "reason": "No marks awarded"
           }
         ],
         "justification": "The function is correct for basic logic but assumes input is always positive integer. Missing RETURN variable or direct calculation syntax.",
@@ -319,28 +318,28 @@
         "criteria_breakdown": [
           {
             "point": "Authentication explanation",
-            "marks": 4,
-            "earned": 1.4
+            "awarded_marks": 1.4,
+            "reason": "Partial credit"
           },
           {
             "point": "Authorization explanation",
-            "marks": 4,
-            "earned": 1.4
+            "awarded_marks": 1.4,
+            "reason": "Partial credit"
           },
           {
             "point": "CREATE LOGIN syntax",
-            "marks": 3,
-            "earned": 0.7
+            "awarded_marks": 0.7,
+            "reason": "Partial credit"
           },
           {
             "point": "CREATE USER syntax",
-            "marks": 2,
-            "earned": 0.0
+            "awarded_marks": 0.0,
+            "reason": "No marks awarded"
           },
           {
             "point": "Assign role/member",
-            "marks": 2,
-            "earned": 0.0
+            "awarded_marks": 0.0,
+            "reason": "No marks awarded"
           }
         ],
         "justification": "T-SQL syntax is incomplete; CREATE USER and full role assignment script is missing.",
@@ -407,5 +406,12 @@
     }
   },
   "status": "graded",
-  "processed_at": "2026-07-26T05:12:00.000Z"
+  "processed_at": "2026-07-26T05:12:00.000Z",
+  "paper_key": "IT2040-FE-2021",
+  "subject_name": "Database Management Systems",
+  "year": 2021,
+  "month": "December",
+  "semester": "Semester 1",
+  "lecturer_note": "",
+  "_id": "ObjectId('...')"
 }
