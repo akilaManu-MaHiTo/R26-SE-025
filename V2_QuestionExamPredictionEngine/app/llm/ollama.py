@@ -14,9 +14,9 @@ class OllamaUnavailable(Exception):
 
 
 async def generate(prompt: str, *, temperature: float | None = None) -> dict:
-    url = f"{settings.ollama_base_url}/api/generate"
+    url = f"{settings.llm_base_url}/api/generate"
     body = {
-        "model": settings.ollama_model,
+        "model": settings.llm_model,
         "prompt": prompt,
         "stream": False,
         "format": "json",

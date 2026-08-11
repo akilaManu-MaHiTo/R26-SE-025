@@ -37,6 +37,11 @@ while the app and scripts stay on your machine.
 
 Check the current backend anytime: `python switch_llm.py status`.
 
+You can also switch directly by editing `ENV` in `.env` (`ENV=local` /
+`ENV=colab`) — it selects both the model and endpoint. The Colab model is
+configured with `COLAB_MODEL` (default `qwen3:8b`); the tunnel still needs its
+URL set via `python switch_llm.py colab <url> <key>`.
+
 > The Colab tunnel is public, so it is protected by `OLLAMA_API_KEY`
 > (set automatically in the notebook). Do not remove the API key when
 > using a remote endpoint.

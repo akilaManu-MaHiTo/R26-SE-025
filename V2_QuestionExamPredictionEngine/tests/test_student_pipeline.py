@@ -279,7 +279,7 @@ async def test_qwen_insights_replace_only_semantic_fallback_fields(monkeypatch):
         "number_of_questions": 5,
     }
     assert saved["model_metadata"] == {
-        "bloom_model": settings.ollama_model,
+        "bloom_model": settings.llm_model,
         "bloom_model_type": "base",
         "grading_source": "colab",
         "rag_context_used": True,
@@ -439,6 +439,7 @@ async def test_model_metadata_uses_config_and_parses_source_boolean(monkeypatch)
         "settings",
         SimpleNamespace(
             ollama_model="course-qwen:latest",
+            llm_model="course-qwen:latest",
             ollama_model_type="fine-tuned",
         ),
     )
