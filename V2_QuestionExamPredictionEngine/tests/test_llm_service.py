@@ -4,7 +4,9 @@ from app.llm.ollama import OllamaUnavailable
 from app.services import llm_service
 from app.services.llm_service import (
     classify_question,
+    classify_question_semantics,
     generate_candidates,
+    generate_student_insights,
     misconception_summary,
     study_actions,
 )
@@ -119,3 +121,45 @@ async def test_study_actions_degraded_on_unavailable(monkeypatch):
     result = await study_actions("stu-001", ["SQL"], {})
     assert result["status"] == "degraded"
     assert result["reason"] == "ollama_unavailable"
+
+
+async def test_classify_question_semantics_prompt_embeds_schema(monkeypatch):
+    captured: dict = {}
+
+    async def fake_validate(schema, prompt, temperature, max_attempts=2):
+        captured["prompt"] = prompt
+        return None, {}, True
+
+    monkeypatch.setattr(llm_service, "validate_with_retry", fake_validate)
+    result = await classify_question_semantics(
+        {"code": "IT2040", "name": "DBMS"},
+        "Explain the differences between Conceptual, Logical, and Physical Database Design.",
+        ["Explains Conceptual Design", "Explains Logical Design"],
+    )
+    assert result["status"] == "degraded"
+    assert result["reason"] == "schema_failure"
+    prompt = captured["prompt"]
+    assert '"level"' in prompt
+    assert '"topic"' in prompt
+    assert '"subtopic"' in prompt
+    assert '"confidence"' in prompt
+    assert '"reason"' in prompt
+
+
+async def test_generate_student_insights_prompt_embeds_schema(monkeypatch):
+    captured: dict = {}
+
+    async def fake_validate(schema, prompt, temperature, max_attempts=2):
+        captured["prompt"] = prompt
+        return None, {}, True
+
+    monkeypatch.setattr(llm_service, "validate_with_retry", fake_validate)
+    result = await generate_student_insights("IT21001234", {"topic": "SQL"})
+    assert result["status"] == "degraded"
+    assert result["reason"] == "schema_failure"
+    prompt = captured["prompt"]
+    assert '"learning_gaps"' in prompt
+    assert '"recommendations"' in prompt
+    assert '"generation_target"' in prompt
+    assert "Example output" in prompt
+    assert '"recommended_bloom_level"' in prompt

@@ -1,3 +1,5 @@
+import json
+
 import httpx
 
 from app.config import settings
@@ -44,3 +46,16 @@ async def test_generate_sends_no_auth_header_when_key_empty(monkeypatch):
 
     assert requests
     assert "authorization" not in requests[0].headers
+
+
+async def test_generate_disables_thinking(monkeypatch):
+    monkeypatch.setattr(settings, "ollama_api_key", "")
+    requests: list[httpx.Request] = []
+    client = httpx.AsyncClient(transport=_capture(requests))
+
+    monkeypatch.setattr("app.llm.ollama.httpx.AsyncClient", lambda *a, **k: client)
+
+    await generate("hello")
+
+    body = json.loads(requests[0].content)
+    assert body.get("think") is False

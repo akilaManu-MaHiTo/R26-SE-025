@@ -30,6 +30,10 @@ async def fake_insights(_student_id, _evidence):
     return {"status": "degraded", "reason": "offline_test"}
 
 
+async def _healthy():
+    return True, "ok"
+
+
 def test_load_raw_sample_documents_loads_every_submission():
     courses, rubrics, submissions = load_raw_sample_documents()
 
@@ -156,6 +160,31 @@ class _RunnerClient:
         return None
 
 
+async def test_main_fails_fast_when_llm_unreachable(monkeypatch, capsys):
+    events = []
+
+    async def should_not_run(_candidate_db):
+        events.append("should_not_run")
+
+    async def unhealthy():
+        return False, "ConnectError: tunnel down"
+
+    monkeypatch.setattr(run_sample, "check_llm_health", unhealthy)
+    monkeypatch.setattr(run_sample, "create_indexes", should_not_run)
+    monkeypatch.setattr(run_sample, "seed_raw_samples", should_not_run)
+    monkeypatch.setattr(
+        run_sample, "materialize_student_analytics", should_not_run, raising=False
+    )
+
+    exit_code = await run_sample.main("sample_test")
+    output = capsys.readouterr().out
+
+    assert exit_code == 2
+    assert events == []
+    assert "unreachable" in output
+    assert "switch_llm.py colab" in output
+
+
 @pytest.mark.parametrize(
     ("failures", "expected_exit"),
     [
@@ -192,6 +221,7 @@ async def test_main_runs_sample_workflow_and_reports_persisted_results(
         "AsyncIOMotorClient",
         lambda _uri: _RunnerClient(db),
     )
+    monkeypatch.setattr(run_sample, "check_llm_health", _healthy)
     monkeypatch.setattr(run_sample, "create_indexes", create_indexes)
     monkeypatch.setattr(run_sample, "seed_raw_samples", seed)
     monkeypatch.setattr(
@@ -257,6 +287,7 @@ async def test_main_ignores_unrelated_graded_submission_and_analytics(
             "AsyncIOMotorClient",
             lambda _uri: _RunnerClient(test_db),
         )
+        monkeypatch.setattr(run_sample, "check_llm_health", _healthy)
         monkeypatch.setattr(
             student_pipeline, "classify_question_semantics", fake_semantics
         )
