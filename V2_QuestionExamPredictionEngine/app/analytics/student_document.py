@@ -114,7 +114,7 @@ def _topic_performance(questions: list[QuestionAnalysis]) -> list[TopicPerforman
         records.append(
             TopicPerformance(
                 topic=topic,
-                question_count=len(members),
+                questions_attempted=len(members),
                 score=round(score, 2),
                 max_score=round(max_score, 2),
                 percentage=value,
@@ -137,7 +137,7 @@ def _bloom_performance(questions: list[QuestionAnalysis]) -> list[BloomPerforman
         records.append(
             BloomPerformance(
                 level=level,
-                question_count=len(members),
+                questions_attempted=len(members),
                 average_score=value,
                 status=performance_status(value),
             )
