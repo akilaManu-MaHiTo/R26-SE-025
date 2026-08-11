@@ -65,12 +65,17 @@ def parse_submission(
         rubric_q = rubric_by_qno.get(q_no, {})
         rubric_criteria = rubric_q.get("criteria", [])
         evaluated = r.get("criteria_breakdown", [])
+        assert len(rubric_criteria) == len(evaluated), (
+            f"criteria count mismatch for question {q_no}"
+        )
         criteria = []
         for position, rubric_criterion in enumerate(rubric_criteria):
             point = rubric_criterion.get("point", "")
             matched = next(
                 (c for c in evaluated if c.get("point") == point), None
             )
+            # Breakdown points are abbreviated vs rubric points, so the exact
+            # match above never fires; positional fallback does the real alignment.
             if matched is None and position < len(evaluated):
                 matched = evaluated[position]
             awarded = (
