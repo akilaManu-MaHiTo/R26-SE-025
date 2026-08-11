@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import pytest
 
 import run_sample
@@ -123,7 +125,17 @@ async def test_seed_and_materialize_samples_saves_one_document_per_submission(
 
 class _CountCollection:
     async def count_documents(self, filters):
-        assert filters == {}
+        submissions = load_raw_sample_documents()[2]
+        assert filters == {
+            "$or": [
+                {
+                    "student_id": submission["student_id"],
+                    "course.code": submission["subject_code"],
+                    "assessment.session_name": submission["session_name"],
+                }
+                for submission in submissions
+            ]
+        }
         return 5
 
 
@@ -167,9 +179,10 @@ async def test_main_runs_sample_workflow_and_reports_persisted_results(
         events.append("seed")
         return {"courses": 1, "rubrics": 1, "submissions": 5}
 
-    async def materialize(candidate_db):
+    async def materialize(candidate_db, *, submissions):
         assert candidate_db is db
         assert events == ["indexes", "seed"]
+        assert submissions == load_raw_sample_documents()[2]
         events.append("materialize")
         return MaterializationResult(saved=["student-1"], failures=failures)
 
@@ -196,3 +209,77 @@ async def test_main_runs_sample_workflow_and_reports_persisted_results(
     assert "student_analytics count=5" in output
     if failures:
         assert "student-2: invalid marks" in output
+
+
+async def test_main_ignores_unrelated_graded_submission_and_analytics(
+    test_db, monkeypatch, capsys
+):
+    unrelated_student_id = "unrelated-runner-student"
+    _, _, sample_submissions = load_raw_sample_documents()
+    unrelated_submission = deepcopy(sample_submissions[0])
+    unrelated_submission.pop("_id", None)
+    unrelated_submission["student_id"] = unrelated_student_id
+    unrelated_submission["evaluation"]["results"][0]["score"] = 999.0
+    unrelated_analytics = {
+        "student_id": unrelated_student_id,
+        "course": {"code": "UNRELATED"},
+        "assessment": {"session_name": "Unrelated Assessment"},
+        "sentinel": "preserve-me",
+    }
+
+    await _clean_sample_documents(test_db)
+    await test_db["submissions"].delete_many({"student_id": unrelated_student_id})
+    await test_db["student_analytics"].delete_many(
+        {"student_id": unrelated_student_id}
+    )
+    try:
+        await test_db["submissions"].replace_one(
+            {
+                "student_id": unrelated_student_id,
+                "subject_code": unrelated_submission["subject_code"],
+                "session_name": unrelated_submission["session_name"],
+            },
+            unrelated_submission,
+            upsert=True,
+        )
+        await test_db["student_analytics"].replace_one(
+            {
+                "student_id": unrelated_student_id,
+                "course.code": "UNRELATED",
+                "assessment.session_name": "Unrelated Assessment",
+            },
+            unrelated_analytics,
+            upsert=True,
+        )
+        monkeypatch.setattr(
+            run_sample,
+            "AsyncIOMotorClient",
+            lambda _uri: _RunnerClient(test_db),
+        )
+        monkeypatch.setattr(
+            student_pipeline, "classify_question_semantics", fake_semantics
+        )
+        monkeypatch.setattr(
+            student_pipeline, "generate_student_insights", fake_insights
+        )
+
+        exit_code = await run_sample.main("dbms_analytics_test")
+        output = capsys.readouterr().out
+
+        assert exit_code == 0
+        assert "failures: 0" in output
+        assert "student_analytics count=5" in output
+        preserved_submission = await test_db["submissions"].find_one(
+            {"student_id": unrelated_student_id}, {"_id": 0}
+        )
+        preserved_analytics = await test_db["student_analytics"].find_one(
+            {"student_id": unrelated_student_id}, {"_id": 0}
+        )
+        assert preserved_submission == unrelated_submission
+        assert preserved_analytics == unrelated_analytics
+    finally:
+        await _clean_sample_documents(test_db)
+        await test_db["submissions"].delete_many({"student_id": unrelated_student_id})
+        await test_db["student_analytics"].delete_many(
+            {"student_id": unrelated_student_id}
+        )

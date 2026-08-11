@@ -8,6 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from app.config import settings
 from app.db.repository import create_indexes
 from app.services.student_pipeline import materialize_student_analytics
+
 SAMPLE_DIR = Path(__file__).resolve().parent / "app" / "sample_data"
 
 
@@ -70,6 +71,7 @@ async def main(db_name: str) -> int:
     db = client[db_name]
     try:
         print(f"database={db_name}")
+        _, _, sample_submissions = load_raw_sample_documents()
         await create_indexes(db)
         counts = await seed_raw_samples(db)
         print(
@@ -79,14 +81,27 @@ async def main(db_name: str) -> int:
             f"submissions={counts['submissions']}"
         )
 
-        result = await materialize_student_analytics(db)
+        result = await materialize_student_analytics(db, submissions=sample_submissions)
         saved_summary = ", ".join(result.saved) if result.saved else "none"
         print(f"saved student_ids: {saved_summary}")
         print(f"failures: {len(result.failures)}")
         for failure in result.failures:
             print(f"  {failure.student_id}: {failure.reason}")
 
-        saved_count = await db["student_analytics"].count_documents({})
+        sample_analytics_filter = {
+            "$or": [
+                {
+                    "student_id": submission["student_id"],
+                    "course.code": submission.get("course_code")
+                    or submission["subject_code"],
+                    "assessment.session_name": submission["session_name"],
+                }
+                for submission in sample_submissions
+            ]
+        }
+        saved_count = await db["student_analytics"].count_documents(
+            sample_analytics_filter
+        )
         print(f"student_analytics count={saved_count}")
         return 1 if result.failures else 0
     finally:
