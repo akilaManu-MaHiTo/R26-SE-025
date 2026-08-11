@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -8,6 +9,7 @@ from app.analytics.taxonomy import TOPICS
 from app.llm.ollama import OllamaUnavailable, validate_with_retry
 from app.llm.roles.classify import ClassificationResponse
 from app.llm.roles.misconceptions import MisconceptionSummary
+from app.llm.roles.student_analysis import QuestionSemantics, StudentInsightResponse
 from app.llm.roles.study_actions import StudyActions
 
 logger = logging.getLogger(__name__)
@@ -110,6 +112,55 @@ async def study_actions(student_key: str, weak_topics: list[str], evidence: dict
         return {"status": "degraded", "reason": "ollama_unavailable"}
     if parsed is None:
         return {"status": "degraded", "reason": "schema_failure", "review_flag": True, "raw": raw}
+    return {"status": "ok", **parsed.model_dump()}
+
+
+async def classify_question_semantics(
+    course: dict, question: str, criteria: list[str]
+) -> dict:
+    prompt = (
+        "Classify the semantics of the supplied examination question. "
+        "The supplied course, question, and rubric criteria are authoritative backend evidence. "
+        "Do not alter or invent that evidence. The response schema contains no score, percentage, "
+        "marks, average, or other numeric performance calculations; do not perform any.\n"
+        "Respond ONLY with JSON matching the provided QuestionSemantics schema.\n"
+        f"COURSE: {json.dumps(course, ensure_ascii=False)}\n"
+        f"QUESTION: {json.dumps(question, ensure_ascii=False)}\n"
+        f"RUBRIC_CRITERIA: {json.dumps(criteria, ensure_ascii=False)}"
+    )
+    try:
+        parsed, _raw, _review = await validate_with_retry(
+            QuestionSemantics,
+            prompt,
+            temperature=settings.ollama_classify_temperature,
+        )
+    except OllamaUnavailable:
+        return {"status": "degraded", "reason": "ollama_unavailable"}
+    if parsed is None:
+        return {"status": "degraded", "reason": "schema_failure"}
+    return {"status": "ok", "semantics": parsed.model_dump()}
+
+
+async def generate_student_insights(student_id: str, evidence: dict) -> dict:
+    prompt = (
+        "Generate qualitative student learning insights from the supplied backend evidence. "
+        "The student identifier and backend evidence are authoritative; do not recalculate, alter, "
+        "or invent evidence. The response schema contains no score, percentage, marks, average, or "
+        "other numeric performance calculations; perform no numeric performance calculations.\n"
+        "Respond ONLY with JSON matching the provided StudentInsightResponse schema.\n"
+        f"STUDENT_ID: {json.dumps(student_id, ensure_ascii=False)}\n"
+        f"BACKEND_EVIDENCE: {json.dumps(evidence, ensure_ascii=False)}"
+    )
+    try:
+        parsed, _raw, _review = await validate_with_retry(
+            StudentInsightResponse,
+            prompt,
+            temperature=settings.ollama_generate_temperature,
+        )
+    except OllamaUnavailable:
+        return {"status": "degraded", "reason": "ollama_unavailable"}
+    if parsed is None:
+        return {"status": "degraded", "reason": "schema_failure"}
     return {"status": "ok", **parsed.model_dump()}
 
 
