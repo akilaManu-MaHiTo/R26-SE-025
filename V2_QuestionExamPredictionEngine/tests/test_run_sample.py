@@ -179,10 +179,11 @@ async def test_main_runs_sample_workflow_and_reports_persisted_results(
         events.append("seed")
         return {"courses": 1, "rubrics": 1, "submissions": 5}
 
-    async def materialize(candidate_db, *, submissions):
+    async def materialize(candidate_db, *, submissions, progress_callback=None):
         assert candidate_db is db
         assert events == ["indexes", "seed"]
         assert submissions == load_raw_sample_documents()[2]
+        assert callable(progress_callback)
         events.append("materialize")
         return MaterializationResult(saved=["student-1"], failures=failures)
 

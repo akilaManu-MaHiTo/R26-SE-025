@@ -1,5 +1,6 @@
 """Batch materialization of canonical student analytics documents."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from pydantic import TypeAdapter, ValidationError
@@ -27,6 +28,9 @@ from app.services.llm_service import (
 class MaterializationFailure:
     student_id: str
     reason: str
+
+
+StepCallback = Callable[[str], None]
 
 
 @dataclass
@@ -62,6 +66,7 @@ def _rule_semantics(question_text: str, degraded_reason: str) -> QuestionSemanti
 async def _classify_questions(
     normalized: NormalizedStudentInput,
     cache: dict[tuple[str, str], QuestionSemantics],
+    progress: StepCallback | None = None,
 ) -> dict[str, QuestionSemantics]:
     semantics_by_question: dict[str, QuestionSemantics] = {}
     course = {"code": normalized.course_code, "name": normalized.course_name}
@@ -91,6 +96,8 @@ async def _classify_questions(
                 )
             cache[cache_key] = semantics
         semantics_by_question[question.question_no] = semantics
+        if progress is not None:
+            progress(f"classify q{question.question_no}")
 
     return semantics_by_question
 
@@ -172,15 +179,40 @@ def _assemble_document(
 
 
 async def materialize_student_analytics(
-    db, submissions: list[dict] | None = None
+    db,
+    submissions: list[dict] | None = None,
+    progress_callback: Callable[[int, int, str], None] | None = None,
 ) -> MaterializationResult:
-    """Build and persist each graded submission without aborting the batch."""
+    """Build and persist each graded submission without aborting the batch.
+
+    When ``progress_callback`` is provided it is invoked after each slow step
+    (per-question classification and per-student insight generation) with
+    ``(steps_done, total_steps, description)``.
+    """
     source_submissions = (
         await find_graded_submissions(db) if submissions is None else submissions
     )
     classification_cache: dict[tuple[str, str], QuestionSemantics] = {}
     saved: list[str] = []
     failures: list[MaterializationFailure] = []
+
+    def _submission_step_count(submission: dict) -> int:
+        results = submission.get("evaluation", {}).get("results", [])
+        return len(results) + 1
+
+    total_steps = (
+        sum(_submission_step_count(submission) for submission in source_submissions)
+        if progress_callback is not None
+        else 0
+    )
+    steps_done = 0
+
+    def _report(phase: str) -> None:
+        nonlocal steps_done
+        if progress_callback is None:
+            return
+        steps_done += 1
+        progress_callback(steps_done, total_steps, phase)
 
     for submission in source_submissions:
         try:
@@ -189,7 +221,9 @@ async def materialize_student_analytics(
             normalized = normalize_student_submission(
                 course or {}, rubric or {}, submission
             )
-            semantics = await _classify_questions(normalized, classification_cache)
+            semantics = await _classify_questions(
+                normalized, classification_cache, progress=_report
+            )
             numeric = build_numeric_analysis(normalized, semantics)
             try:
                 insights = await generate_student_insights(
@@ -200,6 +234,7 @@ async def materialize_student_analytics(
                     "status": "degraded",
                     "reason": "ollama_unavailable",
                 }
+            _report(f"insights {normalized.student_id}")
             document = _assemble_document(normalized, numeric, insights, submission)
             validated = StudentAnalyticsDocument.model_validate(document)
             await upsert_student_analytics(db, validated.model_dump(mode="json"))
