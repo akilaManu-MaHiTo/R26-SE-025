@@ -64,8 +64,13 @@ def _criteria_for_question(rubric_question: dict, result: dict) -> list[Normaliz
         matched = by_point.get(_point_key(criterion_text))
         if matched is None and position < len(evaluated):
             matched = evaluated[position]
+        if matched is None:
+            raise StudentDataError(
+                f"missing evaluation criterion for question "
+                f"{normalize_question_no(rubric_question.get('question_no'))}"
+            )
         awarded_marks = _as_float(
-            (matched or {}).get("earned", (matched or {}).get("awarded_marks", 0)),
+            matched.get("earned", matched.get("awarded_marks", 0)),
             "awarded criterion marks",
         )
         if awarded_marks < 0 or awarded_marks > max_marks:
@@ -110,6 +115,8 @@ def normalize_student_submission(
         question_no = normalize_question_no(rubric_question.get("question_no"))
         if not question_no:
             raise StudentDataError("missing rubric question identity")
+        if question_no in rubric_by_question:
+            raise StudentDataError(f"duplicate rubric question {question_no}")
         rubric_by_question[question_no] = rubric_question
 
     evaluation = submission.get("evaluation") or {}
@@ -124,6 +131,11 @@ def normalize_student_submission(
         if question_no in results_by_question:
             raise StudentDataError(f"duplicate result for question {question_no}")
         results_by_question[question_no] = result
+
+    missing_questions = set(rubric_by_question) - set(results_by_question)
+    if not results_by_question or missing_questions:
+        missing_list = ", ".join(sorted(missing_questions)) or "all questions"
+        raise StudentDataError(f"missing result for rubric question {missing_list}")
 
     questions: list[NormalizedQuestionInput] = []
     for question_no, result in results_by_question.items():
