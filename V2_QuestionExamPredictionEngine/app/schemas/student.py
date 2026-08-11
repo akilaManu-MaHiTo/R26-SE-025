@@ -114,8 +114,8 @@ class NextQuestionGeneration(BaseModel):
 
 
 class ModelMetadata(BaseModel):
-    bloom_model_name: str = Field(min_length=1)
-    model_type: str = Field(min_length=1)
+    bloom_model: str = Field(min_length=1)
+    bloom_model_type: str = Field(min_length=1)
     grading_source: str = Field(min_length=1)
     rag_context_used: bool
 
