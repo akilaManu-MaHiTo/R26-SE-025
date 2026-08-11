@@ -40,32 +40,51 @@ def parse_paper(rubric: dict) -> dict:
     return {
         "exam_id": exam_id,
         "course_code": course_code,
-        "year": 2021 if "2021" in rubric.get("session_name", "") else 0,
+        "year": rubric.get("year")
+        or (2021 if "2021" in rubric.get("session_name", "") else 0),
         "title": rubric.get("session_name", ""),
         "questions": questions,
     }
 
 
-def parse_submission(sub: dict, exam_id: str, course_code: str) -> list[dict]:
+def parse_submission(
+    sub: dict, exam_id: str, course_code: str, rubric_questions: list[dict]
+) -> list[dict]:
     student_key = sub.get("student_id") or sub.get("student_key") or "student-1"
     max_by_q = {
         str(m["question_no"]).zfill(2): float(m["max_marks"])
         for m in sub.get("max_marks_per_question", [])
     }
+    rubric_by_qno = {
+        str(q["question_no"]).zfill(2): q for q in rubric_questions
+    }
     results = sub["evaluation"]["results"] if "evaluation" in sub else sub.get("results", [])
     rows = []
     for r in results:
         q_no = str(r["q_no"]).zfill(2)
+        rubric_q = rubric_by_qno.get(q_no, {})
+        rubric_criteria = rubric_q.get("criteria", [])
+        evaluated = r.get("criteria_breakdown", [])
         criteria = []
-        for c in r.get("criteria_breakdown", []):
-            earned = float(c.get("earned", 0.0))
-            marks = float(c.get("marks", earned))
+        for position, rubric_criterion in enumerate(rubric_criteria):
+            point = rubric_criterion.get("point", "")
+            matched = next(
+                (c for c in evaluated if c.get("point") == point), None
+            )
+            if matched is None and position < len(evaluated):
+                matched = evaluated[position]
+            awarded = (
+                float(matched.get("awarded_marks", matched.get("earned", 0.0)))
+                if matched
+                else 0.0
+            )
+            max_marks = float(rubric_criterion.get("marks", 0.0))
             criteria.append(
                 {
-                    "criterion": c.get("point", ""),
-                    "awarded_marks": earned,
-                    "max_marks": marks,
-                    "met": earned >= marks,
+                    "criterion": point,
+                    "awarded_marks": awarded,
+                    "max_marks": max_marks,
+                    "met": awarded >= max_marks,
                 }
             )
         rows.append(
@@ -85,10 +104,18 @@ def parse_submission(sub: dict, exam_id: str, course_code: str) -> list[dict]:
     return rows
 
 
-def course_settings(course_code: str) -> dict:
+def course_settings(course: dict) -> dict:
+    course_code = (
+        course.get("code") or course.get("subject_code") or "IT2040"
+    )
+    course_name = (
+        course.get("name")
+        or course.get("course_name")
+        or "Database Management Systems"
+    )
     return {
         "course_code": course_code,
-        "course_name": "Database Management Systems",
+        "course_name": course_name,
         "settings": {
             "pass_threshold": 0.5,
             "min_students": 3,
@@ -100,15 +127,18 @@ def course_settings(course_code: str) -> dict:
 
 
 def load_real() -> tuple[dict, list[dict], list[dict]]:
+    course_document = _load("courses.json")
     rubric = _load("rubricCollection.json")
 
     paper = parse_paper(rubric)
-    course = course_settings(paper["course_code"])
+    course = course_settings(course_document)
 
     submissions = []
     for sub_path in sorted(SAMPLE_DIR.glob("submission*.json")):
         sub = json.loads(sub_path.read_text(encoding="utf-8"))
         submissions.extend(
-            parse_submission(sub, paper["exam_id"], paper["course_code"])
+            parse_submission(
+                sub, paper["exam_id"], paper["course_code"], rubric["questions"]
+            )
         )
     return course, [paper], submissions
