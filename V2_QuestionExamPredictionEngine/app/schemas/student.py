@@ -1,79 +1,133 @@
-from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+BloomLevel = Literal["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"]
+PerformanceStatus = Literal["Strong", "Needs Improvement", "Critical"]
+RecommendationPriority = Literal["High", "Medium", "Low"]
+QuestionDifficulty = Literal["Easy", "Medium", "Hard"]
 
 
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+class CourseInfo(BaseModel):
+    code: str = Field(min_length=1)
+    name: str = Field(min_length=1)
 
 
-class MissedCriterion(BaseModel):
-    criterion: str
-    awarded_marks: float
-    max_marks: float
+class AssessmentInfo(BaseModel):
+    session_name: str = Field(min_length=1)
+    rubric_ref: str = Field(min_length=1)
+    total_score: float = Field(ge=0)
+    max_score: float = Field(gt=0)
+    percentage: float = Field(ge=0, le=100)
+
+    @model_validator(mode="after")
+    def total_score_does_not_exceed_max_score(self):
+        if self.total_score > self.max_score:
+            raise ValueError("total_score cannot exceed max_score")
+        return self
 
 
-class QuestionPerformance(BaseModel):
-    question_id: str
-    question_number: str
-    part: str
-    question_text: str
+class BloomAnalysis(BaseModel):
+    level: BloomLevel
+    confidence: float = Field(ge=0, le=1)
+    reason: str = Field(min_length=1)
+
+
+class Performance(BaseModel):
+    score: float = Field(ge=0)
+    max_score: float = Field(gt=0)
+    percentage: float = Field(ge=0, le=100)
+
+    @model_validator(mode="after")
+    def score_does_not_exceed_max_score(self):
+        if self.score > self.max_score:
+            raise ValueError("score cannot exceed max_score")
+        return self
+
+
+class CriterionPerformance(BaseModel):
+    criterion: str = Field(min_length=1)
+    max_marks: float = Field(gt=0)
+    awarded_marks: float = Field(ge=0)
+    achieved: bool
+
+    @model_validator(mode="after")
+    def awarded_marks_do_not_exceed_max_marks(self):
+        if self.awarded_marks > self.max_marks:
+            raise ValueError("awarded_marks cannot exceed max_marks")
+        return self
+
+
+class QuestionAnalysis(BaseModel):
+    question_no: str
+    question: str
     topic: str
-    bloom_level: str
-    question_type: str
-    awarded_marks: float
-    max_marks: float
-    normalized_score: float
-    passed: bool
-    feedback: str
-    missed_criteria: list[MissedCriterion] = []
+    subtopic: str
+    bloom_analysis: BloomAnalysis
+    performance: Performance
+    criteria_performance: list[CriterionPerformance] = Field(default_factory=list)
 
 
-class StudentExamPerformance(BaseModel):
-    exam_id: str
-    total_awarded: float
-    total_max: float
-    percentage: float
-    grade: str
-    attempt_count: int
-    question_performances: list[QuestionPerformance] = []
+class TopicPerformance(BaseModel):
+    topic: str = Field(min_length=1)
+    question_count: int = Field(ge=0)
+    score: float = Field(ge=0)
+    max_score: float = Field(gt=0)
+    percentage: float = Field(ge=0, le=100)
+    status: PerformanceStatus
+
+    @model_validator(mode="after")
+    def score_does_not_exceed_max_score(self):
+        if self.score > self.max_score:
+            raise ValueError("score cannot exceed max_score")
+        return self
 
 
-class StudentBloomSkill(BaseModel):
-    bloom_level: str
-    mastery: float | None = None
-    mean: float | None = None
-    attempt_count: int = 0
-    evidence_status: str = "insufficient_evidence"
+class BloomPerformance(BaseModel):
+    level: BloomLevel
+    question_count: int = Field(ge=0)
+    average_score: float = Field(ge=0, le=100)
+    status: PerformanceStatus
 
 
-class StudentTopicSkill(BaseModel):
-    topic: str
-    mastery: float | None = None
-    mean: float | None = None
-    attempt_count: int = 0
-    evidence_status: str = "insufficient_evidence"
-    rank: int = 0
-    priority_score: float = 0.0
+class LearningAnalysis(BaseModel):
+    overall_performance: PerformanceStatus
+    weak_topics: list[str] = Field(default_factory=list)
+    strong_topics: list[str] = Field(default_factory=list)
+    weak_bloom_levels: list[BloomLevel] = Field(default_factory=list)
+    weak_subtopics: list[str] = Field(default_factory=list)
+    learning_gaps: list[str] = Field(default_factory=list)
 
 
-class StudentStudyAction(BaseModel):
-    action: str
-    topic: str
-    rationale: str = ""
-    practice_topics: list[str] = []
-    source: Literal["llm", "deterministic"] = "deterministic"
+class Recommendation(BaseModel):
+    priority: RecommendationPriority
+    topic: str = Field(min_length=1)
+    bloom_level: BloomLevel
+    action: str = Field(min_length=1)
 
 
-class StudentDashboard(BaseModel):
-    student_key: str
-    course_code: str
-    run_id: str
-    generated_at: datetime = Field(default_factory=utcnow)
-    exams: list[StudentExamPerformance] = []
-    bloom_skills: list[StudentBloomSkill] = []
-    topic_skills: list[StudentTopicSkill] = []
-    weakest_topics: list[str] = []
-    cohort_comparison: dict = {}
-    recommendations: list[StudentStudyAction] = []
+class NextQuestionGeneration(BaseModel):
+    recommended_bloom_level: BloomLevel
+    recommended_difficulty: QuestionDifficulty
+    recommended_topics: list[str] = Field(default_factory=list)
+    number_of_questions: Literal[5]
+
+
+class ModelMetadata(BaseModel):
+    bloom_model_name: str = Field(min_length=1)
+    model_type: str = Field(min_length=1)
+    grading_source: str = Field(min_length=1)
+    rag_context_used: bool
+
+
+class StudentAnalyticsDocument(BaseModel):
+    student_id: str = Field(min_length=1)
+    course: CourseInfo
+    assessment: AssessmentInfo
+    question_analysis: list[QuestionAnalysis] = Field(default_factory=list)
+    topic_performance: list[TopicPerformance] = Field(default_factory=list)
+    bloom_performance: list[BloomPerformance] = Field(default_factory=list)
+    learning_analysis: LearningAnalysis
+    recommendations: list[Recommendation] = Field(default_factory=list)
+    next_question_generation: NextQuestionGeneration
+    model_metadata: ModelMetadata
