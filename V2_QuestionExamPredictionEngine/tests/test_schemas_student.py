@@ -15,7 +15,7 @@ def valid_document() -> dict:
         "learning_analysis": {"overall_performance": "Needs Improvement", "weak_topics": ["Testing"], "strong_topics": [], "weak_bloom_levels": ["Understand"], "weak_subtopics": ["Unit testing"], "learning_gaps": ["Review why unit tests isolate behavior."]},
         "recommendations": [{"priority": "High", "topic": "Testing", "bloom_level": "Understand", "action": "Practice explaining unit-test purposes."}],
         "next_question_generation": {"recommended_bloom_level": "Apply", "recommended_difficulty": "Medium", "recommended_topics": ["Testing", "Unit testing"], "number_of_questions": 5},
-        "model_metadata": {"bloom_model_name": "qwen3:8b", "model_type": "base", "grading_source": "rubric", "rag_context_used": False},
+        "model_metadata": {"bloom_model": "qwen3:8b", "bloom_model_type": "base", "grading_source": "rubric", "rag_context_used": False},
     }
 
 
@@ -24,6 +24,10 @@ def test_student_analytics_serializes_exact_top_level_contract():
     assert set(document.model_dump(mode="json")) == {"student_id", "course", "assessment", "question_analysis", "topic_performance", "bloom_performance", "learning_analysis", "recommendations", "next_question_generation", "model_metadata"}
     assert document.assessment.percentage == 60.0
     assert document.question_analysis[0].criteria_performance[1].achieved is True
+    metadata = document.model_dump(mode="json")["model_metadata"]
+    assert set(metadata) == {"bloom_model", "bloom_model_type", "grading_source", "rag_context_used"}
+    assert "bloom_model_name" not in metadata
+    assert "model_type" not in metadata
 
 
 def test_student_analytics_rejects_invalid_performance_percentage():
