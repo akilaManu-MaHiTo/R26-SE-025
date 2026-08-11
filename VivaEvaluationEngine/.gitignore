@@ -31,7 +31,6 @@ coverage.xml
 Thumbs.db
 
 # Project-generated files
-/.models/
 /sample_face.mp4
 /lena.jpg
 /create_sample_video.py
@@ -39,4 +38,3 @@ Thumbs.db
 # Local datasets, media, model artifacts, and outputs
 /videos/
 /outputs/
-/models/

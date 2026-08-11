@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 import json
@@ -15,8 +17,17 @@ for path in (PROJECT_ROOT, ENGINE_ROOT):
         sys.path.append(path_str)
 
 from Gradex_AI_Server.app.analytics_report import build_exam_report, run_exam_analysis
+from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 
-app = FastAPI(title="Gradex AI Server", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await connect_to_mongo()
+    yield
+    await close_mongo_connection()
+
+
+app = FastAPI(title="Gradex AI Server", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -205,6 +216,77 @@ async def analytics_historical():
 
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to load historical data: {exc}") from exc
+
+
+@app.post("/api/viva-analyze")
+async def viva_analyze(video: UploadFile = File(...)):
+    """
+    Analyze a viva recording for emotion detection and engagement scoring.
+    
+    Returns:
+        - timeline: Frame-by-frame emotion and engagement analysis
+        - confidence_score: Overall confidence score (0-10)
+        - engagement_score: Overall engagement score (0-100)
+        - summary: Summary statistics
+    """
+    import time
+    request_start = time.time()
+    
+    if not video.content_type or not video.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="Only video uploads are supported.")
+
+    contents = await video.read()
+    upload_complete = time.time()
+    upload_time = upload_complete - request_start
+    print(f"[VIVA] Upload received: {len(contents) / 1024 / 1024:.2f} MB in {upload_time:.2f}s")
+    
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty upload.")
+
+    ext = Path(video.filename or "").suffix or ".mp4"
+    file_path = UPLOAD_DIR / f"{uuid4().hex}{ext}"
+    file_path.write_bytes(contents)
+    file_saved = time.time()
+    print(f"[VIVA] File saved: {file_path.name} in {file_saved - upload_complete:.2f}s")
+
+    try:
+        from Gradex_AI_Server.app.viva_service import analyze_video_file
+
+        analysis_start = time.time()
+        result = analyze_video_file(str(file_path), debug=False)
+        analysis_complete = time.time()
+        analysis_time = analysis_complete - analysis_start
+        total_time = analysis_complete - request_start
+        
+        print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")
+        
+        # Clean up the uploaded file after analysis
+        try:
+            file_path.unlink()
+        except Exception:
+            pass
+        # Persist the result to MongoDB (vivamark.marks). Best-effort: a
+        # storage failure should not fail an otherwise-successful analysis.
+        try:
+            mark_doc = {
+                "video_filename": video.filename,
+                "processed_at": datetime.now(timezone.utc),
+                "confidence_score": result.get("confidence_score"),
+                "engagement_score": result.get("engagement_score"),
+                "result": result,
+            }
+            insert_result = await db_instance.marks_col.insert_one(mark_doc)
+            result["mark_id"] = str(insert_result.inserted_id)
+        except Exception as exc:
+            print(f"[VIVA] Warning: failed to persist result to MongoDB: {exc}")
+        return result
+    except ModuleNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=f"Viva analysis unavailable: {exc}") from exc
+    except FileNotFoundError as exc:
+        # Model files or other required files missing
+        raise HTTPException(status_code=503, detail=f"Viva model file not found: {exc}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Viva analysis failed: {exc}") from exc
 
 
 if __name__ == "__main__":
