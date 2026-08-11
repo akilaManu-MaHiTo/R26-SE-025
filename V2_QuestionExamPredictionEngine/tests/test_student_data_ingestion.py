@@ -40,7 +40,7 @@ def minimal_submission(q_no: str, score: float, max_score: float) -> dict:
                     "q_no": q_no,
                     "score": score,
                     "criteria_breakdown": [
-                        {"point": "Correct answer", "marks": max_score, "earned": score}
+                        {"point": "Correct answer", "awarded_marks": score}
                     ],
                 }
             ]
@@ -100,7 +100,7 @@ def test_normalize_submission_rejects_empty_or_incomplete_result_rows():
 
 @pytest.mark.parametrize(
     "criteria_breakdown",
-    [[], [{"point": "Correct answer", "marks": 5, "earned": 5}]],
+    [[], [{"point": "Correct answer", "awarded_marks": 5}]],
 )
 def test_normalize_submission_rejects_absent_or_short_criteria_breakdown(
     criteria_breakdown,
