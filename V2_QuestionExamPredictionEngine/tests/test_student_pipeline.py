@@ -50,8 +50,7 @@ def submission(student_id: str, *, first_score: float = 3, second_score: float =
                     "criteria_breakdown": [
                         {
                             "point": "Explains the concept",
-                            "marks": 5,
-                            "earned": second_score,
+                            "awarded_marks": second_score,
                         }
                     ],
                 },
@@ -61,8 +60,7 @@ def submission(student_id: str, *, first_score: float = 3, second_score: float =
                     "criteria_breakdown": [
                         {
                             "point": "Uses the correct query",
-                            "marks": 5,
-                            "earned": first_score,
+                            "awarded_marks": first_score,
                         }
                     ],
                 },
