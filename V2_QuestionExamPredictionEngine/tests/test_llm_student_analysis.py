@@ -52,6 +52,20 @@ async def test_classify_question_semantics_degrades_when_qwen_is_unavailable(mon
     assert result == {"status": "degraded", "reason": "ollama_unavailable"}
 
 
+async def test_classify_question_semantics_degrades_on_schema_failure(monkeypatch):
+    async def invalid_response(model, prompt, temperature):
+        return None, {"level": "invalid"}, True
+
+    monkeypatch.setattr(llm_service, "validate_with_retry", invalid_response)
+    result = await llm_service.classify_question_semantics(
+        {"code": "IT2040", "name": "Database Management Systems"},
+        "Explain two-phase locking.",
+        [],
+    )
+
+    assert result == {"status": "degraded", "reason": "schema_failure"}
+
+
 def test_student_insight_schema_accepts_semantics_and_priorities_without_scores():
     insight = StudentInsightResponse(
         learning_gaps=["Needs practice applying transaction isolation concepts"],
@@ -94,6 +108,59 @@ def test_student_insight_schema_rejects_invalid_priority():
                 "recommended_topics": ["Transactions"],
             },
         )
+
+
+def test_question_semantics_schema_rejects_forbidden_score_field():
+    with pytest.raises(ValidationError):
+        QuestionSemantics(
+            level="Understand",
+            topic="Concurrency Control",
+            subtopic="Two-Phase Locking",
+            confidence=0.9,
+            reason="The question asks for an explanation.",
+            score=80,
+        )
+
+
+@pytest.mark.parametrize(
+    ("location", "field", "value"),
+    [
+        ("top", "status", "Needs Improvement"),
+        ("top", "percentage", 60),
+        ("recommendation", "score", 4),
+        ("recommendation", "marks", 5),
+        ("generation_target", "average", 72),
+        ("generation_target", "count", 5),
+    ],
+)
+def test_student_insight_schema_rejects_forbidden_extra_fields(
+    location, field, value
+):
+    payload = {
+        "learning_gaps": ["Needs more practice"],
+        "recommendations": [
+            {
+                "priority": "High",
+                "topic": "Concurrency Control",
+                "bloom_level": "Apply",
+                "action": "Trace locking schedules.",
+            }
+        ],
+        "generation_target": {
+            "recommended_bloom_level": "Apply",
+            "recommended_difficulty": "Medium",
+            "recommended_topics": ["Concurrency Control"],
+        },
+    }
+    if location == "top":
+        payload[field] = value
+    elif location == "recommendation":
+        payload["recommendations"][0][field] = value
+    else:
+        payload["generation_target"][field] = value
+
+    with pytest.raises(ValidationError):
+        StudentInsightResponse.model_validate(payload)
 
 
 async def test_generate_student_insights_returns_validated_response(monkeypatch):
