@@ -136,7 +136,7 @@ async def test_pipeline_reuses_question_classification_across_students(monkeypat
     assert result.failures == []
     assert calls == 2
     assert [item["student_id"] for item in db.saved] == ["student-b", "student-a"]
-    assert [item["question_no"] for item in db.saved[0]["question_analysis"]] == [
+    assert [item["question_no"] for item in db.saved[0]["question_performance"]] == [
         "01",
         "02",
     ]
@@ -162,18 +162,23 @@ async def test_pipeline_uses_deterministic_fallback_when_qwen_is_down(monkeypatc
     assert result.saved == ["IT22145976"]
     assert result.failures == []
     saved = db.saved[0]
-    assert saved["assessment"]["percentage"] == 60.0
-    assert saved["question_analysis"][0]["bloom_analysis"]["confidence"] == 0.85
-    assert saved["question_analysis"][0]["subtopic"] == "SQL"
-    assert "rule-based fallback" in saved["question_analysis"][0]["bloom_analysis"][
+    assert saved["overall_performance"]["percentage"] == 60.0
+    assert saved["overall_performance"]["status"] == "Developing"
+    assert saved["question_performance"][0]["bloom_analysis"]["confidence"] == 0.85
+    assert saved["question_performance"][0]["subtopic"] == "SQL"
+    assert "rule-based fallback" in saved["question_performance"][0]["bloom_analysis"][
         "reason"
     ]
     assert saved["learning_analysis"]["learning_gaps"] == [
-        "Review Uses the correct query in SQL.",
-        "Review Explains the concept in Introduction to DBMS and Conceptual Database Design.",
+        {"topic": "SQL", "subtopic": "Uses the correct query", "priority": "Medium"},
+        {
+            "topic": "Introduction to DBMS and Conceptual Database Design",
+            "subtopic": "Explains the concept",
+            "priority": "Medium",
+        },
     ]
-    assert saved["recommendations"][0]["priority"] == "High"
-    assert saved["next_question_generation"]["number_of_questions"] == 5
+    assert saved["recommendations"][0]["priority"] == "Medium"
+    assert saved["next_question_strategy"]["number_of_questions"] == 5
     StudentAnalyticsDocument.model_validate(saved)
 
 
@@ -203,16 +208,16 @@ async def test_pipeline_uses_rule_key_concept_as_fallback_subtopic(monkeypatch):
     result = await materialize_student_analytics(db)
 
     assert result.saved == ["student-17"]
-    assert {item["subtopic"] for item in db.saved[0]["question_analysis"]} == {
+    assert {item["subtopic"] for item in db.saved[0]["question_performance"]} == {
         "Two-Phase Locking"
     }
     assert {
         item["bloom_analysis"]["confidence"]
-        for item in db.saved[0]["question_analysis"]
+        for item in db.saved[0]["question_performance"]
     } == {0.65}
     assert all(
         "schema_failure" in item["bloom_analysis"]["reason"]
-        for item in db.saved[0]["question_analysis"]
+        for item in db.saved[0]["question_performance"]
     )
 
 
@@ -257,23 +262,26 @@ async def test_qwen_insights_replace_only_semantic_fallback_fields(monkeypatch):
 
     assert result.saved == ["student-17"]
     saved = db.saved[0]
-    assert saved["assessment"] == {
-        "session_name": "Final Examination",
-        "rubric_ref": "rubric-1",
-        "total_score": 6.0,
-        "max_score": 10.0,
+    assert saved["overall_performance"] == {
+        "score": 6.0,
+        "maximum": 10.0,
         "percentage": 60.0,
+        "status": "Developing",
     }
-    assert saved["learning_analysis"]["overall_performance"] == "Needs Improvement"
-    assert saved["learning_analysis"]["weak_topics"] == ["SQL", "Database Concepts"]
+    assert saved["learning_analysis"]["overall_performance"] == "Developing"
+    assert saved["learning_analysis"]["developing_topics"] == [
+        "SQL",
+        "Database Concepts",
+    ]
+    assert saved["learning_analysis"]["weak_topics"] == []
     assert saved["learning_analysis"]["learning_gaps"] == [
-        "Trace joins before writing SQL."
+        {"topic": "SQL", "subtopic": "Trace joins before writing SQL.", "priority": "Medium"}
     ]
     assert saved["recommendations"][0]["action"] == "Compare inner and outer joins."
-    assert saved["next_question_generation"] == {
-        "recommended_bloom_level": "Analyze",
-        "recommended_difficulty": "Hard",
+    assert saved["next_question_strategy"] == {
         "recommended_topics": ["Joins"],
+        "recommended_bloom_levels": ["Analyze", "Apply", "Understand"],
+        "recommended_difficulty": "Hard",
         "number_of_questions": 5,
     }
     assert saved["model_metadata"] == {
@@ -339,12 +347,16 @@ async def test_blank_qwen_recommendation_degrades_to_deterministic_fallback(
     assert result.failures == []
     saved = db.saved[0]
     assert saved["learning_analysis"]["learning_gaps"] == [
-        "Review Uses the correct query in Joins.",
-        "Review Explains the concept in Concept Explanation.",
+        {"topic": "SQL", "subtopic": "Uses the correct query", "priority": "Medium"},
+        {
+            "topic": "Database Concepts",
+            "subtopic": "Explains the concept",
+            "priority": "Medium",
+        },
     ]
     assert saved["recommendations"][0]["topic"] == "SQL"
     assert saved["recommendations"][0]["action"]
-    assert saved["next_question_generation"]["number_of_questions"] == 5
+    assert saved["next_question_strategy"]["number_of_questions"] == 5
     StudentAnalyticsDocument.model_validate(saved)
 
 
@@ -533,3 +545,62 @@ async def test_explicit_submissions_are_processed_without_repository_batch_read(
     assert result.saved == ["explicit-student"]
     assert result.failures == []
     batch_read.assert_not_awaited()
+
+
+def _normalized_input():
+    from app.ingestion.student_data import normalize_student_submission
+
+    return normalize_student_submission(deepcopy(COURSE), deepcopy(RUBRIC), submission("IT22145976"))
+
+
+def _numeric_analysis():
+    from app.analytics.student_document import build_numeric_analysis
+    from app.llm.roles.student_analysis import QuestionSemantics
+
+    normalized = _normalized_input()
+    semantics = {
+        "01": QuestionSemantics(
+            level="Apply",
+            topic="SQL",
+            subtopic="Joins",
+            confidence=0.9,
+            reason="rule-based fallback (test)",
+        ),
+        "02": QuestionSemantics(
+            level="Understand",
+            topic="Database Concepts",
+            subtopic="Concept Explanation",
+            confidence=0.9,
+            reason="rule-based fallback (test)",
+        ),
+    }
+    return build_numeric_analysis(normalized, semantics)
+
+
+def test_assemble_document_produces_new_top_level_shape():
+    from app.services.student_pipeline import _assemble_document
+
+    document = _assemble_document(
+        _normalized_input(),
+        _numeric_analysis(),
+        {"status": "degraded", "reason": "offline_test"},
+        submission("IT22145976"),
+    )
+    assert set(document) == {
+        "student_id",
+        "exam_id",
+        "course",
+        "overall_performance",
+        "question_performance",
+        "topic_performance",
+        "bloom_performance",
+        "learning_analysis",
+        "recommendations",
+        "next_question_strategy",
+        "model_metadata",
+        "generated_at",
+        "analysis_version",
+    }
+    assert document["exam_id"] == "IT2040@Final Examination"
+    assert document["overall_performance"]["percentage"] == 60.0
+    assert document["next_question_strategy"]["number_of_questions"] == 5
