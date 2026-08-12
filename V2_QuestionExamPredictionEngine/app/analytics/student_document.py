@@ -1,40 +1,47 @@
 """Pure, deterministic calculations for the student analytics document."""
 
-from collections.abc import Iterable
-
 from pydantic import BaseModel
 
 from app.ingestion.student_data import NormalizedStudentInput
 from app.llm.roles.student_analysis import QuestionSemantics
 from app.schemas.student import (
-    AssessmentInfo,
     BloomAnalysis,
     BloomLevel,
     BloomPerformance,
     CriterionPerformance,
     LearningAnalysis,
-    NextQuestionGeneration,
+    LearningGap,
+    NextQuestionStrategy,
+    OverallPerformance,
     Performance,
     PerformanceStatus,
-    QuestionAnalysis,
+    QuestionPerformance,
     Recommendation,
     TopicPerformance,
 )
 
-STRONG_THRESHOLD = 75.0
-IMPROVEMENT_THRESHOLD = 50.0
+STRONG_THRESHOLD = 80.0
+DEVELOPING_THRESHOLD = 60.0
+IMPROVEMENT_THRESHOLD = 40.0
+
+_PRIORITY_BY_STATUS = {
+    "Critical": "Critical",
+    "Needs Improvement": "High",
+    "Developing": "Medium",
+    "Strong": "Low",
+}
 
 
 class NumericStudentAnalysis(BaseModel):
     """Backend-owned numeric analysis plus deterministic semantic fallbacks."""
 
-    assessment: AssessmentInfo
-    question_analysis: list[QuestionAnalysis]
+    overall_performance: OverallPerformance
+    question_performance: list[QuestionPerformance]
     topic_performance: list[TopicPerformance]
     bloom_performance: list[BloomPerformance]
     learning_analysis: LearningAnalysis
     recommendations: list[Recommendation]
-    next_question_generation: NextQuestionGeneration
+    next_question_strategy: NextQuestionStrategy
 
     def evidence(self) -> dict:
         """Return compact backend evidence suitable for the LLM insight prompt.
@@ -46,8 +53,7 @@ class NumericStudentAnalysis(BaseModel):
         """
         return {
             "assessment": {
-                "session_name": self.assessment.session_name,
-                "percentage": self.assessment.percentage,
+                "percentage": self.overall_performance.percentage,
             },
             "topic_performance": [
                 {
@@ -70,7 +76,7 @@ class NumericStudentAnalysis(BaseModel):
                     "topic": question.topic,
                     "criterion": criterion.criterion,
                 }
-                for question in self.question_analysis
+                for question in self.question_performance
                 for criterion in question.criteria_performance
                 if criterion.awarded_marks < criterion.max_marks
             ],
@@ -86,20 +92,18 @@ def percentage(score: float, max_score: float) -> float:
 def performance_status(value: float) -> PerformanceStatus:
     if value >= STRONG_THRESHOLD:
         return "Strong"
+    if value >= DEVELOPING_THRESHOLD:
+        return "Developing"
     if value >= IMPROVEMENT_THRESHOLD:
         return "Needs Improvement"
     return "Critical"
 
 
-def _unique(values: Iterable[str]) -> list[str]:
-    return list(dict.fromkeys(values))
-
-
 def _question_analysis(
     normalized: NormalizedStudentInput,
     semantics_by_question: dict[str, QuestionSemantics],
-) -> list[QuestionAnalysis]:
-    records: list[QuestionAnalysis] = []
+) -> list[QuestionPerformance]:
+    records: list[QuestionPerformance] = []
     for question in sorted(normalized.questions, key=lambda item: item.question_no):
         try:
             semantics = semantics_by_question[question.question_no]
@@ -108,9 +112,10 @@ def _question_analysis(
                 f"missing semantics for question {question.question_no}"
             ) from exc
         records.append(
-            QuestionAnalysis(
+            QuestionPerformance(
+                question_id=f"Q{question.question_no}",
                 question_no=question.question_no,
-                question=question.question_text,
+                question_text=question.question_text,
                 topic=semantics.topic,
                 subtopic=semantics.subtopic,
                 bloom_analysis=BloomAnalysis(
@@ -137,8 +142,10 @@ def _question_analysis(
     return records
 
 
-def _topic_performance(questions: list[QuestionAnalysis]) -> list[TopicPerformance]:
-    grouped: dict[str, list[QuestionAnalysis]] = {}
+def _topic_performance(
+    questions: list[QuestionPerformance],
+) -> list[TopicPerformance]:
+    grouped: dict[str, list[QuestionPerformance]] = {}
     for question in questions:
         grouped.setdefault(question.topic, []).append(question)
 
@@ -160,8 +167,10 @@ def _topic_performance(questions: list[QuestionAnalysis]) -> list[TopicPerforman
     return records
 
 
-def _bloom_performance(questions: list[QuestionAnalysis]) -> list[BloomPerformance]:
-    grouped: dict[BloomLevel, list[QuestionAnalysis]] = {}
+def _bloom_performance(
+    questions: list[QuestionPerformance],
+) -> list[BloomPerformance]:
+    grouped: dict[BloomLevel, list[QuestionPerformance]] = {}
     for question in questions:
         grouped.setdefault(question.bloom_analysis.level, []).append(question)
 
@@ -181,23 +190,49 @@ def _bloom_performance(questions: list[QuestionAnalysis]) -> list[BloomPerforman
     return records
 
 
-def fallback_learning_gaps(questions: list[QuestionAnalysis]) -> list[str]:
-    """Describe missed criteria, falling back to the weak question's subtopic."""
-    gaps: list[str] = []
+def fallback_learning_gaps(
+    questions: list[QuestionPerformance],
+) -> list[LearningGap]:
+    seen: set[tuple[str, str]] = set()
+    gaps: list[LearningGap] = []
     for question in questions:
         missed = [
             criterion
             for criterion in question.criteria_performance
             if criterion.awarded_marks < criterion.max_marks
         ]
-        if missed:
-            gaps.extend(
-                f"Review {criterion.criterion} in {question.subtopic}."
-                for criterion in missed
+        priority = _PRIORITY_BY_STATUS[performance_status(question.performance.percentage)]
+        for criterion in missed:
+            key = (question.topic, criterion.criterion)
+            if key in seen:
+                continue
+            seen.add(key)
+            gaps.append(
+                LearningGap(
+                    topic=question.topic,
+                    subtopic=criterion.criterion,
+                    priority=priority,
+                )
             )
-        elif performance_status(question.performance.percentage) != "Strong":
-            gaps.append(f"Review {question.subtopic}.")
-    return _unique(gaps)
+        if not missed and priority != "Low":
+            key = (question.topic, question.subtopic)
+            if key in seen:
+                continue
+            seen.add(key)
+            gaps.append(
+                LearningGap(
+                    topic=question.topic,
+                    subtopic=question.subtopic,
+                    priority=priority,
+                )
+            )
+    return gaps
+
+
+def weakest_bloom(
+    _topic: TopicPerformance, blooms: list[BloomPerformance]
+) -> str:
+    return min(blooms, key=lambda bloom: bloom.average_score).level
 
 
 def fallback_recommendations(
@@ -206,13 +241,11 @@ def fallback_recommendations(
     weak_topics = [topic for topic in topics if topic.status != "Strong"]
     if not weak_topics:
         return []
-    weakest_bloom = min(blooms, key=lambda bloom: bloom.average_score)
     return [
         Recommendation(
-            priority="High",
             topic=topic.topic,
-            bloom_level=weakest_bloom.level,
-            action=f"Review {topic.topic} and practice {weakest_bloom.level} questions.",
+            priority=_PRIORITY_BY_STATUS[topic.status],
+            action=f"Review {topic.topic} and practice {weakest_bloom(topic, blooms)} questions.",
         )
         for topic in weak_topics
     ]
@@ -220,21 +253,29 @@ def fallback_recommendations(
 
 def fallback_generation_target(
     topics: list[TopicPerformance], blooms: list[BloomPerformance]
-) -> NextQuestionGeneration:
+) -> NextQuestionStrategy:
     if not topics or not blooms:
         raise ValueError("topic and Bloom performance are required")
-    weakest_bloom = min(blooms, key=lambda bloom: bloom.average_score)
+    weakest = min(blooms, key=lambda bloom: bloom.average_score)
     weak_topics = [topic.topic for topic in topics if topic.status != "Strong"]
-    recommended_topics = weak_topics or [min(topics, key=lambda topic: topic.percentage).topic]
+    recommended_topics = weak_topics or [
+        min(topics, key=lambda topic: topic.percentage).topic
+    ]
+    recommended_bloom_levels = [weakest.level] + [
+        bloom.level
+        for bloom in blooms
+        if bloom.level != weakest.level and bloom.status != "Strong"
+    ]
     difficulty = {
         "Critical": "Easy",
         "Needs Improvement": "Medium",
+        "Developing": "Medium",
         "Strong": "Hard",
-    }[weakest_bloom.status]
-    return NextQuestionGeneration(
-        recommended_bloom_level=weakest_bloom.level,
-        recommended_difficulty=difficulty,
+    }[weakest.status]
+    return NextQuestionStrategy(
         recommended_topics=recommended_topics,
+        recommended_bloom_levels=recommended_bloom_levels,
+        recommended_difficulty=difficulty,
         number_of_questions=5,
     )
 
@@ -251,35 +292,37 @@ def build_numeric_analysis(
     topics = _topic_performance(questions)
     blooms = _bloom_performance(questions)
 
-    weak_topics = [topic.topic for topic in topics if topic.status != "Strong"]
     strong_topics = [topic.topic for topic in topics if topic.status == "Strong"]
-    weak_blooms = [bloom.level for bloom in blooms if bloom.status != "Strong"]
-    weak_subtopics = _unique(
-        question.subtopic
-        for question in questions
-        if performance_status(question.performance.percentage) != "Strong"
-    )
-    learning_gaps = fallback_learning_gaps(questions)
+    developing_topics = [
+        topic.topic for topic in topics if topic.status == "Developing"
+    ]
+    weak_topics = [
+        topic.topic
+        for topic in topics
+        if topic.status == "Needs Improvement"
+    ]
+    critical_topics = [
+        topic.topic for topic in topics if topic.status == "Critical"
+    ]
 
     return NumericStudentAnalysis(
-        assessment=AssessmentInfo(
-            session_name=normalized.session_name,
-            rubric_ref=normalized.rubric_ref,
-            total_score=round(total_score, 2),
-            max_score=round(max_score, 2),
+        overall_performance=OverallPerformance(
+            score=round(total_score, 2),
+            maximum=round(max_score, 2),
             percentage=overall_percentage,
+            status=performance_status(overall_percentage),
         ),
-        question_analysis=questions,
+        question_performance=questions,
         topic_performance=topics,
         bloom_performance=blooms,
         learning_analysis=LearningAnalysis(
             overall_performance=performance_status(overall_percentage),
-            weak_topics=weak_topics,
             strong_topics=strong_topics,
-            weak_bloom_levels=weak_blooms,
-            weak_subtopics=weak_subtopics,
-            learning_gaps=learning_gaps,
+            developing_topics=developing_topics,
+            weak_topics=weak_topics,
+            critical_topics=critical_topics,
+            learning_gaps=fallback_learning_gaps(questions),
         ),
         recommendations=fallback_recommendations(topics, blooms),
-        next_question_generation=fallback_generation_target(topics, blooms),
+        next_question_strategy=fallback_generation_target(topics, blooms),
     )

@@ -93,9 +93,11 @@ def test_numeric_analysis_recalculates_totals_and_weighted_groups():
 
     analysis = build_numeric_analysis(normalized, semantics())
 
-    assert analysis.assessment.total_score == 4.0
-    assert analysis.assessment.max_score == 10.0
-    assert analysis.assessment.percentage == 40.0
+    assert analysis.overall_performance.score == 4.0
+    assert analysis.overall_performance.maximum == 10.0
+    assert analysis.overall_performance.percentage == 40.0
+    assert analysis.overall_performance.status == "Needs Improvement"
+    assert analysis.learning_analysis.overall_performance == "Needs Improvement"
     assert analysis.topic_performance[0].score == 4.0
     assert analysis.topic_performance[0].max_score == 10.0
     assert analysis.topic_performance[0].percentage == 40.0
@@ -144,7 +146,7 @@ def test_group_percentages_are_weighted_by_maximum_marks():
 
     analysis = build_numeric_analysis(normalized, semantics())
 
-    assert analysis.assessment.percentage == 30.0
+    assert analysis.overall_performance.percentage == 30.0
     assert analysis.topic_performance[0].percentage == 30.0
     assert analysis.bloom_performance[0].average_score == 30.0
 
@@ -152,20 +154,22 @@ def test_group_percentages_are_weighted_by_maximum_marks():
 @pytest.mark.parametrize(
     ("percentage", "expected"),
     [
-        (49.99, "Critical"),
-        (50.0, "Needs Improvement"),
-        (74.99, "Needs Improvement"),
-        (75.0, "Strong"),
+        (39.99, "Critical"),
+        (40.0, "Needs Improvement"),
+        (59.99, "Needs Improvement"),
+        (60.0, "Developing"),
+        (79.99, "Developing"),
+        (80.0, "Strong"),
     ],
 )
-def test_performance_status_boundaries(percentage, expected):
+def test_performance_status_four_bucket_boundaries(percentage, expected):
     assert performance_status(percentage) == expected
 
 
 def test_partial_criterion_marks_count_as_achieved():
     analysis = build_numeric_analysis(two_question_input(), semantics())
 
-    criterion = analysis.question_analysis[0].criteria_performance[0]
+    criterion = analysis.question_performance[0].criteria_performance[0]
 
     assert criterion.awarded_marks == 1.0
     assert criterion.max_marks == 2.0
@@ -175,14 +179,16 @@ def test_partial_criterion_marks_count_as_achieved():
 def test_question_output_is_sorted_and_weak_lists_preserve_first_appearance():
     analysis = build_numeric_analysis(two_question_input(reverse=True), semantics())
 
-    assert [item.question_no for item in analysis.question_analysis] == ["01", "02"]
+    assert [item.question_no for item in analysis.question_performance] == ["01", "02"]
     assert analysis.learning_analysis.weak_topics == ["Transaction Management"]
-    assert analysis.learning_analysis.weak_bloom_levels == ["Apply"]
-    assert analysis.learning_analysis.weak_subtopics == [
-        "Two-Phase Locking",
-        "Deadlocks",
-    ]
     assert analysis.learning_analysis.strong_topics == []
+    assert analysis.learning_analysis.developing_topics == []
+    assert analysis.learning_analysis.critical_topics == []
+    assert [gap.subtopic for gap in analysis.learning_analysis.learning_gaps] == [
+        "Identifies the growing phase",
+        "Applies the shrinking phase",
+        "Builds the wait-for graph",
+    ]
 
 
 def test_strong_topics_are_not_reported_as_weak():
@@ -200,14 +206,15 @@ def test_strong_topics_are_not_reported_as_weak():
 
     assert analysis.learning_analysis.strong_topics == ["Transaction Management"]
     assert analysis.learning_analysis.weak_topics == []
-    assert analysis.learning_analysis.weak_bloom_levels == []
-    assert analysis.learning_analysis.weak_subtopics == []
+    assert analysis.learning_analysis.developing_topics == []
+    assert analysis.learning_analysis.critical_topics == []
+    assert analysis.learning_analysis.learning_gaps == []
 
 
 def test_fallbacks_use_missed_criteria_high_priority_and_five_questions():
     analysis = build_numeric_analysis(two_question_input(), semantics())
 
-    gaps = fallback_learning_gaps(analysis.question_analysis)
+    gaps = fallback_learning_gaps(analysis.question_performance)
     recommendations = fallback_recommendations(
         analysis.topic_performance, analysis.bloom_performance
     )
@@ -215,14 +222,14 @@ def test_fallbacks_use_missed_criteria_high_priority_and_five_questions():
         analysis.topic_performance, analysis.bloom_performance
     )
 
-    assert gaps == [
-        "Review Identifies the growing phase in Two-Phase Locking.",
-        "Review Applies the shrinking phase in Two-Phase Locking.",
-        "Review Builds the wait-for graph in Deadlocks.",
+    assert [(gap.topic, gap.subtopic, gap.priority) for gap in gaps] == [
+        ("Transaction Management", "Identifies the growing phase", "Medium"),
+        ("Transaction Management", "Applies the shrinking phase", "Medium"),
+        ("Transaction Management", "Builds the wait-for graph", "Critical"),
     ]
     assert recommendations[0].priority == "High"
     assert recommendations[0].topic == "Transaction Management"
-    assert recommendations[0].bloom_level == "Apply"
+    assert "Apply" in recommendations[0].action
     assert generation_target.number_of_questions == 5
     assert generation_target.recommended_topics == ["Transaction Management"]
 
@@ -246,9 +253,10 @@ def test_fallback_gap_uses_subtopic_when_no_criterion_was_missed():
 
     analysis = build_numeric_analysis(normalized, semantics())
 
-    assert fallback_learning_gaps(analysis.question_analysis) == [
-        "Review Two-Phase Locking."
-    ]
+    assert [
+        (gap.topic, gap.subtopic, gap.priority)
+        for gap in fallback_learning_gaps(analysis.question_performance)
+    ] == [("Transaction Management", "Two-Phase Locking", "Medium")]
 
 
 def test_aggregation_rounds_only_after_summing_source_marks():
@@ -256,9 +264,9 @@ def test_aggregation_rounds_only_after_summing_source_marks():
 
     analysis = build_numeric_analysis(normalized, semantics())
 
-    assert analysis.assessment.total_score == 0.01
-    assert analysis.assessment.max_score == 2.0
-    assert analysis.assessment.percentage == 0.4
+    assert analysis.overall_performance.score == 0.01
+    assert analysis.overall_performance.maximum == 2.0
+    assert analysis.overall_performance.percentage == 0.4
     assert analysis.topic_performance[0].score == 0.01
     assert analysis.topic_performance[0].percentage == 0.4
     assert analysis.bloom_performance[0].average_score == 0.4
@@ -276,8 +284,43 @@ def test_fallback_gap_keeps_missed_criterion_from_strong_question():
 
     analysis = build_numeric_analysis(normalized, semantics())
 
-    assert analysis.question_analysis[0].performance.percentage == 80.0
-    assert fallback_learning_gaps(analysis.question_analysis) == [
-        "Review Identifies the growing phase in Two-Phase Locking.",
-        "Review Applies the shrinking phase in Two-Phase Locking.",
+    assert analysis.question_performance[0].performance.percentage == 80.0
+    assert [
+        (gap.topic, gap.subtopic, gap.priority)
+        for gap in fallback_learning_gaps(analysis.question_performance)
+    ] == [
+        ("Transaction Management", "Identifies the growing phase", "Low"),
+        ("Transaction Management", "Applies the shrinking phase", "Low"),
     ]
+
+
+def test_learning_analysis_has_four_topic_buckets():
+    analysis = build_numeric_analysis(two_question_input(), semantics())
+
+    buckets = analysis.learning_analysis
+    assert isinstance(buckets.strong_topics, list)
+    assert isinstance(buckets.developing_topics, list)
+    assert isinstance(buckets.weak_topics, list)
+    assert isinstance(buckets.critical_topics, list)
+
+
+def test_learning_gaps_are_structured_objects():
+    analysis = build_numeric_analysis(two_question_input(), semantics())
+
+    assert analysis.learning_analysis.learning_gaps
+    first = analysis.learning_analysis.learning_gaps[0]
+    assert {"topic", "subtopic", "priority"} == set(first.model_dump())
+    assert first.priority in {"Critical", "High", "Medium", "Low"}
+
+
+def test_next_question_strategy_has_bloom_level_list():
+    analysis = build_numeric_analysis(two_question_input(), semantics())
+
+    strategy = analysis.next_question_strategy
+    assert strategy.number_of_questions == 5
+    assert isinstance(strategy.recommended_bloom_levels, list)
+    assert all(
+        level
+        in {"Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"}
+        for level in strategy.recommended_bloom_levels
+    )
