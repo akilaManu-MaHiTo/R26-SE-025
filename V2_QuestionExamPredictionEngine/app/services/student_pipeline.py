@@ -2,10 +2,15 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from pydantic import TypeAdapter, ValidationError
 
-from app.analytics.student_document import NumericStudentAnalysis, build_numeric_analysis
+from app.analytics.student_document import (
+    NumericStudentAnalysis,
+    _PRIORITY_BY_STATUS,
+    build_numeric_analysis,
+)
 from app.classifier.rules import classify_by_rules
 from app.config import settings
 from app.db.repository import (
@@ -124,6 +129,24 @@ def _validated_insights(insights: dict) -> StudentInsightResponse | None:
         return None
 
 
+def _gap_from_insight_text(text: str, learning_analysis: dict) -> dict:
+    candidates = (
+        learning_analysis.get("critical_topics", [])
+        + learning_analysis.get("weak_topics", [])
+        + learning_analysis.get("developing_topics", [])
+    )
+    topic = next((name for name in candidates if name), "General")
+    priority = _PRIORITY_BY_STATUS.get(
+        learning_analysis.get("overall_performance"), "Medium"
+    )
+    return {"topic": topic, "subtopic": text, "priority": priority}
+
+
+def _bloom_levels_with_target(target: str, strategy: dict) -> list[str]:
+    levels = strategy.get("recommended_bloom_levels") or []
+    return [target] + [level for level in levels if level != target]
+
+
 def _assemble_document(
     normalized: NormalizedStudentInput,
     numeric: NumericStudentAnalysis,
@@ -133,22 +156,28 @@ def _assemble_document(
     document = numeric.model_dump(mode="json")
     validated_insights = _validated_insights(insights)
     if validated_insights is not None:
-        document["learning_analysis"]["learning_gaps"] = list(
-            validated_insights.learning_gaps
-        )
+        document["learning_analysis"]["learning_gaps"] = [
+            _gap_from_insight_text(text, document["learning_analysis"])
+            for text in validated_insights.learning_gaps
+        ]
         document["recommendations"] = [
             recommendation.model_dump(mode="json")
             for recommendation in validated_insights.recommendations
         ]
         target = validated_insights.generation_target
-        document["next_question_generation"] = {
-            "recommended_bloom_level": target.recommended_bloom_level,
-            "recommended_difficulty": target.recommended_difficulty,
-            "recommended_topics": list(target.recommended_topics),
-            "number_of_questions": 5,
-        }
-    else:
-        document["next_question_generation"]["number_of_questions"] = 5
+        document["next_question_strategy"]["recommended_bloom_levels"] = (
+            _bloom_levels_with_target(
+                target.recommended_bloom_level,
+                document["next_question_strategy"],
+            )
+        )
+        document["next_question_strategy"]["recommended_difficulty"] = (
+            target.recommended_difficulty
+        )
+        document["next_question_strategy"]["recommended_topics"] = list(
+            target.recommended_topics
+        )
+    document["next_question_strategy"]["number_of_questions"] = 5
 
     evaluation_metadata = submission.get("evaluation")
     if not isinstance(evaluation_metadata, dict):
@@ -167,6 +196,7 @@ def _assemble_document(
 
     document.update(
         student_id=normalized.student_id,
+        exam_id=f"{normalized.course_code}@{normalized.session_name}",
         course={"code": normalized.course_code, "name": normalized.course_name},
         model_metadata={
             "bloom_model": settings.llm_model,
@@ -174,8 +204,47 @@ def _assemble_document(
             "grading_source": grading_source,
             "rag_context_used": rag_context_used,
         },
+        generated_at=datetime.now(timezone.utc).isoformat(),
+        analysis_version="1.0",
     )
     return document
+
+
+async def _build_student_analytics(
+    db,
+    submission: dict,
+    classification_cache: dict[tuple[str, str], QuestionSemantics],
+    progress: StepCallback | None = None,
+) -> StudentAnalyticsDocument:
+    course = await find_course_for_submission(db, submission)
+    rubric = await find_rubric_for_submission(db, submission)
+    normalized = normalize_student_submission(
+        course or {}, rubric or {}, submission
+    )
+    semantics = await _classify_questions(
+        normalized, classification_cache, progress=progress
+    )
+    numeric = build_numeric_analysis(normalized, semantics)
+    try:
+        insights = await generate_student_insights(
+            normalized.student_id, numeric.evidence()
+        )
+    except OllamaUnavailable:
+        insights = {
+            "status": "degraded",
+            "reason": "ollama_unavailable",
+        }
+    if progress is not None:
+        progress(f"insights {normalized.student_id}")
+    document = _assemble_document(normalized, numeric, insights, submission)
+    return StudentAnalyticsDocument.model_validate(document)
+
+
+async def build_student_analytics(
+    db, submission: dict
+) -> StudentAnalyticsDocument:
+    """Build and persist-ready analytics for a single graded submission."""
+    return await _build_student_analytics(db, submission, {})
 
 
 async def materialize_student_analytics(
@@ -216,29 +285,13 @@ async def materialize_student_analytics(
 
     for submission in source_submissions:
         try:
-            course = await find_course_for_submission(db, submission)
-            rubric = await find_rubric_for_submission(db, submission)
-            normalized = normalize_student_submission(
-                course or {}, rubric or {}, submission
+            document = await _build_student_analytics(
+                db, submission, classification_cache, progress=_report
             )
-            semantics = await _classify_questions(
-                normalized, classification_cache, progress=_report
+            await upsert_student_analytics(
+                db, document.model_dump(mode="json")
             )
-            numeric = build_numeric_analysis(normalized, semantics)
-            try:
-                insights = await generate_student_insights(
-                    normalized.student_id, numeric.evidence()
-                )
-            except OllamaUnavailable:
-                insights = {
-                    "status": "degraded",
-                    "reason": "ollama_unavailable",
-                }
-            _report(f"insights {normalized.student_id}")
-            document = _assemble_document(normalized, numeric, insights, submission)
-            validated = StudentAnalyticsDocument.model_validate(document)
-            await upsert_student_analytics(db, validated.model_dump(mode="json"))
-            saved.append(normalized.student_id)
+            saved.append(document.student_id)
         except Exception as exc:
             student_id = str(
                 submission.get("student_id")
