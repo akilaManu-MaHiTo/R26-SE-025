@@ -77,7 +77,13 @@ async def _clean_sample_documents(db):
         {
             "student_id": {"$in": identity["student_ids"]},
             "course.code": {"$in": identity["course_codes"]},
-            "assessment.session_name": {"$in": identity["sessions"]},
+            "exam_id": {
+                "$in": [
+                    f"{course_code}@{session}"
+                    for course_code in identity["course_codes"]
+                    for session in identity["sessions"]
+                ]
+            },
         }
     )
 
@@ -147,8 +153,9 @@ class _CountCollection:
             "$or": [
                 {
                     "student_id": submission["student_id"],
-                    "course.code": submission["subject_code"],
-                    "assessment.session_name": submission["session_name"],
+                    "course.code": submission.get("course_code")
+                    or submission["subject_code"],
+                    "exam_id": f"{submission.get('course_code') or submission['subject_code']}@{submission['session_name']}",
                 }
                 for submission in submissions
             ]
@@ -266,9 +273,40 @@ async def test_main_ignores_unrelated_graded_submission_and_analytics(
     unrelated_submission["evaluation"]["results"][0]["score"] = 999.0
     unrelated_analytics = {
         "student_id": unrelated_student_id,
-        "course": {"code": "UNRELATED"},
-        "assessment": {"session_name": "Unrelated Assessment"},
-        "sentinel": "preserve-me",
+        "exam_id": "UNRELATED@Unrelated Assessment",
+        "course": {"code": "UNRELATED", "name": "Unrelated Course"},
+        "overall_performance": {
+            "score": 1.0,
+            "maximum": 10.0,
+            "percentage": 10.0,
+            "status": "Critical",
+        },
+        "question_performance": [],
+        "topic_performance": [],
+        "bloom_performance": [],
+        "learning_analysis": {
+            "overall_performance": "Critical",
+            "strong_topics": [],
+            "developing_topics": [],
+            "weak_topics": [],
+            "critical_topics": [],
+            "learning_gaps": [],
+        },
+        "recommendations": [],
+        "next_question_strategy": {
+            "recommended_topics": [],
+            "recommended_bloom_levels": [],
+            "recommended_difficulty": "Medium",
+            "number_of_questions": 5,
+        },
+        "model_metadata": {
+            "bloom_model": "qwen3:8b",
+            "bloom_model_type": "base",
+            "grading_source": "colab",
+            "rag_context_used": False,
+        },
+        "generated_at": "2026-08-12T00:00:00Z",
+        "analysis_version": "1.0",
     }
 
     await _clean_sample_documents(test_db)
@@ -290,7 +328,7 @@ async def test_main_ignores_unrelated_graded_submission_and_analytics(
             {
                 "student_id": unrelated_student_id,
                 "course.code": "UNRELATED",
-                "assessment.session_name": "Unrelated Assessment",
+                "exam_id": "UNRELATED@Unrelated Assessment",
             },
             unrelated_analytics,
             upsert=True,

@@ -126,7 +126,7 @@ async def main(db_name: str) -> int:
                     "student_id": submission["student_id"],
                     "course.code": submission.get("course_code")
                     or submission["subject_code"],
-                    "assessment.session_name": submission["session_name"],
+                    "exam_id": f"{submission.get('course_code') or submission['subject_code']}@{submission['session_name']}",
                 }
                 for submission in sample_submissions
             ]

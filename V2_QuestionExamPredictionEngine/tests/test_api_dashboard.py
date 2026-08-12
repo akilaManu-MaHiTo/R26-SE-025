@@ -1,21 +1,27 @@
 import httpx
+import pytest
 
 from app.api import deps
 from app.db.repository import upsert_student_analytics
 from app.main import app
+from app.services import student_pipeline
+from run_sample import load_raw_sample_documents, seed_raw_samples
 
 
 TOP_LEVEL_KEYS = {
     "student_id",
+    "exam_id",
     "course",
-    "assessment",
-    "question_analysis",
+    "overall_performance",
+    "question_performance",
     "topic_performance",
     "bloom_performance",
     "learning_analysis",
     "recommendations",
-    "next_question_generation",
+    "next_question_strategy",
     "model_metadata",
+    "generated_at",
+    "analysis_version",
 }
 
 
@@ -27,15 +33,15 @@ def valid_document(
 ) -> dict:
     return {
         "student_id": student_id,
+        "exam_id": f"{course_code}@{session_name}",
         "course": {"code": course_code, "name": "Software Engineering"},
-        "assessment": {
-            "session_name": session_name,
-            "rubric_ref": "rubric-001",
-            "total_score": 6.0,
-            "max_score": 10.0,
+        "overall_performance": {
+            "score": 6.0,
+            "maximum": 10.0,
             "percentage": 60.0,
+            "status": "Developing",
         },
-        "question_analysis": [],
+        "question_performance": [],
         "topic_performance": [
             {
                 "topic": "Testing",
@@ -43,7 +49,7 @@ def valid_document(
                 "score": 6.0,
                 "max_score": 10.0,
                 "percentage": 60.0,
-                "status": "Needs Improvement",
+                "status": "Developing",
             }
         ],
         "bloom_performance": [
@@ -51,22 +57,22 @@ def valid_document(
                 "level": "Understand",
                 "questions_attempted": 1,
                 "average_score": 60.0,
-                "status": "Needs Improvement",
+                "status": "Developing",
             }
         ],
         "learning_analysis": {
-            "overall_performance": "Needs Improvement",
-            "weak_topics": ["Testing"],
+            "overall_performance": "Developing",
             "strong_topics": [],
-            "weak_bloom_levels": ["Understand"],
-            "weak_subtopics": ["Unit testing"],
-            "learning_gaps": ["Review unit testing."],
+            "developing_topics": ["Testing"],
+            "weak_topics": [],
+            "critical_topics": [],
+            "learning_gaps": [],
         },
         "recommendations": [],
-        "next_question_generation": {
-            "recommended_bloom_level": "Apply",
-            "recommended_difficulty": "Medium",
+        "next_question_strategy": {
             "recommended_topics": ["Testing"],
+            "recommended_bloom_levels": ["Understand"],
+            "recommended_difficulty": "Medium",
             "number_of_questions": 5,
         },
         "model_metadata": {
@@ -75,24 +81,72 @@ def valid_document(
             "grading_source": "rubric",
             "rag_context_used": False,
         },
+        "generated_at": "2026-08-12T00:00:00Z",
+        "analysis_version": "1.0",
     }
+
+
+async def _clean_sample_documents(db):
+    _, _, submissions = load_raw_sample_documents()
+    student_ids = [submission["student_id"] for submission in submissions]
+    await db["courses"].delete_many({"code": "IT2040"})
+    await db["rubricCollection"].delete_many(
+        {"subject_code": "IT2040", "session_name": "Final Examination 2021"}
+    )
+    await db["submissions"].delete_many(
+        {"student_id": {"$in": student_ids}}
+    )
+    await db["student_analytics"].delete_many(
+        {"student_id": {"$in": student_ids}}
+    )
+
+
+async def fake_semantics(_course, _question, _criteria):
+    return {
+        "status": "ok",
+        "semantics": {
+            "level": "Understand",
+            "topic": "Databases",
+            "subtopic": "DBMS Fundamentals",
+            "confidence": 0.9,
+            "reason": "The question asks for an explanation.",
+        },
+    }
+
+
+async def fake_insights(_student_id, _evidence):
+    return {"status": "degraded", "reason": "offline_test"}
 
 
 async def test_dashboard_endpoint_returns_exact_persisted_contract(test_db):
     student_id = "IT-TASK-7-HAPPY"
-    await upsert_student_analytics(test_db, valid_document(student_id=student_id))
+    await upsert_student_analytics(
+        test_db,
+        valid_document(
+            student_id=student_id,
+            course_code="SE3040",
+            session_name="Semester 1 Final Exam",
+        ),
+    )
     app.dependency_overrides[deps.get_db] = lambda: test_db
     try:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(
             transport=transport, base_url="http://test"
         ) as client:
-            response = await client.get(f"/api/students/{student_id}/dashboard")
+            response = await client.get(
+                f"/api/students/{student_id}/dashboard",
+                params={
+                    "course_code": "SE3040",
+                    "session_name": "Semester 1 Final Exam",
+                },
+            )
 
         assert response.status_code == 200
         body = response.json()
         assert set(body) == TOP_LEVEL_KEYS
         assert body["student_id"] == student_id
+        assert body["exam_id"] == "SE3040@Semester 1 Final Exam"
         assert body["topic_performance"][0]["questions_attempted"] == 1
         assert body["bloom_performance"][0]["questions_attempted"] == 1
         assert "_id" not in body
@@ -126,17 +180,60 @@ async def test_dashboard_endpoint_forwards_course_and_session_filters(test_db):
             transport=transport, base_url="http://test"
         ) as client:
             response = await client.get(
-                f"/api/students/{student_id}/dashboard"
-                "?course_code=IT2040&session_name=Semester%202%20Final%20Exam"
+                f"/api/students/{student_id}/dashboard",
+                params={
+                    "course_code": "IT2040",
+                    "session_name": "Semester 2 Final Exam",
+                },
             )
 
         assert response.status_code == 200
         body = response.json()
         assert body["course"]["code"] == "IT2040"
-        assert body["assessment"]["session_name"] == "Semester 2 Final Exam"
+        assert body["exam_id"] == "IT2040@Semester 2 Final Exam"
     finally:
         app.dependency_overrides.clear()
         await test_db["student_analytics"].delete_many({"student_id": student_id})
+
+
+async def test_dashboard_endpoint_generates_on_first_access(
+    test_db, monkeypatch
+):
+    _, _, submissions = load_raw_sample_documents()
+    student_id = submissions[0]["student_id"]
+    await _clean_sample_documents(test_db)
+    try:
+        await seed_raw_samples(test_db)
+        monkeypatch.setattr(
+            student_pipeline, "classify_question_semantics", fake_semantics
+        )
+        monkeypatch.setattr(
+            student_pipeline, "generate_student_insights", fake_insights
+        )
+        app.dependency_overrides[deps.get_db] = lambda: test_db
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
+            response = await client.get(
+                f"/api/students/{student_id}/dashboard",
+                params={
+                    "course_code": "IT2040",
+                    "session_name": "Final Examination 2021",
+                },
+            )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert set(body) == TOP_LEVEL_KEYS
+        assert body["exam_id"] == "IT2040@Final Examination 2021"
+        persisted = await test_db["student_analytics"].find_one(
+            {"student_id": student_id}
+        )
+        assert persisted is not None
+    finally:
+        app.dependency_overrides.clear()
+        await _clean_sample_documents(test_db)
 
 
 async def test_dashboard_endpoint_unknown_student_returns_404(test_db):
@@ -148,23 +245,30 @@ async def test_dashboard_endpoint_unknown_student_returns_404(test_db):
         async with httpx.AsyncClient(
             transport=transport, base_url="http://test"
         ) as client:
-            response = await client.get(f"/api/students/{student_id}/dashboard")
+            response = await client.get(
+                f"/api/students/{student_id}/dashboard",
+                params={
+                    "course_code": "SE3040",
+                    "session_name": "Semester 1 Final Exam",
+                },
+            )
 
         assert response.status_code == 404
         assert response.json() == {
-            "detail": "no saved analytics found for student"
+            "detail": "no graded submission found for student"
         }
     finally:
         app.dependency_overrides.clear()
 
 
-def test_dashboard_openapi_exposes_only_replacement_parameters():
+def test_dashboard_openapi_exposes_required_course_and_session_params():
     operation = app.openapi()["paths"][
         "/api/students/{student_id}/dashboard"
     ]["get"]
+    params = {
+        parameter["name"]: parameter for parameter in operation["parameters"]
+    }
 
-    assert [parameter["name"] for parameter in operation["parameters"]] == [
-        "student_id",
-        "course_code",
-        "session_name",
-    ]
+    assert set(params) == {"student_id", "course_code", "session_name"}
+    assert params["course_code"]["required"] is True
+    assert params["session_name"]["required"] is True
