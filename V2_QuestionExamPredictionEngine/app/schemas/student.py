@@ -1,10 +1,11 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 BloomLevel = Literal["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"]
-PerformanceStatus = Literal["Strong", "Needs Improvement", "Critical"]
-RecommendationPriority = Literal["High", "Medium", "Low"]
+PerformanceStatus = Literal["Strong", "Developing", "Needs Improvement", "Critical"]
+RecommendationPriority = Literal["Critical", "High", "Medium", "Low"]
 QuestionDifficulty = Literal["Easy", "Medium", "Hard"]
 
 
@@ -13,17 +14,16 @@ class CourseInfo(BaseModel):
     name: str = Field(min_length=1)
 
 
-class AssessmentInfo(BaseModel):
-    session_name: str = Field(min_length=1)
-    rubric_ref: str = Field(min_length=1)
-    total_score: float = Field(ge=0)
-    max_score: float = Field(gt=0)
+class OverallPerformance(BaseModel):
+    score: float = Field(ge=0)
+    maximum: float = Field(gt=0)
     percentage: float = Field(ge=0, le=100)
+    status: PerformanceStatus
 
     @model_validator(mode="after")
-    def total_score_does_not_exceed_max_score(self):
-        if self.total_score > self.max_score:
-            raise ValueError("total_score cannot exceed max_score")
+    def score_does_not_exceed_maximum(self):
+        if self.score > self.maximum:
+            raise ValueError("score cannot exceed maximum")
         return self
 
 
@@ -58,11 +58,12 @@ class CriterionPerformance(BaseModel):
         return self
 
 
-class QuestionAnalysis(BaseModel):
-    question_no: str
-    question: str
-    topic: str
-    subtopic: str
+class QuestionPerformance(BaseModel):
+    question_id: str = Field(min_length=1)
+    question_no: str = Field(min_length=1)
+    question_text: str = Field(min_length=1)
+    topic: str = Field(min_length=1)
+    subtopic: str = Field(min_length=1)
     bloom_analysis: BloomAnalysis
     performance: Performance
     criteria_performance: list[CriterionPerformance] = Field(default_factory=list)
@@ -90,26 +91,31 @@ class BloomPerformance(BaseModel):
     status: PerformanceStatus
 
 
+class LearningGap(BaseModel):
+    topic: str = Field(min_length=1)
+    subtopic: str = Field(min_length=1)
+    priority: RecommendationPriority
+
+
 class LearningAnalysis(BaseModel):
     overall_performance: PerformanceStatus
-    weak_topics: list[str] = Field(default_factory=list)
     strong_topics: list[str] = Field(default_factory=list)
-    weak_bloom_levels: list[BloomLevel] = Field(default_factory=list)
-    weak_subtopics: list[str] = Field(default_factory=list)
-    learning_gaps: list[str] = Field(default_factory=list)
+    developing_topics: list[str] = Field(default_factory=list)
+    weak_topics: list[str] = Field(default_factory=list)
+    critical_topics: list[str] = Field(default_factory=list)
+    learning_gaps: list[LearningGap] = Field(default_factory=list)
 
 
 class Recommendation(BaseModel):
-    priority: RecommendationPriority
     topic: str = Field(min_length=1)
-    bloom_level: BloomLevel
+    priority: RecommendationPriority
     action: str = Field(min_length=1)
 
 
-class NextQuestionGeneration(BaseModel):
-    recommended_bloom_level: BloomLevel
-    recommended_difficulty: QuestionDifficulty
+class NextQuestionStrategy(BaseModel):
     recommended_topics: list[str] = Field(default_factory=list)
+    recommended_bloom_levels: list[BloomLevel] = Field(default_factory=list)
+    recommended_difficulty: QuestionDifficulty
     number_of_questions: Literal[5]
 
 
@@ -122,12 +128,15 @@ class ModelMetadata(BaseModel):
 
 class StudentAnalyticsDocument(BaseModel):
     student_id: str = Field(min_length=1)
+    exam_id: str = Field(min_length=1)
     course: CourseInfo
-    assessment: AssessmentInfo
-    question_analysis: list[QuestionAnalysis] = Field(default_factory=list)
+    overall_performance: OverallPerformance
+    question_performance: list[QuestionPerformance] = Field(default_factory=list)
     topic_performance: list[TopicPerformance] = Field(default_factory=list)
     bloom_performance: list[BloomPerformance] = Field(default_factory=list)
     learning_analysis: LearningAnalysis
     recommendations: list[Recommendation] = Field(default_factory=list)
-    next_question_generation: NextQuestionGeneration
+    next_question_strategy: NextQuestionStrategy
     model_metadata: ModelMetadata
+    generated_at: datetime
+    analysis_version: str = Field(min_length=1)
