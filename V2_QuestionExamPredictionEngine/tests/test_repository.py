@@ -4,10 +4,13 @@ from app.db import repository
 from app.db.repository import (
     create_indexes,
     find_attempts,
+    find_exam_analytics,
     insert_attempts,
     save_run,
+    upsert_exam_analytics,
 )
 from tests.fixtures.fixture_data import expected_attempt_records
+from tests.test_exam_analytics import exam_document
 
 
 async def test_indexes_created(test_db):
@@ -474,3 +477,12 @@ async def test_find_rubric_uses_sample_fallback_for_placeholder_reference(test_d
         await test_db["rubricCollection"].delete_many(
             {"_id": {"$in": [placeholder_id, fallback_id]}}
         )
+
+
+async def test_upsert_and_find_exam_analytics_round_trip(test_db):
+    from app.schemas.exam_analytics import ExamAnalyticsDocument
+
+    doc = ExamAnalyticsDocument.model_validate(exam_document()).model_dump(mode="json")
+    await upsert_exam_analytics(test_db, doc)
+    found = await find_exam_analytics(test_db, "IT2040", "Final Examination 2021")
+    assert found["exam_id"] == "IT2040@Final Examination 2021"
