@@ -82,3 +82,6 @@ Desktop.ini
 .superpowers
 **/CLAUDE.md
 skills-lock.json
+
+# Playwright MCP testing artifacts
+.playwright-mcp/
