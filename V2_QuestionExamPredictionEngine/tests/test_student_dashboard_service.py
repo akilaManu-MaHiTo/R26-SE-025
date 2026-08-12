@@ -1,121 +1,108 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from pydantic import ValidationError
 
 from app.schemas.student import StudentAnalyticsDocument
 from app.services import student_dashboard
-from app.services.student_dashboard import (
-    StudentDashboardNotFound,
-    get_student_dashboard,
-)
 
 
 def valid_document() -> dict:
     return {
         "student_id": "IT22145976",
-        "course": {"code": "SE3040", "name": "Software Engineering"},
-        "assessment": {
-            "session_name": "Semester 1 Final Exam",
-            "rubric_ref": "rubric-001",
-            "total_score": 6.0,
-            "max_score": 10.0,
-            "percentage": 60.0,
+        "exam_id": "IT2040@Final Examination 2021",
+        "course": {"code": "IT2040", "name": "Database Management Systems"},
+        "overall_performance": {
+            "score": 65.0,
+            "maximum": 100.0,
+            "percentage": 65.0,
+            "status": "Needs Improvement",
         },
-        "question_analysis": [],
+        "question_performance": [],
         "topic_performance": [
             {
-                "topic": "Testing",
+                "topic": "JDBC",
                 "questions_attempted": 1,
-                "score": 6.0,
-                "max_score": 10.0,
-                "percentage": 60.0,
-                "status": "Needs Improvement",
+                "score": 19.0,
+                "max_score": 25.0,
+                "percentage": 76.0,
+                "status": "Strong",
             }
         ],
-        "bloom_performance": [
-            {
-                "level": "Understand",
-                "questions_attempted": 1,
-                "average_score": 60.0,
-                "status": "Needs Improvement",
-            }
-        ],
+        "bloom_performance": [],
         "learning_analysis": {
             "overall_performance": "Needs Improvement",
-            "weak_topics": ["Testing"],
             "strong_topics": [],
-            "weak_bloom_levels": ["Understand"],
-            "weak_subtopics": ["Unit testing"],
-            "learning_gaps": ["Review unit testing."],
+            "developing_topics": [],
+            "weak_topics": [],
+            "critical_topics": [],
+            "learning_gaps": [],
         },
         "recommendations": [],
-        "next_question_generation": {
-            "recommended_bloom_level": "Apply",
+        "next_question_strategy": {
+            "recommended_topics": [],
+            "recommended_bloom_levels": [],
             "recommended_difficulty": "Medium",
-            "recommended_topics": ["Testing"],
             "number_of_questions": 5,
         },
         "model_metadata": {
             "bloom_model": "qwen3:8b",
             "bloom_model_type": "base",
-            "grading_source": "rubric",
-            "rag_context_used": False,
+            "grading_source": "colab",
+            "rag_context_used": True,
         },
+        "generated_at": "2026-08-12T00:00:00Z",
+        "analysis_version": "1.0",
     }
 
 
-async def test_get_student_dashboard_returns_persisted_contract(monkeypatch):
+async def test_ensure_loads_cached_analysis_without_generating(monkeypatch):
     find = AsyncMock(return_value=valid_document())
+    build = AsyncMock()
     monkeypatch.setattr(student_dashboard, "find_student_analytics", find)
-    db = object()
+    monkeypatch.setattr(student_dashboard, "build_student_analytics", build)
 
-    result = await get_student_dashboard(
-        db, "IT22145976", "SE3040", None
+    result = await student_dashboard.ensure_student_analytics(
+        object(), "IT22145976", "IT2040", "Final Examination 2021"
     )
 
     assert isinstance(result, StudentAnalyticsDocument)
-    assert result.student_id == "IT22145976"
-    assert result.topic_performance[0].questions_attempted == 1
-    find.assert_awaited_once_with(db, "IT22145976", "SE3040", None)
+    build.assert_not_awaited()
+    find.assert_awaited_once()
 
 
-async def test_get_student_dashboard_forwards_session_filter(monkeypatch):
-    find = AsyncMock(return_value=valid_document())
+async def test_ensure_generates_and_saves_when_missing(monkeypatch):
+    find = AsyncMock(return_value=None)
+    built = StudentAnalyticsDocument.model_validate(valid_document())
+    build = AsyncMock(return_value=built)
+    save = AsyncMock()
+    submission = AsyncMock(return_value={"student_id": "IT22145976"})
     monkeypatch.setattr(student_dashboard, "find_student_analytics", find)
-    db = object()
+    monkeypatch.setattr(student_dashboard, "find_graded_submission", submission)
+    monkeypatch.setattr(student_dashboard, "build_student_analytics", build)
+    monkeypatch.setattr(student_dashboard, "upsert_student_analytics", save)
 
-    await get_student_dashboard(
-        db, "IT22145976", None, "Semester 1 Final Exam"
+    result = await student_dashboard.ensure_student_analytics(
+        object(), "IT22145976", "IT2040", "Final Examination 2021"
     )
 
-    find.assert_awaited_once_with(
-        db, "IT22145976", None, "Semester 1 Final Exam"
-    )
+    build.assert_awaited_once()
+    save.assert_awaited_once()
+    assert result == built
 
 
-async def test_get_student_dashboard_raises_when_no_document_exists(monkeypatch):
-    monkeypatch.setattr(
-        student_dashboard,
-        "find_student_analytics",
-        AsyncMock(return_value=None),
+async def test_ensure_raises_when_no_submission_exists(monkeypatch):
+    find = AsyncMock(return_value=None)
+    build = AsyncMock(
+        side_effect=student_dashboard.StudentNotFound("no graded submission")
     )
+    submission = AsyncMock(return_value={"student_id": "IT22145976"})
+    monkeypatch.setattr(student_dashboard, "find_student_analytics", find)
+    monkeypatch.setattr(student_dashboard, "find_graded_submission", submission)
+    monkeypatch.setattr(student_dashboard, "build_student_analytics", build)
 
     with pytest.raises(
-        StudentDashboardNotFound,
-        match="no saved analytics found for student",
+        student_dashboard.StudentNotFound, match="no graded submission"
     ):
-        await get_student_dashboard(object(), "missing-student")
-
-
-async def test_get_student_dashboard_validates_the_persisted_document(monkeypatch):
-    invalid = valid_document()
-    invalid["topic_performance"][0]["questions_attempted"] = -1
-    monkeypatch.setattr(
-        student_dashboard,
-        "find_student_analytics",
-        AsyncMock(return_value=invalid),
-    )
-
-    with pytest.raises(ValidationError):
-        await get_student_dashboard(object(), "IT22145976")
+        await student_dashboard.ensure_student_analytics(
+            object(), "IT22145976", "IT2040", "Final Examination 2021"
+        )
