@@ -53,7 +53,7 @@ async def compute_exam_analytics(db, course_code: str, session_name: str) -> dic
     stats = compute_exam_analytics_stats(students, pass_threshold=0.5)
     total_marks = sum(float(q["max_marks"]) for q in (rubric or {}).get("questions", []))
     question_count = len((rubric or {}).get("questions", []))
-    course_name = str(course.get("name") or course.get("course_name") or "").strip()
+    course_name = str((course or {}).get("name") or (course or {}).get("course_name") or "").strip()
     if not course_name:
         course_name = "Database Management Systems" if course_code == "IT2040" else course_code
     document = {
