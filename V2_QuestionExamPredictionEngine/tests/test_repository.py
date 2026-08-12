@@ -125,15 +125,15 @@ def valid_document(
 ) -> dict:
     return {
         "student_id": student_id,
+        "exam_id": f"{course_code}@{session_name}",
         "course": {"code": course_code, "name": "Software Engineering"},
-        "assessment": {
-            "session_name": session_name,
-            "rubric_ref": "rubric-task-5",
-            "total_score": 6.0,
-            "max_score": 10.0,
+        "overall_performance": {
+            "score": 6.0,
+            "maximum": 10.0,
             "percentage": 60.0,
+            "status": "Developing",
         },
-        "question_analysis": [],
+        "question_performance": [],
         "topic_performance": [
             {
                 "topic": "Testing",
@@ -141,7 +141,7 @@ def valid_document(
                 "score": 6.0,
                 "max_score": 10.0,
                 "percentage": 60.0,
-                "status": "Needs Improvement",
+                "status": "Developing",
             }
         ],
         "bloom_performance": [
@@ -149,22 +149,22 @@ def valid_document(
                 "level": "Understand",
                 "questions_attempted": 1,
                 "average_score": 60.0,
-                "status": "Needs Improvement",
+                "status": "Developing",
             }
         ],
         "learning_analysis": {
-            "overall_performance": "Needs Improvement",
-            "weak_topics": ["Testing"],
+            "overall_performance": "Developing",
             "strong_topics": [],
-            "weak_bloom_levels": ["Understand"],
-            "weak_subtopics": ["Unit testing"],
-            "learning_gaps": ["Review unit testing."],
+            "developing_topics": ["Testing"],
+            "weak_topics": [],
+            "critical_topics": [],
+            "learning_gaps": [],
         },
         "recommendations": [],
-        "next_question_generation": {
-            "recommended_bloom_level": "Apply",
-            "recommended_difficulty": "Medium",
+        "next_question_strategy": {
             "recommended_topics": ["Testing"],
+            "recommended_bloom_levels": ["Understand"],
+            "recommended_difficulty": "Medium",
             "number_of_questions": 5,
         },
         "model_metadata": {
@@ -173,6 +173,8 @@ def valid_document(
             "grading_source": "rubric",
             "rag_context_used": False,
         },
+        "generated_at": "2026-08-12T00:00:00Z",
+        "analysis_version": "1.0",
     }
 
 
@@ -183,7 +185,7 @@ async def test_student_analytics_unique_compound_index_is_named(test_db):
     assert info["uniq_student_analytics"]["key"] == [
         ("student_id", 1),
         ("course.code", 1),
-        ("assessment.session_name", 1),
+        ("exam_id", 1),
     ]
     assert info["uniq_student_analytics"]["unique"] is True
 
@@ -196,18 +198,124 @@ async def test_upsert_student_analytics_is_idempotent(test_db):
         await repository.upsert_student_analytics(test_db, document)
         assert document == original
 
-        document["assessment"]["total_score"] = 7.0
-        document["assessment"]["percentage"] = 70.0
+        document["overall_performance"]["score"] = 7.0
+        document["overall_performance"]["percentage"] = 70.0
         await repository.upsert_student_analytics(test_db, document)
         saved = await test_db["student_analytics"].find(
             {"student_id": student_id}
         ).to_list(length=None)
 
         assert len(saved) == 1
-        assert saved[0]["assessment"]["total_score"] == 7.0
+        assert saved[0]["overall_performance"]["score"] == 7.0
         assert "_id" not in document
     finally:
         await test_db["student_analytics"].delete_many({"student_id": student_id})
+
+
+async def test_upsert_student_analytics_is_idempotent_by_exam_id(test_db):
+    student_id = "IT22145976"
+    document = valid_document(
+        student_id=student_id,
+        course_code="IT2040",
+        session_name="Final Examination 2021",
+    )
+    try:
+        await repository.upsert_student_analytics(test_db, document)
+        document["overall_performance"]["score"] = 70.0
+        document["overall_performance"]["percentage"] = 70.0
+        await repository.upsert_student_analytics(test_db, document)
+        saved = await test_db["student_analytics"].find(
+            {"student_id": student_id}
+        ).to_list(length=None)
+        assert len(saved) == 1
+        assert saved[0]["overall_performance"]["score"] == 70.0
+    finally:
+        await test_db["student_analytics"].delete_many({"student_id": student_id})
+
+
+async def test_find_student_analytics_matches_course_and_session(test_db):
+    student_id = "IT22145976"
+    await repository.upsert_student_analytics(
+        test_db,
+        valid_document(
+            student_id=student_id,
+            course_code="IT2040",
+            session_name="Final Examination 2021",
+        ),
+    )
+    try:
+        found = await repository.find_student_analytics(
+            test_db, student_id, "IT2040", "Final Examination 2021"
+        )
+        assert found["exam_id"] == "IT2040@Final Examination 2021"
+    finally:
+        await test_db["student_analytics"].delete_many({"student_id": student_id})
+
+
+async def test_find_graded_submission_matches_student_course_and_session(test_db):
+    student_id = "task-5-graded-submission"
+    await test_db["submissions"].insert_many(
+        [
+            {
+                "student_id": student_id,
+                "subject_code": "IT2040",
+                "session_name": "Final Examination 2021",
+                "status": "graded",
+            },
+            {
+                "student_id": student_id,
+                "subject_code": "IT2040",
+                "session_name": "Final Examination 2021",
+                "status": "pending",
+            },
+        ]
+    )
+    try:
+        found = await repository.find_graded_submission(
+            test_db, student_id, "IT2040", "Final Examination 2021"
+        )
+        assert found is not None
+        assert found["status"] == "graded"
+    finally:
+        await test_db["submissions"].delete_many({"student_id": student_id})
+
+
+async def test_find_graded_submissions_for_exam_filters_by_session(test_db):
+    student_ids = ["task-5-exam-s1", "task-5-exam-s2", "task-5-exam-s3"]
+    await test_db["submissions"].insert_many(
+        [
+            {
+                "student_id": student_ids[0],
+                "subject_code": "IT2040",
+                "session_name": "Final Examination 2021",
+                "status": "graded",
+            },
+            {
+                "student_id": student_ids[1],
+                "subject_code": "IT2040",
+                "session_name": "Final Examination 2021",
+                "status": "graded",
+            },
+            {
+                "student_id": student_ids[2],
+                "subject_code": "IT2040",
+                "session_name": "Other Session",
+                "status": "graded",
+            },
+        ]
+    )
+    try:
+        found = await repository.find_graded_submissions_for_exam(
+            test_db, "IT2040", "Final Examination 2021"
+        )
+        assert {doc["student_id"] for doc in found} == {
+            student_ids[0],
+            student_ids[1],
+        }
+    finally:
+        await test_db["submissions"].delete_many(
+            {"student_id": {"$in": student_ids}}
+        )
 
 
 async def test_find_student_analytics_filters_and_returns_id_free_copy(test_db):
