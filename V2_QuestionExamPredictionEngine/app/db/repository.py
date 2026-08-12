@@ -24,7 +24,7 @@ _UNIQUE_INDEXES = {
     "student_analytics": [
         ("student_id", 1),
         ("course.code", 1),
-        ("assessment.session_name", 1),
+        ("exam_id", 1),
     ],
 }
 
@@ -148,7 +148,7 @@ async def upsert_student_analytics(
     identity = {
         "student_id": document["student_id"],
         "course.code": document["course"]["code"],
-        "assessment.session_name": document["assessment"]["session_name"],
+        "exam_id": document["exam_id"],
     }
     await db["student_analytics"].replace_one(
         identity, deepcopy(document), upsert=True
@@ -162,10 +162,11 @@ async def find_student_analytics(
     session_name: str | None = None,
 ) -> dict | None:
     filters: dict[str, object] = {"student_id": student_id}
-    if course_code is not None:
+    if course_code is not None and session_name is not None:
         filters["course.code"] = course_code
-    if session_name is not None:
-        filters["assessment.session_name"] = session_name
+        filters["exam_id"] = f"{course_code}@{session_name}"
+    elif course_code is not None:
+        filters["course.code"] = course_code
 
     document = await db["student_analytics"].find_one(
         filters, sort=[("_id", -1)]
@@ -176,3 +177,28 @@ async def find_student_analytics(
     result = deepcopy(document)
     result.pop("_id", None)
     return result
+
+
+async def find_graded_submission(
+    db: AsyncIOMotorDatabase,
+    student_id: str,
+    course_code: str,
+    session_name: str,
+) -> dict | None:
+    return await db["submissions"].find_one(
+        {
+            "student_id": student_id,
+            "subject_code": course_code,
+            "session_name": session_name,
+            "status": "graded",
+        }
+    )
+
+
+async def find_graded_submissions_for_exam(
+    db: AsyncIOMotorDatabase, course_code: str, session_name: str
+) -> list[dict]:
+    cursor = db["submissions"].find(
+        {"subject_code": course_code, "session_name": session_name, "status": "graded"}
+    )
+    return await cursor.to_list(length=None)
