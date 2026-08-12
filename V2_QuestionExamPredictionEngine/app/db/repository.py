@@ -202,3 +202,21 @@ async def find_graded_submissions_for_exam(
         {"subject_code": course_code, "session_name": session_name, "status": "graded"}
     )
     return await cursor.to_list(length=None)
+
+
+async def upsert_exam_analytics(db: AsyncIOMotorDatabase, document: dict) -> None:
+    identity = {"exam_id": document["exam_id"], "analytics_version": document["analytics_version"]}
+    await db["analytics_snapshots"].replace_one(identity, deepcopy(document), upsert=True)
+
+
+async def find_exam_analytics(
+    db: AsyncIOMotorDatabase, course_code: str, session_name: str
+) -> dict | None:
+    document = await db["analytics_snapshots"].find_one(
+        {"exam_id": f"{course_code}@{session_name}"}, sort=[("_id", -1)]
+    )
+    if document is None:
+        return None
+    result = deepcopy(document)
+    result.pop("_id", None)
+    return result
