@@ -92,10 +92,8 @@ async def test_ensure_generates_and_saves_when_missing(monkeypatch):
 
 async def test_ensure_raises_when_no_submission_exists(monkeypatch):
     find = AsyncMock(return_value=None)
-    build = AsyncMock(
-        side_effect=student_dashboard.StudentNotFound("no graded submission")
-    )
-    submission = AsyncMock(return_value={"student_id": "IT22145976"})
+    submission = AsyncMock(return_value=None)
+    build = AsyncMock()
     monkeypatch.setattr(student_dashboard, "find_student_analytics", find)
     monkeypatch.setattr(student_dashboard, "find_graded_submission", submission)
     monkeypatch.setattr(student_dashboard, "build_student_analytics", build)
@@ -106,3 +104,5 @@ async def test_ensure_raises_when_no_submission_exists(monkeypatch):
         await student_dashboard.ensure_student_analytics(
             object(), "IT22145976", "IT2040", "Final Examination 2021"
         )
+
+    build.assert_not_awaited()
