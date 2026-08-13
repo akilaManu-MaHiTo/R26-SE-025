@@ -1,13 +1,14 @@
-import json
 from pathlib import Path
+
+from bson.json_util import loads
 
 SAMPLE_DIR = Path(__file__).resolve().parent
 
 
-def _load(name: str) -> dict:
+def _load(name: str) -> object:
     path = SAMPLE_DIR / name
     with open(path, encoding="utf-8") as fh:
-        return json.load(fh)
+        return loads(fh.read())
 
 
 def _slug(value: str) -> str:
@@ -40,8 +41,7 @@ def parse_paper(rubric: dict) -> dict:
     return {
         "exam_id": exam_id,
         "course_code": course_code,
-        "year": rubric.get("year")
-        or (2021 if "2021" in rubric.get("session_name", "") else 0),
+        "year": rubric.get("year") or 0,
         "title": rubric.get("session_name", ""),
         "questions": questions,
     }
@@ -132,18 +132,27 @@ def course_settings(course: dict) -> dict:
 
 
 def load_real() -> tuple[dict, list[dict], list[dict]]:
-    course_document = _load("courses.json")
-    rubric = _load("rubricCollection.json")
+    courses = _load("courses/courses.json")
+    rubric = _load("rubricCollection/rubricCollection.json")
 
     paper = parse_paper(rubric)
+    subject_code = paper["course_code"]
+    course_document = next(
+        (
+            course
+            for course in courses
+            if (course.get("code") or course.get("subject_code")) == subject_code
+        ),
+        courses[0] if courses else {},
+    )
     course = course_settings(course_document)
 
     submissions = []
-    for sub_path in sorted(SAMPLE_DIR.glob("submission*.json")):
-        sub = json.loads(sub_path.read_text(encoding="utf-8"))
-        submissions.extend(
-            parse_submission(
-                sub, paper["exam_id"], paper["course_code"], rubric["questions"]
+    for sub_path in sorted((SAMPLE_DIR / "submissions").glob("submission*.json")):
+        for sub in _load(f"submissions/{sub_path.name}"):
+            submissions.extend(
+                parse_submission(
+                    sub, paper["exam_id"], paper["course_code"], rubric["questions"]
+                )
             )
-        )
     return course, [paper], submissions

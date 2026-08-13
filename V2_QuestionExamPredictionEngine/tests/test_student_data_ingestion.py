@@ -49,21 +49,21 @@ def minimal_submission(q_no: str, score: float, max_score: float) -> dict:
 
 
 def test_normalize_submission_joins_questions_and_criteria():
-    rubric = _load("rubricCollection.json")
-    submission = _load("submission.json")
+    rubric = _load("rubricCollection/rubricCollection.json")
+    submission = _load("submissions/submission.json")[0]
     normalized = normalize_student_submission(
         {"course_code": "IT2040", "course_name": "Database Management Systems"},
         rubric,
         submission,
     )
-    assert normalized.student_id == "IT21001234"
+    assert normalized.student_id == "IT22145976"
     assert normalized.course_code == "IT2040"
     assert normalized.course_name == "Database Management Systems"
-    assert len(normalized.questions) == 11
+    assert len(normalized.questions) == 4
     assert normalized.questions[0].question_no == "01"
-    assert normalized.questions[0].score == 6.0
-    assert normalized.questions[0].max_score == 8.0
-    assert normalized.questions[0].criteria[0].awarded_marks == 2.5
+    assert normalized.questions[0].score == 11.0
+    assert normalized.questions[0].max_score == 20.0
+    assert normalized.questions[0].criteria[0].awarded_marks == 2.0
 
 
 def test_normalize_submission_rejects_result_without_rubric_question():
