@@ -486,8 +486,8 @@ async def test_upsert_and_find_exam_analytics_round_trip(test_db):
 
     doc = ExamAnalyticsDocument.model_validate(exam_document()).model_dump(mode="json")
     await upsert_exam_analytics(test_db, doc)
-    found = await find_exam_analytics(test_db, "IT2040", "Final Examination 2021")
-    assert found["exam_id"] == "IT2040@Final Examination 2021"
+    found = await find_exam_analytics(test_db, "IT2040", "Final Examination")
+    assert found["exam_id"] == "IT2040@Final Examination"
 
 
 async def test_generated_questions_round_trip(test_db):
