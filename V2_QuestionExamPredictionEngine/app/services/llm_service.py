@@ -183,6 +183,29 @@ def is_embedding_available() -> bool:
     return _get_embedder().is_available()
 
 
+async def generate_practice_questions(target: dict) -> dict:
+    from app.llm.roles.generate_practice import PracticeQuestions
+
+    prompt = (
+        "Generate practice DBMS questions for a student using only the supplied targeting. "
+        "The target is authoritative; do not perform any numeric calculations.\n"
+        "Respond ONLY with JSON matching this schema:\n"
+        '{"requested_count": int, "questions": [{"prompt": str, "bloom_level": '
+        '"Remember|Understand|Apply|Analyze|Evaluate|Create", "topic": str, '
+        '"difficulty": "Easy|Medium|Hard", "hints": [str]}]}\n'
+        f"TARGET: {json.dumps(target, ensure_ascii=False)}"
+    )
+    try:
+        parsed, _raw, _review = await validate_with_retry(
+            PracticeQuestions, prompt, temperature=settings.ollama_generate_temperature
+        )
+    except OllamaUnavailable:
+        return {"status": "degraded", "reason": "ollama_unavailable"}
+    if parsed is None:
+        return {"status": "degraded", "reason": "schema_failure"}
+    return {"status": "ok", "questions": [q.model_dump() for q in parsed.questions]}
+
+
 async def generate_candidates(recommendation: dict, count: int = 3) -> dict:
     from app.llm.roles.generate import CandidateQuestions
 
