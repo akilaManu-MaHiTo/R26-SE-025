@@ -1,6 +1,0 @@
-{
-  "_id": "ObjectId('...')",
-  "code": "IT2040",
-  "name": "Database Management Systems",
-  "description": "Database design and implementation: ER/EER modeling, relational schema design and normalization, SQL and T-SQL, transaction management, concurrency control, and SQL Server user/role administration."
-}
