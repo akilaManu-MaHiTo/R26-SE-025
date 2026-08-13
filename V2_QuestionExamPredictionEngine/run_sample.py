@@ -1,9 +1,9 @@
 import asyncio
-import json
 import sys
 from pathlib import Path
 
 from motor.motor_asyncio import AsyncIOMotorClient
+from bson.json_util import loads
 from tqdm import tqdm
 
 from app.config import settings
@@ -16,14 +16,22 @@ SAMPLE_DIR = Path(__file__).resolve().parent / "app" / "sample_data"
 
 
 def load_raw_sample_documents() -> tuple[list[dict], list[dict], list[dict]]:
-    """Load the checked-in raw MongoDB sample documents."""
+    """Load the checked-in raw MongoDB sample documents.
 
-    def load(path: Path) -> dict:
-        return json.loads(path.read_text(encoding="utf-8"))
+    The three folders under app/sample_data/ mirror the courses,
+    rubricCollection, and submissions collections. Documents are decoded
+    from MongoDB Extended JSON ($oid/$date) into native BSON types.
+    """
 
-    courses = [load(SAMPLE_DIR / "courses.json")]
-    rubrics = [load(SAMPLE_DIR / "rubricCollection.json")]
-    submissions = [load(path) for path in sorted(SAMPLE_DIR.glob("submission*.json"))]
+    def load(path: Path) -> object:
+        with open(path, encoding="utf-8") as fh:
+            return loads(fh.read())
+
+    courses = load(SAMPLE_DIR / "courses" / "courses.json")
+    rubrics = [load(SAMPLE_DIR / "rubricCollection" / "rubricCollection.json")]
+    submissions: list[dict] = []
+    for path in sorted((SAMPLE_DIR / "submissions").glob("submission*.json")):
+        submissions.extend(load(path))
     return courses, rubrics, submissions
 
 
