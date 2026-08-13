@@ -20,7 +20,7 @@ _UNIQUE_INDEXES = {
     "question_attempts": [
         ("analysis_run_id", 1), ("exam_id", 1), ("student_key", 1), ("question_number", 1), ("part", 1),
     ],
-    "analytics_snapshots": [("course_code", 1), ("exam_id", 1), ("algorithm_version", 1)],
+    "analytics_snapshots": [("exam_id", 1), ("analytics_version", 1)],
     "analysis_runs": [("run_id", 1)],
     "student_analytics": [
         ("student_id", 1),
@@ -32,9 +32,15 @@ _UNIQUE_INDEXES = {
 
 async def create_indexes(db: AsyncIOMotorDatabase) -> None:
     for collection, fields in _UNIQUE_INDEXES.items():
-        await db[collection].create_index(
-            [(k, v) for k, v in fields], unique=True, name=f"uniq_{collection}"
-        )
+        name = f"uniq_{collection}"
+        keys = [(k, v) for k, v in fields]
+        existing = await db[collection].index_information()
+        current = existing.get(name)
+        if current is not None:
+            if tuple(current["key"]) == tuple(keys):
+                continue
+            await db[collection].drop_index(name)
+        await db[collection].create_index(keys, unique=True, name=name)
 
 
 async def upsert_catalog(db: AsyncIOMotorDatabase, doc: dict) -> None:
