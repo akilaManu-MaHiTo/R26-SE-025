@@ -5,9 +5,11 @@ from app.db.repository import (
     create_indexes,
     find_attempts,
     find_exam_analytics,
+    find_generated_questions,
     insert_attempts,
     save_run,
     upsert_exam_analytics,
+    upsert_generated_questions,
 )
 from tests.fixtures.fixture_data import expected_attempt_records
 from tests.test_exam_analytics import exam_document
@@ -486,3 +488,19 @@ async def test_upsert_and_find_exam_analytics_round_trip(test_db):
     await upsert_exam_analytics(test_db, doc)
     found = await find_exam_analytics(test_db, "IT2040", "Final Examination 2021")
     assert found["exam_id"] == "IT2040@Final Examination 2021"
+
+
+async def test_generated_questions_round_trip(test_db):
+    document = {
+        "student_id": "IT22145976",
+        "exam_id": "IT2040@Final Examination 2021",
+        "course": {"code": "IT2040", "name": "Database Management Systems"},
+        "request": {"recommended_topics": ["SQL"], "recommended_bloom_levels": ["Understand"], "recommended_difficulty": "Medium", "number_of_questions": 5},
+        "questions": [{"prompt": "Write an authentication query.", "bloom_level": "Understand", "topic": "SQL", "difficulty": "Medium", "hints": ["Use CREATE LOGIN"]}],
+        "generated_at": "2026-08-12T00:00:00Z",
+        "generation_version": "1.0",
+    }
+    await upsert_generated_questions(test_db, document)
+    found = await find_generated_questions(test_db, "IT22145976", "IT2040@Final Examination 2021")
+    assert found["student_id"] == "IT22145976"
+    assert found["questions"][0]["prompt"].startswith("Write")
