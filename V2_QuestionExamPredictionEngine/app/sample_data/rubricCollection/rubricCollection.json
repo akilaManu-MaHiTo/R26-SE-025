@@ -1,0 +1,198 @@
+{
+  "_id": { "$oid": "66a100000000000000000012" },
+  "session_name": "Final Examination",
+  "subject_code": "IT2040",
+  "subject_name": "Database Management Systems",
+  "year": 2022,
+  "month": 7,
+  "semester": 1,
+  "filename": "IT2040_final_rubric.pdf",
+  "parsed_at": 1720000000.124,
+  "questions": [
+    {
+      "question_no": "01",
+      "question_text": "a) Define the ACID properties and explain how they are enforced in a database system. Construct a schedule with three transactions that demonstrates a cascading rollback scenario under Basic 2PL, and show how Strict 2PL prevents this. Then, provide a schedule containing a write-write conflict that is view serializable but not conflict serializable. Prove view equivalence by explicitly stating the read-from dependencies and final write condition for each data item.\n\nb) Compare and contrast Multi-Version Concurrency Control (MVCC) with traditional locking protocols. Explain the concepts of snapshot isolation and write skew anomaly. Given a scenario with transactions T1 and T2 operating on accounts X and Y, where a constraint requires X + Y > 0, provide a concurrent execution under MVCC snapshot isolation that violates this constraint. Discuss how Serializable Snapshot Isolation (SSI) detects and resolves this anomaly.",
+      "max_marks": 20,
+      "criteria": [
+        {
+          "point": "Defines Atomicity, Consistency, Isolation, Durability and links each to enforcement mechanisms (e.g., logging, locking)",
+          "marks": 4
+        },
+        {
+          "point": "Constructs a valid 3-transaction schedule exhibiting cascading rollback under Basic 2PL",
+          "marks": 2
+        },
+        {
+          "point": "Shows how Strict 2PL modifies the schedule to prevent cascading rollback",
+          "marks": 2
+        },
+        {
+          "point": "Provides a schedule with a write-write conflict that is view serializable but not conflict serializable",
+          "marks": 2
+        },
+        {
+          "point": "Correctly states read-from dependencies and final write condition to prove view equivalence",
+          "marks": 2
+        },
+        {
+          "point": "Compares MVCC (readers don't block writers, versioning) with traditional locking (blocking, serialization through locks)",
+          "marks": 2
+        },
+        {
+          "point": "Defines snapshot isolation and explains write skew anomaly with respect to constraint violation",
+          "marks": 2
+        },
+        {
+          "point": "Provides a correct concurrent execution under MVCC that violates X + Y > 0",
+          "marks": 2
+        },
+        {
+          "point": "Explains how SSI detects (e.g., tracking rw-dependencies) and resolves (aborting one transaction) the anomaly",
+          "marks": 2
+        }
+      ],
+      "model_answer": "ACID: Atomicity via logging/undo; Consistency via constraints and app logic; Isolation via locking/MVCC; Durability via WAL and recovery. Basic 2PL schedule causes cascading abort when T1 aborts after T2 reads uncommitted data. Strict 2PL holds locks until commit. View serializable example: T1: W(A), T2: W(A), T3: R(A), W(B). Conflict equivalent to T2, T1, T3 but view equivalent to T1, T2, T3. MVCC creates versions per write; readers see snapshot. Snapshot isolation allows write skew: T1 reads X=50, Y=50; T2 reads X=50, Y=50; T1 writes X=-40; T2 writes Y=-40; commit both -> X+Y = -80. SSI tracks dangerous structure (rw-cycle) and aborts one transaction."
+    },
+    {
+      "question_no": "02",
+      "question_text": "a) Explain the ARIES recovery algorithm in detail, covering its three phases: Analysis, Redo, and Undo. Describe the significance of the dirty page table and transaction table during recovery. Given a specific sequence of operations, including page writes, log flushes, and a crash point, reconstruct the state of the system at the time of the crash and demonstrate step-by-step how ARIES restores the database to a consistent state. Clearly mark which log records are compensated log records (CLRs).\n\nb) Contrast the Write-Ahead Logging (WAL) protocols: UNDO logging, REDO logging, and UNDO/REDO logging. Discuss the implications of the steal/no-steal and force/no-force buffer management policies on each logging type. For a workload with large objects where REDO logging is preferred, explain how physiological logging can be used to improve performance and provide a concrete example of a physiological log record.",
+      "max_marks": 20,
+      "criteria": [
+        {
+          "point": "Describes Analysis phase (rebuilds transaction table & dirty page table, identifies loser/winner transactions)",
+          "marks": 2
+        },
+        {
+          "point": "Describes Redo phase (repeats history using DPT to avoid unnecessary reads, applies all updates)",
+          "marks": 2
+        },
+        {
+          "point": "Describes Undo phase (undoes losers in reverse order, generates CLRs)",
+          "marks": 2
+        },
+        {
+          "point": "Explains significance of Dirty Page Table (recLSN, prevents redundant redo) and Transaction Table (lastLSN, status, undoNxtLSN)",
+          "marks": 2
+        },
+        {
+          "point": "Reconstructs system state from provided operation sequence and crash point",
+          "marks": 2
+        },
+        {
+          "point": "Demonstrates step-by-step ARIES recovery with correct order and identifies CLRs",
+          "marks": 2
+        },
+        {
+          "point": "Compares UNDO, REDO, UNDO/REDO logging (what info is logged before/after update)",
+          "marks": 2
+        },
+        {
+          "point": "Maps steal/no-steal and force/no-force policies to logging requirements",
+          "marks": 3
+        },
+        {
+          "point": "Explains physiological logging (page-oriented physical to a page, logical within page) and its benefit for large objects",
+          "marks": 2
+        },
+        {
+          "point": "Provides a concrete example of a physiological log record",
+          "marks": 1
+        }
+      ],
+      "model_answer": "ARIES uses WAL with steal/no-force. Analysis scans log from checkpoint, builds TT and DPT. Redo repeats history from smallest recLSN. Undo processes losers, writing CLRs. CLR marked as 'compensation'. UNDO logging requires force, no-steal; REDO logging requires steal, no-force; UNDO/REDO allows steal, no-force. Physiological log record example: 'Update page 5, offset 20, insert tuple (key=10, val=\"abc\")'."
+    },
+    {
+      "question_no": "03",
+      "question_text": "a) Provide a detailed comparison of clustered versus non-clustered indexes in the context of a B+ Tree. Explain how the physical organization of records differs, and analyze the trade-offs for range queries and single-record lookups. Using a concrete example of an Employee table, demonstrate how an index-only scan on a non-clustered index can outperform a full table scan, and conversely, when a clustered index scan leads to faster sequential access. Illustrate the pages accessed in each case.\n\nb) Describe the internal structure and insertion mechanism of an Extendible Hashing index. Given a sequence of key insertions into an initially empty hash table with a bucket capacity of 3, show the evolution of the directory and buckets step-by-step. Contrast this with Linear Hashing for the same insertion sequence, highlighting the differences in overflow handling and directory growth. Calculate the average number of block accesses for a successful search in both structures.",
+      "max_marks": 20,
+      "criteria": [
+        {
+          "point": "Explains physical organization difference: clustered (records sorted on data pages) vs non-clustered (separate structure, pointers to heap)",
+          "marks": 2
+        },
+        {
+          "point": "Analyzes range query trade-off (clustered efficient sequential I/O, non-clustered random I/O)",
+          "marks": 2
+        },
+        {
+          "point": "Analyzes single-record lookup trade-off (non-clustered potentially shallower, clustered may need extra level)",
+          "marks": 1
+        },
+        {
+          "point": "Provides Employee table example for index-only scan outperforming full table scan, with page access calculation",
+          "marks": 2
+        },
+        {
+          "point": "Provides Employee table example for clustered index scan faster sequential access, with page access calculation",
+          "marks": 2
+        },
+        {
+          "point": "Describes Extendible Hashing structure: directory with global depth, buckets with local depth",
+          "marks": 2
+        },
+        {
+          "point": "Shows correct step-by-step evolution of directory and buckets for given insertion sequence with capacity 3",
+          "marks": 4
+        },
+        {
+          "point": "Contrasts with Linear Hashing (splitting policy, overflow handling, directory growth) for same sequence",
+          "marks": 3
+        },
+        {
+          "point": "Calculates average block accesses for successful search in both structures",
+          "marks": 2
+        }
+      ],
+      "model_answer": "Clustered index: data pages physically ordered, leaf pages contain data records. Non-clustered: leaf pages contain RIDs pointing to heap. Index-only scan reads only B+ Tree pages (e.g., 3 pages vs 1000-page table scan). Clustered range scan reads 10 contiguous pages vs 1000 random. Extendible hashing doubles directory on bucket overflow. Example: insert 1,2,3,4 -> depth 2, bucket 0:1,2, bucket 1:3,4. Linear hashing splits buckets linearly, uses overflow chains, average access slightly higher."
+    },
+    {
+      "question_no": "04",
+      "question_text": "a) Explain the algorithms for external sorting (external merge-sort) and the hybrid hash join. For a scenario where you need to join a large fact table with a smaller dimension table that still does not fit entirely in memory, explain why Grace Hash Join might be preferred over a simple block nested loop join. Calculate the I/O cost for a 5-pass external merge sort on a 5000-page relation with 50 buffer pages, and a hybrid hash join for the same relation assuming 25% of the memory is reserved as a hash table for the build relation.\n\nb) Discuss the architecture and execution model of a modern distributed SQL query engine, contrasting the classic volcano (iterator) model with vectorized execution and the massively parallel processing (MPP) model. Explain the role of columnar storage and data compression in this context. For a star schema query with multiple joins on fact and dimension tables, describe how query compilation (e.g., JIT compilation in PostgreSQL or LLVM in ClickHouse) can significantly reduce per-row interpretation overhead.",
+      "max_marks": 20,
+      "criteria": [
+        {
+          "point": "Explains external merge-sort algorithm (pass 0 sorted runs, merge passes)",
+          "marks": 2
+        },
+        {
+          "point": "Explains hybrid hash join algorithm (partitioning, in-memory build, recursive partitioning if needed)",
+          "marks": 2
+        },
+        {
+          "point": "Explains why Grace Hash Join preferred over block nested loop for large joins (partitioning avoids repeated scans)",
+          "marks": 2
+        },
+        {
+          "point": "Calculates I/O cost for 5-pass external merge sort (2N * num_passes)",
+          "marks": 2
+        },
+        {
+          "point": "Calculates I/O cost for hybrid hash join with 25% memory reserved (3N - 2 * reserved_build_partition_cost)",
+          "marks": 2
+        },
+        {
+          "point": "Compares volcano model (row-by-row, function calls) with vectorized execution (batch, SIMD)",
+          "marks": 2
+        },
+        {
+          "point": "Explains MPP model (shared-nothing, data partitioning, parallel execution)",
+          "marks": 2
+        },
+        {
+          "point": "Explains role of columnar storage and compression (better cache locality, predicate pushdown, fewer I/O)",
+          "marks": 2
+        },
+        {
+          "point": "Describes query compilation / JIT (removes interpretation overhead, generates machine code)",
+          "marks": 2
+        },
+        {
+          "point": "Applies to star schema join query (precompiled join loops, type specialization)",
+          "marks": 2
+        }
+      ],
+      "model_answer": "External merge sort: cost = 2N * (ceil(log_{B-1}(N/B)) + 1). For N=5000, B=50: pass 0: 5000/50=100 runs. Merge 100 runs: ceil(log_{49} 100) ≈ 2 passes. Total I/O = 2*5000*3 = 30,000. Hybrid hash join: 25% memory reserved for hash table = 12.5 buffers. Build partition 0 = 12.5 buffers * ceil(12.5/50) = 12.5*1 = 12.5 pages. Total cost = 3N - 2*Build_partition_0 = 15,000 - 25 = 14,975. Grace hash join partitions both relations into B-1 partitions, then joins each partition in memory. Vectorized execution processes column chunks; MPP executes on multiple nodes; columnar storage compresses columns independently; JIT removes per-row interpretation, generating code for specific query and data types."
+    }
+  ],
+  "exam_roster": null
+}

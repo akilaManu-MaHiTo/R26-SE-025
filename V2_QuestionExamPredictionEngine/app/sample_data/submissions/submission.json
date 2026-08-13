@@ -1,0 +1,602 @@
+[
+  {
+    "_id": { "$oid": "66a100000000000000000021" },
+    "rubric_ref": { "$oid": "66a100000000000000000012" },
+    "student_id": "IT22145976",
+    "paper_key": "script_01",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 20.0 },
+      { "question_no": "03", "max_marks": 20.0 },
+      { "question_no": "04", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22145976\n\nQuestion 1\na) ACID properties are Atomicity, Consistency, Isolation, Durability. Atomicity means all or nothing, enforced by logging. Consistency means database remains valid, enforced by constraints. Isolation means transactions don't interfere, enforced by locking. Durability means committed data survives crashes, enforced by WAL.\n\nBasic 2PL cascading rollback example:\nT1: R(A), W(A)\nT2: R(A), W(B)\nT3: R(B), W(C)\nIf T1 aborts after T2 reads A, T2 must abort, and T3 must abort because it read B from T2.\nStrict 2PL prevents this by holding all locks until commit.\n\nView serializable but not conflict serializable:\nT1: W(A)\nT2: W(A), W(B)\nT3: R(A), W(B)\nThis has write-write conflict on A between T1 and T2. View equivalent to T1 then T2 then T3 because T3 reads A from T2 and final write on B is from T3.\n\nb) MVCC creates multiple versions of data. Readers don't block writers. Traditional locking blocks. Snapshot isolation means each transaction sees a snapshot. Write skew is when two transactions read same data and write different data causing constraint violation.\nExample: X=50, Y=50. T1 reads X=50, Y=50, writes X=-40. T2 reads X=50, Y=50, writes Y=-40. Both commit. Now X+Y=-80 which violates X+Y>0.\nSSI detects this by tracking dependencies between transactions and aborts one.\n\nQuestion 2\na) ARIES has three phases: Analysis, Redo, Undo. Analysis scans log from checkpoint to build transaction table and dirty page table. Redo repeats all updates from the log. Undo undoes loser transactions. CLRs are compensation log records written during undo.\n\nDirty page table tracks which pages are dirty and their earliest LSN. Transaction table tracks active transactions and their last LSN.\n\nExample operations:\nT1 updates page P1, log record L1\nT2 updates page P2, log record L2\nT1 commits, log record L3\nCrash happens\nDuring recovery: Analysis finds T2 active. Redo applies L1 and L2. Undo undoes T2 using L2 and writes CLR.\n\nb) UNDO logging logs before images. REDO logging logs after images. UNDO/REDO logs both. Steal policy allows writing uncommitted data to disk. Force policy writes committed data to disk immediately. UNDO logging needs no-steal. REDO logging needs no-force. UNDO/REDO supports steal and no-force.\n\nPhysiological logging logs page-level physical changes but logical within page. Example: insert tuple into page 5 at offset 20.\n\nQuestion 3\na) Clustered index stores records in index order. Non-clustered index has pointers to records. Range queries faster with clustered index because sequential access. Single record lookup similar.\n\nEmployee table example: Employee(ID, Name, Dept). Non-clustered index on Dept. Index-only scan on Dept reads only index pages, maybe 3 pages. Full table scan reads 1000 pages. Clustered index on ID makes range scan on ID sequential.\n\nb) Extendible hashing uses directory and buckets. Global depth and local depth. When bucket overflows, split bucket and maybe double directory.\n\nInsert 1,2,3,4,5,6,7 with capacity 3:\nInitially global depth 1, two buckets.\nAfter 1,2,3: bucket 0 has 1,2,3 (overflow? No, capacity is 3)\nInsert 4: bucket splits, global depth becomes 2\nContinue showing evolution.\n\nLinear hashing splits buckets linearly. Uses overflow chains. Directory grows slowly.\n\nAverage block access: Extendible 1-2 blocks, Linear 1-3 blocks.\n\nQuestion 4\na) External merge sort sorts runs and merges. Hybrid hash join partitions and joins in memory. Grace hash join partitions both relations. Block nested loop join scans repeatedly.\n\n5-pass external merge sort: cost = 2 * 5000 * 5 = 50000 I/O.\nHybrid hash join with 25% memory reserved: cost = 3 * 5000 - 2 * (0.25 * 50 * 50) = 15000 - 1250 = 13750 I/O.\n\nb) Volcano model processes row by row with function calls. Vectorized execution processes batches. MPP uses multiple nodes. Columnar storage stores data column by column. Compression reduces I/O. JIT compilation generates machine code for specific queries.\n\nStar schema join query benefits from JIT because join loops are compiled.\n",
+    "evaluation": {
+      "total_score": 44.0,
+      "max_score": 80.0,
+      "justification": "Decent coverage across all questions but many answers lack depth and precision. ACID enforcement partially explained. View serializability proof incomplete. ARIES example too simplistic. Hashing evolution incomplete. I/O calculations partially correct.",
+      "feedback": "Improve depth of explanations, especially ARIES recovery and hashing evolution. Check I/O cost formulas.",
+      "results": [
+        {
+          "q_no": "01",
+          "score": 11.0,
+          "criteria_breakdown": [
+            { "point": "Defines ACID properties and links to enforcement", "awarded_marks": 2.0, "reason": "Listed ACID and mentioned enforcement but not detailed" },
+            { "point": "Constructs cascading rollback schedule under Basic 2PL", "awarded_marks": 2.0, "reason": "Valid schedule provided" },
+            { "point": "Shows Strict 2PL prevents cascading rollback", "awarded_marks": 1.0, "reason": "Mentioned holding locks but not demonstrated" },
+            { "point": "Provides view serializable but not conflict serializable schedule", "awarded_marks": 2.0, "reason": "Schedule provided" },
+            { "point": "Proves view equivalence with dependencies", "awarded_marks": 1.0, "reason": "Partially stated but incomplete" },
+            { "point": "Compares MVCC with traditional locking", "awarded_marks": 1.0, "reason": "Basic comparison only" },
+            { "point": "Defines snapshot isolation and write skew", "awarded_marks": 1.0, "reason": "Basic definitions given" },
+            { "point": "Provides MVCC execution violating constraint", "awarded_marks": 1.0, "reason": "Example provided but no detailed schedule" },
+            { "point": "Explains SSI detection and resolution", "awarded_marks": 0.0, "reason": "Mentioned aborting but no detection mechanism" }
+          ],
+          "justification": "Basic understanding of ACID and concurrency concepts. Lacks rigor in proofs and mechanisms.",
+          "feedback": "Provide detailed schedules with step-by-step annotations. Explain SSI dependency tracking."
+        },
+        {
+          "q_no": "02",
+          "score": 10.0,
+          "criteria_breakdown": [
+            { "point": "Describes Analysis phase", "awarded_marks": 1.0, "reason": "Mentioned building tables" },
+            { "point": "Describes Redo phase", "awarded_marks": 1.0, "reason": "Mentioned repeating updates" },
+            { "point": "Describes Undo phase", "awarded_marks": 1.0, "reason": "Mentioned undoing losers and CLRs" },
+            { "point": "Explains DPT and TT significance", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Reconstructs system state from crash", "awarded_marks": 1.0, "reason": "Simple example provided" },
+            { "point": "Demonstrates step-by-step ARIES recovery", "awarded_marks": 1.0, "reason": "Basic steps shown" },
+            { "point": "Compares UNDO, REDO, UNDO/REDO logging", "awarded_marks": 1.0, "reason": "Basic comparison" },
+            { "point": "Maps steal/no-steal and force/no-force", "awarded_marks": 1.0, "reason": "Partially correct" },
+            { "point": "Explains physiological logging", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Provides physiological log record example", "awarded_marks": 1.0, "reason": "Correct example" }
+          ],
+          "justification": "ARIES recovery explanation is superficial. Logging policy mapping incomplete.",
+          "feedback": "Elaborate on ARIES phases with specific log record types. Correct the steal/no-steal force/no-force mapping."
+        },
+        {
+          "q_no": "03",
+          "score": 10.0,
+          "criteria_breakdown": [
+            { "point": "Explains clustered vs non-clustered physical organization", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Analyzes range query trade-off", "awarded_marks": 1.0, "reason": "Mentioned sequential vs random" },
+            { "point": "Analyzes single-record lookup trade-off", "awarded_marks": 0.0, "reason": "Not addressed" },
+            { "point": "Employee example for index-only scan", "awarded_marks": 1.0, "reason": "Basic example with page counts" },
+            { "point": "Employee example for clustered index scan", "awarded_marks": 1.0, "reason": "Mentioned sequential access" },
+            { "point": "Describes Extendible Hashing structure", "awarded_marks": 1.0, "reason": "Mentioned directory and buckets" },
+            { "point": "Shows step-by-step evolution for insertion sequence", "awarded_marks": 2.0, "reason": "Partial evolution shown" },
+            { "point": "Contrasts with Linear Hashing", "awarded_marks": 2.0, "reason": "Basic contrast" },
+            { "point": "Calculates average block accesses", "awarded_marks": 1.0, "reason": "Estimates provided without derivation" }
+          ],
+          "justification": "Basic understanding of indexing concepts. Hashing evolution incomplete.",
+          "feedback": "Show complete step-by-step evolution of Extendible and Linear Hashing with directory depths and bucket contents."
+        },
+        {
+          "q_no": "04",
+          "score": 13.0,
+          "criteria_breakdown": [
+            { "point": "Explains external merge-sort", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Explains hybrid hash join", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Explains Grace Hash Join preference", "awarded_marks": 2.0, "reason": "Mentioned partitioning" },
+            { "point": "Calculates 5-pass external merge sort I/O", "awarded_marks": 2.0, "reason": "Correct formula used" },
+            { "point": "Calculates hybrid hash join I/O", "awarded_marks": 2.0, "reason": "Partially correct calculation" },
+            { "point": "Compares volcano with vectorized execution", "awarded_marks": 1.0, "reason": "Basic comparison" },
+            { "point": "Explains MPP model", "awarded_marks": 1.0, "reason": "Mentioned multiple nodes" },
+            { "point": "Explains columnar storage and compression", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Describes JIT compilation", "awarded_marks": 1.0, "reason": "Mentioned machine code generation" },
+            { "point": "Applies to star schema query", "awarded_marks": 1.0, "reason": "Basic application" }
+          ],
+          "justification": "Query execution concepts covered at basic level. I/O calculations mostly correct.",
+          "feedback": "Verify hybrid hash join cost formula. Provide more detail on vectorized execution and MPP."
+        }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 12,
+      "rag_course": "IT2040",
+      "rag_per_question": {
+        "01": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week5_concurrency.pdf, p2] ACID properties: Atomicity via logging, Isolation via locking or MVCC. Strict 2PL holds locks until commit to prevent cascading aborts." },
+        "02": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week6_recovery.pdf, p3] ARIES Analysis phase reconstructs transaction table and dirty page table. Redo repeats history. Undo generates CLRs." },
+        "03": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week4_indexing.pdf, p5] Clustered index stores records in leaf pages. Non-clustered index stores RIDs. Extendible hashing uses global and local depth." },
+        "04": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week7_query_exec.pdf, p4] External merge sort cost = 2N * passes. Hybrid hash join cost = 3N - 2*resident build partition." }
+      },
+      "answer_split": {
+        "buckets_found": ["01", "02", "03", "04"],
+        "per_question_source": {
+          "01": "split",
+          "02": "split",
+          "03": "split",
+          "04": "split"
+        }
+      }
+    },
+    "status": "graded",
+    "processed_at": { "$date": "2026-07-26T05:12:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "66a100000000000000000022" },
+    "rubric_ref": { "$oid": "66a100000000000000000012" },
+    "student_id": "IT22145980",
+    "paper_key": "script_02",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": null,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 20.0 },
+      { "question_no": "03", "max_marks": 20.0 },
+      { "question_no": "04", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22145980\n\nQuestion 1\na) ACID means Atomicity, Consistency, Isolation, Durability. Atomicity is all or nothing. Consistency means valid state. Isolation means concurrent transactions don't see each other. Durability means permanent. Enforced by logging and locking.\n\nCascading rollback:\nT1: W(A)\nT2: R(A), W(B)\nT3: R(B), W(C)\nIf T1 fails, T2 fails because it read A, T3 fails because it read B.\nStrict 2PL holds locks until commit so T2 cannot read A until T1 commits.\n\nView serializable schedule:\nT1: W(A)\nT2: R(A), W(B)\nT3: W(A)\nFinal write on A is T3, B is T2. Read from on A is T2 reads T1. This is not conflict serializable because T3 writes A after T1 but before T2 reads? Actually T2 reads A from T1, T3 writes A. Conflict: T1->T3 on A, T2->T3 on A? I think it is view serializable to T1, T3, T2? Not sure.\n\nb) MVCC uses versions so readers see old versions. Traditional locking blocks. Snapshot isolation gives each transaction a snapshot at start. Write skew happens when two transactions read same data and write different data.\nExample: X=50, Y=50. T1: read X=50, Y=50, write X=-40. T2: read X=50, Y=50, write Y=-40. Both commit, constraint violated.\nSSI detects this by checking for conflicts.\n\nQuestion 2\na) ARIES: Analysis, Redo, Undo. Analysis builds transaction table and dirty page table. Redo reapplies updates. Undo undoes uncommitted transactions. CLRs are compensation log records.\n\nDPT tracks dirty pages. TT tracks active transactions.\n\nExample: T1 writes P1, T2 writes P2, T1 commits, crash. Analysis finds T2. Redo applies both writes. Undo undoes T2.\n\nb) UNDO logging writes before images. REDO logging writes after images. UNDO/REDO writes both. Steal means uncommitted data can be written to disk. Force means committed data must be written to disk. UNDO needs no-steal, REDO needs no-force, UNDO/REDO allows both.\n\nPhysiological logging is page-oriented. Example: update page 3, tuple 5, set salary=50000.\n\nQuestion 3\na) Clustered index stores records in order. Non-clustered uses pointers. Range queries are faster with clustered.\n\nEmployee(ID, Name, Dept). Index on Dept. Index-only scan on Dept for query SELECT Dept FROM Employee WHERE Dept='Sales' reads only index. Full table scan reads all pages. Clustered index on ID for range query ID BETWEEN 100 AND 200 reads sequential pages.\n\nb) Extendible hashing has directory and buckets. Global depth and local depth. Split when bucket full.\n\nInsert 1,2,3,4,5,6 with capacity 3:\nStart: depth 1, bucket 0: 1,2,3\nInsert 4: split, depth 2, bucket 00: 1,2, bucket 01: 3,4\nInsert 5: bucket 01 full, split, depth 2, bucket 01: 3, bucket 11: 4,5? Something like that.\n\nLinear hashing splits linearly and uses overflow.\n\nAverage block access: 1-2 for both.\n\nQuestion 4\na) External merge sort sorts runs. Hybrid hash join partitions and builds hash table in memory. Grace hash join partitions both relations.\n\n5-pass merge sort on 5000 pages with 50 buffers: 2 * 5000 * 5 = 50000 I/O.\nHybrid hash join: 3 * 5000 - 2 * 12.5 = 14975 I/O.\n\nb) Volcano model uses iterators. Vectorized execution processes batches. MPP uses many nodes. Columnar storage stores columns separately. Compression reduces data size. JIT compilation generates code for query. Star schema queries benefit from JIT.\n",
+    "evaluation": {
+      "total_score": 47.0,
+      "max_score": 80.0,
+      "justification": "Similar level to script_01. Student shows understanding of basic concepts but struggles with detailed proofs and step-by-step demonstrations. View serializability proof is confused. ARIES example too simple. Extendible hashing evolution has errors.",
+      "feedback": "Work on formal proofs for view serializability. Practice ARIES recovery with more detailed examples. Review Extendible hashing splitting rules.",
+      "results": [
+        {
+          "q_no": "01",
+          "score": 10.0,
+          "criteria_breakdown": [
+            { "point": "Defines ACID properties and links to enforcement", "awarded_marks": 2.0, "reason": "Listed ACID and mentioned logging/locking" },
+            { "point": "Constructs cascading rollback schedule under Basic 2PL", "awarded_marks": 2.0, "reason": "Valid schedule" },
+            { "point": "Shows Strict 2PL prevents cascading rollback", "awarded_marks": 1.0, "reason": "Mentioned but not demonstrated" },
+            { "point": "Provides view serializable but not conflict serializable schedule", "awarded_marks": 1.0, "reason": "Schedule provided but proof confused" },
+            { "point": "Proves view equivalence with dependencies", "awarded_marks": 0.0, "reason": "Incorrect or incomplete proof" },
+            { "point": "Compares MVCC with traditional locking", "awarded_marks": 1.0, "reason": "Basic comparison" },
+            { "point": "Defines snapshot isolation and write skew", "awarded_marks": 1.0, "reason": "Basic definitions" },
+            { "point": "Provides MVCC execution violating constraint", "awarded_marks": 1.0, "reason": "Example provided" },
+            { "point": "Explains SSI detection and resolution", "awarded_marks": 1.0, "reason": "Mentioned conflict checking" }
+          ],
+          "justification": "View serializability proof is the weakest part. ACID and MVCC basic understanding shown.",
+          "feedback": "Provide explicit read-from dependencies and final write conditions for each data item."
+        },
+        {
+          "q_no": "02",
+          "score": 12.0,
+          "criteria_breakdown": [
+            { "point": "Describes Analysis phase", "awarded_marks": 1.0, "reason": "Mentioned table building" },
+            { "point": "Describes Redo phase", "awarded_marks": 1.0, "reason": "Mentioned reapplying" },
+            { "point": "Describes Undo phase", "awarded_marks": 1.0, "reason": "Mentioned undoing" },
+            { "point": "Explains DPT and TT significance", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Reconstructs system state from crash", "awarded_marks": 1.0, "reason": "Simple example" },
+            { "point": "Demonstrates step-by-step ARIES recovery", "awarded_marks": 2.0, "reason": "Steps shown" },
+            { "point": "Compares UNDO, REDO, UNDO/REDO logging", "awarded_marks": 1.0, "reason": "Basic comparison" },
+            { "point": "Maps steal/no-steal and force/no-force", "awarded_marks": 2.0, "reason": "Mostly correct" },
+            { "point": "Explains physiological logging", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Provides physiological log record example", "awarded_marks": 1.0, "reason": "Correct example" }
+          ],
+          "justification": "Better understanding of logging policies than script_01. ARIES still superficial.",
+          "feedback": "Include more detail on how CLRs are used during Undo phase."
+        },
+        {
+          "q_no": "03",
+          "score": 11.0,
+          "criteria_breakdown": [
+            { "point": "Explains clustered vs non-clustered physical organization", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Analyzes range query trade-off", "awarded_marks": 1.0, "reason": "Mentioned faster" },
+            { "point": "Analyzes single-record lookup trade-off", "awarded_marks": 0.0, "reason": "Not addressed" },
+            { "point": "Employee example for index-only scan", "awarded_marks": 2.0, "reason": "Good example with query" },
+            { "point": "Employee example for clustered index scan", "awarded_marks": 1.0, "reason": "Mentioned sequential" },
+            { "point": "Describes Extendible Hashing structure", "awarded_marks": 1.0, "reason": "Mentioned directory and buckets" },
+            { "point": "Shows step-by-step evolution for insertion sequence", "awarded_marks": 2.0, "reason": "Partial with errors" },
+            { "point": "Contrasts with Linear Hashing", "awarded_marks": 2.0, "reason": "Basic contrast" },
+            { "point": "Calculates average block accesses", "awarded_marks": 1.0, "reason": "Estimate without derivation" }
+          ],
+          "justification": "Index-only scan example is good. Extendible hashing evolution has errors in bucket splitting.",
+          "feedback": "Review Extendible hashing splitting rules: when a bucket overflows and local depth equals global depth, double the directory."
+        },
+        {
+          "q_no": "04",
+          "score": 14.0,
+          "criteria_breakdown": [
+            { "point": "Explains external merge-sort", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Explains hybrid hash join", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Explains Grace Hash Join preference", "awarded_marks": 2.0, "reason": "Mentioned partitioning" },
+            { "point": "Calculates 5-pass external merge sort I/O", "awarded_marks": 2.0, "reason": "Correct" },
+            { "point": "Calculates hybrid hash join I/O", "awarded_marks": 2.0, "reason": "Correct" },
+            { "point": "Compares volcano with vectorized execution", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Explains MPP model", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Explains columnar storage and compression", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Describes JIT compilation", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Applies to star schema query", "awarded_marks": 2.0, "reason": "Mentioned benefit" }
+          ],
+          "justification": "I/O calculations are correct. Query execution concepts covered at basic level.",
+          "feedback": "Provide more detail on vectorized execution and JIT compilation mechanics."
+        }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 12,
+      "rag_course": "IT2040",
+      "rag_per_question": {
+        "01": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week5_concurrency.pdf, p4] View serializability requires read-from dependencies and final write conditions to match a serial schedule." },
+        "02": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week6_recovery.pdf, p5] Steal/no-steal and force/no-force policies determine logging requirements." },
+        "03": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week4_indexing.pdf, p7] Extendible hashing doubles directory when bucket overflows and local depth equals global depth." },
+        "04": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week7_query_exec.pdf, p6] Vectorized execution processes column batches reducing per-row overhead." }
+      },
+      "answer_split": {
+        "buckets_found": ["01", "02", "03", "04"],
+        "per_question_source": {
+          "01": "split",
+          "02": "split",
+          "03": "split",
+          "04": "split"
+        }
+      }
+    },
+    "status": "graded",
+    "processed_at": { "$date": "2026-07-26T05:13:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "66a100000000000000000023" },
+    "rubric_ref": { "$oid": "66a100000000000000000012" },
+    "student_id": "IT22145984",
+    "paper_key": "script_03",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": null,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 20.0 },
+      { "question_no": "03", "max_marks": 20.0 },
+      { "question_no": "04", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22145984\n\nQuestion 1\na) ACID: Atomicity means either all operations happen or none. Consistency means database goes from one valid state to another. Isolation means transactions appear to run serially. Durability means committed data is permanent. Enforced by: Atomicity via undo logging, Consistency via constraints and triggers, Isolation via locking or MVCC, Durability via redo logging and WAL.\n\nBasic 2PL cascading rollback:\nT1: R(A), W(A)\nT2: R(A), W(B)\nT3: R(B), W(C)\nT1 aborts after T2 reads uncommitted A. T2 must abort, causing T3 to abort because it read uncommitted B from T2. This is cascading rollback.\nStrict 2PL: T1 holds all locks until it commits. So T2 cannot read A until T1 commits, preventing cascading rollback.\n\nView serializable but not conflict serializable schedule:\nT1: W(A)\nT2: W(A), W(B)\nT3: R(A), W(B)\nConflict graph: T1->T2 on A, T2->T3 on A? T3 reads A from T2 so T2->T3. T2->T3 on B? T3 writes B after T2 so T2->T3. Cycle? No. Actually this might be conflict serializable to T1, T2, T3. Let me try another:\nT1: W(A)\nT2: R(A), W(A)\nT3: W(A)\nThis is not view serializable? I'm confused.\n\nb) MVCC vs locking: MVCC uses versions, readers don't block writers. Locking blocks. Snapshot isolation: each transaction sees a consistent snapshot. Write skew: two transactions read overlapping data but write disjoint data based on stale reads.\n\nExample: X=50, Y=50, constraint X+Y>0. T1: reads X=50, Y=50, writes X=-40. T2: reads X=50, Y=50, writes Y=-40. Both commit. X+Y=-80 violates constraint.\nSSI: tracks dangerous structures like rw-antidependencies. Aborts one of the transactions to break the cycle.\n\nQuestion 2\na) ARIES stands for Algorithm for Recovery and Isolation Exploiting Semantics. Three phases:\n1. Analysis: Scans log from last checkpoint. Rebuilds transaction table (active transactions with lastLSN) and dirty page table (dirty pages with recLSN). Determines winner and loser transactions.\n2. Redo: Repeats history by applying all updates from the smallest recLSN in DPT. Uses pageLSN to avoid redundant redo.\n3. Undo: Processes loser transactions in reverse order of their lastLSN. Writes CLRs for each undo operation.\n\nDPT significance: tracks which pages are dirty and the earliest LSN that dirtied them. TT significance: tracks active transactions and their state.\n\nExample operations:\nL1: T1 updates P1 (before image, after image)\nL2: T2 updates P2\nL3: T1 commits\nL4: T2 updates P1\nCrash\n\nAt crash: T1 committed, T2 active. P1 has updates from T1 and T2. P2 has update from T2.\nARIES: Analysis finds T2 active, P1 dirty with recLSN=L1, P2 dirty with recLSN=L2. Redo applies L1, L2, L4. Undo undoes T2: undoes L4 writing CLR1, undoes L2 writing CLR2.\n\nb) UNDO logging: writes before images to log before updating database. REDO logging: writes after images to log before updating. UNDO/REDO: writes both.\n\nSteal policy: allows writing uncommitted data to disk. No-steal: does not allow. Force policy: ensures committed data is on disk. No-force: does not ensure.\n\nUNDO logging requires no-steal (cannot write uncommitted data) but can have force or no-force? Actually UNDO logging requires force to ensure committed data is on disk before commit. REDO logging requires steal? No, REDO logging requires no-force and can have steal.\n\nPhysiological logging: combines physical logging (page-level) with logical logging (within page). Example: update page 5, offset 10, insert tuple (101, 'John', 50000).\n\nQuestion 3\na) Clustered index: records physically stored in index order on data pages. Leaf pages contain actual records. Non-clustered index: leaf pages contain pointers (RIDs) to records in heap. \n\nRange queries: Clustered index is faster because records are on contiguous pages, enabling sequential I/O. Non-clustered index requires random I/O to fetch each record.\n\nSingle-record lookup: Non-clustered index may be slightly faster if index is smaller (fewer levels). Clustered index may require traversing deeper tree.\n\nEmployee table: Employee(ID, Name, Dept, Salary). \nIndex-only scan: Non-clustered index on (Dept, Salary). Query: SELECT Dept, Salary FROM Employee WHERE Dept='Sales'. Index contains Dept and Salary, so no need to access heap. Reads only index pages (say 3 pages). Full table scan reads all data pages (say 1000 pages).\nClustered index scan: Clustered index on ID. Query: SELECT * FROM Employee WHERE ID BETWEEN 100 AND 200. Records 100-200 are on contiguous pages (say 5 pages). Sequential access is fast.\n\nb) Extendible hashing: Uses a directory with 2^global_depth entries pointing to buckets. Each bucket has a local depth. When a bucket overflows, split it. If local depth == global depth, double directory.\n\nInsert sequence with capacity 3: 1, 5, 7, 12, 2, 20\nInitial: global_depth=1, directory=[0,1]. Bucket0: empty, Bucket1: empty.\nInsert 1: hash(1)=01? Let's assume bucket 1: [1]\nInsert 5: hash(5)=01? bucket 1: [1,5]\nInsert 7: hash(7)=11? bucket 1? Actually this depends on hash function. I'll use simple mod 2.\n\nThis is getting complicated. I'll show partial evolution.\n\nLinear hashing: splits buckets in round-robin order. Uses overflow chains. Directory grows linearly.\n\nAverage block access: Extendible hashing: 1-2. Linear hashing: 1-3 with overflow.\n\nQuestion 4\na) External merge sort: Phase 1 sorts runs of size B pages. Phase 2+ merges runs. Cost = 2N * (number of passes).\n\nHybrid hash join: Partitions both relations into B-1 partitions. Build relation partition 0 is kept in memory. Other partitions are written to disk. Then joins each partition.\n\nGrace hash join: Both relations are partitioned into B-1 partitions. Then each partition is joined in memory. Preferred over block nested loop join because it avoids repeated scans of the smaller relation.\n\n5-pass merge sort: N=5000, B=50. Pass 0: 5000/50=100 runs. Merge 100 runs with 49 buffers: ceil(log_49(100)) = ceil(1.18) = 2 passes. Total passes = 3. Cost = 2*5000*3 = 30000 I/O.\n\nHybrid hash join: 25% of memory reserved = 12.5 buffers. Build relation partition 0 = 12.5 pages (assuming 1 page per buffer). Cost = 3*5000 - 2*12.5 = 14975 I/O.\n\nb) Volcano model: uses iterator interface, each operator produces one tuple at a time. Function call per tuple causes overhead.\n\nVectorized execution: processes batches of tuples (e.g., 1000 tuples) at once. Reduces function call overhead, enables SIMD.\n\nMPP model: shared-nothing architecture, data partitioned across nodes, each node executes part of query in parallel. Results are combined.\n\nColumnar storage: stores data column by column. Better compression because same type data. Predicate pushdown can skip entire columns.\n\nJIT compilation: converts query plan into machine code. Reduces interpretation overhead. For star schema query with multiple joins, JIT can compile join loops for specific data types, reducing per-row overhead significantly.\n",
+    "evaluation": {
+      "total_score": 55.0,
+      "max_score": 80.0,
+      "justification": "Good understanding of most concepts. ARIES explanation is detailed and mostly correct. View serializability proof is attempted but confused. Extendible hashing evolution is incomplete. I/O calculations for merge sort are correct. Logging policy mapping has some confusion.",
+      "feedback": "Practice view serializability proofs with explicit dependencies. Complete Extendible hashing evolution. Clarify logging policy mappings.",
+      "results": [
+        {
+          "q_no": "01",
+          "score": 13.0,
+          "criteria_breakdown": [
+            { "point": "Defines ACID properties and links to enforcement", "awarded_marks": 3.0, "reason": "Linked each property to enforcement mechanism" },
+            { "point": "Constructs cascading rollback schedule under Basic 2PL", "awarded_marks": 2.0, "reason": "Valid schedule" },
+            { "point": "Shows Strict 2PL prevents cascading rollback", "awarded_marks": 2.0, "reason": "Explained holding locks until commit" },
+            { "point": "Provides view serializable but not conflict serializable schedule", "awarded_marks": 1.0, "reason": "Attempted but confused" },
+            { "point": "Proves view equivalence with dependencies", "awarded_marks": 1.0, "reason": "Partial attempt" },
+            { "point": "Compares MVCC with traditional locking", "awarded_marks": 2.0, "reason": "Good comparison" },
+            { "point": "Defines snapshot isolation and write skew", "awarded_marks": 1.0, "reason": "Basic definitions" },
+            { "point": "Provides MVCC execution violating constraint", "awarded_marks": 0.5, "reason": "Example given but not as concurrent execution schedule" },
+            { "point": "Explains SSI detection and resolution", "awarded_marks": 0.5, "reason": "Mentioned dangerous structures" }
+          ],
+          "justification": "ACID and MVCC concepts are well understood. View serializability remains weak.",
+          "feedback": "Provide a specific schedule with interleaved operations for MVCC write skew. Practice view serializability proofs."
+        },
+        {
+          "q_no": "02",
+          "score": 16.0,
+          "criteria_breakdown": [
+            { "point": "Describes Analysis phase", "awarded_marks": 2.0, "reason": "Detailed description with tables" },
+            { "point": "Describes Redo phase", "awarded_marks": 2.0, "reason": "Explained pageLSN and recLSN" },
+            { "point": "Describes Undo phase", "awarded_marks": 2.0, "reason": "Explained reverse order and CLRs" },
+            { "point": "Explains DPT and TT significance", "awarded_marks": 2.0, "reason": "Good explanation" },
+            { "point": "Reconstructs system state from crash", "awarded_marks": 2.0, "reason": "Good example with operations" },
+            { "point": "Demonstrates step-by-step ARIES recovery", "awarded_marks": 2.0, "reason": "Detailed steps shown" },
+            { "point": "Compares UNDO, REDO, UNDO/REDO logging", "awarded_marks": 1.0, "reason": "Basic comparison" },
+            { "point": "Maps steal/no-steal and force/no-force", "awarded_marks": 1.0, "reason": "Some confusion" },
+            { "point": "Explains physiological logging", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Provides physiological log record example", "awarded_marks": 1.0, "reason": "Correct example" }
+          ],
+          "justification": "Strong ARIES explanation with good example. Logging policy mapping has errors.",
+          "feedback": "Review the mapping: UNDO logging requires no-steal and force. REDO logging requires steal and no-force. UNDO/REDO allows steal and no-force."
+        },
+        {
+          "q_no": "03",
+          "score": 12.0,
+          "criteria_breakdown": [
+            { "point": "Explains clustered vs non-clustered physical organization", "awarded_marks": 2.0, "reason": "Clear explanation" },
+            { "point": "Analyzes range query trade-off", "awarded_marks": 2.0, "reason": "Good analysis of sequential vs random I/O" },
+            { "point": "Analyzes single-record lookup trade-off", "awarded_marks": 1.0, "reason": "Mentioned tree depth" },
+            { "point": "Employee example for index-only scan", "awarded_marks": 2.0, "reason": "Good example with query and page counts" },
+            { "point": "Employee example for clustered index scan", "awarded_marks": 2.0, "reason": "Good example with sequential access" },
+            { "point": "Describes Extendible Hashing structure", "awarded_marks": 1.0, "reason": "Basic description" },
+            { "point": "Shows step-by-step evolution for insertion sequence", "awarded_marks": 0.5, "reason": "Incomplete evolution" },
+            { "point": "Contrasts with Linear Hashing", "awarded_marks": 1.0, "reason": "Basic contrast" },
+            { "point": "Calculates average block accesses", "awarded_marks": 0.5, "reason": "Estimate without derivation" }
+          ],
+          "justification": "Indexing concepts well explained. Hashing evolution incomplete due to hash function confusion.",
+          "feedback": "Use a simple hash function (e.g., key mod 2^depth) and show complete evolution of directory and buckets."
+        },
+        {
+          "q_no": "04",
+          "score": 14.0,
+          "criteria_breakdown": [
+            { "point": "Explains external merge-sort", "awarded_marks": 2.0, "reason": "Good explanation" },
+            { "point": "Explains hybrid hash join", "awarded_marks": 2.0, "reason": "Good explanation" },
+            { "point": "Explains Grace Hash Join preference", "awarded_marks": 2.0, "reason": "Explained avoiding repeated scans" },
+            { "point": "Calculates 5-pass external merge sort I/O", "awarded_marks": 2.0, "reason": "Correct calculation of 3 passes" },
+            { "point": "Calculates hybrid hash join I/O", "awarded_marks": 2.0, "reason": "Correct calculation" },
+            { "point": "Compares volcano with vectorized execution", "awarded_marks": 1.0, "reason": "Basic comparison" },
+            { "point": "Explains MPP model", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Explains columnar storage and compression", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Describes JIT compilation", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Applies to star schema query", "awarded_marks": 0.0, "reason": "Not specifically applied" }
+          ],
+          "justification": "Query execution concepts well understood. I/O calculations correct. Missing star schema application.",
+          "feedback": "Apply JIT compilation benefits to the star schema join query specifically."
+        }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 12,
+      "rag_course": "IT2040",
+      "rag_per_question": {
+        "01": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week5_concurrency.pdf, p6] SSI tracks rw-antidependencies to detect potential write skew anomalies." },
+        "02": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week6_recovery.pdf, p4] ARIES Redo phase uses pageLSN to avoid redundant redo. Undo phase generates CLRs." },
+        "03": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week4_indexing.pdf, p8] Extendible hashing: when bucket overflows and local depth equals global depth, double directory." },
+        "04": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week7_query_exec.pdf, p5] External merge sort pass count = ceil(log_{B-1}(N/B)) + 1." }
+      },
+      "answer_split": {
+        "buckets_found": ["01", "02", "03", "04"],
+        "per_question_source": {
+          "01": "split",
+          "02": "split",
+          "03": "split",
+          "04": "split"
+        }
+      }
+    },
+    "status": "graded",
+    "processed_at": { "$date": "2026-07-26T05:14:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "66a100000000000000000024" },
+    "rubric_ref": { "$oid": "66a100000000000000000012" },
+    "student_id": "IT22145988",
+    "paper_key": "script_04",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": null,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 20.0 },
+      { "question_no": "03", "max_marks": 20.0 },
+      { "question_no": "04", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22145988\n\nQuestion 1\na) ACID properties:\nAtomicity: transaction is all or nothing. Enforced by undo logging.\nConsistency: database remains in valid state. Enforced by constraints.\nIsolation: concurrent transactions don't affect each other. Enforced by locking protocols.\nDurability: committed data persists. Enforced by redo logging.\n\nCascading rollback under Basic 2PL:\nT1: W(A)\nT2: R(A), W(B)\nT3: R(B), W(C)\nIf T1 aborts, T2 aborts because it read uncommitted A. T3 aborts because it read uncommitted B. Cascade.\nStrict 2PL: T1 holds write lock on A until commit. T2 cannot read A until T1 commits. No cascade.\n\nView serializable not conflict serializable:\nT1: W(A)\nT2: W(A)\nT3: R(A), W(A)\nI think this is view serializable to T1, T2, T3 because T3 reads A from T2 and final write is T3. But conflict graph has T1->T2, T2->T3, T1->T3 on A. No cycle, so it is conflict serializable to T1, T2, T3. Need a schedule with cycle in conflict graph but still view serializable.\n\nT1: W(A)\nT2: W(A)\nT3: R(A), W(B)\nT4: R(B), W(A)\nThis might have a cycle T2->T3->T4->T2? Not sure.\n\nb) MVCC: creates new version for each write. Readers see old version. Writers don't block readers. Traditional locking: readers block writers and vice versa.\nSnapshot isolation: transaction sees a snapshot of database at start.\nWrite skew: when two transactions read same data and write different data based on stale reads.\nExample: X=50, Y=50. T1: R(X)=50, R(Y)=50, W(X)=-40. T2: R(X)=50, R(Y)=50, W(Y)=-40. Both commit. Constraint violated.\nSSI: detects rw-dependencies and aborts one transaction.\n\nQuestion 2\na) ARIES: Analysis, Redo, Undo.\nAnalysis: scan log from checkpoint, build transaction table and dirty page table.\nRedo: repeat history, apply all updates.\nUndo: undo loser transactions, write CLRs.\nDPT: tracks dirty pages and recLSN. TT: tracks active transactions and lastLSN.\n\nExample:\nT1: update P1 (L1)\nT2: update P2 (L2)\nT1: commit (L3)\nCrash\nAnalysis: T2 active, P1 and P2 dirty. Redo: apply L1, L2. Undo: undo L2, write CLR.\n\nb) UNDO logging: before images. REDO logging: after images. UNDO/REDO: both.\nSteal: allow uncommitted data on disk. No-steal: don't allow. Force: ensure committed data on disk. No-force: don't ensure.\nUNDO needs no-steal and force. REDO needs steal and no-force. UNDO/REDO needs steal and no-force.\nPhysiological logging: page-oriented. Example: update page 10, offset 5, set value='abc'.\n\nQuestion 3\na) Clustered index: records in order. Non-clustered: pointers.\nRange queries: clustered faster.\nEmployee table: non-clustered index on Dept. Index-only scan reads index only. Full table scan reads all pages. Clustered index on ID for range query.\n\nb) Extendible hashing: directory with global depth, buckets with local depth.\nInsert 1, 5, 9, 13 with capacity 3:\nInitial: depth 1, bucket0: 1, bucket1: 5\nInsert 9: bucket1 full? 5,9 in bucket1. Split, depth 2.\nThis is getting complicated.\nLinear hashing: splits linearly. Overflow chains.\nAverage block access: 1-2.\n\nQuestion 4\na) External merge sort: sort runs, merge. Hybrid hash join: partition and join. Grace hash join: partition both.\n5-pass merge sort: 2*5000*5=50000.\nHybrid hash join: 3*5000-2*12.5=14975.\n\nb) Volcano: row by row. Vectorized: batches. MPP: multiple nodes. Columnar: column storage. Compression: less I/O. JIT: machine code. Star schema: benefits from JIT.\n",
+    "evaluation": {
+      "total_score": 42.0,
+      "max_score": 80.0,
+      "justification": "Basic understanding of core concepts. View serializability proof is incomplete. ARIES example is too simplistic. Extendible hashing evolution not attempted. I/O calculations partially correct. Logging policy mapping is correct.",
+      "feedback": "Practice view serializability with complete proof. Show step-by-step hashing evolution. Elaborate on ARIES with more realistic examples.",
+      "results": [
+        {
+          "q_no": "01",
+          "score": 10.0,
+          "criteria_breakdown": [
+            { "point": "Defines ACID properties and links to enforcement", "awarded_marks": 3.0, "reason": "Linked each property to enforcement" },
+            { "point": "Constructs cascading rollback schedule under Basic 2PL", "awarded_marks": 2.0, "reason": "Valid schedule" },
+            { "point": "Shows Strict 2PL prevents cascading rollback", "awarded_marks": 2.0, "reason": "Explained" },
+            { "point": "Provides view serializable but not conflict serializable schedule", "awarded_marks": 0.0, "reason": "Failed to provide valid schedule" },
+            { "point": "Proves view equivalence with dependencies", "awarded_marks": 0.0, "reason": "No proof provided" },
+            { "point": "Compares MVCC with traditional locking", "awarded_marks": 1.0, "reason": "Basic comparison" },
+            { "point": "Defines snapshot isolation and write skew", "awarded_marks": 1.0, "reason": "Basic definitions" },
+            { "point": "Provides MVCC execution violating constraint", "awarded_marks": 0.5, "reason": "Example given but not as concurrent execution" },
+            { "point": "Explains SSI detection and resolution", "awarded_marks": 0.5, "reason": "Mentioned rw-dependencies" }
+          ],
+          "justification": "ACID and cascading rollback understood. View serializability is a major gap.",
+          "feedback": "Provide a specific schedule with write-write conflict that is view serializable but not conflict serializable. State read-from dependencies and final write condition."
+        },
+        {
+          "q_no": "02",
+          "score": 13.0,
+          "criteria_breakdown": [
+            { "point": "Describes Analysis phase", "awarded_marks": 1.0, "reason": "Mentioned" },
+            { "point": "Describes Redo phase", "awarded_marks": 1.0, "reason": "Mentioned" },
+            { "point": "Describes Undo phase", "awarded_marks": 1.0, "reason": "Mentioned" },
+            { "point": "Explains DPT and TT significance", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Reconstructs system state from crash", "awarded_marks": 1.0, "reason": "Simple example" },
+            { "point": "Demonstrates step-by-step ARIES recovery", "awarded_marks": 2.0, "reason": "Steps shown" },
+            { "point": "Compares UNDO, REDO, UNDO/REDO logging", "awarded_marks": 1.0, "reason": "Basic comparison" },
+            { "point": "Maps steal/no-steal and force/no-force", "awarded_marks": 3.0, "reason": "Correct mapping" },
+            { "point": "Explains physiological logging", "awarded_marks": 1.0, "reason": "Basic explanation" },
+            { "point": "Provides physiological log record example", "awarded_marks": 1.0, "reason": "Correct example" }
+          ],
+          "justification": "Logging policy mapping is correct. ARIES explanation is superficial.",
+          "feedback": "Provide a more detailed ARIES example with multiple transactions and page interactions."
+        },
+        {
+          "q_no": "03",
+          "score": 9.0,
+          "criteria_breakdown": [
+            { "point": "Explains clustered vs non-clustered physical organization", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Analyzes range query trade-off", "awarded_marks": 1.0, "reason": "Mentioned clustered faster" },
+            { "point": "Analyzes single-record lookup trade-off", "awarded_marks": 0.0, "reason": "Not addressed" },
+            { "point": "Employee example for index-only scan", "awarded_marks": 2.0, "reason": "Basic example" },
+            { "point": "Employee example for clustered index scan", "awarded_marks": 1.0, "reason": "Mentioned range query" },
+            { "point": "Describes Extendible Hashing structure", "awarded_marks": 1.0, "reason": "Basic description" },
+            { "point": "Shows step-by-step evolution for insertion sequence", "awarded_marks": 0.0, "reason": "Not attempted" },
+            { "point": "Contrasts with Linear Hashing", "awarded_marks": 2.0, "reason": "Basic contrast" },
+            { "point": "Calculates average block accesses", "awarded_marks": 1.0, "reason": "Estimate" }
+          ],
+          "justification": "Basic indexing concepts understood. Hashing evolution not attempted.",
+          "feedback": "Complete the Extendible Hashing evolution step-by-step. Use a simple hash function and show directory and bucket contents."
+        },
+        {
+          "q_no": "04",
+          "score": 10.0,
+          "criteria_breakdown": [
+            { "point": "Explains external merge-sort", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Explains hybrid hash join", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Explains Grace Hash Join preference", "awarded_marks": 1.0, "reason": "Mentioned" },
+            { "point": "Calculates 5-pass external merge sort I/O", "awarded_marks": 2.0, "reason": "Correct" },
+            { "point": "Calculates hybrid hash join I/O", "awarded_marks": 2.0, "reason": "Correct" },
+            { "point": "Compares volcano with vectorized execution", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Explains MPP model", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Explains columnar storage and compression", "awarded_marks": 0.5, "reason": "Basic" },
+            { "point": "Describes JIT compilation", "awarded_marks": 0.5, "reason": "Basic" },
+            { "point": "Applies to star schema query", "awarded_marks": 0.0, "reason": "Not applied" }
+          ],
+          "justification": "I/O calculations correct. Query execution concepts covered at very basic level.",
+          "feedback": "Elaborate on columnar storage benefits and JIT compilation for star schema queries."
+        }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 12,
+      "rag_course": "IT2040",
+      "rag_per_question": {
+        "01": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week5_concurrency.pdf, p7] View serializable but not conflict serializable schedules require a cycle in the conflict graph but equivalent read-from and final write conditions." },
+        "02": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week6_recovery.pdf, p6] UNDO logging requires no-steal and force. REDO logging requires steal and no-force." },
+        "03": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week4_indexing.pdf, p9] Extendible hashing insertion: split bucket, double directory if local depth equals global depth." },
+        "04": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week7_query_exec.pdf, p7] JIT compilation reduces per-row interpretation overhead in join loops." }
+      },
+      "answer_split": {
+        "buckets_found": ["01", "02", "03", "04"],
+        "per_question_source": {
+          "01": "split",
+          "02": "split",
+          "03": "split",
+          "04": "split"
+        }
+      }
+    },
+    "status": "graded",
+    "processed_at": { "$date": "2026-07-26T05:15:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "66a100000000000000000025" },
+    "rubric_ref": { "$oid": "66a100000000000000000012" },
+    "student_id": "IT22145992",
+    "paper_key": "script_05",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": null,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 20.0 },
+      { "question_no": "03", "max_marks": 20.0 },
+      { "question_no": "04", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22145992\n\nQuestion 1\na) ACID:\nA: Atomicity - all or nothing. Logging ensures this.\nC: Consistency - valid state. Constraints.\nI: Isolation - serializable. Locking.\nD: Durability - permanent. WAL.\n\nCascading rollback:\nT1: W(A)\nT2: R(A), W(B)\nT3: R(B), W(C)\nT1 aborts -> T2 aborts -> T3 aborts.\nStrict 2PL prevents because locks held until commit.\n\nView serializable:\nT1: W(A)\nT2: R(A), W(A)\nT3: W(A)\nThis has write-write conflict on A. Read-from: T2 reads A from T1. Final write: T3 writes A. View equivalent to T1, T2, T3. Conflict graph: T1->T2, T2->T3, T1->T3. No cycle. So it IS conflict serializable. I need one that is not conflict serializable.\n\nMaybe:\nT1: W(A), W(B)\nT2: W(A)\nT3: R(A), W(B)\nCycle: T1->T2 on A, T2->T3 on A, T3->T1 on B? T3 writes B after T1 so T1->T3 on B. No cycle. I can't find one.\n\nb) MVCC: versions. Locking: blocks. Snapshot isolation: snapshot. Write skew: stale reads cause constraint violation.\nExample: X=50, Y=50. T1 writes X=-40. T2 writes Y=-40. Both commit. X+Y=-80.\nSSI: aborts one transaction.\n\nQuestion 2\na) ARIES: Analysis, Redo, Undo. DPT and TT used during recovery. CLRs written during undo.\nExample: T1 updates P1, T2 updates P2, crash. Analysis finds T1 and T2. Redo applies updates. Undo undoes both.\n\nb) UNDO: before images. REDO: after images. UNDO/REDO: both. Steal, no-steal, force, no-force.\nPhysiological logging: example - update page 3, insert tuple.\n\nQuestion 3\na) Clustered: records in order. Non-clustered: pointers.\nEmployee table. Index-only scan reads index pages. Full table scan reads all pages. Clustered index scan sequential.\n\nb) Extendible hashing: directory, buckets, global depth, local depth.\nInsert keys: show evolution.\nLinear hashing: split linearly, overflow.\nAverage block access: 1-2.\n\nQuestion 4\na) External merge sort: sort and merge. Hybrid hash join: partition and join. Grace hash join: partition both.\n5-pass: 50000 I/O. Hybrid: 14975 I/O.\n\nb) Volcano: row by row. Vectorized: batches. MPP: parallel. Columnar: column storage. Compression: less I/O. JIT: machine code.\n",
+    "evaluation": {
+      "total_score": 35.0,
+      "max_score": 80.0,
+      "justification": "Very basic coverage of all topics. View serializability proof attempted but not completed. ARIES example very simplistic. Hashing evolution not shown. I/O calculations correct but without derivation. Many concepts only mentioned without explanation.",
+      "feedback": "Provide detailed explanations with examples. Practice view serializability proofs. Show complete hashing evolution. Elaborate on query execution models.",
+      "results": [
+        {
+          "q_no": "01",
+          "score": 9.0,
+          "criteria_breakdown": [
+            { "point": "Defines ACID properties and links to enforcement", "awarded_marks": 2.0, "reason": "Listed with brief enforcement" },
+            { "point": "Constructs cascading rollback schedule under Basic 2PL", "awarded_marks": 2.0, "reason": "Valid schedule" },
+            { "point": "Shows Strict 2PL prevents cascading rollback", "awarded_marks": 1.0, "reason": "Mentioned" },
+            { "point": "Provides view serializable but not conflict serializable schedule", "awarded_marks": 0.0, "reason": "Failed to provide" },
+            { "point": "Proves view equivalence with dependencies", "awarded_marks": 0.0, "reason": "No proof" },
+            { "point": "Compares MVCC with traditional locking", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Defines snapshot isolation and write skew", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Provides MVCC execution violating constraint", "awarded_marks": 1.0, "reason": "Example given" },
+            { "point": "Explains SSI detection and resolution", "awarded_marks": 1.0, "reason": "Mentioned abort" }
+          ],
+          "justification": "Basic ACID understanding. View serializability is a major gap.",
+          "feedback": "Provide a schedule with a cycle in conflict graph but equivalent read-from and final write conditions."
+        },
+        {
+          "q_no": "02",
+          "score": 9.0,
+          "criteria_breakdown": [
+            { "point": "Describes Analysis phase", "awarded_marks": 1.0, "reason": "Mentioned" },
+            { "point": "Describes Redo phase", "awarded_marks": 1.0, "reason": "Mentioned" },
+            { "point": "Describes Undo phase", "awarded_marks": 1.0, "reason": "Mentioned" },
+            { "point": "Explains DPT and TT significance", "awarded_marks": 1.0, "reason": "Mentioned" },
+            { "point": "Reconstructs system state from crash", "awarded_marks": 1.0, "reason": "Simple example" },
+            { "point": "Demonstrates step-by-step ARIES recovery", "awarded_marks": 1.0, "reason": "Basic steps" },
+            { "point": "Compares UNDO, REDO, UNDO/REDO logging", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Maps steal/no-steal and force/no-force", "awarded_marks": 1.0, "reason": "Partially correct" },
+            { "point": "Explains physiological logging", "awarded_marks": 0.5, "reason": "Basic" },
+            { "point": "Provides physiological log record example", "awarded_marks": 0.5, "reason": "Basic example" }
+          ],
+          "justification": "Superficial coverage of ARIES and logging protocols.",
+          "feedback": "Provide detailed ARIES example with specific LSNs and show how CLRs are used."
+        },
+        {
+          "q_no": "03",
+          "score": 8.0,
+          "criteria_breakdown": [
+            { "point": "Explains clustered vs non-clustered physical organization", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Analyzes range query trade-off", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Analyzes single-record lookup trade-off", "awarded_marks": 0.0, "reason": "Not addressed" },
+            { "point": "Employee example for index-only scan", "awarded_marks": 2.0, "reason": "Basic example" },
+            { "point": "Employee example for clustered index scan", "awarded_marks": 1.0, "reason": "Mentioned" },
+            { "point": "Describes Extendible Hashing structure", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Shows step-by-step evolution for insertion sequence", "awarded_marks": 0.0, "reason": "Not shown" },
+            { "point": "Contrasts with Linear Hashing", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Calculates average block accesses", "awarded_marks": 1.0, "reason": "Estimate" }
+          ],
+          "justification": "Basic indexing concepts. Hashing evolution not attempted.",
+          "feedback": "Show complete Extendible Hashing evolution with directory and bucket contents for each insertion."
+        },
+        {
+          "q_no": "04",
+          "score": 9.0,
+          "criteria_breakdown": [
+            { "point": "Explains external merge-sort", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Explains hybrid hash join", "awarded_marks": 1.0, "reason": "Basic" },
+            { "point": "Explains Grace Hash Join preference", "awarded_marks": 1.0, "reason": "Mentioned" },
+            { "point": "Calculates 5-pass external merge sort I/O", "awarded_marks": 2.0, "reason": "Correct" },
+            { "point": "Calculates hybrid hash join I/O", "awarded_marks": 2.0, "reason": "Correct" },
+            { "point": "Compares volcano with vectorized execution", "awarded_marks": 0.5, "reason": "Basic" },
+            { "point": "Explains MPP model", "awarded_marks": 0.5, "reason": "Basic" },
+            { "point": "Explains columnar storage and compression", "awarded_marks": 0.5, "reason": "Basic" },
+            { "point": "Describes JIT compilation", "awarded_marks": 0.5, "reason": "Basic" },
+            { "point": "Applies to star schema query", "awarded_marks": 0.0, "reason": "Not applied" }
+          ],
+          "justification": "I/O calculations correct. Query execution concepts very basic.",
+          "feedback": "Elaborate on vectorized execution, MPP, and JIT compilation with specific examples."
+        }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 12,
+      "rag_course": "IT2040",
+      "rag_per_question": {
+        "01": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week5_concurrency.pdf, p8] A view serializable but not conflict serializable schedule has a cycle in the conflict graph but preserves read-from and final write conditions." },
+        "02": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week6_recovery.pdf, p7] ARIES uses WAL with steal/no-force. CLRs are written during undo phase." },
+        "03": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week4_indexing.pdf, p10] Extendible hashing doubles directory when local depth equals global depth." },
+        "04": { "rag_chunks": 3, "rag_context_used": true, "rag_snippet": "[week7_query_exec.pdf, p8] Vectorized execution processes batches reducing interpretation overhead." }
+      },
+      "answer_split": {
+        "buckets_found": ["01", "02", "03", "04"],
+        "per_question_source": {
+          "01": "split",
+          "02": "split",
+          "03": "split",
+          "04": "split"
+        }
+      }
+    },
+    "status": "graded",
+    "processed_at": { "$date": "2026-07-26T05:16:00.000Z" },
+    "lecturer_note": null
+  }
+]
