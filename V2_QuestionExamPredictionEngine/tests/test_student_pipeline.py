@@ -17,7 +17,11 @@ COURSE = {
 RUBRIC = {
     "_id": "rubric-1",
     "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
     "session_name": "Final Examination",
+    "year": 2022,
+    "month": 7,
+    "semester": 1,
     "questions": [
         {
             "question_no": "02",
@@ -588,8 +592,12 @@ def test_assemble_document_produces_new_top_level_shape():
     )
     assert set(document) == {
         "student_id",
-        "exam_id",
-        "course",
+        "subject_code",
+        "subject_name",
+        "year",
+        "month",
+        "semester",
+        "session_name",
         "overall_performance",
         "question_performance",
         "topic_performance",
@@ -601,6 +609,7 @@ def test_assemble_document_produces_new_top_level_shape():
         "generated_at",
         "analysis_version",
     }
-    assert document["exam_id"] == "IT2040@Final Examination"
+    assert document["subject_code"] == "IT2040"
+    assert document["session_name"] == "Final Examination"
     assert document["overall_performance"]["percentage"] == 60.0
     assert document["next_question_strategy"]["number_of_questions"] == 5

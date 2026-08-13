@@ -7,8 +7,12 @@ from app.schemas.student import StudentAnalyticsDocument
 def valid_document() -> dict:
     return {
         "student_id": "IT22145976",
-        "exam_id": "IT2040@Final Examination 2021",
-        "course": {"code": "IT2040", "name": "Database Management Systems"},
+        "subject_code": "IT2040",
+        "subject_name": "Database Management Systems",
+        "year": 2021,
+        "month": 7,
+        "semester": 1,
+        "session_name": "Final Examination 2021",
         "overall_performance": {"score": 65.0, "maximum": 100.0, "percentage": 65.0, "status": "Needs Improvement"},
         "question_performance": [
             {
@@ -61,7 +65,8 @@ def valid_document() -> dict:
 def test_student_analytics_serializes_exact_top_level_contract():
     document = StudentAnalyticsDocument(**valid_document())
     assert set(document.model_dump(mode="json")) == {
-        "student_id", "exam_id", "course", "overall_performance",
+        "student_id", "subject_code", "subject_name", "year", "month",
+        "semester", "session_name", "overall_performance",
         "question_performance", "topic_performance", "bloom_performance",
         "learning_analysis", "recommendations", "next_question_strategy",
         "model_metadata", "generated_at", "analysis_version",

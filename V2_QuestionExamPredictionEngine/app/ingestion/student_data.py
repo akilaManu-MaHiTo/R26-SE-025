@@ -25,7 +25,11 @@ class NormalizedStudentInput(BaseModel):
     student_id: str = Field(min_length=1)
     course_code: str = Field(min_length=1)
     course_name: str = Field(min_length=1)
+    subject_name: str = Field(min_length=1)
     session_name: str = Field(min_length=1)
+    year: int
+    month: int
+    semester: int
     rubric_ref: str = Field(min_length=1)
     questions: list[NormalizedQuestionInput]
 
@@ -108,6 +112,13 @@ def normalize_student_submission(
     course_name = str(course.get("course_name") or course.get("name") or "").strip()
     if not course_name:
         course_name = "Database Management Systems" if course_code == "IT2040" else course_code
+    subject_name = str(rubric.get("subject_name") or course_name or "").strip() or course_code
+    try:
+        year = int(rubric.get("year") or 0)
+        month = int(rubric.get("month") or 0)
+        semester = int(rubric.get("semester") or 0)
+    except (TypeError, ValueError) as exc:
+        raise StudentDataError("invalid rubric session identity") from exc
     rubric_ref = str(rubric.get("_id") or submission.get("rubric_ref") or "unknown")
 
     rubric_by_question: dict[str, dict] = {}
@@ -163,7 +174,11 @@ def normalize_student_submission(
         student_id=student_id,
         course_code=course_code,
         course_name=course_name,
+        subject_name=subject_name,
         session_name=session_name,
+        year=year,
+        month=month,
+        semester=semester,
         rubric_ref=rubric_ref,
         questions=questions,
     )

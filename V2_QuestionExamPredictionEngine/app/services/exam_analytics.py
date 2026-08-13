@@ -9,6 +9,7 @@ from app.db.repository import (
     find_graded_submissions_for_exam,
     find_rubric_for_submission,
     upsert_exam_analytics,
+    upsert_exam_analysis_status,
 )
 from app.ingestion.student_data import normalize_student_submission
 from app.services.student_pipeline import _classify_questions
@@ -56,13 +57,37 @@ async def compute_exam_analytics(db, course_code: str, session_name: str) -> dic
     course_name = str((course or {}).get("name") or (course or {}).get("course_name") or "").strip()
     if not course_name:
         course_name = "Database Management Systems" if course_code == "IT2040" else course_code
+    subject_name = str((rubric or {}).get("subject_name") or course_name or "").strip() or course_code
+    try:
+        year = int((rubric or {}).get("year") or 0)
+        month = int((rubric or {}).get("month") or 0)
+        semester = int((rubric or {}).get("semester") or 0)
+    except (TypeError, ValueError) as exc:
+        raise ExamNotFound(f"invalid rubric session identity for {course_code} {session_name}") from exc
     document = {
-        "exam_id": f"{course_code}@{session_name}",
-        "course": {"code": course_code, "name": course_name},
+        "subject_code": course_code,
+        "subject_name": subject_name,
+        "year": year,
+        "month": month,
+        "semester": semester,
+        "session_name": session_name,
         "exam": {"session_name": session_name, "total_marks": total_marks, "question_count": question_count},
         **stats,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "analytics_version": "1.0",
     }
     await upsert_exam_analytics(db, document)
+    await upsert_exam_analysis_status(
+        db,
+        {
+            "subject_code": course_code,
+            "subject_name": subject_name,
+            "year": year,
+            "month": month,
+            "semester": semester,
+            "session_name": session_name,
+            "analyzed": "done",
+            "analyzed_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
     return document

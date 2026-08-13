@@ -9,8 +9,12 @@ from app.services import student_dashboard
 def valid_document() -> dict:
     return {
         "student_id": "IT22145976",
-        "exam_id": "IT2040@Final Examination 2021",
-        "course": {"code": "IT2040", "name": "Database Management Systems"},
+        "subject_code": "IT2040",
+        "subject_name": "Database Management Systems",
+        "year": 2021,
+        "month": 7,
+        "semester": 1,
+        "session_name": "Final Examination 2021",
         "overall_performance": {
             "score": 65.0,
             "maximum": 100.0,

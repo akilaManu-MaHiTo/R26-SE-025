@@ -63,7 +63,11 @@ def two_question_input(
         student_id="IT22145976",
         course_code="IT2040",
         course_name="Database Management Systems",
+        subject_name="Database Management Systems",
         session_name="Final Examination",
+        year=2022,
+        month=7,
+        semester=1,
         rubric_ref="rubric-1",
         questions=list(reversed(questions)) if reverse else questions,
     )

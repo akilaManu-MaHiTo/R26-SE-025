@@ -12,8 +12,12 @@ from tests.test_run_sample import _clean_sample_documents
 def valid_student_document() -> dict:
     return {
         "student_id": "IT22145976",
-        "exam_id": "IT2040@Final Examination",
-        "course": {"code": "IT2040", "name": "Database Management Systems"},
+        "subject_code": "IT2040",
+        "subject_name": "Database Management Systems",
+        "year": 2022,
+        "month": 7,
+        "semester": 1,
+        "session_name": "Final Examination",
         "overall_performance": {
             "score": 60.0,
             "maximum": 100.0,
@@ -61,7 +65,8 @@ async def test_lecturer_analytics_endpoint_returns_document(test_db):
                 "/api/lecturers/exams/IT2040/Final%20Examination/analytics"
             )
         assert response.status_code == 200
-        assert response.json()["exam_id"] == "IT2040@Final Examination"
+        assert response.json()["subject_code"] == "IT2040"
+        assert response.json()["session_name"] == "Final Examination"
     finally:
         app.dependency_overrides.clear()
         await test_db["analytics_snapshots"].delete_many({})
@@ -117,7 +122,7 @@ async def test_lecturer_analytics_endpoint_returns_404_without_submissions(test_
     finally:
         app.dependency_overrides.clear()
         await test_db["analytics_snapshots"].delete_many(
-            {"exam_id": "SE3040@Semester 1 Final Exam"}
+            {"subject_code": "SE3040", "session_name": "Semester 1 Final Exam"}
         )
 
 
@@ -140,6 +145,6 @@ def test_valid_student_document_is_a_reshaped_student_analytics_document():
     document = valid_student_document()
     validated = StudentAnalyticsDocument.model_validate(document)
     assert validated.student_id == "IT22145976"
-    assert validated.exam_id == "IT2040@Final Examination"
-    assert validated.course.code == "IT2040"
-    assert validated.course.name == "Database Management Systems"
+    assert validated.subject_code == "IT2040"
+    assert validated.subject_name == "Database Management Systems"
+    assert validated.session_name == "Final Examination"
