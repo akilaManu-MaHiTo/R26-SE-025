@@ -7,11 +7,12 @@ from run_sample import load_raw_sample_documents
 
 def test_courses_have_v2_shape():
     courses, _, _ = load_raw_sample_documents()
-    assert len(courses) == 1
-    course = courses[0]
-    assert course["code"] == "IT2040"
-    assert course["name"]
-    assert course["description"]
+    assert len(courses) == 2
+    assert {course["code"] for course in courses} == {"SE3040", "IT2040"}
+    assert all(
+        course.get("code") and course.get("name") and course.get("description")
+        for course in courses
+    )
 
 
 def test_rubric_has_v2_metadata():
@@ -19,11 +20,12 @@ def test_rubric_has_v2_metadata():
     rubric = rubrics[0]
     assert rubric["subject_code"] == "IT2040"
     assert rubric["subject_name"]
-    assert rubric["year"] == 2021
+    assert rubric["year"] == 2022
     assert rubric["month"]
     assert rubric["semester"]
-    assert rubric["session_name"]
-    assert len(rubric["exam_roster"]) == 5
+    assert rubric["session_name"] == "Final Examination"
+    assert "exam_roster" in rubric
+    assert len(rubric["questions"]) == 4
 
 
 def test_submissions_have_v2_shape_and_graded_status():
@@ -34,10 +36,10 @@ def test_submissions_have_v2_shape_and_graded_status():
         assert sub["paper_key"]
         assert sub["subject_code"] == "IT2040"
         assert sub["subject_name"]
-        assert sub["year"] == 2021
+        assert sub["year"] == 2022
         assert sub["month"]
         assert sub["semester"]
-        assert sub["session_name"]
+        assert sub["session_name"] == "Final Examination"
         assert "lecturer_note" in sub
         for result in sub["evaluation"]["results"]:
             for criterion in result["criteria_breakdown"]:
@@ -56,7 +58,9 @@ def test_migrate_sample_v2_is_idempotent(tmp_path, monkeypatch):
 
     def snapshot() -> dict[str, bytes]:
         return {
-            p.name: p.read_bytes() for p in sorted(dest.iterdir()) if p.is_file()
+            str(p.relative_to(dest)): p.read_bytes()
+            for p in sorted(dest.rglob("*"))
+            if p.is_file()
         }
 
     migrate_sample_v2.main()

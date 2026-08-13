@@ -1,9 +1,10 @@
 """Regenerate the checked-in sample documents in the v2 data structure.
 
-Reads the current JSON files under app/sample_data/ and rewrites them to the
-v2 shape (criteria as {point, awarded_marks, reason}, paper_key, subject
-metadata, exam roster, lecturer_note) while preserving every existing value.
-Re-running is a no-op for already-migrated files.
+Reads the current JSON files under app/sample_data/ (one folder per MongoDB
+collection) and rewrites them to the v2 shape (criteria as
+{point, awarded_marks, reason}, paper_key, subject metadata, exam roster,
+lecturer_note) while preserving every existing value. Re-running is a no-op
+for already-migrated files.
 
 Run from the repository root:
     python migrate_sample_v2.py
@@ -13,6 +14,10 @@ import json
 from pathlib import Path
 
 SAMPLE_DIR = Path(__file__).resolve().parent / "app" / "sample_data"
+
+COURSES_FILE = "courses/courses.json"
+RUBRIC_FILE = "rubricCollection/rubricCollection.json"
+SUBMISSIONS_DIR = "submissions"
 
 SUBJECT_CODE = "IT2040"
 SUBJECT_NAME = "Database Management Systems"
@@ -28,7 +33,7 @@ COURSE_DESCRIPTION = (
 )
 
 
-def _load(name: str) -> dict:
+def _load(name: str) -> object:
     with open(SAMPLE_DIR / name, encoding="utf-8") as fh:
         return json.load(fh)
 
@@ -75,7 +80,8 @@ def rubric_v2(existing: dict, roster: list[str]) -> dict:
     document["month"] = existing.get("month", MONTH)
     document["semester"] = existing.get("semester", SEMESTER)
     document["session_name"] = existing.get("session_name", SESSION_NAME)
-    document["exam_roster"] = sorted(roster)
+    if "exam_roster" not in existing:
+        document["exam_roster"] = sorted(roster)
     return document
 
 
@@ -101,15 +107,25 @@ def submission_v2(existing: dict) -> dict:
 
 
 def main() -> None:
-    paths = sorted(SAMPLE_DIR.glob("submission*.json"))
+    courses = _load(COURSES_FILE)
+    rubric = _load(RUBRIC_FILE)
+    submission_paths = sorted((SAMPLE_DIR / SUBMISSIONS_DIR).glob("submission*.json"))
     submissions = [
-        json.loads(path.read_text(encoding="utf-8")) for path in paths
+        sub
+        for path in submission_paths
+        for sub in json.loads(path.read_text(encoding="utf-8"))
     ]
     roster = [sub["student_id"] for sub in submissions]
-    _save("courses.json", course_v2(_load("courses.json")))
-    _save("rubricCollection.json", rubric_v2(_load("rubricCollection.json"), roster))
-    for path in paths:
-        _save(path.name, submission_v2(json.loads(path.read_text(encoding="utf-8"))))
+    _save(COURSES_FILE, [course_v2(course) for course in courses])
+    _save(RUBRIC_FILE, rubric_v2(rubric, roster))
+    for path in submission_paths:
+        _save(
+            f"{SUBMISSIONS_DIR}/{path.name}",
+            [
+                submission_v2(sub)
+                for sub in json.loads(path.read_text(encoding="utf-8"))
+            ],
+        )
 
 
 if __name__ == "__main__":
