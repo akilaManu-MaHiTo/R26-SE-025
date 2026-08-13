@@ -91,7 +91,7 @@ async def _clean_sample_documents(db):
     student_ids = [submission["student_id"] for submission in submissions]
     await db["courses"].delete_many({"code": "IT2040"})
     await db["rubricCollection"].delete_many(
-        {"subject_code": "IT2040", "session_name": "Final Examination 2021"}
+        {"subject_code": "IT2040", "session_name": "Final Examination"}
     )
     await db["submissions"].delete_many(
         {"student_id": {"$in": student_ids}}
@@ -219,14 +219,14 @@ async def test_dashboard_endpoint_generates_on_first_access(
                 f"/api/students/{student_id}/dashboard",
                 params={
                     "course_code": "IT2040",
-                    "session_name": "Final Examination 2021",
+                    "session_name": "Final Examination",
                 },
             )
 
         assert response.status_code == 200
         body = response.json()
         assert set(body) == TOP_LEVEL_KEYS
-        assert body["exam_id"] == "IT2040@Final Examination 2021"
+        assert body["exam_id"] == "IT2040@Final Examination"
         persisted = await test_db["student_analytics"].find_one(
             {"student_id": student_id}
         )

@@ -11,8 +11,8 @@ from tests.test_run_sample import _clean_sample_documents
 
 def valid_student_document() -> dict:
     return {
-        "student_id": "IT21001234",
-        "exam_id": "IT2040@Final Examination 2021",
+        "student_id": "IT22145976",
+        "exam_id": "IT2040@Final Examination",
         "course": {"code": "IT2040", "name": "Database Management Systems"},
         "overall_performance": {
             "score": 60.0,
@@ -58,10 +58,10 @@ async def test_lecturer_analytics_endpoint_returns_document(test_db):
             transport=transport, base_url="http://test"
         ) as client:
             response = await client.get(
-                "/api/lecturers/exams/IT2040/Final%20Examination%202021/analytics"
+                "/api/lecturers/exams/IT2040/Final%20Examination/analytics"
             )
         assert response.status_code == 200
-        assert response.json()["exam_id"] == "IT2040@Final Examination 2021"
+        assert response.json()["exam_id"] == "IT2040@Final Examination"
     finally:
         app.dependency_overrides.clear()
         await test_db["analytics_snapshots"].delete_many({})
@@ -80,7 +80,7 @@ async def test_lecturer_students_endpoint_reports_analysis_status(test_db):
                 {
                     "student_id": submission["student_id"],
                     "subject_code": "IT2040",
-                    "session_name": "Final Examination 2021",
+                    "session_name": "Final Examination",
                 },
                 submission_document,
                 upsert=True,
@@ -91,13 +91,13 @@ async def test_lecturer_students_endpoint_reports_analysis_status(test_db):
             transport=transport, base_url="http://test"
         ) as client:
             response = await client.get(
-                "/api/lecturers/exams/IT2040/Final%20Examination%202021/students"
+                "/api/lecturers/exams/IT2040/Final%20Examination/students"
             )
         assert response.status_code == 200
         rows = response.json()
         assert len(rows) == 5
         statuses = {row["student_id"]: row["analysis_status"] for row in rows}
-        assert statuses["IT21001234"] == "generated"
+        assert statuses["IT22145976"] == "generated"
     finally:
         app.dependency_overrides.clear()
         await _clean_sample_documents(test_db)
@@ -139,7 +139,7 @@ async def test_lecturer_students_endpoint_returns_404_without_submissions(test_d
 def test_valid_student_document_is_a_reshaped_student_analytics_document():
     document = valid_student_document()
     validated = StudentAnalyticsDocument.model_validate(document)
-    assert validated.student_id == "IT21001234"
-    assert validated.exam_id == "IT2040@Final Examination 2021"
+    assert validated.student_id == "IT22145976"
+    assert validated.exam_id == "IT2040@Final Examination"
     assert validated.course.code == "IT2040"
     assert validated.course.name == "Database Management Systems"
