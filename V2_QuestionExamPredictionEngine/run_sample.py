@@ -142,7 +142,13 @@ async def main(db_name: str) -> int:
         )
         sample_session = rubrics[0]["session_name"]
         await compute_exam_analytics(db, sample_course_code, sample_session)
-        print(f"exam_analytics count={len(sample_submissions)}")
+        exam_analytics_count = await db["analytics_snapshots"].count_documents(
+            {
+                "course.code": sample_course_code,
+                "exam_id": f"{sample_course_code}@{sample_session}",
+            }
+        )
+        print(f"exam_analytics count={exam_analytics_count}")
         return 1 if result.failures else 0
     finally:
         if progress_bar is not None:
