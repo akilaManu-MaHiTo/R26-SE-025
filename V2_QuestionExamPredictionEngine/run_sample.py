@@ -9,6 +9,7 @@ from tqdm import tqdm
 from app.config import settings
 from app.db.repository import create_indexes
 from app.llm.ollama import check_llm_health
+from app.services.exam_analytics import compute_exam_analytics
 from app.services.student_pipeline import materialize_student_analytics
 
 SAMPLE_DIR = Path(__file__).resolve().parent / "app" / "sample_data"
@@ -97,7 +98,7 @@ async def main(db_name: str) -> int:
 
     try:
         print(f"database={db_name}")
-        _, _, sample_submissions = load_raw_sample_documents()
+        courses, rubrics, sample_submissions = load_raw_sample_documents()
         await create_indexes(db)
         counts = await seed_raw_samples(db)
         print(
@@ -135,6 +136,13 @@ async def main(db_name: str) -> int:
             sample_analytics_filter
         )
         print(f"student_analytics count={saved_count}")
+
+        sample_course_code = (
+            courses[0].get("code") or courses[0].get("subject_code") or "IT2040"
+        )
+        sample_session = rubrics[0]["session_name"]
+        await compute_exam_analytics(db, sample_course_code, sample_session)
+        print(f"exam_analytics count={len(sample_submissions)}")
         return 1 if result.failures else 0
     finally:
         if progress_bar is not None:

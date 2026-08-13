@@ -236,6 +236,12 @@ async def test_main_runs_sample_workflow_and_reports_persisted_results(
         events.append("materialize")
         return MaterializationResult(saved=["student-1"], failures=failures)
 
+    async def compute_exam(candidate_db, course_code, session_name):
+        assert candidate_db is db
+        assert course_code == "IT2040"
+        assert session_name == "Final Examination 2021"
+        return {"students": []}
+
     monkeypatch.setattr(
         run_sample,
         "AsyncIOMotorClient",
@@ -247,6 +253,7 @@ async def test_main_runs_sample_workflow_and_reports_persisted_results(
     monkeypatch.setattr(
         run_sample, "materialize_student_analytics", materialize, raising=False
     )
+    monkeypatch.setattr(run_sample, "compute_exam_analytics", compute_exam)
 
     exit_code = await run_sample.main("sample_test")
     output = capsys.readouterr().out
@@ -270,6 +277,8 @@ async def test_main_ignores_unrelated_graded_submission_and_analytics(
     unrelated_submission = deepcopy(sample_submissions[0])
     unrelated_submission.pop("_id", None)
     unrelated_submission["student_id"] = unrelated_student_id
+    unrelated_submission["subject_code"] = "UNRELATED"
+    unrelated_submission["session_name"] = "Unrelated Assessment"
     unrelated_submission["evaluation"]["results"][0]["score"] = 999.0
     unrelated_analytics = {
         "student_id": unrelated_student_id,
@@ -366,3 +375,45 @@ async def test_main_ignores_unrelated_graded_submission_and_analytics(
         await test_db["student_analytics"].delete_many(
             {"student_id": unrelated_student_id}
         )
+
+
+async def test_main_computes_exam_analytics_after_materialization(
+    monkeypatch, capsys, test_db
+):
+    events = []
+
+    async def compute_exam(candidate_db, course_code, session_name):
+        assert candidate_db is test_db
+        events.append("exam_analytics")
+        return {"exam_id": "IT2040@Final Examination 2021"}
+
+    async def _healthy():
+        return True, "ok"
+
+    async def _runner_main(*args, **kwargs):
+        events.append("runner_main")
+        return MaterializationResult(saved=[], failures=[])
+
+    async def create_indexes(candidate_db):
+        events.append("indexes")
+
+    async def seed_raw_samples(candidate_db):
+        return {"courses": 1, "rubrics": 1, "submissions": 5}
+
+    monkeypatch.setattr(run_sample, "check_llm_health", _healthy)
+    monkeypatch.setattr(
+        run_sample, "compute_exam_analytics", compute_exam, raising=False
+    )
+    monkeypatch.setattr(run_sample, "create_indexes", create_indexes)
+    monkeypatch.setattr(run_sample, "seed_raw_samples", seed_raw_samples)
+    monkeypatch.setattr(
+        run_sample, "materialize_student_analytics", _runner_main, raising=False
+    )
+    monkeypatch.setattr(
+        run_sample, "AsyncIOMotorClient", lambda _uri: _RunnerClient(test_db)
+    )
+
+    exit_code = await run_sample.main("dbms_analytics_test")
+
+    assert exit_code == 0
+    assert "exam_analytics" in events
