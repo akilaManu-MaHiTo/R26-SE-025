@@ -10,16 +10,16 @@ async def test_compute_exam_analytics_persists_and_returns_document(test_db, mon
     monkeypatch.setattr(student_pipeline, "generate_student_insights", lambda *a, **k: {"status": "degraded", "reason": "offline_test"})
 
     await _clean_sample_documents(test_db)
-    await test_db["analytics_snapshots"].delete_many({"exam_id": "IT2040@Final Examination 2021"})
+    await test_db["analytics_snapshots"].delete_many({"exam_id": "IT2040@Final Examination"})
     try:
         await seed_raw_samples(test_db)
 
-        result = await exam_service.compute_exam_analytics(test_db, "IT2040", "Final Examination 2021")
+        result = await exam_service.compute_exam_analytics(test_db, "IT2040", "Final Examination")
 
-        assert result["exam_id"] == "IT2040@Final Examination 2021"
+        assert result["exam_id"] == "IT2040@Final Examination"
         assert result["statistics"]["total_students"] == 5
-        saved = await test_db["analytics_snapshots"].find_one({"exam_id": "IT2040@Final Examination 2021"})
+        saved = await test_db["analytics_snapshots"].find_one({"exam_id": "IT2040@Final Examination"})
         assert saved is not None
     finally:
         await _clean_sample_documents(test_db)
-        await test_db["analytics_snapshots"].delete_many({"exam_id": "IT2040@Final Examination 2021"})
+        await test_db["analytics_snapshots"].delete_many({"exam_id": "IT2040@Final Examination"})

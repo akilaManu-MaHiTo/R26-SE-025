@@ -4,9 +4,9 @@ from app.schemas.exam_analytics import ExamAnalyticsDocument
 
 def exam_document() -> dict:
     return {
-        "exam_id": "IT2040@Final Examination 2021",
+        "exam_id": "IT2040@Final Examination",
         "course": {"code": "IT2040", "name": "Database Management Systems"},
-        "exam": {"session_name": "Final Examination 2021", "total_marks": 100.0, "question_count": 11},
+        "exam": {"session_name": "Final Examination", "total_marks": 100.0, "question_count": 11},
         "statistics": {"total_students": 5, "attempted_students": 5, "average_score": 67.4,
                        "average_percentage": 67.4, "pass_rate": 80.0, "highest_score": 94.0, "lowest_score": 31.0},
         "topic_performance": [{"topic": "JDBC", "average_percentage": 76.0, "status": "Strong"}],
