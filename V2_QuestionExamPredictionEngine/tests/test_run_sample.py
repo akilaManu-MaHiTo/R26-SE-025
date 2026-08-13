@@ -91,7 +91,7 @@ async def _clean_sample_documents(db):
 async def test_seed_raw_samples_idempotently_upserts_sample_documents(test_db):
     await _clean_sample_documents(test_db)
     try:
-        expected_counts = {"courses": 1, "rubrics": 1, "submissions": 5}
+        expected_counts = {"courses": 2, "rubrics": 1, "submissions": 5}
         assert await seed_raw_samples(test_db) == expected_counts
         assert await seed_raw_samples(test_db) == expected_counts
 
@@ -103,7 +103,7 @@ async def test_seed_raw_samples_idempotently_upserts_sample_documents(test_db):
                     {"code": {"$in": identity["course_codes"]}},
                 ]
             }
-        ) == 1
+        ) == 2
         assert await test_db["rubricCollection"].count_documents(
             {
                 "subject_code": {"$in": identity["course_codes"]},

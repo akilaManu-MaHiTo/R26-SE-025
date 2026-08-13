@@ -35,40 +35,59 @@ def load_raw_sample_documents() -> tuple[list[dict], list[dict], list[dict]]:
     return courses, rubrics, submissions
 
 
+def _usable_identity(document: dict) -> object | None:
+    """Return the document's _id when it is a usable reference, else None."""
+    _id = document.get("_id")
+    if _id is None:
+        return None
+    if isinstance(_id, str) and "..." in _id:
+        return None
+    return _id
+
+
+async def _upsert_natural(
+    db, collection: str, document: dict, natural_filter: dict
+) -> None:
+    identity = _usable_identity(document)
+    if identity is not None:
+        await db[collection].replace_one({"_id": identity}, document, upsert=True)
+        return
+    replacement = {key: value for key, value in document.items() if key != "_id"}
+    await db[collection].replace_one(natural_filter, replacement, upsert=True)
+
+
 async def seed_raw_samples(db) -> dict[str, int]:
     """Idempotently upsert the checked-in raw sample documents."""
     courses, rubrics, submissions = load_raw_sample_documents()
 
     for course in courses:
-        course_document = {key: value for key, value in course.items() if key != "_id"}
         course_key = course.get("code") or course.get("subject_code") or "IT2040"
-        await db["courses"].replace_one(
+        await _upsert_natural(
+            db,
+            "courses",
+            course,
             {"$or": [{"code": course_key}, {"subject_code": course_key}]},
-            course_document,
-            upsert=True,
         )
     for rubric in rubrics:
-        rubric_document = {key: value for key, value in rubric.items() if key != "_id"}
-        await db["rubricCollection"].replace_one(
+        await _upsert_natural(
+            db,
+            "rubricCollection",
+            rubric,
             {
                 "subject_code": rubric["subject_code"],
                 "session_name": rubric["session_name"],
             },
-            rubric_document,
-            upsert=True,
         )
     for submission in submissions:
-        submission_document = {
-            key: value for key, value in submission.items() if key != "_id"
-        }
-        await db["submissions"].replace_one(
+        await _upsert_natural(
+            db,
+            "submissions",
+            submission,
             {
                 "student_id": submission["student_id"],
                 "subject_code": submission["subject_code"],
                 "session_name": submission["session_name"],
             },
-            submission_document,
-            upsert=True,
         )
 
     return {
