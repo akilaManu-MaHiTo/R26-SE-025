@@ -167,7 +167,7 @@ class _ExamSnapshotCollection:
     async def count_documents(self, filters):
         assert filters == {
             "course.code": "IT2040",
-            "exam_id": "IT2040@Final Examination 2021",
+            "exam_id": "IT2040@Final Examination",
         }
         return 1
 
@@ -237,7 +237,7 @@ async def test_main_runs_sample_workflow_and_reports_persisted_results(
         assert candidate_db is db
         assert events == ["indexes"]
         events.append("seed")
-        return {"courses": 1, "rubrics": 1, "submissions": 5}
+        return {"courses": 2, "rubrics": 1, "submissions": 5}
 
     async def materialize(candidate_db, *, submissions, progress_callback=None):
         assert candidate_db is db
@@ -250,7 +250,7 @@ async def test_main_runs_sample_workflow_and_reports_persisted_results(
     async def compute_exam(candidate_db, course_code, session_name):
         assert candidate_db is db
         assert course_code == "IT2040"
-        assert session_name == "Final Examination 2021"
+        assert session_name == "Final Examination"
         return {"students": []}
 
     monkeypatch.setattr(
@@ -272,7 +272,7 @@ async def test_main_runs_sample_workflow_and_reports_persisted_results(
     assert exit_code == expected_exit
     assert events == ["indexes", "seed", "materialize"]
     assert "database=sample_test" in output
-    assert "seeded courses=1 rubrics=1 submissions=5" in output
+    assert "seeded courses=2 rubrics=1 submissions=5" in output
     assert "saved student_ids: student-1" in output
     assert f"failures: {len(failures)}" in output
     assert "student_analytics count=5" in output
@@ -396,7 +396,7 @@ async def test_main_computes_exam_analytics_after_materialization(
     async def compute_exam(candidate_db, course_code, session_name):
         assert candidate_db is test_db
         events.append("exam_analytics")
-        return {"exam_id": "IT2040@Final Examination 2021"}
+        return {"exam_id": "IT2040@Final Examination"}
 
     async def _healthy():
         return True, "ok"
@@ -409,7 +409,7 @@ async def test_main_computes_exam_analytics_after_materialization(
         events.append("indexes")
 
     async def seed_raw_samples(candidate_db):
-        return {"courses": 1, "rubrics": 1, "submissions": 5}
+        return {"courses": 2, "rubrics": 1, "submissions": 5}
 
     monkeypatch.setattr(run_sample, "check_llm_health", _healthy)
     monkeypatch.setattr(

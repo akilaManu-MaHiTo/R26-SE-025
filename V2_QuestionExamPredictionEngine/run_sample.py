@@ -164,8 +164,14 @@ async def main(db_name: str) -> int:
         )
         print(f"student_analytics count={saved_count}")
 
-        sample_course_code = (
-            courses[0].get("code") or courses[0].get("subject_code") or "IT2040"
+        sample_course_code = next(
+            (
+                course.get("code") or course.get("subject_code")
+                for course in courses
+                if (course.get("code") or course.get("subject_code"))
+                == rubrics[0].get("subject_code")
+            ),
+            courses[0].get("code") or courses[0].get("subject_code") or "IT2040",
         )
         sample_session = rubrics[0]["session_name"]
         await compute_exam_analytics(db, sample_course_code, sample_session)
