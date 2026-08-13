@@ -163,8 +163,19 @@ class _CountCollection:
         return 5
 
 
+class _ExamSnapshotCollection:
+    async def count_documents(self, filters):
+        assert filters == {
+            "course.code": "IT2040",
+            "exam_id": "IT2040@Final Examination 2021",
+        }
+        return 1
+
+
 class _RunnerDatabase:
     def __getitem__(self, collection_name):
+        if collection_name == "analytics_snapshots":
+            return _ExamSnapshotCollection()
         assert collection_name == "student_analytics"
         return _CountCollection()
 
