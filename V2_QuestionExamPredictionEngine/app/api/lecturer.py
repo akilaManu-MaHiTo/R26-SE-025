@@ -42,16 +42,14 @@ async def lecturer_student_list(
     for submission in submissions:
         student_id = submission["student_id"]
         evaluation = submission.get("evaluation") or {}
-        obtained = float(
-            evaluation.get("total_score")
-            or submission.get("max_marks_paper_total")
-            or 0
-        )
-        maximum = float(
-            evaluation.get("max_score")
-            or submission.get("max_marks_paper_total")
-            or 0
-        )
+        obtained = evaluation.get("total_score")
+        if obtained is None:
+            obtained = submission.get("max_marks_paper_total")
+        obtained = float(obtained or 0.0)
+        maximum = evaluation.get("max_score")
+        if maximum is None:
+            maximum = submission.get("max_marks_paper_total")
+        maximum = float(maximum or 0.0)
         percentage = (obtained / maximum * 100.0) if maximum else 0.0
         cached = await find_student_analytics(
             db, student_id, course_code, session_name
