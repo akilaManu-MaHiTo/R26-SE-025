@@ -77,9 +77,6 @@ Desktop.ini
 # ZIP archives
 *.zip
 
-# QuestionExamPredictionEngine (subproject)
-QuestionExamPredictionEngine/
-
 .agents
 .claude
 .superpowers
