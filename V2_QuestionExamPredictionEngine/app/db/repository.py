@@ -12,6 +12,7 @@ COLLECTIONS = (
     "analytics_snapshots",
     "exam_recommendations",
     "analysis_runs",
+    "generatedQuestions",
 )
 
 _UNIQUE_INDEXES = {
@@ -214,6 +215,32 @@ async def find_exam_analytics(
 ) -> dict | None:
     document = await db["analytics_snapshots"].find_one(
         {"exam_id": f"{course_code}@{session_name}"}, sort=[("_id", -1)]
+    )
+    if document is None:
+        return None
+    result = deepcopy(document)
+    result.pop("_id", None)
+    return result
+
+
+async def upsert_generated_questions(
+    db: AsyncIOMotorDatabase, document: dict
+) -> None:
+    identity = {
+        "student_id": document["student_id"],
+        "exam_id": document["exam_id"],
+        "generation_version": document["generation_version"],
+    }
+    await db["generatedQuestions"].replace_one(
+        identity, deepcopy(document), upsert=True
+    )
+
+
+async def find_generated_questions(
+    db: AsyncIOMotorDatabase, student_id: str, exam_id: str
+) -> dict | None:
+    document = await db["generatedQuestions"].find_one(
+        {"student_id": student_id, "exam_id": exam_id}, sort=[("_id", -1)]
     )
     if document is None:
         return None
