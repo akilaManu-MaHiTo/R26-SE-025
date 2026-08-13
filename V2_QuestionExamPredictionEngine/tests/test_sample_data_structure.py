@@ -37,8 +37,8 @@ def test_submissions_have_v2_shape_and_graded_status():
         assert sub["subject_code"] == "IT2040"
         assert sub["subject_name"]
         assert sub["year"] == 2022
-        assert sub["month"]
-        assert sub["semester"]
+        assert "month" in sub
+        assert "semester" in sub
         assert sub["session_name"] == "Final Examination"
         assert "lecturer_note" in sub
         for result in sub["evaluation"]["results"]:

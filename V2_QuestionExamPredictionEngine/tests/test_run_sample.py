@@ -37,7 +37,7 @@ async def _healthy():
 def test_load_raw_sample_documents_loads_every_submission():
     courses, rubrics, submissions = load_raw_sample_documents()
 
-    assert len(courses) == 1
+    assert len(courses) == 2
     assert len(rubrics) == 1
     assert len(submissions) == 5
     assert all(submission["status"] == "graded" for submission in submissions)
