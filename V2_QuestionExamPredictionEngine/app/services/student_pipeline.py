@@ -196,8 +196,12 @@ def _assemble_document(
 
     document.update(
         student_id=normalized.student_id,
-        exam_id=f"{normalized.course_code}@{normalized.session_name}",
-        course={"code": normalized.course_code, "name": normalized.course_name},
+        subject_code=normalized.course_code,
+        subject_name=normalized.subject_name,
+        year=normalized.year,
+        month=normalized.month,
+        semester=normalized.semester,
+        session_name=normalized.session_name,
         model_metadata={
             "bloom_model": settings.llm_model,
             "bloom_model_type": settings.ollama_model_type,

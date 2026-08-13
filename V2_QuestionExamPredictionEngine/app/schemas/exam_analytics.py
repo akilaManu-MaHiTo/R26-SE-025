@@ -7,11 +7,6 @@ from pydantic import BaseModel, Field
 from app.schemas.student import BloomLevel, PerformanceStatus, RecommendationPriority
 
 
-class ExamCourse(BaseModel):
-    code: str = Field(min_length=1)
-    name: str = Field(min_length=1)
-
-
 class ExamInfo(BaseModel):
     session_name: str = Field(min_length=1)
     total_marks: float = Field(ge=0)
@@ -55,8 +50,12 @@ class AttentionArea(BaseModel):
 
 
 class ExamAnalyticsDocument(BaseModel):
-    exam_id: str = Field(min_length=1)
-    course: ExamCourse
+    subject_code: str = Field(min_length=1)
+    subject_name: str = Field(min_length=1)
+    year: int
+    month: int = Field(ge=1, le=12)
+    semester: int = Field(ge=1)
+    session_name: str = Field(min_length=1)
     exam: ExamInfo
     statistics: ExamStatistics
     topic_performance: list[TopicPerformanceSummary] = Field(default_factory=list)

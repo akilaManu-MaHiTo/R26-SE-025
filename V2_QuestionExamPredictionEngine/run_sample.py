@@ -7,7 +7,11 @@ from bson.json_util import loads
 from tqdm import tqdm
 
 from app.config import settings
-from app.db.repository import create_indexes
+from app.db.repository import (
+    create_indexes,
+    find_exam_analysis_status,
+    upsert_exam_analysis_status,
+)
 from app.llm.ollama import check_llm_health
 from app.services.exam_analytics import compute_exam_analytics
 from app.services.student_pipeline import materialize_student_analytics
@@ -78,6 +82,24 @@ async def seed_raw_samples(db) -> dict[str, int]:
                 "session_name": rubric["session_name"],
             },
         )
+        subject_code = rubric["subject_code"]
+        session_name = rubric["session_name"]
+        existing_status = await find_exam_analysis_status(
+            db, subject_code, session_name
+        )
+        if existing_status is None:
+            await upsert_exam_analysis_status(
+                db,
+                {
+                    "subject_code": subject_code,
+                    "subject_name": rubric.get("subject_name") or subject_code,
+                    "year": int(rubric.get("year") or 0),
+                    "month": int(rubric.get("month") or 0),
+                    "semester": int(rubric.get("semester") or 0),
+                    "session_name": session_name,
+                    "analyzed": "pending",
+                },
+            )
     for submission in submissions:
         await _upsert_natural(
             db,
@@ -152,9 +174,9 @@ async def main(db_name: str) -> int:
             "$or": [
                 {
                     "student_id": submission["student_id"],
-                    "course.code": submission.get("course_code")
+                    "subject_code": submission.get("course_code")
                     or submission["subject_code"],
-                    "exam_id": f"{submission.get('course_code') or submission['subject_code']}@{submission['session_name']}",
+                    "session_name": submission["session_name"],
                 }
                 for submission in sample_submissions
             ]
@@ -177,8 +199,8 @@ async def main(db_name: str) -> int:
         await compute_exam_analytics(db, sample_course_code, sample_session)
         exam_analytics_count = await db["analytics_snapshots"].count_documents(
             {
-                "course.code": sample_course_code,
-                "exam_id": f"{sample_course_code}@{sample_session}",
+                "subject_code": sample_course_code,
+                "session_name": sample_session,
             }
         )
         print(f"exam_analytics count={exam_analytics_count}")

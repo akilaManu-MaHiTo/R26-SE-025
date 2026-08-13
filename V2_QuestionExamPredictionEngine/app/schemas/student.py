@@ -9,11 +9,6 @@ RecommendationPriority = Literal["Critical", "High", "Medium", "Low"]
 QuestionDifficulty = Literal["Easy", "Medium", "Hard"]
 
 
-class CourseInfo(BaseModel):
-    code: str = Field(min_length=1)
-    name: str = Field(min_length=1)
-
-
 class OverallPerformance(BaseModel):
     score: float = Field(ge=0)
     maximum: float = Field(gt=0)
@@ -128,8 +123,12 @@ class ModelMetadata(BaseModel):
 
 class StudentAnalyticsDocument(BaseModel):
     student_id: str = Field(min_length=1)
-    exam_id: str = Field(min_length=1)
-    course: CourseInfo
+    subject_code: str = Field(min_length=1)
+    subject_name: str = Field(min_length=1)
+    year: int
+    month: int = Field(ge=1, le=12)
+    semester: int = Field(ge=1)
+    session_name: str = Field(min_length=1)
     overall_performance: OverallPerformance
     question_performance: list[QuestionPerformance] = Field(default_factory=list)
     topic_performance: list[TopicPerformance] = Field(default_factory=list)

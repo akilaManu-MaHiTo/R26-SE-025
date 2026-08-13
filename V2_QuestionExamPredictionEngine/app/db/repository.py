@@ -13,6 +13,7 @@ COLLECTIONS = (
     "exam_recommendations",
     "analysis_runs",
     "generatedQuestions",
+    "analyzedExams",
 )
 
 _UNIQUE_INDEXES = {
@@ -20,12 +21,13 @@ _UNIQUE_INDEXES = {
     "question_attempts": [
         ("analysis_run_id", 1), ("exam_id", 1), ("student_key", 1), ("question_number", 1), ("part", 1),
     ],
-    "analytics_snapshots": [("exam_id", 1), ("analytics_version", 1)],
+    "analytics_snapshots": [("subject_code", 1), ("session_name", 1), ("analytics_version", 1)],
     "analysis_runs": [("run_id", 1)],
+    "analyzedExams": [("subject_code", 1), ("session_name", 1)],
     "student_analytics": [
         ("student_id", 1),
-        ("course.code", 1),
-        ("exam_id", 1),
+        ("subject_code", 1),
+        ("session_name", 1),
     ],
 }
 
@@ -154,8 +156,8 @@ async def upsert_student_analytics(
 ) -> None:
     identity = {
         "student_id": document["student_id"],
-        "course.code": document["course"]["code"],
-        "exam_id": document["exam_id"],
+        "subject_code": document["subject_code"],
+        "session_name": document["session_name"],
     }
     await db["student_analytics"].replace_one(
         identity, deepcopy(document), upsert=True
@@ -170,10 +172,10 @@ async def find_student_analytics(
 ) -> dict | None:
     filters: dict[str, object] = {"student_id": student_id}
     if course_code is not None and session_name is not None:
-        filters["course.code"] = course_code
-        filters["exam_id"] = f"{course_code}@{session_name}"
+        filters["subject_code"] = course_code
+        filters["session_name"] = session_name
     elif course_code is not None:
-        filters["course.code"] = course_code
+        filters["subject_code"] = course_code
 
     document = await db["student_analytics"].find_one(
         filters, sort=[("_id", -1)]
@@ -212,7 +214,11 @@ async def find_graded_submissions_for_exam(
 
 
 async def upsert_exam_analytics(db: AsyncIOMotorDatabase, document: dict) -> None:
-    identity = {"exam_id": document["exam_id"], "analytics_version": document["analytics_version"]}
+    identity = {
+        "subject_code": document["subject_code"],
+        "session_name": document["session_name"],
+        "analytics_version": document["analytics_version"],
+    }
     await db["analytics_snapshots"].replace_one(identity, deepcopy(document), upsert=True)
 
 
@@ -220,7 +226,28 @@ async def find_exam_analytics(
     db: AsyncIOMotorDatabase, course_code: str, session_name: str
 ) -> dict | None:
     document = await db["analytics_snapshots"].find_one(
-        {"exam_id": f"{course_code}@{session_name}"}, sort=[("_id", -1)]
+        {"subject_code": course_code, "session_name": session_name}, sort=[("_id", -1)]
+    )
+    if document is None:
+        return None
+    result = deepcopy(document)
+    result.pop("_id", None)
+    return result
+
+
+async def upsert_exam_analysis_status(db: AsyncIOMotorDatabase, document: dict) -> None:
+    identity = {
+        "subject_code": document["subject_code"],
+        "session_name": document["session_name"],
+    }
+    await db["analyzedExams"].replace_one(identity, deepcopy(document), upsert=True)
+
+
+async def find_exam_analysis_status(
+    db: AsyncIOMotorDatabase, subject_code: str, session_name: str
+) -> dict | None:
+    document = await db["analyzedExams"].find_one(
+        {"subject_code": subject_code, "session_name": session_name}
     )
     if document is None:
         return None

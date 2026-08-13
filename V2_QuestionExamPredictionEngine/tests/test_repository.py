@@ -4,11 +4,13 @@ from app.db import repository
 from app.db.repository import (
     create_indexes,
     find_attempts,
+    find_exam_analysis_status,
     find_exam_analytics,
     find_generated_questions,
     insert_attempts,
     save_run,
     upsert_exam_analytics,
+    upsert_exam_analysis_status,
     upsert_generated_questions,
 )
 from tests.fixtures.fixture_data import expected_attempt_records
@@ -130,8 +132,12 @@ def valid_document(
 ) -> dict:
     return {
         "student_id": student_id,
-        "exam_id": f"{course_code}@{session_name}",
-        "course": {"code": course_code, "name": "Software Engineering"},
+        "subject_code": course_code,
+        "subject_name": "Software Engineering",
+        "year": 2022,
+        "month": 7,
+        "semester": 1,
+        "session_name": session_name,
         "overall_performance": {
             "score": 6.0,
             "maximum": 10.0,
@@ -189,8 +195,8 @@ async def test_student_analytics_unique_compound_index_is_named(test_db):
 
     assert info["uniq_student_analytics"]["key"] == [
         ("student_id", 1),
-        ("course.code", 1),
-        ("exam_id", 1),
+        ("subject_code", 1),
+        ("session_name", 1),
     ]
     assert info["uniq_student_analytics"]["unique"] is True
 
@@ -252,7 +258,8 @@ async def test_find_student_analytics_matches_course_and_session(test_db):
         found = await repository.find_student_analytics(
             test_db, student_id, "IT2040", "Final Examination 2021"
         )
-        assert found["exam_id"] == "IT2040@Final Examination 2021"
+        assert found["subject_code"] == "IT2040"
+        assert found["session_name"] == "Final Examination 2021"
     finally:
         await test_db["student_analytics"].delete_many({"student_id": student_id})
 
@@ -339,7 +346,8 @@ async def test_find_student_analytics_filters_and_returns_id_free_copy(test_db):
             {"student_id": student_id}
         )
 
-        assert found["course"]["code"] == "T5A101"
+        assert found["subject_code"] == "T5A101"
+        assert found["session_name"] == "Task 5 Analytics Session"
         assert "_id" not in found
         assert "_id" in stored
         assert "_id" not in document
@@ -487,7 +495,44 @@ async def test_upsert_and_find_exam_analytics_round_trip(test_db):
     doc = ExamAnalyticsDocument.model_validate(exam_document()).model_dump(mode="json")
     await upsert_exam_analytics(test_db, doc)
     found = await find_exam_analytics(test_db, "IT2040", "Final Examination")
-    assert found["exam_id"] == "IT2040@Final Examination"
+    assert found["subject_code"] == "IT2040"
+    assert found["session_name"] == "Final Examination"
+
+
+async def test_exam_analysis_status_unique_index_and_round_trip(test_db):
+    await create_indexes(test_db)
+    info = await test_db["analyzedExams"].index_information()
+
+    assert info["uniq_analyzedExams"]["key"] == [
+        ("subject_code", 1),
+        ("session_name", 1),
+    ]
+    assert info["uniq_analyzedExams"]["unique"] is True
+
+    document = {
+        "subject_code": "IT2040",
+        "subject_name": "Database Management Systems",
+        "year": 2022,
+        "month": 7,
+        "semester": 1,
+        "session_name": "Final Examination",
+        "analyzed": "done",
+        "analyzed_at": "2026-08-13T00:00:00Z",
+    }
+    await upsert_exam_analysis_status(test_db, document)
+    found = await find_exam_analysis_status(test_db, "IT2040", "Final Examination")
+    assert found["analyzed"] == "done"
+    assert "_id" not in found
+
+    document["analyzed"] = "pending"
+    document.pop("analyzed_at", None)
+    await upsert_exam_analysis_status(test_db, document)
+    saved = await test_db["analyzedExams"].find(
+        {"subject_code": "IT2040", "session_name": "Final Examination"}
+    ).to_list(length=None)
+    assert len(saved) == 1
+    assert saved[0]["analyzed"] == "pending"
+    await test_db["analyzedExams"].delete_many({})
 
 
 async def test_generated_questions_round_trip(test_db):

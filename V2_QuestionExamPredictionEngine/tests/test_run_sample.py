@@ -76,16 +76,11 @@ async def _clean_sample_documents(db):
     await db["student_analytics"].delete_many(
         {
             "student_id": {"$in": identity["student_ids"]},
-            "course.code": {"$in": identity["course_codes"]},
-            "exam_id": {
-                "$in": [
-                    f"{course_code}@{session}"
-                    for course_code in identity["course_codes"]
-                    for session in identity["sessions"]
-                ]
-            },
+            "subject_code": {"$in": identity["course_codes"]},
+            "session_name": {"$in": identity["sessions"]},
         }
     )
+    await db["analyzedExams"].delete_many(raw_filter)
 
 
 async def test_seed_raw_samples_idempotently_upserts_sample_documents(test_db):
@@ -113,6 +108,41 @@ async def test_seed_raw_samples_idempotently_upserts_sample_documents(test_db):
         assert await test_db["submissions"].count_documents(
             {"student_id": {"$in": identity["student_ids"]}}
         ) == 5
+    finally:
+        await _clean_sample_documents(test_db)
+
+
+async def test_seed_writes_pending_status_without_overwriting_done(test_db):
+    await _clean_sample_documents(test_db)
+    try:
+        await seed_raw_samples(test_db)
+        status = await test_db["analyzedExams"].find_one(
+            {"subject_code": "IT2040", "session_name": "Final Examination"}
+        )
+        assert status is not None
+        assert status["analyzed"] == "pending"
+        assert "analyzed_at" not in status
+
+        await test_db["analyzedExams"].replace_one(
+            {"subject_code": "IT2040", "session_name": "Final Examination"},
+            {
+                "subject_code": "IT2040",
+                "subject_name": "Database Management Systems",
+                "year": 2022,
+                "month": 7,
+                "semester": 1,
+                "session_name": "Final Examination",
+                "analyzed": "done",
+                "analyzed_at": "2026-08-13T00:00:00Z",
+            },
+            upsert=True,
+        )
+        await seed_raw_samples(test_db)
+        again = await test_db["analyzedExams"].find_one(
+            {"subject_code": "IT2040", "session_name": "Final Examination"}
+        )
+        assert again["analyzed"] == "done"
+        assert again["analyzed_at"] == "2026-08-13T00:00:00Z"
     finally:
         await _clean_sample_documents(test_db)
 
@@ -153,9 +183,9 @@ class _CountCollection:
             "$or": [
                 {
                     "student_id": submission["student_id"],
-                    "course.code": submission.get("course_code")
+                    "subject_code": submission.get("course_code")
                     or submission["subject_code"],
-                    "exam_id": f"{submission.get('course_code') or submission['subject_code']}@{submission['session_name']}",
+                    "session_name": submission["session_name"],
                 }
                 for submission in submissions
             ]
@@ -166,8 +196,8 @@ class _CountCollection:
 class _ExamSnapshotCollection:
     async def count_documents(self, filters):
         assert filters == {
-            "course.code": "IT2040",
-            "exam_id": "IT2040@Final Examination",
+            "subject_code": "IT2040",
+            "session_name": "Final Examination",
         }
         return 1
 
@@ -293,8 +323,12 @@ async def test_main_ignores_unrelated_graded_submission_and_analytics(
     unrelated_submission["evaluation"]["results"][0]["score"] = 999.0
     unrelated_analytics = {
         "student_id": unrelated_student_id,
-        "exam_id": "UNRELATED@Unrelated Assessment",
-        "course": {"code": "UNRELATED", "name": "Unrelated Course"},
+        "subject_code": "UNRELATED",
+        "subject_name": "Unrelated Course",
+        "year": 2021,
+        "month": 7,
+        "semester": 1,
+        "session_name": "Unrelated Assessment",
         "overall_performance": {
             "score": 1.0,
             "maximum": 10.0,
@@ -347,8 +381,8 @@ async def test_main_ignores_unrelated_graded_submission_and_analytics(
         await test_db["student_analytics"].replace_one(
             {
                 "student_id": unrelated_student_id,
-                "course.code": "UNRELATED",
-                "exam_id": "UNRELATED@Unrelated Assessment",
+                "subject_code": "UNRELATED",
+                "session_name": "Unrelated Assessment",
             },
             unrelated_analytics,
             upsert=True,
@@ -396,7 +430,7 @@ async def test_main_computes_exam_analytics_after_materialization(
     async def compute_exam(candidate_db, course_code, session_name):
         assert candidate_db is test_db
         events.append("exam_analytics")
-        return {"exam_id": "IT2040@Final Examination"}
+        return {"subject_code": "IT2040", "session_name": "Final Examination"}
 
     async def _healthy():
         return True, "ok"

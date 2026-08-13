@@ -10,8 +10,12 @@ from run_sample import load_raw_sample_documents, seed_raw_samples
 
 TOP_LEVEL_KEYS = {
     "student_id",
-    "exam_id",
-    "course",
+    "subject_code",
+    "subject_name",
+    "year",
+    "month",
+    "semester",
+    "session_name",
     "overall_performance",
     "question_performance",
     "topic_performance",
@@ -33,8 +37,14 @@ def valid_document(
 ) -> dict:
     return {
         "student_id": student_id,
-        "exam_id": f"{course_code}@{session_name}",
-        "course": {"code": course_code, "name": "Software Engineering"},
+        "subject_code": course_code,
+        "subject_name": (
+            "Database Management Systems" if course_code == "IT2040" else "Software Engineering"
+        ),
+        "year": 2022,
+        "month": 7,
+        "semester": 1,
+        "session_name": session_name,
         "overall_performance": {
             "score": 6.0,
             "maximum": 10.0,
@@ -146,7 +156,12 @@ async def test_dashboard_endpoint_returns_exact_persisted_contract(test_db):
         body = response.json()
         assert set(body) == TOP_LEVEL_KEYS
         assert body["student_id"] == student_id
-        assert body["exam_id"] == "SE3040@Semester 1 Final Exam"
+        assert body["subject_code"] == "SE3040"
+        assert body["subject_name"] == "Software Engineering"
+        assert body["session_name"] == "Semester 1 Final Exam"
+        assert body["year"] == 2022
+        assert body["month"] == 7
+        assert body["semester"] == 1
         assert body["topic_performance"][0]["questions_attempted"] == 1
         assert body["bloom_performance"][0]["questions_attempted"] == 1
         assert "_id" not in body
@@ -189,8 +204,9 @@ async def test_dashboard_endpoint_forwards_course_and_session_filters(test_db):
 
         assert response.status_code == 200
         body = response.json()
-        assert body["course"]["code"] == "IT2040"
-        assert body["exam_id"] == "IT2040@Semester 2 Final Exam"
+        assert body["subject_code"] == "IT2040"
+        assert body["subject_name"] == "Database Management Systems"
+        assert body["session_name"] == "Semester 2 Final Exam"
     finally:
         app.dependency_overrides.clear()
         await test_db["student_analytics"].delete_many({"student_id": student_id})
@@ -226,7 +242,8 @@ async def test_dashboard_endpoint_generates_on_first_access(
         assert response.status_code == 200
         body = response.json()
         assert set(body) == TOP_LEVEL_KEYS
-        assert body["exam_id"] == "IT2040@Final Examination"
+        assert body["subject_code"] == "IT2040"
+        assert body["session_name"] == "Final Examination"
         persisted = await test_db["student_analytics"].find_one(
             {"student_id": student_id}
         )

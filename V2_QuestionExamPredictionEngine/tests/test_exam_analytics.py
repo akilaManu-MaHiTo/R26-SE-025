@@ -4,8 +4,12 @@ from app.schemas.exam_analytics import ExamAnalyticsDocument
 
 def exam_document() -> dict:
     return {
-        "exam_id": "IT2040@Final Examination",
-        "course": {"code": "IT2040", "name": "Database Management Systems"},
+        "subject_code": "IT2040",
+        "subject_name": "Database Management Systems",
+        "year": 2022,
+        "month": 7,
+        "semester": 1,
+        "session_name": "Final Examination",
         "exam": {"session_name": "Final Examination", "total_marks": 100.0, "question_count": 11},
         "statistics": {"total_students": 5, "attempted_students": 5, "average_score": 67.4,
                        "average_percentage": 67.4, "pass_rate": 80.0, "highest_score": 94.0, "lowest_score": 31.0},
@@ -23,7 +27,8 @@ def exam_document() -> dict:
 def test_exam_analytics_serializes_exact_top_level_contract():
     document = ExamAnalyticsDocument(**exam_document())
     assert set(document.model_dump(mode="json")) == {
-        "exam_id", "course", "exam", "statistics", "topic_performance",
+        "subject_code", "subject_name", "year", "month", "semester",
+        "session_name", "exam", "statistics", "topic_performance",
         "bloom_performance", "question_performance", "attention_areas",
         "insights", "generated_at", "analytics_version",
     }
