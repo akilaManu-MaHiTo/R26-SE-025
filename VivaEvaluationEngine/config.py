@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Set
+from typing import Iterable, Set
 
 
 POSITIVE_EMOTIONS: Set[str] = {"happy"}
@@ -17,6 +17,7 @@ NEGATIVE_EMOTIONS: Set[str] = {
 EMOTION_ALIASES = {
     "happiness": "happy",
     "surprised": "surprise",
+    "anger": "angry",
 }
 
 ENGAGEMENT_ALIASES = {
@@ -38,6 +39,17 @@ ENGAGEMENT_LEVEL_SCORES = {
 
 NEUTRAL_WEIGHT: float = 0.5
 
+# Soft ceiling for heuristic (non-model) speech-emotion confidence.
+HEURISTIC_EMOTION_CONFIDENCE_CAP: float = 0.4
+
+# Refuse to emit video scores when face coverage is too thin to trust.
+MIN_FACE_FRAMES: int = 3
+MIN_FACE_COVERAGE_RATIO: float = 0.15
+
+SCORING_EMOTION_BUCKETS: Set[str] = (
+    POSITIVE_EMOTIONS | NEUTRAL_EMOTIONS | SURPRISE_EMOTIONS | NEGATIVE_EMOTIONS
+)
+
 
 def canonical_emotion_label(emotion: str) -> str:
     normalized = str(emotion).strip().lower()
@@ -49,6 +61,21 @@ def canonical_engagement_label(label: str) -> str:
     normalized = " ".join(normalized.split())
     normalized = normalized.replace(" ", "_")
     return ENGAGEMENT_ALIASES.get(normalized.replace("_", " "), normalized)
+
+
+def assert_emotion_classes_covered(class_names: Iterable[str]) -> None:
+    """Fail fast if a model class cannot map into exactly one scoring bucket."""
+    uncovered = []
+    for name in class_names:
+        canonical = canonical_emotion_label(str(name))
+        if canonical in {"noface", "no_face", ""}:
+            continue
+        if canonical not in SCORING_EMOTION_BUCKETS:
+            uncovered.append(f"{name}->{canonical}")
+    if uncovered:
+        raise RuntimeError(
+            "Emotion classes missing from scoring buckets: " + ", ".join(uncovered)
+        )
 
 
 @dataclass

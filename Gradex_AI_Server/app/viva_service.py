@@ -13,6 +13,7 @@ for path in (PROJECT_ROOT, VIVA_ENGINE_ROOT):
 
 from VivaEvaluationEngine.config import AppConfig
 from VivaEvaluationEngine.services.analysis_service import analyze_video
+from VivaEvaluationEngine.services.llm_judge import attach_llm_evaluation
 from VivaEvaluationEngine.services.viva_analysis import analyze_audio_from_video
 
 
@@ -49,4 +50,4 @@ def analyze_video_file(video_path: str, debug: bool = False) -> Dict[str, Any]:
     if isinstance(audio_result, dict):
         result.update(audio_result)
 
-    return result
+    return attach_llm_evaluation(result, debug=debug)

@@ -10,3 +10,6 @@ soundfile>=0.12,<1
 praat-parselmouth>=0.4,<0.5
 scipy>=1.13,<2
 openai-whisper>=20240930
+# Optional: LLM-as-judge uses Groq's OpenAI-compatible HTTP API via stdlib urllib.
+# Set AI_API_KEY or GROQ_API_KEY (and optionally GROQ_MODEL / VIVA_LLM_MODEL).
+# No extra Python package is required for the judge call.

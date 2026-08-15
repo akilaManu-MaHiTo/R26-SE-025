@@ -166,7 +166,14 @@ class EngagementDetector:
 
             if isinstance(label_candidate, str):
                 normalized_label = canonical_engagement_label(label_candidate)
-                return normalized_label, self._normalize_confidence(confidence), ENGAGEMENT_LEVEL_SCORES.get(normalized_label, 0.5)
+                conf = self._normalize_confidence(confidence)
+                if len(prediction) >= 3:
+                    try:
+                        blended = float(prediction[2])
+                        return normalized_label, conf, max(0.0, min(1.0, blended))
+                    except (TypeError, ValueError):
+                        pass
+                return normalized_label, conf, ENGAGEMENT_LEVEL_SCORES.get(normalized_label, 0.5)
 
             label, parsed_conf = self._extract_from_scores(label_candidate, labels)
             normalized_label = canonical_engagement_label(label)

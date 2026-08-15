@@ -11,10 +11,10 @@ from pathlib import Path
 def check_ffmpeg():
     """Check if ffmpeg is installed"""
     try:
-        result = subprocess.run(['ffmpeg', '-version'], 
+        result = subprocess.run(['ffmpeg', '-version'],
                               capture_output=True, text=True, timeout=5)
         return result.returncode == 0
-    except:
+    except (OSError, subprocess.SubprocessError, TimeoutError):
         return False
 
 def check_praat():
@@ -103,7 +103,8 @@ def main():
     if all_installed and check_ffmpeg():
         print("✓ Setup verification completed successfully!")
         print("\nYou can now run:")
-        print("  python audio_analyzer.py")
+        print("  python main.py --video videos/your_clip.mp4")
+        print("  python main.py --video videos/your_clip.mp4 --video-only")
         return 0
     else:
         print("⚠ Some dependencies are missing. Please install them.")

@@ -20,7 +20,11 @@ class BlinkSampler:
         self.ear_threshold   = ear_threshold
         self.min_consec      = min_consec
 
-    def count_blinks(self, video_path: str) -> float:
+    def count_blinks(self, video_path: str) -> Optional[float]:
+        """Return blinks/min, or None when blinks cannot be measured.
+
+        None must be treated as "exclude from scoring" — never as 0.0 perfect.
+        """
         cap = cv2.VideoCapture(video_path)
         try:
             source_fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
@@ -37,10 +41,8 @@ class BlinkSampler:
                 finally:
                     mesh.close()
 
-            # Fallback: mediapipe 'solutions' not available in this build.
-            # Blink sampling requires face mesh landmarks; return 0.0 and
-            # let the rest of the pipeline proceed.
-            return 0.0
+            # Face mesh unavailable in this MediaPipe build — unmeasured.
+            return None
         finally:
             cap.release()
 

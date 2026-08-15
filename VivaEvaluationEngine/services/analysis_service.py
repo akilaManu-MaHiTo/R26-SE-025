@@ -1,8 +1,10 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from config import (
     AppConfig,
     ENGAGEMENT_LEVEL_SCORES,
+    MIN_FACE_COVERAGE_RATIO,
+    MIN_FACE_FRAMES,
     NEGATIVE_EMOTIONS,
     NEUTRAL_EMOTIONS,
     POSITIVE_EMOTIONS,
@@ -35,7 +37,7 @@ def build_summary(timeline: List[Dict[str, object]]) -> Dict[str, float]:
     negative_count = 0
 
     for item in valid_timeline:
-        emotion = str(item.get("emotion", "")).strip().lower()
+        emotion = canonical_emotion_label(str(item.get("emotion", "")))
         if emotion in POSITIVE_EMOTIONS or emotion in SURPRISE_EMOTIONS:
             positive_count += 1
         elif emotion in NEUTRAL_EMOTIONS:
@@ -85,14 +87,18 @@ def build_engagement_summary(timeline: List[Dict[str, object]]) -> Dict[str, flo
     }
 
 
+def _coverage_is_sufficient(frames_sampled: int, frames_with_face: int) -> bool:
+    if frames_with_face < MIN_FACE_FRAMES:
+        return False
+    if frames_sampled <= 0:
+        return False
+    return (frames_with_face / frames_sampled) >= MIN_FACE_COVERAGE_RATIO
+
+
 def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, object]:
     blinks_per_minute = BlinkSampler().count_blinks(config.video_path)
 
     video_processor = VideoProcessor(target_fps=config.target_fps)
-    face_detector = FaceDetector(
-        min_detection_confidence=config.min_face_confidence,
-        debug=config.debug,
-    )
     emotion_detector = EmotionDetector(
         model_path=config.emotion_model_path,
         debug=config.debug,
@@ -103,56 +109,87 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
     )
 
     timeline: List[Dict[str, object]] = []
-    gaze_signals: List[Dict | None] = []
+    gaze_signals: List[Optional[Dict]] = []
 
-    with GazeHeadAnalyser(gaze_threshold=config.gaze_threshold) as gaze_analyser:
-        for frame_data in video_processor.iter_frames(config.video_path):
-            gaze = gaze_analyser.analyse(frame_data.frame)
-            gaze_signals.append(gaze)
+    with FaceDetector(
+        min_detection_confidence=config.min_face_confidence,
+        debug=config.debug,
+    ) as face_detector:
+        with GazeHeadAnalyser(gaze_threshold=config.gaze_threshold) as gaze_analyser:
+            for frame_data in video_processor.iter_frames(config.video_path):
+                gaze = gaze_analyser.analyse(frame_data.frame)
+                gaze_signals.append(gaze)
 
-            face_crop = face_detector.detect_and_crop(frame_data.frame)
-            if face_crop is None:
+                face_crop = face_detector.detect_and_crop(frame_data.frame)
+                if face_crop is None:
+                    timeline.append(
+                        {
+                            "time": frame_data.time_sec,
+                            "emotion": "NoFace",
+                            "emotion_confidence": 0.0,
+                            "engagement_label": "NoFace",
+                            "engagement_confidence": 0.0,
+                            "engagement_model_score": 0.0,
+                            "valid": False,
+                        }
+                    )
+                    continue
+
+                emotion, emotion_confidence = emotion_detector.predict(face_crop)
+                engagement_label, engagement_confidence, engagement_model_score = engagement_detector.predict(face_crop)
                 timeline.append(
                     {
                         "time": frame_data.time_sec,
-                        "emotion": "NoFace",
-                        "emotion_confidence": 0.0,
-                        "engagement_label": "NoFace",
-                        "engagement_confidence": 0.0,
-                        "engagement_model_score": 0.0,
-                        "valid": False,
+                        "emotion": emotion,
+                        "emotion_confidence": round(emotion_confidence, 4),
+                        "engagement_label": engagement_label,
+                        "engagement_confidence": round(engagement_confidence, 4),
+                        "engagement_model_score": round(engagement_model_score, 4),
+                        "valid": True,
                     }
                 )
-                continue
 
-            emotion, emotion_confidence = emotion_detector.predict(face_crop)
-            engagement_label, engagement_confidence, engagement_model_score = engagement_detector.predict(face_crop)
-            timeline.append(
-                {
-                    "time": frame_data.time_sec,
-                    "emotion": emotion,
-                    "emotion_confidence": round(emotion_confidence, 4),
-                    "engagement_label": engagement_label,
-                    "engagement_confidence": round(engagement_confidence, 4),
-                    "engagement_model_score": round(engagement_model_score, 4),
-                    "valid": True,
-                }
-            )
+    frames_sampled = len(timeline)
+    frames_with_face = sum(1 for item in timeline if item.get("valid", True) is True)
+    face_coverage_ratio = round(frames_with_face / frames_sampled, 4) if frames_sampled else 0.0
+    scores_emitted = _coverage_is_sufficient(frames_sampled, frames_with_face)
 
     paired = list(zip(timeline, gaze_signals))
     clean_pairs = [(t, g) for t, g in paired if t.get("valid", True) is True]
-    clean_timeline = [t for t, g in clean_pairs]
-    clean_gaze     = [g for t, g in clean_pairs]
+    clean_timeline = [t for t, _g in clean_pairs]
+    clean_gaze = [g for _t, g in clean_pairs]
 
     smoothed_timeline = smooth_emotions(clean_timeline)
-    confidence_score = compute_confidence_score(smoothed_timeline)
-    engagement_score = compute_engagement_score(smoothed_timeline, clean_gaze, blinks_per_minute)
+
+    if scores_emitted:
+        confidence_score: Optional[float] = compute_confidence_score(smoothed_timeline)
+        engagement_score: Optional[float] = compute_engagement_score(
+            smoothed_timeline, clean_gaze, blinks_per_minute
+        )
+        video_status = "success"
+    else:
+        confidence_score = None
+        engagement_score = None
+        video_status = "insufficient_face_coverage"
+
+    coverage = {
+        "frames_sampled": frames_sampled,
+        "frames_with_face": frames_with_face,
+        "face_coverage_ratio": face_coverage_ratio,
+        "min_face_frames": MIN_FACE_FRAMES,
+        "min_face_coverage_ratio": MIN_FACE_COVERAGE_RATIO,
+        "blinks_measured": blinks_per_minute is not None,
+        "blinks_per_minute": blinks_per_minute,
+        "scores_emitted": scores_emitted,
+    }
 
     response: Dict[str, object] = {
         "timeline": smoothed_timeline,
         "confidence_score": confidence_score,
         "engagement_score": engagement_score,
         "engagement_summary": build_engagement_summary(smoothed_timeline),
+        "coverage": coverage,
+        "video_status": video_status,
     }
 
     if include_summary:

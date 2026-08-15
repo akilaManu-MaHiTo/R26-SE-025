@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import librosa
 import numpy as np
@@ -33,8 +33,8 @@ def _safe_pitch_stats(y: np.ndarray, sr: int) -> Dict[str, float]:
         return {"pitch_mean": 0.0, "pitch_min": 0.0, "pitch_max": 0.0, "pitch_std": 0.0}
 
 
-def _safe_voice_quality(audio_path: str) -> Dict[str, float]:
-    # Optional quality metrics via Praat/parselmouth. Fallback is zeros if unavailable.
+def _safe_voice_quality(audio_path: str) -> Dict[str, Optional[float]]:
+    """Praat/parselmouth voice quality. Unavailability → None, never fake zeros."""
     try:
         import parselmouth
         from parselmouth.praat import call
@@ -52,16 +52,18 @@ def _safe_voice_quality(audio_path: str) -> Dict[str, float]:
             "jitter_local": max(0.0, jitter_local),
             "shimmer_local": max(0.0, shimmer_local),
             "hnr_mean": max(0.0, hnr_mean),
+            "voice_quality_measured": 1.0,
         }
     except Exception:
         return {
-            "jitter_local": 0.0,
-            "shimmer_local": 0.0,
-            "hnr_mean": 0.0,
+            "jitter_local": None,
+            "shimmer_local": None,
+            "hnr_mean": None,
+            "voice_quality_measured": 0.0,
         }
 
 
-def extract_acoustic_features(audio_path: str) -> Dict[str, float]:
+def extract_acoustic_features(audio_path: str) -> Dict[str, Any]:
     y, sr = librosa.load(audio_path, sr=SR, mono=True)
 
     duration = librosa.get_duration(y=y, sr=sr)
@@ -87,4 +89,5 @@ def extract_acoustic_features(audio_path: str) -> Dict[str, float]:
         "jitter_local": voice_quality["jitter_local"],
         "shimmer_local": voice_quality["shimmer_local"],
         "hnr_mean": voice_quality["hnr_mean"],
+        "voice_quality_measured": bool(voice_quality.get("voice_quality_measured")),
     }
