@@ -38,3 +38,9 @@ Thumbs.db
 # Local datasets, media, model artifacts, and outputs
 /videos/
 /outputs/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+

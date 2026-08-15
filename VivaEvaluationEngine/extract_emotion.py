@@ -5,6 +5,8 @@ from typing import Dict
 import librosa
 import numpy as np
 
+from config import HEURISTIC_EMOTION_CONFIDENCE_CAP
+
 
 def _clamp(value: float, minimum: float = 0.0, maximum: float = 1.0) -> float:
     return max(minimum, min(maximum, value))
@@ -12,11 +14,13 @@ def _clamp(value: float, minimum: float = 0.0, maximum: float = 1.0) -> float:
 
 def extract_speech_emotion(audio_path: str) -> Dict[str, object]:
     # Lightweight heuristic emotion estimator used when no dedicated speech-emotion model is wired.
+    # Confidence is intentionally capped so downstream scoring cannot treat this as a trained model.
     y, sr = librosa.load(audio_path, sr=16000, mono=True)
     if y.size == 0:
         return {
             "predicted_emotion": "neutral",
             "confidence": 0.3,
+            "source": "heuristic",
             "emotion_probabilities": {"neutral": 1.0},
         }
 
@@ -45,7 +49,7 @@ def extract_speech_emotion(audio_path: str) -> Dict[str, object]:
     confidence += min(0.25, abs(pitch_mean - 180.0) / 220.0)
     confidence += min(0.2, pitch_std / 200.0)
     confidence += min(0.2, rms * 2.5)
-    confidence = _clamp(confidence)
+    confidence = _clamp(confidence, 0.0, HEURISTIC_EMOTION_CONFIDENCE_CAP)
 
     probs = {
         "happy": 0.0,
@@ -60,5 +64,6 @@ def extract_speech_emotion(audio_path: str) -> Dict[str, object]:
     return {
         "predicted_emotion": emotion,
         "confidence": round(confidence, 4),
+        "source": "heuristic",
         "emotion_probabilities": probs,
     }

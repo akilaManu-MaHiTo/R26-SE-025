@@ -8,6 +8,9 @@ from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from bson import ObjectId
+from bson.errors import InvalidId
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENGINE_ROOT = PROJECT_ROOT / "DiagramEvaluationEngine"
@@ -42,6 +45,27 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 ENGINE_DATA_EXAM = PROJECT_ROOT / "QuestionExamPredictionEngine" / "data" / "exams" / "exam2022.json"
 ENGINE_DATA_ANSWERS = PROJECT_ROOT / "QuestionExamPredictionEngine" / "data" / "answers" / "student_answers2022.json"
+
+
+class RubricCriterionPayload(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    score: float = Field(ge=0)
+    max: float = Field(gt=0)
+
+
+class PublishVivaMarkPayload(BaseModel):
+    criteria: list[RubricCriterionPayload]
+    final_grade: str
+    published: bool = True
+
+
+def _parse_object_id(mark_id: str) -> ObjectId:
+    try:
+        return ObjectId(mark_id)
+    except (InvalidId, TypeError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid mark_id.") from exc
 
 
 def _save_json_upload(upload: UploadFile, destination: Path) -> None:
@@ -218,6 +242,40 @@ async def analytics_historical():
         raise HTTPException(status_code=500, detail=f"Failed to load historical data: {exc}") from exc
 
 
+@app.patch("/api/viva-marks/{mark_id}/publish")
+async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
+    """Persist examiner rubric + final grade onto an existing analysis document."""
+    if db_instance.marks_col is None:
+        raise HTTPException(status_code=503, detail="MongoDB is not connected.")
+
+    object_id = _parse_object_id(mark_id)
+    published_at = datetime.now(timezone.utc)
+    update = {
+        "published": bool(payload.published),
+        "published_at": published_at,
+        "final_grade": payload.final_grade.strip(),
+        "criteria": [c.model_dump() for c in payload.criteria],
+        "total_score": sum(c.score for c in payload.criteria),
+        "max_score": sum(c.max for c in payload.criteria),
+    }
+
+    result = await db_instance.marks_col.update_one(
+        {"_id": object_id},
+        {"$set": update},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Mark not found.")
+
+    return {
+        "mark_id": mark_id,
+        "published": update["published"],
+        "published_at": published_at.isoformat(),
+        "final_grade": update["final_grade"],
+        "total_score": update["total_score"],
+        "max_score": update["max_score"],
+    }
+
+
 @app.post("/api/viva-analyze")
 async def viva_analyze(video: UploadFile = File(...)):
     """
@@ -225,10 +283,13 @@ async def viva_analyze(video: UploadFile = File(...)):
     
     Returns:
         - timeline: Frame-by-frame emotion and engagement analysis
-        - confidence_score: Overall confidence score (0-10)
-        - engagement_score: Overall engagement score (0-100)
+        - confidence_score: Facial affect positivity score (0-100), or null if coverage insufficient
+        - engagement_score: Overall engagement score (0-100), or null if coverage insufficient
+        - coverage / video_status: Face-hit diagnostics
+        - audio_analysis: Transcript, acoustics, grade (may be degraded/insufficient)
         - summary: Summary statistics
     """
+    import asyncio
     import time
     request_start = time.time()
     
@@ -253,7 +314,8 @@ async def viva_analyze(video: UploadFile = File(...)):
         from Gradex_AI_Server.app.viva_service import analyze_video_file
 
         analysis_start = time.time()
-        result = analyze_video_file(str(file_path), debug=False)
+        # ML pipeline is CPU/GPU-bound; keep the event loop free for other requests.
+        result = await asyncio.to_thread(analyze_video_file, str(file_path), False)
         analysis_complete = time.time()
         analysis_time = analysis_complete - analysis_start
         total_time = analysis_complete - request_start
@@ -273,6 +335,7 @@ async def viva_analyze(video: UploadFile = File(...)):
                 "processed_at": datetime.now(timezone.utc),
                 "confidence_score": result.get("confidence_score"),
                 "engagement_score": result.get("engagement_score"),
+                "video_status": result.get("video_status"),
                 "result": result,
             }
             insert_result = await db_instance.marks_col.insert_one(mark_doc)

@@ -60,6 +60,7 @@ Desktop.ini
 *.sql
 
 # Generated / runtime data (subproject-specific)
+VivaEvaluationEngine/docs/
 **/uploads/
 **/runs/
 **/images/
@@ -82,3 +83,6 @@ Desktop.ini
 .superpowers
 **/CLAUDE.md
 skills-lock.json
+
+# Playwright MCP testing artifacts
+.playwright-mcp/

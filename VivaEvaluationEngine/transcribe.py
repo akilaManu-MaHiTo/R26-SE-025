@@ -18,56 +18,59 @@ def _load_whisper_model(model_size):
 
 
 def transcribe_audio(audio_path, model_size="base", output_path=None):
-    """Transcribe audio using Whisper model
-    
-    Args:
-        audio_path: Path to audio file
-        model_size: Size of Whisper model (tiny, base, small, medium, large)
-        output_path: Optional JSON file path for transcription details.
+    """Transcribe audio using Whisper.
+
+    Returns:
+        transcript (str), segments (list), meta (dict with available/reason)
     """
     try:
         model = _load_whisper_model(model_size)
     except ImportError:
         print("Whisper is not installed; skipping transcription and returning an empty transcript.")
-        return "", []
-    
+        return "", [], {"available": False, "reason": "whisper_not_installed", "words_with_times": []}
+
     print(f"Transcribing audio: {audio_path}")
     result = model.transcribe(audio_path, word_timestamps=True, verbose=False)
-    
+
     transcript = result["text"]
     segments = result["segments"]
-    
-    # Extract word-level timing information
+
     words_with_times = []
     for segment in segments:
-        for word_info in segment.get('words', []):
-            words_with_times.append({
-                'word': word_info['word'],
-                'start': word_info['start'],
-                'end': word_info['end']
-            })
-    
-    # Save results
+        for word_info in segment.get("words", []):
+            words_with_times.append(
+                {
+                    "word": word_info["word"],
+                    "start": word_info["start"],
+                    "end": word_info["end"],
+                }
+            )
+
     output_data = {
         "transcript": transcript,
         "segments": segments,
         "words_with_times": words_with_times,
         "language": result.get("language", "unknown"),
-        "duration": result.get("duration", 0)
+        "duration": result.get("duration", 0),
     }
-    
+
     destination = Path(output_path) if output_path else DEFAULT_TRANSCRIPTION_OUTPUT
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("w", encoding="utf-8") as f:
         json.dump(output_data, f, indent=2, ensure_ascii=False)
-    
-    print(f"Transcription completed.")
+
+    print("Transcription completed.")
     print(f"  - Output: {destination}")
     print(f"  - Text length: {len(transcript)} characters")
     print(f"  - Number of segments: {len(segments)}")
     print(f"  - Language: {result.get('language', 'unknown')}")
-    
-    return transcript, segments
+
+    return transcript, segments, {
+        "available": True,
+        "reason": None,
+        "words_with_times": words_with_times,
+    }
+
 
 if __name__ == "__main__":
     audio_path = "audio.wav"

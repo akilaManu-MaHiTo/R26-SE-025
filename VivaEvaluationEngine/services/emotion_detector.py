@@ -19,7 +19,7 @@ if not hasattr(torch.library, "register_fake"):
 
 import timm
 
-from config import canonical_emotion_label
+from config import assert_emotion_classes_covered, canonical_emotion_label
 
 
 CLASS_NAMES = [
@@ -32,6 +32,8 @@ CLASS_NAMES = [
     "anger",
     "contempt",
 ]
+
+assert_emotion_classes_covered(CLASS_NAMES)
 
 MEAN = (0.485, 0.456, 0.406)
 STD = (0.229, 0.224, 0.225)
