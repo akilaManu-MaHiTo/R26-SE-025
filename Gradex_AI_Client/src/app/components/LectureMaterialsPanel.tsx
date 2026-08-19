@@ -87,7 +87,7 @@ export async function fetchCourses(apiBaseUrl: string): Promise<CourseItem[]> {
 export function formatCourseLabel(course: CourseItem): string {
   const name = (course.name || "").trim();
   if (!name || name === course.code) return course.code;
-  return `${course.code} — ${name}`;
+  return `${course.code} - ${name}`;
 }
 
 export function LectureMaterialsPanel({

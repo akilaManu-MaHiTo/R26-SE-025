@@ -1070,6 +1070,8 @@ async def start_grading(
                 },
             )
 
+    # In-process background job. LLM calls use asyncio.to_thread so the API loop
+    # is not blocked. Later: a real queue (RQ/Celery/ARQ) and a worker process.
     background_tasks.add_task(_run_job)
 
     return {

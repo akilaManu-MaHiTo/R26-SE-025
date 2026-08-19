@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import re
@@ -839,10 +840,15 @@ def evaluate_grading(payload: dict) -> dict:
         )
 
 
+async def evaluate_grading_async(payload: dict) -> dict:
+    """Run Colab/Groq/RAG HTTP off the event loop so dashboard polls stay live."""
+    return await asyncio.to_thread(evaluate_grading, payload)
+
+
 @router.post("/api/grade")
 async def handle_grading(payload: GradingPayload):
     try:
-        return evaluate_grading(payload.model_dump())
+        return await evaluate_grading_async(payload.model_dump())
     except Exception as err:
         print(f"All evaluation engines failed: {err}")
         raise HTTPException(

@@ -294,6 +294,7 @@ async def run_batch_grading(
         )
 
         full_transcript = ""
+        cleaned_source = ""
         try:
             page_texts = [""] * len(answer_files)
             if answer_files:
@@ -321,24 +322,31 @@ async def run_batch_grading(
                 await asyncio.gather(
                     *[_ocr_one(i, path) for i, path in enumerate(answer_files)]
                 )
-                # Always concatenate every page slot in order (never drop empties silently).
-                parts: list[str] = []
+                # Labels stay on the raw transcript only (debug / page identity).
+                # Cleaned text is what the splitter and model see — no filenames.
+                raw_parts: list[str] = []
+                clean_parts: list[str] = []
                 for i, text in enumerate(page_texts):
-                    label = f"--- Page {i + 1}: {Path(answer_files[i]).name} ---"
+                    filename = Path(answer_files[i]).name
+                    label = f"--- Page {i + 1}: {filename} ---"
                     body = (text or "").strip()
                     if not body:
-                        body = f"[OCR empty for {Path(answer_files[i]).name}]"
+                        body = f"[OCR empty for {filename}]"
                         print(f"OCR warning: empty text for {answer_files[i]}")
                     elif body.startswith("OCR Failed:"):
                         print(f"OCR warning: {body[:160]}")
-                    parts.append(f"{label}\n{body}")
-                full_transcript = "\n\n".join(parts)
+                    raw_parts.append(f"{label}\n{body}")
+                    if body.startswith("[OCR empty for ") or body.startswith("OCR Failed:"):
+                        continue
+                    clean_parts.append(body)
+                full_transcript = "\n\n".join(raw_parts)
+                cleaned_source = "\n\n".join(clean_parts)
                 print(
                     f"OCR concat for {paper_key}: {len(answer_files)} file(s), "
                     f"{len(full_transcript)} chars"
                 )
 
-            cleaned_transcript = clean_ocr_transcript(full_transcript)
+            cleaned_transcript = clean_ocr_transcript(cleaned_source)
 
             if not cleaned_transcript.strip():
                 await db.submissions_col.update_one(
@@ -579,10 +587,8 @@ async def list_ongoing_grading_jobs() -> list[dict]:
 
 def _transcript_for_regrade(submission: dict) -> str:
     cleaned = str(submission.get("cleaned_ocr_transcript") or "").strip()
-    if cleaned:
-        return cleaned
     raw = str(submission.get("raw_ocr_transcript") or "").strip()
-    return clean_ocr_transcript(raw)
+    return clean_ocr_transcript(cleaned or raw)
 
 
 async def regrade_submission(submission_id: str) -> dict:

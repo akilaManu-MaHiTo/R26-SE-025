@@ -1,6 +1,6 @@
 import json
 
-from app.services.ai_model_route import evaluate_grading
+from app.services.ai_model_route import evaluate_grading_async
 from app.services.answer_splitter import (
     clean_ocr_transcript,
     normalize_question_no,
@@ -141,7 +141,7 @@ async def generate_grading_report(all_text, rubric_data, on_progress=None):
             "answer": full_text,
             "course_name": subject_code,
         }
-        return evaluate_grading(payload)
+        return await evaluate_grading_async(payload)
 
     buckets = split_transcript_by_questions(full_text, questions_list)
     markers_found = transcript_has_markers(full_text)
@@ -209,7 +209,7 @@ async def generate_grading_report(all_text, rubric_data, on_progress=None):
         }
 
         try:
-            evaluation = evaluate_grading(payload)
+            evaluation = await evaluate_grading_async(payload)
             row = _row_from_evaluation(evaluation, q_no)
             q_engine = str(evaluation.get("grading_source") or "unknown")
             results.append(
@@ -332,7 +332,7 @@ def _finalize_evaluation(
     }
 
 
-def _grade_one_question_row(
+async def _grade_one_question_row(
     *,
     question: dict,
     q_no: str,
@@ -378,7 +378,7 @@ def _grade_one_question_row(
         "course_name": subject_code,
     }
     try:
-        evaluation = evaluate_grading(payload)
+        evaluation = await evaluate_grading_async(payload)
         row = _row_from_evaluation(evaluation, q_no)
         q_engine = str(evaluation.get("grading_source") or "unknown")
         row = _attach_diagnostics(
@@ -448,7 +448,7 @@ async def regrade_single_question(
     buckets = split_transcript_by_questions(full_text, questions_list)
     markers_found = transcript_has_markers(full_text)
 
-    row, rag_meta = _grade_one_question_row(
+    row, rag_meta = await _grade_one_question_row(
         question=question,
         q_no=target,
         question_idx=question_idx,
