@@ -4,7 +4,7 @@ import {
   FileImage, Workflow, ZoomIn, ZoomOut, Camera, X, RotateCcw,
   ScanLine, ImageIcon, RefreshCw, AlertCircle, ChevronRight,
   Eye, Layers, Type, Cpu, BookOpen, Users, TrendingUp, Filter,
-  Download, FileSpreadsheet, Calendar, Clock, Hash, FolderOpen,
+  Download, FileSpreadsheet, Calendar, Clock, FolderOpen,
   Table, BarChart3, ArrowRight, ArrowLeft, PenTool, Settings, Plus, Trash2,
 } from "lucide-react";
 import { Card } from "./ui/card";
@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { AIPageBanner, AILoadingOverlay, AIBadgePill, type AIModel } from "./AIBrand";
-import { LectureMaterialsPanel, fetchCourses, type CourseItem } from "./LectureMaterialsPanel";
+import { LectureMaterialsPanel, fetchCourses, formatCourseLabel, type CourseItem } from "./LectureMaterialsPanel";
 import {
   Select,
   SelectContent,
@@ -67,6 +67,33 @@ function buildYearOptions(centerYear = new Date().getFullYear()): string[] {
     years.push(String(y));
   }
   return years;
+}
+
+function formatRubricDetailsLabel(r: {
+  session_name?: string | null;
+  subject_code?: string | null;
+  subject_name?: string | null;
+  year?: number | null;
+  month?: number | null;
+  semester?: number | null;
+}): string {
+  const session = (r.session_name || "").trim() || null;
+  const code = (r.subject_code || "").trim();
+  const name = (r.subject_name || "").trim();
+  const subject =
+    code && name && name !== code ? `${code} - ${name}` : code || name || null;
+  const monthLabel =
+    r.month != null
+      ? MONTH_OPTIONS.find((m) => m.value === String(r.month))?.label ?? `M${r.month}`
+      : null;
+  const term = [
+    r.year != null ? String(r.year) : null,
+    monthLabel,
+    r.semester != null ? `Sem ${r.semester}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return [session, subject, term || null].filter(Boolean).join(" · ");
 }
 
 function parseApiError(data: unknown, fallback: string): string {
@@ -980,6 +1007,22 @@ function progressSummaryLine(student: DashboardStudent): string {
   return p.stage;
 }
 
+/** Drop engine page banners so the review pane does not show image filenames. */
+function stripOcrPageBanners(text: string): string {
+  return text
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((line) => {
+      const t = line.trim();
+      if (/^-{2,}\s*page\s+\d+\s*:/i.test(t)) return false;
+      if (/^\[ocr empty for .+\]$/i.test(t)) return false;
+      return true;
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 /** Collect short, actionable issues for the dashboard Errors column. */
 function studentIssueLines(student: DashboardStudent): string[] {
   const lines: string[] = [];
@@ -1197,7 +1240,9 @@ function mapSubmissionToDashboard(doc: Record<string, unknown>): DashboardStuden
     rawTranscript:
       typeof doc.raw_ocr_transcript === "string" ? doc.raw_ocr_transcript : undefined,
     cleanedTranscript:
-      typeof doc.cleaned_ocr_transcript === "string" ? doc.cleaned_ocr_transcript : undefined,
+      typeof doc.cleaned_ocr_transcript === "string"
+        ? stripOcrPageBanners(doc.cleaned_ocr_transcript)
+        : undefined,
     evaluation,
     lecturerNote: typeof doc.lecturer_note === "string" ? doc.lecturer_note : "",
     manualOverride,
@@ -1803,11 +1848,30 @@ function HandwrittenGradingWorkflow() {
   }, [rubricPickerOpen]);
 
   useEffect(() => {
+    if (page === 4) void loadRubricsForPicker();
+  }, [page]);
+
+  useEffect(() => {
     if (page === 4 && rubricId) {
       setGradingRubricId((prev) => prev ?? rubricId);
       setPendingRubricId((prev) => prev ?? rubricId);
     }
   }, [page, rubricId]);
+
+  const selectedGradingRubric = rubricsList.find((r) => r._id === gradingRubricId);
+  const selectedRubricLabel =
+    (selectedGradingRubric && formatRubricDetailsLabel(selectedGradingRubric)) ||
+    (gradingRubricId && rubricId === gradingRubricId
+      ? formatRubricDetailsLabel({
+          session_name: examName,
+          subject_code: subject,
+          subject_name: subjectName,
+          year: sessionYear ? Number(sessionYear) : null,
+          month: sessionMonth ? Number(sessionMonth) : null,
+          semester: sessionSemester ? Number(sessionSemester) : null,
+        })
+      : "") ||
+    "";
 
   const handleRubricUpload = (file: File) => {
     setRubricFile(file);
@@ -2275,6 +2339,23 @@ function HandwrittenGradingWorkflow() {
     });
     setOverrideScores(next);
   };
+
+  const overrideHasChanges = useMemo(() => {
+    if (!selectedStudent) return false;
+    const savedNote = (selectedStudent.lecturerNote || "").trim();
+    if (lecturerNote.trim() !== savedNote) return true;
+    const results = Array.isArray(selectedStudent.evaluation?.results)
+      ? (selectedStudent.evaluation!.results as Record<string, unknown>[])
+      : [];
+    if (results.length === 0) return false;
+    return results.some((row, i) => {
+      const saved = typeof row.score === "number" ? row.score : Number(row.score ?? 0);
+      const draft = Number(overrideScores[i]);
+      const savedN = Number.isFinite(saved) ? saved : 0;
+      const draftN = Number.isFinite(draft) ? draft : 0;
+      return Math.abs(savedN - draftN) > 1e-6;
+    });
+  }, [selectedStudent, lecturerNote, overrideScores]);
 
   /** Restore official scores to frozen AI values and clear the Manual tag. */
   const resetManualOverrideToAi = async (student: DashboardStudent | null | undefined) => {
@@ -2957,137 +3038,179 @@ function HandwrittenGradingWorkflow() {
         <div className="space-y-6 max-w-3xl">
           <div>
             <h2 className="tracking-tight text-slate-900">Session Initialization</h2>
-            <p className="text-sm text-slate-500 mt-1">Define the context before AI processing begins</p>
+            <p className="text-sm text-slate-500 mt-1">
+              Set the exam context. These details are stored with the rubric and copied onto graded papers.
+            </p>
           </div>
 
-          <Card className="p-6 border-slate-200 space-y-5">
-            <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-                <label className="text-sm text-slate-700 mb-2 block">Subject code</label>
-                <Select
-                  value={subject || undefined}
-                  onValueChange={handleSubjectChange}
-                  disabled={coursesLoading || courses.length === 0}
+          <Card className="border-slate-200 bg-slate-50/80 shadow-sm">
+            <div className="p-6 space-y-6">
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Course</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    From Knowledge Base — RAG uses this subject code
+                  </p>
+                </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">
+                    Subject code
+                  </label>
+                  <Select
+                    value={subject || undefined}
+                    onValueChange={handleSubjectChange}
+                    disabled={coursesLoading || courses.length === 0}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          coursesLoading
+                            ? "Loading courses…"
+                            : courses.length
+                              ? "Select a course"
+                              : "No courses yet"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((course) => (
+                        <SelectItem key={course._id} value={course.code}>
+                          {formatCourseLabel(course)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">
+                    Subject name
+                  </label>
+                  <Input
+                    value={subjectName}
+                    readOnly
+                    tabIndex={-1}
+                    onFocus={(e) => e.currentTarget.blur()}
+                    className="h-10 bg-white border-slate-200 text-slate-600 cursor-default caret-transparent select-none focus-visible:ring-0 focus-visible:border-slate-200"
+                    placeholder="Filled from the selected course"
+                  />
+                </div>
+              </div>
+              {courses.length === 0 && !coursesLoading && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="px-0 h-auto text-violet-700"
+                  onClick={() => setPage(8)}
                 >
-                  <SelectTrigger className="w-full bg-white">
-                    <SelectValue
-                      placeholder={
-                        coursesLoading
-                          ? "Loading courses..."
-                          : courses.length
-                            ? "Select a course"
-                            : "No courses yet — add one in Knowledge Base"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courses.map((course) => (
-                      <SelectItem key={course._id} value={course.code}>
-                        {course.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-slate-400 mt-1">
-                  From Knowledge Base. RAG uses this code.
-                </p>
-            </div>
-              <div>
-                <label className="text-sm text-slate-700 mb-2 block">Subject name</label>
-                <Input value={subjectName} readOnly className="bg-slate-50" placeholder="Auto-filled from course" />
-              </div>
-            </div>
-            {courses.length === 0 && !coursesLoading && (
-              <Button
-                type="button"
-                variant="link"
-                className="px-0 h-auto text-violet-700"
-                onClick={() => setPage(8)}
-              >
-                Manage courses / upload lecture materials
-              </Button>
-            )}
+                  Add a course in Knowledge Base
+                </Button>
+              )}
+              </section>
 
-            <div className="grid sm:grid-cols-3 gap-4">
-            <div>
-                <label className="text-sm text-slate-700 mb-2 block">Year</label>
-                <Select value={sessionYear} onValueChange={setSessionYear}>
-                  <SelectTrigger className="w-full bg-white">
-                    <SelectValue placeholder="Year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {yearOptions.map((y) => (
-                      <SelectItem key={y} value={y}>{y}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm text-slate-700 mb-2 block">Month</label>
-                <Select value={sessionMonth} onValueChange={setSessionMonth}>
-                  <SelectTrigger className="w-full bg-white">
-                    <SelectValue placeholder="Month" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MONTH_OPTIONS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm text-slate-700 mb-2 block">Semester</label>
-                <Select value={sessionSemester} onValueChange={setSessionSemester}>
-                  <SelectTrigger className="w-full bg-white">
-                    <SelectValue placeholder="Semester" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SEMESTER_OPTIONS.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Separator />
+
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Exam term</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Academic period for this sitting</p>
+                </div>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5 min-w-0">
+                  <label className="text-sm font-medium text-slate-700">
+                    Year
+                  </label>
+                  <Select value={sessionYear} onValueChange={setSessionYear}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {yearOptions.map((y) => (
+                        <SelectItem key={y} value={y}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 min-w-0">
+                  <label className="text-sm font-medium text-slate-700">
+                    Month
+                  </label>
+                  <Select value={sessionMonth} onValueChange={setSessionMonth}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MONTH_OPTIONS.map((m) => (
+                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 min-w-0">
+                  <label className="text-sm font-medium text-slate-700">
+                    Semester
+                  </label>
+                  <Select value={sessionSemester} onValueChange={setSessionSemester}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select semester" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SEMESTER_OPTIONS.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
             </div>
 
-            <div>
-              <label className="text-sm text-slate-700 mb-2 block">Session name</label>
-              <Select value={examName} onValueChange={setExamName}>
-                <SelectTrigger className="w-full bg-white">
-                  <SelectValue placeholder="Select session type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SESSION_NAME_OPTIONS.map((name) => (
-                    <SelectItem key={name} value={name}>{name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">
+                    Session name
+                  </label>
+                  <Select value={examName} onValueChange={setExamName}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select session type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SESSION_NAME_OPTIONS.map((name) => (
+                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </section>
 
-            <div>
-              <label className="text-sm text-slate-700 mb-2 block">Rubric upload (optional)</label>
-              <div
-                onClick={() => rubricFileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-200 rounded-xl p-6 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
+              <Separator />
+
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Marking scheme</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Optional — you can pick an existing rubric later</p>
+                </div>
+                <div
+                  onClick={() => rubricFileInputRef.current?.click()}
+                  className="border border-dashed border-slate-300 rounded-lg p-5 bg-white hover:border-violet-300 hover:bg-violet-50/40 cursor-pointer transition-colors"
+                >
                 {rubricFile ? (
                   <div className="flex items-center gap-3">
-                    <FileText className="size-10 text-violet-600" />
-                    <div>
-                      <div className="text-sm text-slate-900">{rubricFile.name}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">Marking scheme loaded</div>
+                    <div className="size-10 rounded-md bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
+                      <FileText className="size-5 text-violet-700" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm text-slate-900 truncate">{rubricFile.name}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">PDF ready to extract</div>
                     </div>
                   </div>
                 ) : (
                   <div className="text-center">
-                    <Upload className="size-10 text-slate-400 mx-auto mb-2" />
-                    <div className="text-sm text-slate-600">Drop marking scheme here or click to browse</div>
+                    <Upload className="size-5 text-slate-400 mx-auto mb-2" />
+                    <div className="text-sm text-slate-700">Click to upload a rubric PDF</div>
                     <div className="text-xs text-slate-400 mt-1">
-                      Optional — skip and choose an existing rubric when you run batch grading.
+                      Skip this if you already have a rubric on the server
                     </div>
                   </div>
                 )}
-              </div>
+                </div>
               <input
                 ref={rubricFileInputRef}
                 type="file"
@@ -3098,10 +3221,11 @@ function HandwrittenGradingWorkflow() {
                   if (file) handleRubricUpload(file);
                 }}
               />
+              </section>
             </div>
           </Card>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Button variant="outline" onClick={() => setPage(1)}>
               <ArrowLeft className="size-4 mr-2" /> Back
             </Button>
@@ -3118,9 +3242,9 @@ function HandwrittenGradingWorkflow() {
                 <>Continue to batch grading <ArrowRight className="size-4 ml-2" /></>
               )}
             </Button>
+            {rubricError && <div className="text-sm text-red-600 w-full">{rubricError}</div>}
+            {rubricSuccess && <div className="text-sm text-emerald-600 w-full">{rubricSuccess}</div>}
           </div>
-          {rubricError && <div className="text-sm text-red-600">{rubricError}</div>}
-          {rubricSuccess && <div className="text-sm text-emerald-600">{rubricSuccess}</div>}
         </div>
       )}
 
@@ -3133,11 +3257,17 @@ function HandwrittenGradingWorkflow() {
               Verify and edit the extracted marking scheme before grading, or skip to batch grading and select a rubric there.
             </p>
             {rubricId && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <Hash className="size-3.5 shrink-0" />
-                <span className="font-mono break-all">Rubric ID: {rubricId}</span>
+              <div className="mt-2 text-sm text-slate-600">
+                {formatRubricDetailsLabel({
+                  session_name: examName,
+                  subject_code: subject,
+                  subject_name: subjectName,
+                  year: sessionYear ? Number(sessionYear) : null,
+                  month: sessionMonth ? Number(sessionMonth) : null,
+                  semester: sessionSemester ? Number(sessionSemester) : null,
+                }) || "Rubric loaded"}
                 {rubricFetchLoading && (
-                  <span className="text-violet-600 flex items-center gap-1">
+                  <span className="ml-2 text-violet-600 inline-flex items-center gap-1 text-xs">
                     <RefreshCw className="size-3 animate-spin" /> Syncing from server…
                   </span>
                 )}
@@ -3210,7 +3340,7 @@ function HandwrittenGradingWorkflow() {
                             {entry.criteria.length === 0 ? (
                               <tr>
                                 <td colSpan={3} className="p-4 text-xs text-slate-500">
-                                  No criteria yet — use &quot;Add criterion&quot; below.
+                                  No criteria yet - use &quot;Add criterion&quot; below.
                                 </td>
                               </tr>
                             ) : (
@@ -3320,7 +3450,7 @@ function HandwrittenGradingWorkflow() {
             <div>
               <h2 className="tracking-tight text-slate-900">Batch Script Ingestion</h2>
               <p className="text-sm text-slate-500 mt-1">
-                Choose a marking rubric (required for grading), then upload a ZIP or folder of student scripts (one folder per student ID). You can upload a new scheme earlier in the flow or pick one already stored on the server.
+                Choose a marking rubric, upload student scripts, then validate IDs against the attendance roster.
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={() => setRubricPickerOpen(true)}>
@@ -3328,35 +3458,50 @@ function HandwrittenGradingWorkflow() {
             </Button>
           </div>
 
-          <Card className="p-5 border-slate-200 space-y-3">
-            <div className="text-sm text-slate-700">Selected rubric</div>
+          <Card className="p-5 border-slate-200 bg-slate-50/80 shadow-sm space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Selected rubric</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Required before staging papers or starting grading</p>
+            </div>
             {gradingRubricId ? (
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <Badge variant="outline" className="font-mono">
-                  {gradingRubricId}
-                </Badge>
-                <span className="text-slate-500">
-                  Use “Choose rubric” to pick another scheme from the server.
-                </span>
+              <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5 min-w-0">
+                <div className="text-sm font-medium text-slate-900">
+                  {selectedRubricLabel || "Selected rubric"}
+                </div>
+                {selectedGradingRubric?.filename ? (
+                  <div className="text-xs text-slate-500 mt-0.5 truncate">
+                    {selectedGradingRubric.filename}
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Use Choose rubric to pick another scheme from the server.
+                  </div>
+                )}
               </div>
             ) : (
-              <p className="text-sm text-amber-700">No rubric selected — click “Choose rubric”.</p>
+              <p className="text-sm text-amber-700">No rubric selected - click “Choose rubric”.</p>
             )}
           </Card>
 
-          <Card className="p-6 border-slate-200 space-y-5">
+          <Card className="p-6 border-slate-200 bg-slate-50/80 shadow-sm space-y-5">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Student scripts</h3>
+              <p className="text-xs text-slate-500 mt-0.5">ZIP or folder — one student ID folder per paper</p>
+            </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-slate-700 mb-2 block">Upload ZIP archive</label>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700">Upload ZIP archive</label>
                 <div
                   onClick={() => !batchUploading && zipInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-                    batchUploading ? "opacity-60 pointer-events-none border-slate-100" : "border-slate-200 hover:bg-slate-50"
+                  className={`border border-dashed rounded-lg p-5 text-center bg-white cursor-pointer transition-colors ${
+                    batchUploading
+                      ? "opacity-60 pointer-events-none border-slate-200"
+                      : "border-slate-300 hover:border-violet-300 hover:bg-violet-50/40"
                   }`}
                 >
-                  <Upload className="size-10 text-violet-500 mx-auto mb-2" />
+                  <Upload className="size-5 text-violet-600 mx-auto mb-2" />
                   <div className="text-sm text-slate-700">Click to select .zip</div>
-                  <div className="text-xs text-slate-400 mt-1">Structure: StudentID/page.jpg …</div>
+                  <div className="text-xs text-slate-400 mt-1">StudentID / page.jpg</div>
                 </div>
                 <input
                   ref={zipInputRef}
@@ -3370,17 +3515,19 @@ function HandwrittenGradingWorkflow() {
                   }}
                 />
               </div>
-              <div>
-                <label className="text-sm text-slate-700 mb-2 block">Or upload folder</label>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700">Or upload folder</label>
                 <div
                   onClick={() => !batchUploading && folderInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-                    batchUploading ? "opacity-60 pointer-events-none border-slate-100" : "border-slate-200 hover:bg-slate-50"
+                  className={`border border-dashed rounded-lg p-5 text-center bg-white cursor-pointer transition-colors ${
+                    batchUploading
+                      ? "opacity-60 pointer-events-none border-slate-200"
+                      : "border-slate-300 hover:border-violet-300 hover:bg-violet-50/40"
                   }`}
                 >
-                  <FolderOpen className="size-10 text-violet-600 mx-auto mb-2" />
+                  <FolderOpen className="size-5 text-violet-600 mx-auto mb-2" />
                   <div className="text-sm text-slate-700">Select folder (Chrome / Edge)</div>
-                  <div className="text-xs text-slate-400 mt-1">Preserves paths → student subfolders</div>
+                  <div className="text-xs text-slate-400 mt-1">Preserves student subfolders</div>
                 </div>
                 {/* webkitdirectory enables folder picker in Chromium */}
                 <input
@@ -3419,7 +3566,7 @@ function HandwrittenGradingWorkflow() {
             {uploadedFiles.length > 0 && (
               <div className="space-y-2">
                 <div className="text-sm text-slate-700">{uploadedFiles.length} path(s) uploaded</div>
-                <div className="max-h-48 overflow-y-auto space-y-1 bg-slate-50 rounded-lg p-2 text-xs font-mono">
+                <div className="max-h-48 overflow-y-auto space-y-1 bg-white border border-slate-200 rounded-md p-2 text-xs font-mono">
                   {uploadedFiles.slice(0, 80).map((name, i) => (
                     <div key={i} className="truncate text-slate-600">
                       {name}
@@ -3433,10 +3580,10 @@ function HandwrittenGradingWorkflow() {
             )}
           </Card>
 
-          <Card className="p-6 border-slate-200 space-y-4">
+          <Card className="p-6 border-slate-200 bg-slate-50/80 shadow-sm space-y-4">
             <div>
-              <h3 className="text-sm font-medium text-slate-900">Attendance roster &amp; ID validation</h3>
-              <p className="text-xs text-slate-500 mt-1">
+              <h3 className="text-sm font-semibold text-slate-900">Attendance roster &amp; ID validation</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
                 Upload the exam attendance Excel, then scan &amp; validate paper IDs against the roster
                 (folder names preferred; OCR is a fallback). Fix mismatches below if needed.
               </p>
@@ -3533,7 +3680,7 @@ function HandwrittenGradingWorkflow() {
                   </Badge>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                       <tr>
@@ -4493,6 +4640,7 @@ function HandwrittenGradingWorkflow() {
                       overrideSaving ||
                       regradingAll ||
                       regradingQuestion != null ||
+                      !overrideHasChanges ||
                       !Array.isArray(selectedStudent.evaluation?.results) ||
                       (selectedStudent.evaluation?.results as unknown[]).length === 0
                     }
@@ -4996,7 +5144,7 @@ function HandwrittenGradingWorkflow() {
                 <SelectContent>
                   {courses.map((course) => (
                     <SelectItem key={course.code} value={course.code}>
-                      {course.code} — {course.name || course.code}
+                      {course.code} - {course.name || course.code}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -5285,27 +5433,17 @@ function HandwrittenGradingWorkflow() {
                       : "border-slate-200 hover:bg-slate-50"
                   }`}
                 >
-                  <div className="font-mono text-[11px] text-slate-500 break-all">{r._id}</div>
-                  <div className="font-medium text-slate-900 mt-0.5">{r.session_name ?? "—"}</div>
-                  <div className="text-xs text-slate-600 mt-0.5">
-                    {r.subject_code ?? "—"}
-                    {r.subject_name ? ` — ${r.subject_name}` : ""}
-                    {r.filename ? ` · ${r.filename}` : ""}
+                  <div className="font-medium text-slate-900">
+                    {formatRubricDetailsLabel(r) || r.session_name || "Untitled rubric"}
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    {[
-                      r.year != null ? String(r.year) : null,
-                      r.month != null ? MONTH_OPTIONS.find((m) => m.value === String(r.month))?.label ?? `M${r.month}` : null,
-                      r.semester != null ? `Sem ${r.semester}` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || "No period metadata"}
+                  <div className="text-xs text-slate-600 mt-0.5">
+                    {r.filename || "Marking scheme"}
                   </div>
                 </button>
               ))
             )}
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => setRubricPickerOpen(false)}>
               Cancel
             </Button>
