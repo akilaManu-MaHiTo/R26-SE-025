@@ -1210,12 +1210,14 @@ function mapSubmissionToDashboard(doc: Record<string, unknown>): DashboardStuden
         evaluation && typeof evaluation.grading_source === "string"
           ? evaluation.grading_source
           : "";
-      const fromResults =
-        evaluation &&
-        Array.isArray(evaluation.results) &&
-        evaluation.results.find(
-          (r) => r && typeof r === "object" && typeof (r as { grading_source?: unknown }).grading_source === "string",
-        ) as { grading_source?: string } | undefined;
+      const fromResults = Array.isArray(evaluation?.results)
+        ? evaluation.results.find(
+            (r): r is { grading_source: string } =>
+              Boolean(r) &&
+              typeof r === "object" &&
+              typeof (r as { grading_source?: unknown }).grading_source === "string",
+          )
+        : undefined;
       const raw = top || fromResults?.grading_source || "";
       const label = formatGradingEngineLabel(raw);
       return label || undefined;
