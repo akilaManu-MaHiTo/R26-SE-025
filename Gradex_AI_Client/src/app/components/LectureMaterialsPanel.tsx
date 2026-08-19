@@ -111,6 +111,7 @@ export function LectureMaterialsPanel({
   const [dragOver, setDragOver] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<LectureMaterialItem | null>(null);
   const [pendingCourseDelete, setPendingCourseDelete] = useState<CourseItem | null>(null);
+  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
 
   const loadCourses = useCallback(async () => {
     setCoursesLoading(true);
@@ -258,7 +259,9 @@ export function LectureMaterialsPanel({
       }
 
       const indexed = data.indexed_items ?? data.indexed_pages ?? 0;
-      setSuccess(`Indexed ${indexed} page(s)/slide(s) from ${data.filename ?? file.name} under ${trimmedCourse}.`);
+      setSuccess(
+        `Indexed ${indexed} page(s)/slide(s) from ${data.filename ?? file.name} under ${trimmedCourse}.`,
+      );
       await loadMaterials();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to upload lecture material.");
@@ -270,7 +273,13 @@ export function LectureMaterialsPanel({
 
   const handleFileInput = (fileList: FileList | null) => {
     const file = fileList?.[0];
-    if (file) void uploadFile(file);
+    if (file) setPendingUploadFile(file);
+  };
+
+  const confirmUpload = async () => {
+    const file = pendingUploadFile;
+    setPendingUploadFile(null);
+    if (file) await uploadFile(file);
   };
 
   const confirmDelete = async () => {
@@ -575,6 +584,38 @@ export function LectureMaterialsPanel({
         </div>
       )}
       {success && <div className="text-sm text-emerald-600">{success}</div>}
+
+      <AlertDialog
+        open={pendingUploadFile != null}
+        onOpenChange={(open) => {
+          if (!open && !uploading) setPendingUploadFile(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Upload lecture material?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Upload{" "}
+              <span className="font-medium text-slate-800">{pendingUploadFile?.name}</span> to course{" "}
+              <span className="font-medium text-slate-800">{selectedCourse || "—"}</span> and index it
+              for RAG?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={uploading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-violet-600 hover:bg-violet-700"
+              disabled={uploading}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmUpload();
+              }}
+            >
+              {uploading ? "Uploading…" : "Upload"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={pendingDelete != null} onOpenChange={(open) => !open && setPendingDelete(null)}>
         <AlertDialogContent>
