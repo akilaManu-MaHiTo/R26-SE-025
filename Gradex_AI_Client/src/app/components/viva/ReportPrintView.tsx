@@ -6,14 +6,14 @@
 // is the mechanism this relies on — no PDF-generation library is added for
 // what a print stylesheet already covers.
 
-import { AnalysisResult, KeyMoment, RubricCriterion, formatTime } from "./types";
+import { AnalysisResult, AssessmentMode, KeyMoment, formatTime, resolveGradeFromPercent } from "./types";
 
 interface ReportPrintViewProps {
   videoFileName?: string;
   generatedAt: Date;
   analysisResult: AnalysisResult;
-  criteria: RubricCriterion[];
-  finalGrade: string;
+  assessmentMode: AssessmentMode;
+  technicalAccuracy: number | null;
   published: boolean;
   aiInterpretation: string[];
   keyMoments: KeyMoment[];
@@ -23,15 +23,23 @@ export function ReportPrintView({
   videoFileName,
   generatedAt,
   analysisResult,
-  criteria,
-  finalGrade,
+  assessmentMode,
+  technicalAccuracy,
   published,
   aiInterpretation,
   keyMoments,
 }: ReportPrintViewProps) {
-  const total = criteria.reduce((sum, c) => sum + c.score, 0);
-  const max = criteria.reduce((sum, c) => sum + c.max, 0);
   const audio = analysisResult.audio_analysis;
+  const assessment = analysisResult.assessment;
+  const aiScore = assessment?.ai_performance?.score;
+  const withTech = assessmentMode === "WITH_TECHNICAL_ACCURACY";
+  const fusionAi = 0.5;
+  const fusionTech = 0.5;
+  let finalScore = aiScore ?? null;
+  if (withTech && aiScore != null && technicalAccuracy != null) {
+    finalScore = Math.round((fusionAi * aiScore + fusionTech * (technicalAccuracy / 10) * 100) * 100) / 100;
+  }
+  const grade = resolveGradeFromPercent(finalScore);
 
   return (
     <div className="p-10 text-black bg-white text-sm leading-relaxed">
@@ -76,27 +84,19 @@ export function ReportPrintView({
       </div>
 
       <div className="mt-6">
-        <div className="font-semibold border-b border-gray-300 pb-1">Evaluation Rubric</div>
-        <table className="w-full mt-2 text-sm">
-          <tbody>
-            {criteria.map((c) => (
-              <tr key={c.id} className="border-b border-gray-200">
-                <td className="py-1.5 pr-2 align-top">
-                  <div>{c.name}</div>
-                  <div className="text-xs text-gray-500">{c.description}</div>
-                </td>
-                <td className="py-1.5 text-right align-top whitespace-nowrap font-medium">
-                  {c.score} / {c.max}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-300">
-          <div className="font-medium">
-            Total: {total} / {max}
+        <div className="font-semibold border-b border-gray-300 pb-1">Official assessment</div>
+        <div className="mt-2 space-y-1">
+          <div>Mode: {withTech ? "With technical accuracy" : "Without technical accuracy"}</div>
+          <div>AI performance: {aiScore != null ? `${aiScore.toFixed(1)} / 100` : "—"}</div>
+          {withTech && (
+            <div>Technical accuracy: {technicalAccuracy != null ? `${technicalAccuracy} / 10` : "—"}</div>
+          )}
+          <div className="font-medium pt-1">
+            Final score: {finalScore != null ? `${finalScore.toFixed(1)} / 100` : "—"}
+            {" · "}
+            Grade: {grade ?? "—"}
           </div>
-          <div className="font-medium">Final grade: {finalGrade}</div>
+          {assessment?.status === "INCOMPLETE" && <div>Status: Incomplete — no official grade</div>}
         </div>
       </div>
 
@@ -140,11 +140,21 @@ export function ReportPrintView({
                   : "—"}
               </div>
               <div>Detected emotion: {audio.audio_emotion?.predicted_emotion ?? "unknown"}</div>
-              <div>Transcript: {audio.transcript_word_count ?? 0} words, {audio.segment_count ?? 0} segments</div>
+              <div>Transcript: {audio.transcript_word_count ?? 0} student words, {audio.segment_count ?? 0} segments</div>
             </div>
+            {(audio.diarization?.speaker_count ?? 0) >= 2 && (
+              <p className="mt-1 text-xs text-gray-600">
+                Two or more speakers detected. Grade uses the on-camera student track ({audio.diarization?.student_speaker}) only.
+              </p>
+            )}
             {audio.transcript && (
               <p className="mt-2 text-xs whitespace-pre-wrap border border-gray-200 rounded p-2 bg-gray-50">
                 {audio.transcript}
+              </p>
+            )}
+            {audio.examiner_transcript && (
+              <p className="mt-2 text-xs whitespace-pre-wrap border border-gray-200 rounded p-2 bg-gray-50">
+                Panel: {audio.examiner_transcript}
               </p>
             )}
           </>

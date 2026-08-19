@@ -7,6 +7,7 @@ from typing import Dict
 from config import AppConfig
 from services.analysis_service import analyze_video
 from services.llm_judge import attach_llm_evaluation
+from services.qa_relevance import attach_qa_analysis
 from services.viva_analysis import analyze_audio_from_video
 
 
@@ -55,12 +56,25 @@ def main() -> int:
 
         result = analyze_video(config, include_summary=True)
         if not args.video_only:
-            audio_result = analyze_audio_from_video(config.video_path, debug=args.debug)
+            face_cues = list(result.get("face_cues") or [])
+            face_times = [
+                float(item.get("time"))
+                for item in (result.get("timeline") or [])
+                if item.get("valid") and item.get("time") is not None
+            ]
+            audio_result = analyze_audio_from_video(
+                config.video_path,
+                debug=args.debug,
+                face_times=face_times,
+                face_cues=face_cues,
+            )
             if isinstance(audio_result, dict):
                 result.update(audio_result)
 
         if not args.skip_llm:
             result = attach_llm_evaluation(result, debug=args.debug)
+        if not args.video_only:
+            result = attach_qa_analysis(result, debug=args.debug)
 
         save_output(result, config.output_path)
 

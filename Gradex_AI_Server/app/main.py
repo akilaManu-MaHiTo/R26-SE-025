@@ -56,8 +56,9 @@ class RubricCriterionPayload(BaseModel):
 
 
 class PublishVivaMarkPayload(BaseModel):
-    criteria: list[RubricCriterionPayload]
-    final_grade: str
+    assessment_mode: str
+    technical_accuracy: Optional[float] = Field(default=None, ge=0, le=10)
+    student_id: Optional[str] = None
     published: bool = True
 
 
@@ -244,25 +245,56 @@ async def analytics_historical():
 
 @app.patch("/api/viva-marks/{mark_id}/publish")
 async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
-    """Persist examiner rubric + final grade onto an existing analysis document."""
+    """Persist published assessment: canonical X, human technical (or null), server-computed /100 + grade."""
     if db_instance.marks_col is None:
         raise HTTPException(status_code=503, detail="MongoDB is not connected.")
 
+    from VivaEvaluationEngine.services.assessment_scoring import (
+        MODE_WITH,
+        MODE_WITHOUT,
+        build_assessment,
+    )
+
+    mode = payload.assessment_mode.strip()
+    if mode not in {MODE_WITHOUT, MODE_WITH}:
+        raise HTTPException(status_code=400, detail="assessment_mode must be WITHOUT_TECHNICAL_ACCURACY or WITH_TECHNICAL_ACCURACY.")
+    if mode == MODE_WITH and payload.technical_accuracy is None:
+        raise HTTPException(status_code=400, detail="technical_accuracy is required for WITH_TECHNICAL_ACCURACY.")
+    if mode == MODE_WITHOUT:
+        technical = None
+    else:
+        technical = payload.technical_accuracy
+
     object_id = _parse_object_id(mark_id)
+    existing = await db_instance.marks_col.find_one({"_id": object_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Mark not found.")
+
+    engine_result = existing.get("result") or {}
+    assessment = build_assessment(
+        engine_result,
+        mode=mode,
+        technical_accuracy=technical,
+    )
     published_at = datetime.now(timezone.utc)
+    student_id = (payload.student_id or "").strip() or None
     update = {
         "published": bool(payload.published),
+        "human_published": True,
         "published_at": published_at,
-        "final_grade": payload.final_grade.strip(),
-        "criteria": [c.model_dump() for c in payload.criteria],
-        "total_score": sum(c.score for c in payload.criteria),
-        "max_score": sum(c.max for c in payload.criteria),
+        "student_id": student_id,
+        "assessment_mode": mode,
+        "features": assessment.get("training_features"),
+        "feature_schema_version": assessment.get("feature_schema_version"),
+        "scoring_version": assessment.get("scoring_version"),
+        "ai_performance_score": (assessment.get("ai_performance") or {}).get("score"),
+        "technical_accuracy": assessment.get("technical_accuracy"),
+        "final_score": assessment.get("final_score"),
+        "final_grade": assessment.get("grade"),
+        "assessment": assessment,
     }
 
-    result = await db_instance.marks_col.update_one(
-        {"_id": object_id},
-        {"$set": update},
-    )
+    result = await db_instance.marks_col.update_one({"_id": object_id}, {"$set": update})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Mark not found.")
 
@@ -270,9 +302,15 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
         "mark_id": mark_id,
         "published": update["published"],
         "published_at": published_at.isoformat(),
+        "student_id": student_id,
+        "assessment_mode": mode,
+        "ai_performance_score": update["ai_performance_score"],
+        "technical_accuracy": update["technical_accuracy"],
+        "final_score": update["final_score"],
         "final_grade": update["final_grade"],
-        "total_score": update["total_score"],
-        "max_score": update["max_score"],
+        "status": assessment.get("status"),
+        "scoring_version": update["scoring_version"],
+        "feature_schema_version": update["feature_schema_version"],
     }
 
 
@@ -336,6 +374,9 @@ async def viva_analyze(video: UploadFile = File(...)):
                 "confidence_score": result.get("confidence_score"),
                 "engagement_score": result.get("engagement_score"),
                 "video_status": result.get("video_status"),
+                "assessment": result.get("assessment"),
+                "scoring_version": (result.get("assessment") or {}).get("scoring_version"),
+                "feature_schema_version": (result.get("assessment") or {}).get("feature_schema_version"),
                 "result": result,
             }
             insert_result = await db_instance.marks_col.insert_one(mark_doc)

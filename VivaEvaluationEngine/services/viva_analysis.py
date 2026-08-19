@@ -10,6 +10,12 @@ from config import HEURISTIC_EMOTION_CONFIDENCE_CAP, canonical_emotion_label
 from extract_audio import extract_audio
 from extract_emotion import extract_speech_emotion
 from extract_features import extract_acoustic_features
+from services.conversation import build_conversation
+from services.diarization import (
+    collapse_excluded_gaps,
+    diarize_and_select_student,
+    words_and_text_for_speaker,
+)
 from services.transcript_features import extract_transcript_features
 from transcribe import transcribe_audio
 
@@ -285,6 +291,13 @@ def _build_degraded_reasons(
     return reasons
 
 
+def _public_diarization(diarization: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not diarization:
+        return {}
+    skip = {"_waveform", "exclude_segments"}
+    return {key: value for key, value in diarization.items() if key not in skip}
+
+
 def _pack_audio_payload(
     *,
     status: str,
@@ -304,6 +317,12 @@ def _pack_audio_payload(
     degraded_reasons: List[str],
     transcript_features: Optional[Dict[str, Any]] = None,
     error: Optional[str] = None,
+    mixed_transcript: Optional[str] = None,
+    examiner_transcript: Optional[str] = None,
+    diarization: Optional[Dict[str, Any]] = None,
+    conversation: Optional[Dict[str, Any]] = None,
+    whisper_available: Optional[bool] = None,
+    whisper_reason: Optional[str] = None,
 ) -> Dict[str, Any]:
     predicted_emotion = str(emotion_features.get("predicted_emotion", "unknown")).strip() or "unknown"
     payload: Dict[str, Any] = {
@@ -344,18 +363,43 @@ def _pack_audio_payload(
         "transcript_features": transcript_features or {},
         "grade_breakdown": grade_breakdown,
         "degraded_reasons": degraded_reasons,
+        "mixed_transcript": mixed_transcript or "",
+        "full_transcript": (conversation or {}).get("full_transcript") or mixed_transcript or "",
+        "examiner_transcript": examiner_transcript or "",
+        "diarization": _public_diarization(diarization),
+        "conversation": conversation
+        or {
+            "turns": [],
+            "pair_candidates": [],
+            "turn_count": 0,
+            "pair_count": 0,
+            "qa_start": None,
+            "has_panel": False,
+            "full_transcript": "",
+            "labeled_transcript": "",
+            "structure": {"status": "skipped", "source": "heuristic", "reason": "no_panel", "segments": []},
+        },
+        "whisper_available": True if whisper_available is None else bool(whisper_available),
+        "whisper_reason": whisper_reason,
     }
     if error:
         payload["error"] = error
     return payload
 
 
-def analyze_audio_from_video(video_path: str, debug: bool = False) -> Dict[str, Any]:
+def analyze_audio_from_video(
+    video_path: str,
+    debug: bool = False,
+    face_times: Optional[List[float]] = None,
+    face_cues: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
     if not os.path.exists(video_path):
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
     temp_audio_fd, temp_audio_path = tempfile.mkstemp(suffix=".wav")
     os.close(temp_audio_fd)
+    student_audio_fd, student_audio_path = tempfile.mkstemp(suffix=".wav")
+    os.close(student_audio_fd)
     transcription_output = ENGINE_ROOT / "outputs" / f"transcription_{uuid.uuid4().hex}.json"
 
     audio_analysis: Dict[str, Any] = {
@@ -382,26 +426,127 @@ def analyze_audio_from_video(video_path: str, debug: bool = False) -> Dict[str, 
         "acoustic_features": {},
         "grade_breakdown": {},
         "degraded_reasons": [],
+        "mixed_transcript": "",
+        "full_transcript": "",
+        "examiner_transcript": "",
+        "diarization": {},
+        "conversation": {
+            "turns": [],
+            "pair_candidates": [],
+            "turn_count": 0,
+            "pair_count": 0,
+            "qa_start": None,
+            "has_panel": False,
+            "full_transcript": "",
+            "labeled_transcript": "",
+            "structure": {"status": "skipped", "source": "heuristic", "reason": "no_panel", "segments": []},
+        },
     }
 
     try:
         extract_audio(video_path, temp_audio_path)
+
+        diarization: Dict[str, Any] = {}
+        scoring_wav = temp_audio_path
+        try:
+            diarization = diarize_and_select_student(
+                temp_audio_path,
+                face_times=face_times,
+                face_cues=face_cues,
+                student_track_path=student_audio_path,
+            )
+            if diarization.get("speaker_count", 1) >= 2 and diarization.get("student_track_duration_seconds"):
+                scoring_wav = student_audio_path
+        except Exception as exc:
+            if debug:
+                print(f"Diarization failed; scoring mixed audio: {exc}")
+            diarization = {
+                "status": "failed",
+                "backend": "mfcc_kmeans",
+                "speaker_count": 1,
+                "student_speaker": "SPEAKER_00",
+                "assignment_method": "fallback_mixed",
+                "reason": str(exc),
+                "scored_track": "mixed",
+                "segments": [],
+                "speakers": [],
+                "examiner_speakers": [],
+            }
 
         transcript, segments, whisper_meta = transcribe_audio(
             temp_audio_path,
             model_size=WHISPER_MODEL_SIZE,
             output_path=transcription_output,
         )
-        acoustic_features = extract_acoustic_features(temp_audio_path)
+        try:
+            from transcribe import release_whisper_models
+
+            release_whisper_models()
+        except Exception:
+            pass
+
+        mixed_transcript = (transcript or "").strip()
+        student_id = diarization.get("student_speaker")
+        diar_segments = diarization.get("segments") or []
+        examiner_text = ""
+        if diarization.get("speaker_count", 1) >= 2 and diar_segments:
+            student_text, student_words, student_segments = words_and_text_for_speaker(
+                whisper_meta.get("words_with_times") or [],
+                segments,
+                diar_segments,
+                student_id,
+            )
+            examiner_parts: List[str] = []
+            for examiner_id in diarization.get("examiner_speakers") or []:
+                text, _, _ = words_and_text_for_speaker(
+                    whisper_meta.get("words_with_times") or [],
+                    segments,
+                    diar_segments,
+                    examiner_id,
+                )
+                if text:
+                    examiner_parts.append(text)
+            examiner_text = " ".join(examiner_parts)
+            transcript_text = student_text
+            scoring_segments = student_segments or segments
+            scoring_words = collapse_excluded_gaps(
+                student_words,
+                diarization.get("exclude_segments") or [],
+            )
+            recording_duration = _safe_float(diarization.get("recording_duration_seconds")) or 0.0
+            examiner_seconds = sum(
+                float(item.get("speaking_seconds") or 0.0)
+                for item in (diarization.get("speakers") or [])
+                if item.get("id") != student_id
+            )
+            scoring_duration = max(
+                _safe_float(diarization.get("student_speaking_seconds")) or 0.0,
+                recording_duration - examiner_seconds,
+            )
+        else:
+            transcript_text = mixed_transcript
+            scoring_segments = segments
+            scoring_words = whisper_meta.get("words_with_times") or []
+            scoring_duration = None
+
+        conversation = build_conversation(
+            words=whisper_meta.get("words_with_times") or [],
+            diar_segments=diar_segments
+            or [{"start": 0.0, "end": 1e9, "speaker": student_id or "SPEAKER_00"}],
+            student_speaker=student_id or "SPEAKER_00",
+            whisper_segments=segments,
+        )
+
+        acoustic_features = extract_acoustic_features(scoring_wav)
 
         emotion_features: Dict[str, Any] = {}
         try:
-            emotion_features = extract_speech_emotion(temp_audio_path)
+            emotion_features = extract_speech_emotion(scoring_wav)
         except Exception as exc:
             if debug:
                 print(f"Audio emotion extraction failed: {exc}")
 
-        transcript_text = transcript.strip()
+        transcript_text = (transcript_text or "").strip()
         word_count = len(transcript_text.split()) if transcript_text else 0
         excerpt = transcript_text[:320]
         if len(transcript_text) > 320:
@@ -423,19 +568,23 @@ def analyze_audio_from_video(video_path: str, debug: bool = False) -> Dict[str, 
             acoustic_features=acoustic_features,
             emotion_features=emotion_features,
         )
+        if diarization.get("status") == "failed":
+            degraded_reasons.append("diarization_unavailable")
+
+        duration_for_wpm = scoring_duration or _safe_float(acoustic_features.get("duration_seconds"))
 
         transcript_features = extract_transcript_features(
             transcript=transcript_text,
-            segments=segments,
-            duration_seconds=_safe_float(acoustic_features.get("duration_seconds")),
-            words_with_times=whisper_meta.get("words_with_times") or [],
+            segments=scoring_segments,
+            duration_seconds=duration_for_wpm,
+            words_with_times=scoring_words,
         )
 
         common_kwargs = dict(
             transcript_text=transcript_text,
             excerpt=excerpt,
             word_count=word_count,
-            segment_count=len(segments),
+            segment_count=len(scoring_segments),
             pitch_level=pitch_level,
             pitch_mean=pitch_mean,
             pitch_min=pitch_min,
@@ -445,6 +594,12 @@ def analyze_audio_from_video(video_path: str, debug: bool = False) -> Dict[str, 
             acoustic_features=acoustic_features,
             degraded_reasons=degraded_reasons,
             transcript_features=transcript_features,
+            mixed_transcript=mixed_transcript,
+            examiner_transcript=examiner_text if diarization.get("speaker_count", 1) >= 2 else "",
+            diarization=diarization,
+            conversation=conversation,
+            whisper_available=bool(whisper_meta.get("available")),
+            whisper_reason=whisper_meta.get("reason"),
         )
 
         if not _audio_is_sufficient(acoustic_features, transcript_text):
@@ -460,7 +615,7 @@ def analyze_audio_from_video(video_path: str, debug: bool = False) -> Dict[str, 
                 acoustic_features=acoustic_features,
                 emotion_features=emotion_features,
                 transcript=transcript_text,
-                segment_count=len(segments),
+                segment_count=len(scoring_segments),
             )
 
             if audio_grade is None:
@@ -484,6 +639,7 @@ def analyze_audio_from_video(video_path: str, debug: bool = False) -> Dict[str, 
         if debug:
             print("Audio analysis completed")
             print(f"  Status: {audio_analysis.get('status')}")
+            print(f"  Diarization: {audio_analysis.get('diarization', {}).get('speaker_count')} speakers")
             print(f"  Degraded reasons: {audio_analysis.get('degraded_reasons')}")
             print(f"  Transcript words: {word_count}")
             print(f"  Pitch level: {pitch_level}")
@@ -494,7 +650,7 @@ def analyze_audio_from_video(video_path: str, debug: bool = False) -> Dict[str, 
             print(f"Audio analysis failed: {exc}")
         audio_analysis["error"] = str(exc)
     finally:
-        for path in (temp_audio_path, transcription_output):
+        for path in (temp_audio_path, student_audio_path, transcription_output):
             try:
                 if os.path.exists(path):
                     os.remove(path)
