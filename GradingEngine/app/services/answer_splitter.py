@@ -18,6 +18,19 @@ _QUESTION_MARKER_RE = re.compile(
     r"\s*"
 )
 
+# OCR.Space / pipeline noise often injected between pages or failed regions.
+# Keep [OCR_ERROR]/[OCR_EMPTY] lines so empty pages are visible in review.
+_OCR_JUNK_LINE_RE = re.compile(
+    r"(?i)^\s*(?:"
+    r"-{2,}\s*ocr\s+start\s*-{2,}"
+    r"|-{2,}\s*ocr\s+end\s*-{2,}"
+    r"|ocr\s+start"
+    r"|ocr\s+end"
+    r"|[\.:,;=\{\}\[\]\|\-\_\*]{1,8}"
+    r"|d\.?ne"
+    r")\s*$"
+)
+
 
 def normalize_question_no(value, fallback_idx: int = 1) -> str:
     text = str(value or "").strip()
@@ -25,6 +38,49 @@ def normalize_question_no(value, fallback_idx: int = 1) -> str:
     if match:
         return str(int(match.group(1))).zfill(2)
     return str(fallback_idx).zfill(2)
+
+
+def clean_ocr_transcript(transcript: str) -> str:
+    """
+    Drop obvious OCR junk lines while preserving real answer text.
+    """
+    if not (transcript or "").strip():
+        return ""
+
+    cleaned_lines: list[str] = []
+    for raw in transcript.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        line = raw.strip()
+        if not line:
+            cleaned_lines.append("")
+            continue
+        if _OCR_JUNK_LINE_RE.match(line):
+            continue
+        # Very short punctuation-only leftovers
+        if re.fullmatch(r"[\W_]{1,12}", line) and not re.search(r"[A-Za-z0-9]", line):
+            continue
+        cleaned_lines.append(raw.rstrip())
+
+    text = "\n".join(cleaned_lines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def _trim_trailing_junk(chunk: str) -> str:
+    """Remove trailing junk lines from a question bucket (before next Q marker)."""
+    lines = chunk.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    while lines:
+        last = lines[-1].strip()
+        if not last:
+            lines.pop()
+            continue
+        if _OCR_JUNK_LINE_RE.match(last):
+            lines.pop()
+            continue
+        if re.fullmatch(r"[\W_]{1,12}", last) and not re.search(r"[A-Za-z0-9]", last):
+            lines.pop()
+            continue
+        break
+    return "\n".join(lines).strip()
 
 
 def _find_markers(transcript: str) -> list[tuple[int, str]]:
@@ -39,6 +95,10 @@ def _find_markers(transcript: str) -> list[tuple[int, str]]:
     return markers
 
 
+def transcript_has_markers(transcript: str) -> bool:
+    return bool(_find_markers(clean_ocr_transcript(transcript or "")))
+
+
 def split_transcript_by_questions(
     transcript: str,
     questions: list[dict],
@@ -47,9 +107,9 @@ def split_transcript_by_questions(
     Split OCR text into buckets keyed by normalized question_no.
 
     Returns only buckets that were found via markers. Missing keys mean
-    the caller should fall back (e.g. use full transcript for that question).
+    no dedicated answer was found for that question.
     """
-    text = (transcript or "").strip()
+    text = clean_ocr_transcript(transcript or "")
     if not text:
         return {}
 
@@ -72,7 +132,7 @@ def split_transcript_by_questions(
     buckets: dict[str, str] = {}
     for idx, (start, q_no) in enumerate(ordered):
         end = ordered[idx + 1][0] if idx + 1 < len(ordered) else len(text)
-        chunk = text[start:end].strip()
+        chunk = _trim_trailing_junk(text[start:end])
         if chunk:
             buckets[q_no] = chunk
 
@@ -94,22 +154,30 @@ def resolve_answer_for_question(
     question: dict,
     buckets: dict[str, str],
     question_idx: int,
+    *,
+    markers_found: bool | None = None,
 ) -> tuple[str, str]:
     """
     Pick answer text for one question.
 
     Returns (answer_text, source) where source is:
     - "split"  — regex bucket found
-    - "full"   — fell back to full transcript
-    - "empty"  — no usable text
+    - "full"   — no markers anywhere; use cleaned full transcript once
+    - "empty"  — markers exist but this question has no bucket, or no text
     """
     q_no = normalize_question_no(question.get("question_no"), question_idx)
     sliced = (buckets.get(q_no) or "").strip()
     if sliced:
         return sliced, "split"
 
-    full = (transcript or "").strip()
-    if full:
-        return full, "full"
+    cleaned = clean_ocr_transcript(transcript or "")
+    has_markers = bool(markers_found) if markers_found is not None else bool(_find_markers(cleaned))
+
+    # If the paper has question markers but this Q is missing, do NOT dump the whole paper.
+    if has_markers:
+        return "", "empty"
+
+    if cleaned:
+        return cleaned, "full"
 
     return "", "empty"
