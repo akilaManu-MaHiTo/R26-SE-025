@@ -14,6 +14,7 @@ for path in (PROJECT_ROOT, VIVA_ENGINE_ROOT):
 from VivaEvaluationEngine.config import AppConfig
 from VivaEvaluationEngine.services.analysis_service import analyze_video
 from VivaEvaluationEngine.services.llm_judge import attach_llm_evaluation
+from VivaEvaluationEngine.services.qa_relevance import attach_qa_analysis
 from VivaEvaluationEngine.services.viva_analysis import analyze_audio_from_video
 
 
@@ -45,9 +46,21 @@ def analyze_video_file(video_path: str, debug: bool = False) -> Dict[str, Any]:
     )
 
     result = analyze_video(config, include_summary=True)
-    audio_result = analyze_audio_from_video(str(video), debug=debug)
+    face_cues = list(result.get("face_cues") or [])
+    face_times = [
+        float(item.get("time"))
+        for item in (result.get("timeline") or [])
+        if item.get("valid") and item.get("time") is not None
+    ]
+    audio_result = analyze_audio_from_video(
+        str(video), debug=debug, face_times=face_times, face_cues=face_cues
+    )
 
     if isinstance(audio_result, dict):
         result.update(audio_result)
 
-    return attach_llm_evaluation(result, debug=debug)
+    merged = attach_llm_evaluation(result, debug=debug)
+    merged = attach_qa_analysis(merged, debug=debug)
+    from VivaEvaluationEngine.services.assessment_scoring import attach_assessment
+
+    return attach_assessment(merged)

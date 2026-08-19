@@ -60,7 +60,14 @@ export function AudioAnalysisPanel({ audioAnalysis }: AudioAnalysisPanelProps) {
     );
   }
 
-  const { audio_grade, pitch_profile, audio_emotion, acoustic_features, grade_breakdown, status, degraded_reasons } = audioAnalysis;
+  const { audio_grade, pitch_profile, audio_emotion, acoustic_features, grade_breakdown, status, degraded_reasons, diarization } = audioAnalysis;
+  const speakerCount = diarization?.speaker_count ?? 0;
+  const assignmentLabel: Record<string, string> = {
+    on_camera_mouth: "on-camera student (mouth moving while that voice talks)",
+    longest_speech: "longest speaking time (mouth track unavailable)",
+    manual: "manual override",
+    single_speaker: "single speaker",
+  };
   const advancedFeatures = acoustic_features
     ? Object.entries(acoustic_features).filter(([k]) => k in ADVANCED_METRIC_LABELS)
     : [];
@@ -83,6 +90,42 @@ export function AudioAnalysisPanel({ audioAnalysis }: AudioAnalysisPanelProps) {
             : ""}
           . Treat the grade as approximate.
         </p>
+      )}
+      {speakerCount >= 2 && (
+        <div className="rounded-lg border border-blue-200 dark:border-blue-500/30 bg-blue-50/70 dark:bg-blue-500/10 px-3 py-2.5 text-sm">
+          <div className="font-medium text-foreground">
+            {speakerCount > 2 ? `${speakerCount} voices detected` : "Two voices detected"} — scoring the on-camera student only
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Student {diarization?.student_speaker ?? "SPEAKER_00"} selected by{" "}
+            {assignmentLabel[diarization?.assignment_method ?? ""] ?? diarization?.assignment_method ?? "heuristic"}
+            {diarization?.student_speaking_seconds != null
+              ? ` · student spoke ${diarization.student_speaking_seconds.toFixed(1)}s`
+              : ""}
+            {diarization?.recording_duration_seconds != null
+              ? ` of ${diarization.recording_duration_seconds.toFixed(1)}s`
+              : ""}
+            .
+          </p>
+          {diarization?.speakers && diarization.speakers.length > 0 && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {diarization.speakers.map((speaker) => {
+                const isStudent = speaker.id === diarization.student_speaker;
+                return (
+                  <div key={speaker.id} className="rounded-md border border-border bg-background/70 px-2.5 py-1.5">
+                    <div className="text-xs font-medium text-foreground">
+                      {isStudent ? "Student (on camera)" : "Panel"} · {speaker.id}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {(speaker.speaking_seconds ?? 0).toFixed(1)}s
+                      {speaker.speaking_ratio != null ? ` (${Math.round(speaker.speaking_ratio * 100)}%)` : ""}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         <Stat label="Audio Grade" value={audio_grade != null ? `${audio_grade.toFixed(2)} / 10` : "—"} />

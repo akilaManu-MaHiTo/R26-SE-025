@@ -11,6 +11,8 @@ export interface TimelineItem {
   engagement_confidence?: number;
   engagement_model_score?: number;
   valid: boolean;
+  mouth_open?: number | null;
+  talking?: boolean;
 }
 
 export interface PitchProfile {
@@ -75,10 +77,130 @@ export interface LlmEvaluation {
   formula_fallback?: Record<string, LlmCriterionScore>;
 }
 
+export interface DiarizationSpeaker {
+  id?: string;
+  role?: string;
+  speaking_seconds?: number;
+  speaking_ratio?: number;
+  rms_mean?: number;
+}
+
+export interface DiarizationSegment {
+  start?: number;
+  end?: number;
+  speaker?: string;
+}
+
+export interface DiarizationInfo {
+  status?: string;
+  backend?: string;
+  speaker_count?: number;
+  student_speaker?: string;
+  examiner_speakers?: string[];
+  assignment_method?: string;
+  speakers?: DiarizationSpeaker[];
+  segments?: DiarizationSegment[];
+  recording_duration_seconds?: number;
+  student_speaking_seconds?: number;
+  student_speaking_ratio?: number;
+  scored_track?: string;
+  reason?: string;
+}
+
+export type ConversationSegmentType =
+  | "presentation"
+  | "panel_interruption"
+  | "panel_question"
+  | "student_answer"
+  | "follow_up_question"
+  | "follow_up_answer"
+  | "student_question"
+  | "instruction"
+  | "return_to_presentation"
+  | "qa"
+  | string;
+
+export interface ConversationTurn {
+  start?: number;
+  end?: number;
+  speaker_id?: string;
+  role?: "student" | "panel" | string;
+  label?: string;
+  text?: string;
+  turn_id?: string;
+  phase?: ConversationSegmentType;
+}
+
+export interface ConversationSegment {
+  type?: ConversationSegmentType;
+  turn_ids?: string[];
+  speaker?: string;
+  start?: number | null;
+  end?: number | null;
+  text?: string;
+}
+
+export interface ConversationStructure {
+  status?: string;
+  source?: "llm" | "heuristic" | string;
+  model?: string | null;
+  error?: string;
+  reason?: string;
+  segments?: ConversationSegment[];
+  window_count?: number;
+}
+
+export interface ConversationInfo {
+  turns?: ConversationTurn[];
+  pair_candidates?: Array<Record<string, unknown>>;
+  turn_count?: number;
+  pair_count?: number;
+  qa_start?: number | null;
+  has_panel?: boolean;
+  full_transcript?: string;
+  labeled_transcript?: string;
+  presentation_turn_count?: number;
+  qa_turn_count?: number;
+  structure?: ConversationStructure;
+}
+
+export type QaRelevance = "high" | "medium" | "low" | "irrelevant";
+export type QaAnswerType = "direct" | "partial" | "indirect" | "unclear" | "irrelevant" | "no_answer";
+
+export interface QaPairAnalysis {
+  question?: string;
+  answer?: string;
+  question_start?: number | null;
+  question_end?: number | null;
+  answer_start?: number | null;
+  answer_end?: number | null;
+  panel_speaker?: string;
+  panel_label?: string;
+  status?: string;
+  addresses_question?: boolean | null;
+  relevance?: QaRelevance | string | null;
+  answer_type?: QaAnswerType | string | null;
+  explanation?: string | null;
+  confidence?: number | null;
+  source?: string;
+  error?: string;
+}
+
+export interface QaAnalysis {
+  status?: string;
+  model?: string | null;
+  pair_count?: number;
+  pairs?: QaPairAnalysis[];
+  error?: string;
+}
+
 export interface AudioAnalysis {
   status?: string;
   transcript?: string;
   transcript_excerpt?: string;
+  mixed_transcript?: string;
+  full_transcript?: string;
+  examiner_transcript?: string;
   transcript_word_count?: number;
   segment_count?: number;
   audio_grade?: number | null;
@@ -88,6 +210,8 @@ export interface AudioAnalysis {
   transcript_features?: TranscriptFeatures;
   grade_breakdown?: Record<string, number | string | string[] | boolean | null>;
   degraded_reasons?: string[];
+  diarization?: DiarizationInfo;
+  conversation?: ConversationInfo;
   error?: string;
 }
 
@@ -100,6 +224,10 @@ export interface CoverageInfo {
   blinks_measured?: boolean;
   blinks_per_minute?: number | null;
   scores_emitted?: boolean;
+  frames_rejected_quality?: number;
+  frames_enhanced?: number;
+  frames_quality_warning?: number;
+  quality_reject_reasons?: Record<string, number>;
 }
 
 export interface EngagementSummary {
@@ -126,7 +254,37 @@ export interface AnalysisResult {
   video_status?: string;
   audio_analysis?: AudioAnalysis;
   llm_evaluation?: LlmEvaluation;
+  qa_analysis?: QaAnalysis;
+  assessment?: VivaAssessment;
   mark_id?: string;
+}
+
+export type AssessmentMode = "WITHOUT_TECHNICAL_ACCURACY" | "WITH_TECHNICAL_ACCURACY";
+
+export interface VivaAssessment {
+  scoring_version?: string;
+  feature_schema_version?: string;
+  assessment_mode?: AssessmentMode;
+  status?: "VALID" | "INCOMPLETE";
+  quality?: Record<string, unknown>;
+  features?: Record<string, unknown>;
+  validation?: { status?: string; reasons?: string[]; message?: string | null };
+  ai_performance?: {
+    score?: number | null;
+    family_scores?: Record<string, number | null>;
+    family_weights_applied?: Record<string, number>;
+    components?: Array<Record<string, unknown>>;
+  };
+  technical_accuracy?: number | null;
+  fusion?: Record<string, unknown> | null;
+  final_score?: number | null;
+  grade?: string | null;
+}
+
+export function resolveGradeFromPercent(percent: number | null | undefined): string | null {
+  if (percent == null || Number.isNaN(percent)) return null;
+  const band = GRADE_BANDS.find((b) => percent >= b.minPercent);
+  return band?.grade ?? "F";
 }
 
 /* ─── Evaluator rubric (local, evaluator-entered — not returned by the API) ─── */
@@ -290,7 +448,12 @@ export function buildAIInterpretation(result: AnalysisResult): string[] {
   }
 
   if (audio_analysis?.transcript_word_count != null) {
-    notes.push(`Transcript captured ${audio_analysis.transcript_word_count} words across ${audio_analysis.segment_count ?? 0} segment${audio_analysis.segment_count === 1 ? "" : "s"}.`);
+    const twoVoices = (audio_analysis.diarization?.speaker_count ?? 0) >= 2;
+    notes.push(
+      twoVoices
+        ? `Student transcript captured ${audio_analysis.transcript_word_count} words after splitting two speakers.`
+        : `Transcript captured ${audio_analysis.transcript_word_count} words across ${audio_analysis.segment_count ?? 0} segment${audio_analysis.segment_count === 1 ? "" : "s"}.`,
+    );
   }
 
   if (audio_analysis?.status === "degraded" && audio_analysis.degraded_reasons?.length) {

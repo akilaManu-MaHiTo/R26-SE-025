@@ -15,6 +15,7 @@ from config import (
 from services.engagement_detector import EngagementDetector
 from services.emotion_detector import EmotionDetector
 from services.face_detector import FaceDetector
+from services.face_quality import prepare_face_for_emotion
 from services.gaze_head_analyser import GazeHeadAnalyser
 from services.blink_sampler import BlinkSampler
 from services.scoring import compute_confidence_score, compute_engagement_score, smooth_emotions
@@ -110,6 +111,7 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
 
     timeline: List[Dict[str, object]] = []
     gaze_signals: List[Optional[Dict]] = []
+    face_cues: List[Dict[str, object]] = []
 
     with FaceDetector(
         min_detection_confidence=config.min_face_confidence,
@@ -119,8 +121,21 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
             for frame_data in video_processor.iter_frames(config.video_path):
                 gaze = gaze_analyser.analyse(frame_data.frame)
                 gaze_signals.append(gaze)
+                mouth_open = None
+                talking = False
+                if gaze and gaze.get("mouth_open") is not None:
+                    mouth_open = float(gaze["mouth_open"])
+                    talking = bool(gaze.get("talking"))
 
                 face_crop = face_detector.detect_and_crop(frame_data.frame)
+                face_cues.append(
+                    {
+                        "time": frame_data.time_sec,
+                        "valid": face_crop is not None or gaze is not None,
+                        "mouth_open": mouth_open,
+                        "talking": talking,
+                    }
+                )
                 if face_crop is None:
                     timeline.append(
                         {
@@ -131,12 +146,37 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
                             "engagement_confidence": 0.0,
                             "engagement_model_score": 0.0,
                             "valid": False,
+                            "mouth_open": mouth_open,
+                            "talking": talking,
                         }
                     )
                     continue
 
-                emotion, emotion_confidence = emotion_detector.predict(face_crop)
-                engagement_label, engagement_confidence, engagement_model_score = engagement_detector.predict(face_crop)
+                prepared = prepare_face_for_emotion(face_crop)
+                face_for_model = prepared.get("crop")
+                if face_for_model is None:
+                    timeline.append(
+                        {
+                            "time": frame_data.time_sec,
+                            "emotion": "LowQuality",
+                            "emotion_confidence": 0.0,
+                            "engagement_label": "LowQuality",
+                            "engagement_confidence": 0.0,
+                            "engagement_model_score": 0.0,
+                            "valid": False,
+                            "quality_reject": prepared.get("warning"),
+                            "face_quality": prepared.get("after") or prepared.get("before"),
+                            "mouth_open": mouth_open,
+                            "talking": talking,
+                        }
+                    )
+                    continue
+
+                emotion, emotion_confidence = emotion_detector.predict(face_for_model)
+                engagement_label, engagement_confidence, engagement_model_score = engagement_detector.predict(
+                    face_for_model
+                )
+                after = prepared.get("after") or {}
                 timeline.append(
                     {
                         "time": frame_data.time_sec,
@@ -146,11 +186,32 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
                         "engagement_confidence": round(engagement_confidence, 4),
                         "engagement_model_score": round(engagement_model_score, 4),
                         "valid": True,
+                        "face_enhanced": bool(prepared.get("enhanced")),
+                        "quality_warning": prepared.get("warning"),
+                        "face_quality": {
+                            "sharpness": after.get("sharpness"),
+                            "brightness": after.get("brightness"),
+                            "contrast": after.get("contrast"),
+                            "steps": prepared.get("steps") or [],
+                        },
+                        "mouth_open": mouth_open,
+                        "talking": talking,
                     }
                 )
 
     frames_sampled = len(timeline)
     frames_with_face = sum(1 for item in timeline if item.get("valid", True) is True)
+    frames_rejected_quality = sum(
+        1 for item in timeline if str(item.get("emotion", "")).lower() in {"lowquality", "low_quality"}
+    )
+    frames_enhanced = sum(1 for item in timeline if item.get("face_enhanced"))
+    frames_quality_warning = sum(1 for item in timeline if item.get("valid") and item.get("quality_warning"))
+    reject_reasons: Dict[str, int] = {}
+    for item in timeline:
+        reason = item.get("quality_reject") or (item.get("quality_warning") if item.get("valid") else None)
+        if reason:
+            key = str(reason)
+            reject_reasons[key] = reject_reasons.get(key, 0) + 1
     face_coverage_ratio = round(frames_with_face / frames_sampled, 4) if frames_sampled else 0.0
     scores_emitted = _coverage_is_sufficient(frames_sampled, frames_with_face)
 
@@ -181,6 +242,10 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
         "blinks_measured": blinks_per_minute is not None,
         "blinks_per_minute": blinks_per_minute,
         "scores_emitted": scores_emitted,
+        "frames_rejected_quality": frames_rejected_quality,
+        "frames_enhanced": frames_enhanced,
+        "frames_quality_warning": frames_quality_warning,
+        "quality_reject_reasons": reject_reasons,
     }
 
     response: Dict[str, object] = {
@@ -190,6 +255,7 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
         "engagement_summary": build_engagement_summary(smoothed_timeline),
         "coverage": coverage,
         "video_status": video_status,
+        "face_cues": face_cues,
     }
 
     if include_summary:

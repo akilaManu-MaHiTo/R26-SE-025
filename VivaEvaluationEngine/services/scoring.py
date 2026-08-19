@@ -39,7 +39,7 @@ def smooth_emotions(timeline: List[Dict[str, object]], window: int = 3) -> List[
 def compute_confidence_score(timeline: List[Dict[str, object]]) -> float:
     valid_timeline = [
         item for item in timeline
-        if canonical_emotion_label(str(item.get('emotion', ''))) not in ('noface', 'no_face')
+        if canonical_emotion_label(str(item.get('emotion', ''))) not in ('noface', 'no_face', 'lowquality', 'low_quality')
     ]
     total_frames = len(valid_timeline)
     if total_frames == 0:

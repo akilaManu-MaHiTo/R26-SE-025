@@ -17,6 +17,14 @@ def _load_whisper_model(model_size):
     return whisper.load_model(model_size)
 
 
+def release_whisper_models() -> None:
+    """Drop cached Whisper weights so later SER/video steps have RAM headroom."""
+    import gc
+
+    _load_whisper_model.cache_clear()
+    gc.collect()
+
+
 def transcribe_audio(audio_path, model_size="base", output_path=None):
     """Transcribe audio using Whisper.
 

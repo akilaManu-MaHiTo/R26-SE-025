@@ -8,6 +8,7 @@ or from VivaEvaluationEngine:
 
 from __future__ import annotations
 
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -26,6 +27,51 @@ from services.llm_judge import (
 from services.scoring import compute_confidence_score, compute_engagement_score
 from services.transcript_features import extract_transcript_features
 from services.viva_analysis import _audio_is_sufficient, _score_audio_grade
+
+
+class SerNormalizationTests(unittest.TestCase):
+    def test_hf_style_labels_collapse_to_canonical(self):
+        from extract_emotion import _normalize_ranked
+
+        result = _normalize_ranked(
+            [
+                ("angry", 0.55),
+                ("calm", 0.20),
+                ("fearful", 0.15),
+                ("surprised", 0.10),
+            ]
+        )
+        self.assertEqual(result["source"], "model")
+        self.assertEqual(result["predicted_emotion"], "angry")
+        self.assertIn("fear", result["emotion_probabilities"])
+        self.assertIn("surprise", result["emotion_probabilities"])
+        self.assertIn("neutral", result["emotion_probabilities"])  # calm→neutral
+
+    def test_force_heuristic_backend(self):
+        from extract_emotion import extract_speech_emotion
+        import tempfile
+        import wave
+        import struct
+
+        prev = os.environ.get("VIVA_SER_BACKEND")
+        os.environ["VIVA_SER_BACKEND"] = "heuristic"
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                path = tmp.name
+            with wave.open(path, "w") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(16000)
+                frames = b"".join(struct.pack("<h", 0) for _ in range(16000))
+                wf.writeframes(frames)
+            result = extract_speech_emotion(path)
+            self.assertEqual(result["source"], "heuristic")
+            os.unlink(path)
+        finally:
+            if prev is None:
+                os.environ.pop("VIVA_SER_BACKEND", None)
+            else:
+                os.environ["VIVA_SER_BACKEND"] = prev
 
 
 class TaxonomyTests(unittest.TestCase):

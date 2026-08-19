@@ -35,10 +35,13 @@ class GazeHeadAnalyser:
             return None
 
         lm = results.multi_face_landmarks[0].landmark
+        mouth_open = self._mouth_open(lm)
         return {
             "gaze_ok": self._gaze_on_camera(lm),
             "yaw": self._head_yaw(lm),
             "pitch": self._head_pitch(lm),
+            "mouth_open": mouth_open,
+            "talking": mouth_open >= 0.32,
         }
 
     def _gaze_on_camera(self, lm) -> bool:
@@ -54,4 +57,15 @@ class GazeHeadAnalyser:
 
     def _head_pitch(self, lm) -> float:
         return abs(lm[1].y - lm[152].y)
+
+    def _mouth_open(self, lm) -> float:
+        """Mouth aspect ratio of the on-camera face (higher = lips apart / talking)."""
+        try:
+            vertical = ((lm[13].x - lm[14].x) ** 2 + (lm[13].y - lm[14].y) ** 2) ** 0.5
+            horizontal = ((lm[78].x - lm[308].x) ** 2 + (lm[78].y - lm[308].y) ** 2) ** 0.5
+            if horizontal <= 1e-6:
+                return 0.0
+            return round(float(vertical / horizontal), 4)
+        except (IndexError, AttributeError, TypeError):
+            return 0.0
 

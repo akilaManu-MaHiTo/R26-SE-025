@@ -39,6 +39,9 @@ interface ScoreOverviewProps {
   audioGrade?: number | null;
   videoStatus?: string;
   faceCoverageRatio?: number;
+  framesRejectedQuality?: number;
+  framesEnhanced?: number;
+  framesQualityWarning?: number;
 }
 
 export function ScoreOverview({
@@ -47,13 +50,27 @@ export function ScoreOverview({
   audioGrade,
   videoStatus,
   faceCoverageRatio,
+  framesRejectedQuality,
+  framesEnhanced,
+  framesQualityWarning,
 }: ScoreOverviewProps) {
   const coveragePct =
     faceCoverageRatio != null ? `${Math.round(faceCoverageRatio * 100)}% face coverage` : "Facial affect positivity";
+  const notes: string[] = [];
+  if (framesEnhanced && framesEnhanced > 0) {
+    notes.push(`${framesEnhanced} frame${framesEnhanced === 1 ? "" : "s"} enhanced`);
+  }
+  if (framesQualityWarning && framesQualityWarning > 0) {
+    notes.push(`${framesQualityWarning} still soft/dark`);
+  }
+  if (framesRejectedQuality && framesRejectedQuality > 0) {
+    notes.push(`${framesRejectedQuality} too small to score`);
+  }
+  const extra = notes.length ? ` · ${notes.join(" · ")}` : "";
   const confidenceHint =
     videoStatus === "insufficient_face_coverage"
       ? "Withheld — face coverage too low"
-      : coveragePct;
+      : `${coveragePct}${extra}`;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

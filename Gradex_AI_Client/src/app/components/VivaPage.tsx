@@ -26,37 +26,18 @@ import { EngagementTimeline } from "./viva/EngagementTimeline";
 import { TranscriptPanel } from "./viva/TranscriptPanel";
 import { AudioAnalysisPanel } from "./viva/AudioAnalysisPanel";
 import { LlmJudgePanel } from "./viva/LlmJudgePanel";
+import { QaRelevancePanel } from "./viva/QaRelevancePanel";
+import { LiveVivaRecorder } from "./viva/LiveVivaRecorder";
 import { EvaluationPanel } from "./viva/EvaluationPanel";
 import { ReportPrintView } from "./viva/ReportPrintView";
 import {
   AnalysisResult,
-  DEFAULT_RUBRIC,
-  LlmEvaluation,
-  RubricCriterion,
+  AssessmentMode,
   buildAIInterpretation,
   buildKeyMoments,
   formatTime,
-  suggestGrade,
 } from "./viva/types";
 
-function criteriaFromLlmEvaluation(evaluation?: LlmEvaluation): RubricCriterion[] {
-  const clarity = evaluation?.communication_clarity?.score;
-  const confidence = evaluation?.confidence?.score;
-  const engagement = evaluation?.engagement?.score;
-
-  return DEFAULT_RUBRIC.map((criterion) => {
-    if (criterion.id === "communication" && clarity != null) {
-      return { ...criterion, score: Math.round(clarity) };
-    }
-    if (criterion.id === "presentation" && confidence != null) {
-      return { ...criterion, score: Math.round(confidence) };
-    }
-    if (criterion.id === "engagement" && engagement != null) {
-      return { ...criterion, score: Math.round(engagement) };
-    }
-    return { ...criterion };
-  });
-}
 export function VivaPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string>("");
@@ -71,10 +52,12 @@ export function VivaPage() {
   const [analysisPhase, setAnalysisPhase] = useState<"idle" | "uploading" | "processing" | "complete">("idle");
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
 
-  const [criteria, setCriteria] = useState<RubricCriterion[]>(DEFAULT_RUBRIC);
-  const [finalGrade, setFinalGrade] = useState<string>("A");
+  const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>("WITHOUT_TECHNICAL_ACCURACY");
+  const [technicalAccuracy, setTechnicalAccuracy] = useState<number | null>(null);
+  const [studentId, setStudentId] = useState("");
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [sourceTab, setSourceTab] = useState<"upload" | "live">("upload");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoPlayerRef = useRef<VivaVideoPlayerHandle>(null);
@@ -83,8 +66,9 @@ export function VivaPage() {
     "http://localhost:8000";
 
   const resetAssessmentState = () => {
-    setCriteria(DEFAULT_RUBRIC);
-    setFinalGrade("A");
+    setAssessmentMode("WITHOUT_TECHNICAL_ACCURACY");
+    setTechnicalAccuracy(null);
+    setStudentId("");
     setPublished(false);
     setPublishing(false);
   };
@@ -105,8 +89,10 @@ export function VivaPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          criteria,
-          final_grade: finalGrade,
+          assessment_mode: assessmentMode,
+          technical_accuracy:
+            assessmentMode === "WITH_TECHNICAL_ACCURACY" ? technicalAccuracy : null,
+          student_id: studentId.trim() || null,
           published: true,
         }),
       });
@@ -124,7 +110,7 @@ export function VivaPage() {
       }
       setPublished(true);
       toast.success("Assessment published", {
-        description: `Final grade ${finalGrade} saved to Mongo for this session.`,
+        description: "Final score and grade saved from the engine scorer.",
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to publish";
@@ -200,9 +186,10 @@ export function VivaPage() {
     }
   };
 
-  const handleFileSelect = (file: File) => {
-    if (!file.type.startsWith("video/")) {
-      setError("Please upload a valid video file (MP4, AVI, MOV, etc.)");
+  const handleFileSelect = (file: File, options?: { autoAnalyze?: boolean }) => {
+    const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|avi|mkv)$/i.test(file.name);
+    if (!isVideo) {
+      setError("Please upload a valid video file (MP4, WEBM, AVI, MOV, etc.)");
       return;
     }
 
@@ -220,6 +207,9 @@ export function VivaPage() {
 
     const preview = URL.createObjectURL(file);
     setVideoPreview(preview);
+    if (options?.autoAnalyze) {
+      void analyzeVideo(file);
+    }
   };
 
   const analyzeVideo = async (file: File) => {
@@ -285,12 +275,16 @@ export function VivaPage() {
       const data = JSON.parse(response) as AnalysisResult;
       setAnalysisResult(data);
       setAnalysisPhase("complete");
-      setFinalGrade("A");
       setPublished(false);
-      setCriteria(criteriaFromLlmEvaluation(data.llm_evaluation));
-      if (data.llm_evaluation) {
-        toast.success("AI scores added to rubric", {
-          description: "Technical Knowledge left for the examiner.",
+      setPublishing(false);
+      setAssessmentMode("WITHOUT_TECHNICAL_ACCURACY");
+      setTechnicalAccuracy(null);
+      if (data.assessment) {
+        toast.success("Analysis complete", {
+          description:
+            data.assessment.status === "INCOMPLETE"
+              ? "Recording is incomplete — no official grade."
+              : `AI performance ${data.assessment.ai_performance?.score ?? "—"} / 100.`,
         });
       }
     } catch (err) {
@@ -318,13 +312,6 @@ export function VivaPage() {
     ? aiInterpretation[0] ?? "Analysis complete — review the recording to finalize scoring."
     : "Upload a video to see AI-generated recommendations.";
 
-  const suggestedGrade = useMemo(() => {
-    if (!published) return null;
-    const total = criteria.reduce((s, c) => s + c.score, 0);
-    const max = criteria.reduce((s, c) => s + c.max, 0);
-    return suggestGrade(total, max);
-  }, [criteria, published]);
-
   const audioAnalysis = analysisResult?.audio_analysis;
 
   return (
@@ -336,7 +323,7 @@ export function VivaPage() {
         <div>
           <h2 className="tracking-tight text-foreground">Viva Assessment</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Upload, transcribe and score viva voce sessions with AI assistance.
+            Upload a recording or run a live webcam viva, then transcribe and score with AI.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -368,37 +355,53 @@ export function VivaPage() {
 
       {!videoPreview && (
         <Card className="p-6">
-          <div
-            className={`rounded-xl border-2 border-dashed p-10 text-center cursor-pointer transition-colors ${
-              isDragging
-                ? "border-primary bg-primary/5"
-                : "border-border bg-muted/30 hover:border-primary/40 hover:bg-muted/50"
-            }`}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
-            }}
-            aria-label="Upload a viva recording"
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="video/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <div className="size-14 rounded-full bg-primary/10 mx-auto flex items-center justify-center text-primary">
-              <Upload className="size-6" />
-            </div>
-            <div className="text-sm text-foreground mt-4">Drag & drop a viva recording, or click to browse</div>
-            <div className="text-xs text-muted-foreground mt-1">Supports MP4, AVI, MOV · up to 1 GB</div>
-          </div>
+          <Tabs value={sourceTab} onValueChange={(value) => setSourceTab(value as "upload" | "live")}>
+            <TabsList>
+              <TabsTrigger value="upload">Upload recording</TabsTrigger>
+              <TabsTrigger value="live">Live viva</TabsTrigger>
+            </TabsList>
+            <TabsContent value="upload" className="mt-4">
+              <div
+                className={`rounded-xl border-2 border-dashed p-10 text-center cursor-pointer transition-colors ${
+                  isDragging
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-muted/30 hover:border-primary/40 hover:bg-muted/50"
+                }`}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+                }}
+                aria-label="Upload a viva recording"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <div className="size-14 rounded-full bg-primary/10 mx-auto flex items-center justify-center text-primary">
+                  <Upload className="size-6" />
+                </div>
+                <div className="text-sm text-foreground mt-4">Drag & drop a viva recording, or click to browse</div>
+                <div className="text-xs text-muted-foreground mt-1">Supports MP4, WEBM, AVI, MOV · up to 1 GB</div>
+              </div>
+            </TabsContent>
+            <TabsContent value="live" className="mt-4">
+              {sourceTab === "live" ? (
+                <LiveVivaRecorder
+                  disabled={isAnalyzing}
+                  onRecorded={(file) => handleFileSelect(file, { autoAnalyze: true })}
+                />
+              ) : null}
+            </TabsContent>
+          </Tabs>
         </Card>
       )}
 
@@ -407,7 +410,8 @@ export function VivaPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="text-foreground font-medium">Recording</div>
             <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-0">
-              <CheckCircle2 className="size-3 mr-1" /> Uploaded
+              <CheckCircle2 className="size-3 mr-1" />
+              {uploadedFile?.name.startsWith("viva-live-") ? "Recorded" : "Uploaded"}
             </Badge>
           </div>
 
@@ -509,6 +513,9 @@ export function VivaPage() {
             audioGrade={audioAnalysis?.audio_grade}
             videoStatus={analysisResult.video_status}
             faceCoverageRatio={analysisResult.coverage?.face_coverage_ratio}
+            framesRejectedQuality={analysisResult.coverage?.frames_rejected_quality}
+            framesEnhanced={analysisResult.coverage?.frames_enhanced}
+            framesQualityWarning={analysisResult.coverage?.frames_quality_warning}
           />
 
           <div className="grid lg:grid-cols-3 gap-6">
@@ -565,7 +572,8 @@ export function VivaPage() {
                     <TabsTrigger value="transcript">Transcript</TabsTrigger>
                     <TabsTrigger value="engagement">Engagement</TabsTrigger>
                     <TabsTrigger value="audio">Audio</TabsTrigger>
-                    <TabsTrigger value="llm">AI Judge</TabsTrigger>
+                    <TabsTrigger value="qa">Q&A</TabsTrigger>
+                    <TabsTrigger value="llm">Interpretation</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="overview" className="mt-4 space-y-6">
@@ -583,7 +591,7 @@ export function VivaPage() {
                   </TabsContent>
 
                   <TabsContent value="transcript" className="mt-4">
-                    <TranscriptPanel audioAnalysis={audioAnalysis} />
+                    <TranscriptPanel audioAnalysis={audioAnalysis} onSeek={seekVideo} />
                   </TabsContent>
 
                   <TabsContent value="engagement" className="mt-4 space-y-4">
@@ -596,6 +604,15 @@ export function VivaPage() {
 
                   <TabsContent value="audio" className="mt-4">
                     <AudioAnalysisPanel audioAnalysis={audioAnalysis} />
+                  </TabsContent>
+
+                  <TabsContent value="qa" className="mt-4">
+                    <QaRelevancePanel
+                      qaAnalysis={analysisResult.qa_analysis}
+                      turns={audioAnalysis?.conversation?.turns}
+                      structure={audioAnalysis?.conversation?.structure}
+                      onSeek={seekVideo}
+                    />
                   </TabsContent>
 
                   <TabsContent value="llm" className="mt-4 space-y-4">
@@ -611,20 +628,18 @@ export function VivaPage() {
             <div className="lg:sticky lg:top-6 self-start">
               <Card className="p-5">
                 <EvaluationPanel
-                  criteria={criteria}
-                  onChangeCriteria={setCriteria}
+                  assessment={analysisResult.assessment}
+                  assessmentMode={assessmentMode}
+                  onChangeMode={setAssessmentMode}
+                  technicalAccuracy={technicalAccuracy}
+                  onChangeTechnicalAccuracy={setTechnicalAccuracy}
+                  studentId={studentId}
+                  onChangeStudentId={setStudentId}
                   aiRecommendation={aiRecommendation}
-                  finalGrade={finalGrade}
-                  onChangeFinalGrade={setFinalGrade}
                   published={published}
                   publishing={publishing}
                   onPublish={handlePublish}
                 />
-                {suggestedGrade && suggestedGrade !== finalGrade && (
-                  <p className="mt-2 text-xs text-muted-foreground text-center">
-                    Note: AI-suggested grade was {suggestedGrade}.
-                  </p>
-                )}
               </Card>
             </div>
           </div>
@@ -638,8 +653,8 @@ export function VivaPage() {
           videoFileName={uploadedFile?.name}
           generatedAt={new Date()}
           analysisResult={analysisResult}
-          criteria={criteria}
-          finalGrade={finalGrade}
+          assessmentMode={assessmentMode}
+          technicalAccuracy={technicalAccuracy}
           published={published}
           aiInterpretation={aiInterpretation}
           keyMoments={keyMoments}

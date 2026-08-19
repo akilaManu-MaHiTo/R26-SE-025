@@ -16,8 +16,23 @@ NEGATIVE_EMOTIONS: Set[str] = {
 # Map model-specific/raw labels to canonical labels used by scoring.
 EMOTION_ALIASES = {
     "happiness": "happy",
+    "hap": "happy",
+    "joy": "happy",
     "surprised": "surprise",
+    "surprise": "surprise",
     "anger": "angry",
+    "ang": "angry",
+    "angry": "angry",
+    "fearful": "fear",
+    "fear": "fear",
+    "sadness": "sad",
+    "sad": "sad",
+    "neu": "neutral",
+    "neutral": "neutral",
+    "calm": "neutral",  # RAVDESS-style SER often emits calm ≈ low-arousal neutral
+    "disgust": "disgust",
+    "disgusted": "disgust",
+    "contempt": "contempt",
 }
 
 ENGAGEMENT_ALIASES = {
@@ -46,6 +61,21 @@ HEURISTIC_EMOTION_CONFIDENCE_CAP: float = 0.4
 MIN_FACE_FRAMES: int = 3
 MIN_FACE_COVERAGE_RATIO: float = 0.15
 
+# Face-crop quality: enhance webcam frames, then warn (do not skip) if still
+# dark/blurry. Skip only empty or tiny crops — a single-student camera has no
+# other face to fall back on. No generative deblur (GFPGAN/CodeFormer).
+FACE_QUALITY_PROBE_SIZE: int = 96
+FACE_MIN_SIDE_PX: int = 48
+FACE_MIN_SHARPNESS: float = 28.0
+FACE_MIN_BRIGHTNESS: float = 22.0
+FACE_MAX_BRIGHTNESS: float = 245.0
+FACE_MIN_CONTRAST: float = 10.0
+FACE_CLAHE_CLIP: float = 2.0
+FACE_DENOISE_H: float = 5.0
+FACE_UNSHARP_AMOUNT: float = 0.35
+FACE_UNSHARP_IF_BELOW: float = 80.0
+FACE_GAMMA_TARGET: float = 70.0
+
 SCORING_EMOTION_BUCKETS: Set[str] = (
     POSITIVE_EMOTIONS | NEUTRAL_EMOTIONS | SURPRISE_EMOTIONS | NEGATIVE_EMOTIONS
 )
@@ -68,7 +98,7 @@ def assert_emotion_classes_covered(class_names: Iterable[str]) -> None:
     uncovered = []
     for name in class_names:
         canonical = canonical_emotion_label(str(name))
-        if canonical in {"noface", "no_face", ""}:
+        if canonical in {"noface", "no_face", "lowquality", "low_quality", ""}:
             continue
         if canonical not in SCORING_EMOTION_BUCKETS:
             uncovered.append(f"{name}->{canonical}")
