@@ -6,6 +6,7 @@ import { GradingPage } from "./components/GradingPage";
 import { AnalyticsPage } from "./components/AnalyticsPage";
 import { ExamCreator } from "./components/ExamCreator";
 import { VivaPage } from "./components/VivaPage";
+import { LiveCopilotPage } from "./components/viva-copilot/LiveCopilotPage";
 
 export type AgentId = "diagram-evaluation" | "grading" | "question-exam" | "viva-evaluation";
 
@@ -100,6 +101,13 @@ export const AGENT_CONFIG: AgentConfig[] = [
         title: "Viva Assessment",
         subtitle: "AI-aided viva voce evaluation",
         element: <VivaPage />,
+      },
+      {
+        path: "/viva-evaluation/live-copilot",
+        label: "Live Interviewer Copilot",
+        title: "Live Interviewer Copilot",
+        subtitle: "Follow-up questions from the live student presentation and viva",
+        element: <LiveCopilotPage />,
       },
     ],
   },

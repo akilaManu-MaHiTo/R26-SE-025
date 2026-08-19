@@ -21,6 +21,7 @@ for path in (PROJECT_ROOT, ENGINE_ROOT):
 
 from Gradex_AI_Server.app.analytics_report import build_exam_report, run_exam_analysis
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
+from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
 
 
 @asynccontextmanager
@@ -39,6 +40,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(viva_copilot_router)
 
 UPLOAD_DIR = PROJECT_ROOT / "Gradex_AI_Server" / "app" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
