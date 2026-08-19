@@ -1,9 +1,9 @@
-"""Topic prediction helpers for future grading workflow work.
+"""Topic matching helpers for grading and analytics workflows.
 
-This module provides a lightweight, rule-based `predict_topics` function
+This module provides a lightweight, rule-based `match_topics` function
 that matches a student's answer against exam topics and question text.
-It is intentionally dependency-free and designed as a sensible fallback
-before more advanced ML models are added.
+It does not forecast future exam topics. ``predict_topics`` remains as a
+backwards-compatible alias for existing callers.
 """
 from collections import Counter
 import json
@@ -12,10 +12,19 @@ from typing import List, Dict, Any, Union
 
 
 _WORD_RE = re.compile(r"\w+")
+_STOP_WORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
+    "how", "in", "into", "is", "it", "of", "on", "or", "that", "the",
+    "their", "this", "to", "was", "what", "when", "which", "with", "why",
+}
 
 
 def _tokens(text: str):
-    return [t.lower() for t in _WORD_RE.findall(text or "")]
+    return [
+        token
+        for token in (value.lower() for value in _WORD_RE.findall(text or ""))
+        if token not in _STOP_WORDS and len(token) > 1
+    ]
 
 
 def _load_exam_data(exam_data: Union[None, str, Dict[str, Any]]):
@@ -30,8 +39,8 @@ def _load_exam_data(exam_data: Union[None, str, Dict[str, Any]]):
     return exam_data
 
 
-def predict_topics(answer: str, exam_data: Union[None, str, Dict[str, Any]] = None, top_n: int = 3) -> List[Dict[str, Any]]:
-    """Predict likely topics for a free-text `answer` using `exam_data`.
+def match_topics(answer: str, exam_data: Union[None, str, Dict[str, Any]] = None, top_n: int = 3) -> List[Dict[str, Any]]:
+    """Rank topics for a free-text answer using token overlap.
 
     Parameters
     - answer: student's answer text
@@ -62,7 +71,7 @@ def predict_topics(answer: str, exam_data: Union[None, str, Dict[str, Any]] = No
             topic_texts[topic] = combined
 
     candidates = []
-    answer_unique_count = max(1, sum(answer_tokens.values()))
+    answer_token_count = max(1, sum(answer_tokens.values()))
 
     for topic, text in topic_texts.items():
         t_tokens = Counter(_tokens(text))
@@ -74,7 +83,7 @@ def predict_topics(answer: str, exam_data: Union[None, str, Dict[str, Any]] = No
                 matched.append(tok)
                 overlap += min(cnt, t_tokens[tok])
 
-        score = overlap / answer_unique_count
+        score = overlap / answer_token_count
         candidates.append({
             "topic": topic,
             "score": round(float(score), 4),
@@ -86,4 +95,13 @@ def predict_topics(answer: str, exam_data: Union[None, str, Dict[str, Any]] = No
     return candidates[:top_n]
 
 
-__all__ = ["predict_topics"]
+def predict_topics(answer: str, exam_data: Union[None, str, Dict[str, Any]] = None, top_n: int = 3) -> List[Dict[str, Any]]:
+    """Compatibility wrapper for :func:`match_topics`.
+
+    The result is a topic match for the supplied text, not a forecast of a
+    future examination.
+    """
+    return match_topics(answer, exam_data, top_n=top_n)
+
+
+__all__ = ["match_topics", "predict_topics"]

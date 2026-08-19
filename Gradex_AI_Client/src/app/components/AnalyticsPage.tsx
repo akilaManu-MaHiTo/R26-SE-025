@@ -342,14 +342,14 @@ function deriveAnalytics(paper: ExamPaper, answers: StudentAnswers) {
         "bg-emerald-300",
         "bg-emerald-400",
         "bg-emerald-500",
-        "bg-blue-500",
+        "bg-accent0",
         "bg-indigo-500",
         "bg-violet-500",
       ];
       return {
         l: bloomLabel[level],
         v: Math.round(avgPct * 100),
-        c: colors[level - 1] ?? "bg-blue-500",
+        c: colors[level - 1] ?? "bg-accent0",
       };
     })
     .filter(Boolean) as { l: string; v: number; c: string }[];
@@ -587,7 +587,7 @@ function deriveHistoricalAnalytics(session: HistoricalSessionRecord) {
         "bg-emerald-300",
         "bg-emerald-400",
         "bg-emerald-500",
-        "bg-blue-500",
+        "bg-accent0",
         "bg-indigo-500",
         "bg-violet-500",
       ];
@@ -595,7 +595,7 @@ function deriveHistoricalAnalytics(session: HistoricalSessionRecord) {
         {
           l: titleCase(key),
           v: Math.round(values.reduce((sum, value) => sum + value, 0) / values.length),
-          c: colors[level - 1] ?? "bg-blue-500",
+          c: colors[level - 1] ?? "bg-accent0",
         },
       ];
     });
@@ -720,9 +720,9 @@ const SAMPLE_ANSWERS_JSON: EngineAnswersJson = {
 
 /* ─── Colour helpers ─────────────────────────────────────────────────────── */
 const bandStyle: Record<string, string> = {
-  high: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  mid: "bg-amber-50 text-amber-700 border-amber-200",
-  low: "bg-red-50 text-red-700 border-red-200",
+  high: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/20",
+  mid: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/20",
+  low: "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/20",
 };
 const heatColor = (v: number) => {
   if (v >= 8) return "bg-emerald-500";
@@ -748,7 +748,6 @@ function JsonUploadZone({
   error,
   onFile,
   onClear,
-  accentColor,
 }: {
   label: string;
   description: string;
@@ -757,24 +756,15 @@ function JsonUploadZone({
   error: string | null;
   onFile: (f: File) => void;
   onClear: () => void;
-  accentColor: "blue" | "violet";
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
-  const accent =
-    accentColor === "blue"
-      ? {
-          border: "border-blue-300",
-          bg: "bg-blue-50",
-          text: "text-blue-600",
-          icon: "bg-blue-100",
-        }
-      : {
-          border: "border-violet-300",
-          bg: "bg-violet-50",
-          text: "text-violet-600",
-          icon: "bg-violet-100",
-        };
+  const accent = {
+    border: "border-primary/30",
+    bg: "bg-accent",
+    text: "text-primary",
+    icon: "bg-accent",
+  };
 
   return (
     <div className="space-y-2">
@@ -784,15 +774,15 @@ function JsonUploadZone({
         >
           <Icon className="size-3.5" />
         </div>
-        <span className="text-sm text-slate-800">{label}</span>
+        <span className="text-sm text-foreground">{label}</span>
         {file && (
-          <Badge className="bg-emerald-50 text-emerald-700 border-0 ml-auto text-[10px]">
+          <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-0 ml-auto text-[10px]">
             <CheckCircle2 className="size-2.5 mr-0.5" />
             Loaded
           </Badge>
         )}
         {error && (
-          <Badge className="bg-red-50 text-red-600 border-0 ml-auto text-[10px]">
+          <Badge className="bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 border-0 ml-auto text-[10px]">
             <AlertCircle className="size-2.5 mr-0.5" />
             Error
           </Badge>
@@ -816,39 +806,39 @@ function JsonUploadZone({
           className={`border-2 border-dashed rounded-xl p-5 flex flex-col items-center gap-2 cursor-pointer transition-colors ${
             drag
               ? `${accent.border} ${accent.bg}`
-              : "border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-slate-50"
+              : "border-border bg-muted/50 hover:border-border hover:bg-muted"
           }`}
         >
           <div
-            className={`size-9 rounded-full ${drag ? accent.icon : "bg-slate-100"} flex items-center justify-center ${drag ? accent.text : "text-slate-400"} transition-colors`}
+            className={`size-9 rounded-full ${drag ? accent.icon : "bg-muted"} flex items-center justify-center ${drag ? accent.text : "text-muted-foreground"} transition-colors`}
           >
             <Upload className="size-4" />
           </div>
           <div className="text-center">
-            <div className="text-sm text-slate-600">
+            <div className="text-sm text-muted-foreground">
               {drag ? "Drop to upload" : "Drop JSON or click to browse"}
             </div>
-            <div className="text-xs text-slate-400 mt-0.5">{description}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
           </div>
         </div>
       ) : (
         <div
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${error ? "border-red-200 bg-red-50/50" : `border-slate-200 ${accent.bg}`}`}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${error ? "border-red-200 bg-red-50/50" : `border-border ${accent.bg}`}`}
         >
           <FileJson
             className={`size-5 shrink-0 ${error ? "text-red-400" : accent.text}`}
           />
           <div className="flex-1 min-w-0">
-            <div className="text-sm text-slate-800 truncate">{file.name}</div>
+            <div className="text-sm text-foreground truncate">{file.name}</div>
             <div
-              className={`text-xs mt-0.5 ${error ? "text-red-500" : "text-slate-400"}`}
+              className={`text-xs mt-0.5 ${error ? "text-red-500" : "text-muted-foreground"}`}
             >
               {error ?? `${(file.size / 1024).toFixed(1)} KB`}
             </div>
           </div>
           <button
             onClick={onClear}
-            className="text-slate-300 hover:text-red-400 transition-colors shrink-0"
+            className="text-muted-foreground hover:text-red-400 transition-colors shrink-0"
           >
             <X className="size-4" />
           </button>
@@ -900,6 +890,57 @@ export function AnalyticsPage() {
   const [selectedSessionIndex, setSelectedSessionIndex] = useState(0);
   const [historicalLoading, setHistoricalLoading] = useState(false);
   const [historicalError, setHistoricalError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+
+  /* ─── Student Details Modal & Charts ─────────────────────────────────────── */
+  function SimpleBarChart({ data = [], labels = [], height = 80 }: { data?: number[]; labels?: string[]; height?: number }) {
+    const chartData = labels.map((l, i) => ({ k: l, v: data[i] ?? 0 }));
+    return (
+      <div style={{ width: "100%", height: 80 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 6, right: 6, left: 0, bottom: 6 }}>
+            <XAxis dataKey="k" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+            <YAxis hide />
+            <Tooltip formatter={(v: any) => [v, "Score"]} />
+            <Bar dataKey="v" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  function StudentDetailsModal({ open, onClose, student }: { open: boolean; onClose: () => void; student?: any }) {
+    if (!open || !student) return null;
+    const qLabels = Object.keys(student.scoreMap || {});
+    const qValues = qLabels.map((k) => student.scoreMap[k] ?? 0);
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+        <div className="bg-card rounded shadow-lg border border-border p-4 w-11/12 max-w-2xl z-10">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Student: {student.id}</h3>
+            <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Close</button>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <strong>Average:</strong> {student.avg}
+            </div>
+            <div>
+              <strong>Band:</strong> {student.band}
+            </div>
+            <div>
+              <strong>Per-question (sample):</strong>
+              <SimpleBarChart data={qValues} labels={qLabels} />
+            </div>
+            <div>
+              <strong>Weak Questions:</strong> {(student.weak || []).join(", ") || "None"}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const readJson = useCallback(
     <T,>(
@@ -923,8 +964,8 @@ export function AnalyticsPage() {
             return;
           }
           setParsed(parsed);
-        } catch {
-          setError("Invalid JSON — could not parse file.");
+        } catch (err) {
+          setError(errorMsg);
         }
       };
       reader.readAsText(file);
@@ -1119,10 +1160,10 @@ export function AnalyticsPage() {
   ];
 
   const colorMap: Record<string, string> = {
-    blue: "text-blue-600 bg-blue-50",
-    red: "text-red-600 bg-red-50",
-    amber: "text-amber-600 bg-amber-50",
-    orange: "text-orange-600 bg-orange-50",
+    blue: "text-primary bg-accent",
+    red: "text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-500/15",
+    amber: "text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/15",
+    orange: "text-orange-600 dark:text-orange-300 bg-orange-50 dark:bg-orange-500/15",
   };
 
   const fileCount = (value?: unknown[]) => (Array.isArray(value) ? value.length : 0);
@@ -1135,15 +1176,15 @@ export function AnalyticsPage() {
       {/* Page header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h2 className="tracking-tight text-slate-900">Student Analytics</h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <h2 className="tracking-tight text-foreground">Student Analytics</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             {course} · Final Exam · {semester}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <AIBadgePill model="pulse" />
           {historicalError && (
-            <Badge className="bg-red-50 text-red-700 border-red-200 border">
+            <Badge className="bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/20 border">
               <AlertCircle className="size-3 mr-1" /> Historical data unavailable
             </Badge>
           )}
@@ -1162,7 +1203,7 @@ export function AnalyticsPage() {
             {historicalLoading ? "Syncing data" : "Reload historical data"}
           </Button>
           {analysed && (
-            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 border">
+            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/20 border">
               <Sparkles className="size-3 mr-1" /> Live data from uploaded JSON
             </Badge>
           )}
@@ -1184,15 +1225,15 @@ export function AnalyticsPage() {
 
       {/* ── JSON Upload Panel ─────────────────────────────────────────── */}
       {uploadOpen && (
-        <Card className="border-slate-200 overflow-hidden">
-          <div className="px-5 py-4 bg-gradient-to-r from-slate-50 to-blue-50/40 border-b border-slate-100 flex items-center justify-between">
+        <Card className="border-border overflow-hidden">
+          <div className="px-5 py-4 bg-gradient-to-r from-muted to-accent/40 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="size-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                <FileJson className="size-4 text-white" />
+              <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
+                <FileJson className="size-4 text-primary-foreground" />
               </div>
               <div>
-                <div className="text-slate-900">Import exam data</div>
-                <div className="text-xs text-slate-500 mt-0.5">
+                <div className="text-foreground">Import exam data</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
                   Upload exam paper + student answers to generate live analytics
                 </div>
               </div>
@@ -1201,7 +1242,7 @@ export function AnalyticsPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs text-slate-500 gap-1.5"
+                className="text-xs text-muted-foreground gap-1.5"
                 onClick={() => downloadSample("paper")}
               >
                 <FileText className="size-3.5" /> Sample paper JSON
@@ -1209,7 +1250,7 @@ export function AnalyticsPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs text-slate-500 gap-1.5"
+                className="text-xs text-muted-foreground gap-1.5"
                 onClick={() => downloadSample("answers")}
               >
                 <FileText className="size-3.5" /> Sample answers JSON
@@ -1219,17 +1260,17 @@ export function AnalyticsPage() {
 
           <div className="px-5 pt-4 flex items-center gap-2 flex-wrap text-xs">
             {backendLoading && (
-              <Badge className="bg-blue-50 text-blue-700 border-0">
+              <Badge className="bg-accent text-primary border-0">
                 <RefreshCw className="size-3 mr-1 animate-spin" /> Generating upload report
               </Badge>
             )}
             {backendReport && !backendLoading && (
-              <Badge className="bg-emerald-50 text-emerald-700 border-0">
+              <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-0">
                 <Sparkles className="size-3 mr-1" /> Upload report ready
               </Badge>
             )}
             {backendError && (
-              <Badge className="bg-red-50 text-red-700 border-0">
+              <Badge className="bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 border-0">
                 <AlertCircle className="size-3 mr-1" /> {backendError}
               </Badge>
             )}
@@ -1245,7 +1286,6 @@ export function AnalyticsPage() {
               error={paperError}
               onFile={handlePaperFile}
               onClear={clearPaper}
-              accentColor="blue"
             />
 
             {/* Answers upload */}
@@ -1257,14 +1297,13 @@ export function AnalyticsPage() {
               error={answersError}
               onFile={handleAnswersFile}
               onClear={clearAnswers}
-              accentColor="violet"
             />
           </div>
 
           {/* Schema reference */}
           <div className="mx-5 mb-5 grid md:grid-cols-2 gap-3">
             <div className="bg-slate-900 rounded-xl p-4 text-xs font-mono overflow-x-auto">
-              <div className="text-slate-400 mb-2">// exam_paper.json</div>
+              <div className="text-muted-foreground mb-2">// exam_paper.json</div>
               <pre className="text-emerald-400 whitespace-pre-wrap leading-relaxed">{`{
   "exam": "IT2040 - Database Management Systems",
   "year": 2022,
@@ -1280,7 +1319,7 @@ export function AnalyticsPage() {
 }`}</pre>
             </div>
             <div className="bg-slate-900 rounded-xl p-4 text-xs font-mono overflow-x-auto">
-              <div className="text-slate-400 mb-2">// student_answers.json</div>
+              <div className="text-muted-foreground mb-2">// student_answers.json</div>
               <pre className="text-blue-300 whitespace-pre-wrap leading-relaxed">{`{
   "submissions": [{
     "student_id": "it22100001",
@@ -1304,7 +1343,7 @@ export function AnalyticsPage() {
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-4 text-sm">
                 <div
-                  className={`flex items-center gap-1.5 ${parsedPaper ? "text-emerald-600" : "text-slate-400"}`}
+                  className={`flex items-center gap-1.5 ${parsedPaper ? "text-emerald-600" : "text-muted-foreground"}`}
                 >
                   {parsedPaper ? (
                     <>
@@ -1318,7 +1357,7 @@ export function AnalyticsPage() {
                   )}
                 </div>
                 <div
-                  className={`flex items-center gap-1.5 ${parsedAnswers ? "text-emerald-600" : "text-slate-400"}`}
+                  className={`flex items-center gap-1.5 ${parsedAnswers ? "text-emerald-600" : "text-muted-foreground"}`}
                 >
                   {parsedAnswers ? (
                     <>
@@ -1350,7 +1389,7 @@ export function AnalyticsPage() {
                   </Button>
                 )}
                 <Button
-                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                  className="bg-primary hover:bg-primary/90 disabled:opacity-50"
                   disabled={
                     !parsedPaper ||
                     !parsedAnswers ||
@@ -1387,7 +1426,7 @@ export function AnalyticsPage() {
           return (
             <Card
               key={s.title}
-              className="p-5 border-slate-200 relative overflow-hidden"
+              className="p-5 border-border relative overflow-hidden"
             >
               {i === 0 && (
                 <div className="absolute right-2 bottom-2 h-12 w-28 opacity-90">
@@ -1407,37 +1446,37 @@ export function AnalyticsPage() {
               >
                 <Icon className="size-5" />
               </div>
-              <div className="mt-4 text-sm text-slate-500">{s.title}</div>
-              <div className="tracking-tight text-slate-900 mt-1">
+              <div className="mt-4 text-sm text-muted-foreground">{s.title}</div>
+              <div className="tracking-tight text-foreground mt-1">
                 {s.value}
               </div>
-              <div className="text-xs text-slate-500 mt-1">{s.note}</div>
+              <div className="text-xs text-muted-foreground mt-1">{s.note}</div>
             </Card>
           );
         })}
       </div>
 
       {selectedSession && (
-        <Card className="border-slate-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+        <Card className="border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <div className="text-slate-900">Output session snapshot</div>
-              <div className="text-xs text-slate-500 mt-0.5">
+              <div className="text-foreground">Output session snapshot</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
                 Year {selectedSession.year} · {selectedSession.exam} · {selectedSession.timestamp}
               </div>
             </div>
-            <Badge className="bg-blue-50 text-blue-700 border-0">
+            <Badge className="bg-accent text-primary border-0">
               {fileCount(activeFiles?.student_summary as unknown[])} student summaries · {fileCount(activeFiles?.student_report as unknown[])} report rows · {fileCount(activeFiles?.cognitive_gap_analysis as unknown[])} cognitive gaps
             </Badge>
           </div>
 
           <div className="grid lg:grid-cols-2 xl:grid-cols-4 gap-4 p-5">
-            <Card className="p-4 border-slate-200 bg-white">
-              <div className="text-xs uppercase tracking-wide text-slate-500">student_summary.json</div>
-              <div className="mt-2 text-slate-900">{fileCount(activeFiles?.student_summary as unknown[])} students</div>
+            <Card className="p-4 border-border bg-card">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">student_summary.json</div>
+              <div className="mt-2 text-foreground">{fileCount(activeFiles?.student_summary as unknown[])} students</div>
               <div className="mt-3 space-y-2">
                 {(activeFiles?.student_summary ?? []).slice(0, 3).map((student) => (
-                  <div key={student.student_id} className="flex items-center justify-between text-xs text-slate-600">
+                  <div key={student.student_id} className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{student.student_id}</span>
                     <span>{Math.round(student.average_learning_score * 100)}% · {student.performance_band}</span>
                   </div>
@@ -1445,12 +1484,12 @@ export function AnalyticsPage() {
               </div>
             </Card>
 
-            <Card className="p-4 border-slate-200 bg-white">
-              <div className="text-xs uppercase tracking-wide text-slate-500">weak_topics.json</div>
-              <div className="mt-2 text-slate-900">{fileCount(activeFiles?.weak_topics as unknown[])} topic entries</div>
+            <Card className="p-4 border-border bg-card">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">weak_topics.json</div>
+              <div className="mt-2 text-foreground">{fileCount(activeFiles?.weak_topics as unknown[])} topic entries</div>
               <div className="mt-3 space-y-2">
                 {(activeFiles?.weak_topics ?? []).slice(0, 3).map((topic) => (
-                  <div key={topic.topic} className="flex items-center justify-between text-xs text-slate-600 gap-2">
+                  <div key={topic.topic} className="flex items-center justify-between text-xs text-muted-foreground gap-2">
                     <span className="truncate">{topic.topic}</span>
                     <span>{Math.round(topic.weak_probability * 100)}% weak</span>
                   </div>
@@ -1458,12 +1497,12 @@ export function AnalyticsPage() {
               </div>
             </Card>
 
-            <Card className="p-4 border-slate-200 bg-white">
-              <div className="text-xs uppercase tracking-wide text-slate-500">cognitive_gap_analysis.json</div>
-              <div className="mt-2 text-slate-900">{fileCount(activeFiles?.cognitive_gap_analysis as unknown[])} question gaps</div>
+            <Card className="p-4 border-border bg-card">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">cognitive_gap_analysis.json</div>
+              <div className="mt-2 text-foreground">{fileCount(activeFiles?.cognitive_gap_analysis as unknown[])} question gaps</div>
               <div className="mt-3 space-y-2">
                 {(activeFiles?.cognitive_gap_analysis ?? []).slice(0, 3).map((gap) => (
-                  <div key={gap.question} className="flex items-center justify-between text-xs text-slate-600 gap-2">
+                  <div key={gap.question} className="flex items-center justify-between text-xs text-muted-foreground gap-2">
                     <span>{gap.question}</span>
                     <span>{gap.required} → {gap.average_student_level}</span>
                   </div>
@@ -1471,12 +1510,12 @@ export function AnalyticsPage() {
               </div>
             </Card>
 
-            <Card className="p-4 border-slate-200 bg-white">
-              <div className="text-xs uppercase tracking-wide text-slate-500">misunderstood_questions.json</div>
-              <div className="mt-2 text-slate-900">{fileCount(activeFiles?.misunderstood_questions as unknown[])} questions flagged</div>
+            <Card className="p-4 border-border bg-card">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">misunderstood_questions.json</div>
+              <div className="mt-2 text-foreground">{fileCount(activeFiles?.misunderstood_questions as unknown[])} questions flagged</div>
               <div className="mt-3 space-y-2">
                 {(activeFiles?.misunderstood_questions ?? []).slice(0, 3).map((question) => (
-                  <div key={question.q} className="flex items-center justify-between text-xs text-slate-600 gap-2">
+                  <div key={question.q} className="flex items-center justify-between text-xs text-muted-foreground gap-2">
                     <span className="truncate">{question.q}</span>
                     <span>{question.below}</span>
                   </div>
@@ -1488,7 +1527,7 @@ export function AnalyticsPage() {
       )}
 
       <Tabs defaultValue="students" className="space-y-4">
-        <TabsList className="bg-slate-100">
+        <TabsList className="bg-muted">
           <TabsTrigger value="students">Student performance</TabsTrigger>
           <TabsTrigger value="questions">Question analysis</TabsTrigger>
           <TabsTrigger value="cognitive">Cognitive gaps</TabsTrigger>
@@ -1498,15 +1537,15 @@ export function AnalyticsPage() {
 
         {/* ── Leaderboard ──────────────────────────────────────────────── */}
         <TabsContent value="students" className="m-0">
-          <Card className="border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="text-slate-900">Leaderboard</div>
-              <div className="text-xs text-slate-500">
+          <Card className="border-border overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <div className="text-foreground">Leaderboard</div>
+              <div className="text-xs text-muted-foreground">
                 Click a row to drill down
               </div>
             </div>
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+              <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
                 <tr>
                   {[
                     "Student ID",
@@ -1517,7 +1556,7 @@ export function AnalyticsPage() {
                     "",
                   ].map((h, i) => (
                     <th key={`th-${i}`} className="text-left px-5 py-3">
-                      <button className="inline-flex items-center gap-1 hover:text-slate-900">
+                      <button className="inline-flex items-center gap-1 hover:text-foreground">
                         {h}
                         {h && <ArrowUpDown className="size-3" />}
                       </button>
@@ -1532,12 +1571,12 @@ export function AnalyticsPage() {
                     <React.Fragment key={s.id}>
                       <tr
                         onClick={() => setExpanded(open ? null : s.id)}
-                        className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
+                        className="border-t border-border hover:bg-muted cursor-pointer"
                       >
-                        <td className="px-5 py-3 text-slate-900">{s.id}</td>
+                        <td className="px-5 py-3 text-foreground">{s.id}</td>
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-slate-900">{s.avg}</span>
+                            <span className="text-foreground">{s.avg}</span>
                             <Progress value={s.avg} className="w-24 h-1.5" />
                           </div>
                         </td>
@@ -1558,29 +1597,41 @@ export function AnalyticsPage() {
                             {s.weak.map((w) => (
                               <span
                                 key={w}
-                                className="px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-xs"
+                                className="px-1.5 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 text-xs"
                               >
                                 {w}
                               </span>
                             ))}
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-slate-700">{s.cog}</td>
+                        <td className="px-5 py-3 text-foreground">{s.cog}</td>
                         <td className="px-5 py-3 text-right">
-                          <ChevronDown
-                            className={
-                              "size-4 text-slate-400 transition-transform " +
-                              (open ? "rotate-180" : "")
-                            }
-                          />
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedStudent(s);
+                                setModalOpen(true);
+                              }}
+                              className="text-xs px-2 py-1 border rounded bg-muted hover:bg-muted"
+                            >
+                              Details
+                            </button>
+                            <ChevronDown
+                              className={
+                                "size-4 text-muted-foreground transition-transform " +
+                                (open ? "rotate-180" : "")
+                              }
+                            />
+                          </div>
                         </td>
                       </tr>
                       {open && (
-                        <tr className="bg-slate-50/60 border-t border-slate-100">
+                        <tr className="bg-muted/60 border-t border-border">
                           <td colSpan={6} className="p-5">
                             <div className="grid md:grid-cols-3 gap-4">
-                              <Card className="p-4 border-slate-200 bg-white">
-                                <div className="text-xs text-slate-500 uppercase tracking-wide">
+                              <Card className="p-4 border-border bg-card">
+                                <div className="text-xs text-muted-foreground uppercase tracking-wide">
                                   Weak questions
                                 </div>
                                 <div className="mt-2 space-y-2">
@@ -1589,10 +1640,10 @@ export function AnalyticsPage() {
                                     .map((w, i) => (
                                       <div key={w}>
                                         <div className="flex items-center justify-between text-sm">
-                                          <span className="text-slate-700">
+                                          <span className="text-foreground">
                                             {w}
                                           </span>
-                                          <span className="text-slate-500">
+                                          <span className="text-muted-foreground">
                                             &lt; 60%
                                           </span>
                                         </div>
@@ -1604,8 +1655,8 @@ export function AnalyticsPage() {
                                     ))}
                                 </div>
                               </Card>
-                              <Card className="p-4 border-slate-200 bg-white">
-                                <div className="text-xs text-slate-500 uppercase tracking-wide">
+                              <Card className="p-4 border-border bg-card">
+                                <div className="text-xs text-muted-foreground uppercase tracking-wide">
                                   Score breakdown
                                 </div>
                                 <div className="h-28 mt-2">
@@ -1647,8 +1698,8 @@ export function AnalyticsPage() {
                                   </ResponsiveContainer>
                                 </div>
                               </Card>
-                              <Card className="p-4 border-slate-200 bg-white">
-                                <div className="text-xs text-slate-500 uppercase tracking-wide">
+                              <Card className="p-4 border-border bg-card">
+                                <div className="text-xs text-muted-foreground uppercase tracking-wide">
                                   Per-question grid
                                 </div>
                                 <div
@@ -1688,15 +1739,34 @@ export function AnalyticsPage() {
 
         {/* ─ Question analysis + Heatmap ──────────────────────────────── */}
         <TabsContent value="questions" className="m-0 space-y-4">
-          <Card className="p-5 border-slate-200">
+          {(() => {
+            const heatScatterData = heatStudents.flatMap((s, r) =>
+              heatQs.map((q, c) => ({
+                x: c,
+                y: r,
+                value: heatData[r]?.[c] ?? 0,
+                student: s,
+                question: q,
+              })),
+            );
+            const heatColorHex = (v: number) => {
+              if (v >= 8) return "#dc2626";
+              if (v >= 6) return "#f97316";
+              if (v >= 4) return "#f59e0b";
+              if (v >= 2) return "#34d399";
+              return "#065f46";
+            };
+            return (
+              <>
+          <Card className="p-5 border-border">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="text-slate-900">Performance heatmap</div>
-                <div className="text-xs text-slate-500 mt-0.5">
+                <div className="text-foreground">Performance heatmap</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
                   Students × Questions · score out of 10
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>Low</span>
                 <div className="flex">
                   {[
@@ -1713,51 +1783,65 @@ export function AnalyticsPage() {
               </div>
             </div>
             <div className="overflow-auto">
-              <div
-                className="inline-grid gap-1.5"
-                style={{
-                  gridTemplateColumns: `auto repeat(${heatQs.length}, minmax(40px, 1fr))`,
-                }}
-              >
-                <div />
-                {heatQs.map((q) => (
-                  <div
-                    key={`hq-${q}`}
-                    className="text-xs text-slate-500 text-center"
-                  >
-                    {q}
-                  </div>
-                ))}
-                {heatStudents.map((s, r) => (
-                  <React.Fragment key={`hs-${s}`}>
-                    <div className="text-xs text-slate-500 pr-2 flex items-center whitespace-nowrap">
-                      {s}
-                    </div>
-                    {heatData[r]?.map((v, c) => (
-                      <div
-                        key={`${s}-col-${c}`}
-                        className={`aspect-square rounded ${heatColor(v)} text-white text-[10px] flex items-center justify-center`}
-                      >
-                        {v}
-                      </div>
-                    ))}
-                  </React.Fragment>
-                ))}
+              <div style={{ width: Math.min(heatQs.length * 80 + 120, 1200), height: Math.min(heatStudents.length * 26 + 80, 800) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis
+                      type="number"
+                      dataKey="x"
+                      name="Question"
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={(i: number) => heatQs[i]}
+                      interval={0}
+                    />
+                    <YAxis
+                      type="number"
+                      dataKey="y"
+                      name="Student"
+                      tickFormatter={(i: number) => heatStudents[i]}
+                      reversed={true}
+                    />
+                    <ZAxis dataKey="value" range={[4, 20]} />
+                    <Scatter data={heatScatterData}>
+                      {heatScatterData.map((entry, idx) => (
+                        <Cell key={`cell-${idx}`} fill={heatColorHex(entry.value)} />
+                      ))}
+                    </Scatter>
+                    <Tooltip
+                      cursor={{ strokeDasharray: "3 3" }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        const p = payload[0].payload as any;
+                        return (
+                          <div className="bg-card p-2 rounded border border-border text-xs">
+                            <div className="font-semibold">{p.student}</div>
+                            <div>{p.question}</div>
+                            <div>Score: {p.value}</div>
+                          </div>
+                        );
+                      }}
+                    />
+                  </ScatterChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </Card>
+          </>
+            );
+          })()}
 
-          <Card className="border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 text-slate-900">
+          <Card className="border-border overflow-hidden">
+            <div className="px-5 py-4 border-b border-border text-foreground">
               Problem questions
             </div>
             {problemQs.length === 0 ? (
-              <div className="px-5 py-8 text-center text-slate-400 text-sm">
+              <div className="px-5 py-8 text-center text-muted-foreground text-sm">
                 No problem questions detected — great results!
               </div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+                <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
                   <tr>
                     <th className="text-left px-5 py-3">Question</th>
                     <th className="text-left px-5 py-3">Below threshold</th>
@@ -1770,16 +1854,16 @@ export function AnalyticsPage() {
                 </thead>
                 <tbody>
                   {problemQs.map((p) => (
-                    <tr key={`pq-${p.q}`} className="border-t border-slate-100">
-                      <td className="px-5 py-3 text-slate-900">{p.q}</td>
+                    <tr key={`pq-${p.q}`} className="border-t border-border">
+                      <td className="px-5 py-3 text-foreground">{p.q}</td>
                       <td className="px-5 py-3">
-                        <Badge className="bg-red-50 text-red-700 border-0 hover:bg-red-50">
+                        <Badge className="bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 border-0 hover:bg-red-50">
                           {p.below}
                         </Badge>
                       </td>
-                      <td className="px-5 py-3 text-slate-700">{p.avg} / 10</td>
-                      <td className="px-5 py-3 text-slate-700">
-                        <span className="text-slate-500 line-through mr-2">
+                      <td className="px-5 py-3 text-foreground">{p.avg} / 10</td>
+                      <td className="px-5 py-3 text-foreground">
+                        <span className="text-muted-foreground line-through mr-2">
                           {p.req}
                         </span>
                         <span className="text-red-600">{p.act}</span>
@@ -1800,16 +1884,16 @@ export function AnalyticsPage() {
         {/* ── Cognitive gaps ───────────────────────────────────────────── */}
         <TabsContent value="cognitive" className="m-0 space-y-4">
           <div className="grid lg:grid-cols-2 gap-4">
-            <Card className="p-5 border-slate-200">
-              <div className="text-slate-900">Bloom's Taxonomy ladder</div>
-              <div className="text-xs text-slate-500 mt-0.5">
+            <Card className="p-5 border-border">
+              <div className="text-foreground">Bloom's Taxonomy ladder</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
                 Class average per cognitive level
               </div>
               <div className="mt-4 space-y-2">
                 {[...bloomLadder].reverse().map((b) => (
                   <div key={`bloom-${b.l}`} className="flex items-center gap-3">
-                    <div className="w-24 text-sm text-slate-600">{b.l}</div>
-                    <div className="flex-1 h-7 rounded-md bg-slate-100 overflow-hidden">
+                    <div className="w-24 text-sm text-muted-foreground">{b.l}</div>
+                    <div className="flex-1 h-7 rounded-md bg-muted overflow-hidden">
                       <div
                         className={`${b.c} h-full flex items-center justify-end pr-2 text-xs text-white`}
                         style={{ width: `${b.v}%` }}
@@ -1822,22 +1906,22 @@ export function AnalyticsPage() {
               </div>
             </Card>
 
-            <Card className="p-5 border-slate-200">
+            <Card className="p-5 border-border">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-slate-900">Expected vs Actual</div>
-                  <div className="text-xs text-slate-500 mt-0.5">
+                  <div className="text-foreground">Expected vs Actual</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
                     Points below the diagonal indicate cognitive gaps
                   </div>
                 </div>
                 <div className="flex gap-2 text-xs">
-                  <Badge className="bg-emerald-50 text-emerald-700 border-0">
+                  <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-0">
                     On track
                   </Badge>
-                  <Badge className="bg-amber-50 text-amber-700 border-0">
+                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 border-0">
                     Gap
                   </Badge>
-                  <Badge className="bg-red-50 text-red-700 border-0">
+                  <Badge className="bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 border-0">
                     Critical
                   </Badge>
                 </div>
@@ -1912,15 +1996,15 @@ export function AnalyticsPage() {
 
         {/* ── Topic mastery ────────────────────────────────────────────── */}
         <TabsContent value="topics" className="m-0">
-          <Card className="p-5 border-slate-200">
+          <Card className="p-5 border-border">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="text-slate-900">Topic mastery matrix</div>
-                <div className="text-xs text-slate-500 mt-0.5">
+                <div className="text-foreground">Topic mastery matrix</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
                   Highlighted columns indicate ≥40% failure rate
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-xs text-slate-500">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 {[
                   ["bg-emerald-500", "≥80%"],
                   ["bg-amber-200", "50–64%"],
@@ -1937,7 +2021,7 @@ export function AnalyticsPage() {
               <table className="text-sm border-separate border-spacing-1">
                 <thead>
                   <tr>
-                    <th className="text-left text-xs text-slate-500 px-2">
+                    <th className="text-left text-xs text-muted-foreground px-2">
                       Student
                     </th>
                     {topics.map((t) => {
@@ -1952,13 +2036,13 @@ export function AnalyticsPage() {
                       return (
                         <th
                           key={`topic-th-${t}`}
-                          className={`text-xs px-2 py-1 rounded whitespace-nowrap ${fail ? "bg-red-50 text-red-700" : "text-slate-500"}`}
+                          className={`text-xs px-2 py-1 rounded whitespace-nowrap ${fail ? "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300" : "text-muted-foreground"}`}
                         >
                           {t}
                         </th>
                       );
                     })}
-                    <th className="text-xs text-slate-500 px-2">Avg</th>
+                    <th className="text-xs text-muted-foreground px-2">Avg</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1972,7 +2056,7 @@ export function AnalyticsPage() {
                         : 0;
                     return (
                       <tr key={`mastery-row-${s.id}`}>
-                        <td className="text-slate-700 px-2 py-1 whitespace-nowrap">
+                        <td className="text-foreground px-2 py-1 whitespace-nowrap">
                           {s.id}
                         </td>
                         {row.map((v, c) => (
@@ -1983,12 +2067,12 @@ export function AnalyticsPage() {
                             {v}
                           </td>
                         ))}
-                        <td className="text-slate-900 px-2">{avg}</td>
+                        <td className="text-foreground px-2">{avg}</td>
                       </tr>
                     );
                   })}
                   <tr>
-                    <td className="text-slate-500 px-2 pt-3 text-xs uppercase tracking-wide">
+                    <td className="text-muted-foreground px-2 pt-3 text-xs uppercase tracking-wide">
                       Topic avg
                     </td>
                     {topics.map((t, c) => {
@@ -2001,7 +2085,7 @@ export function AnalyticsPage() {
                       return (
                         <td
                           key={`avg-col-${c}`}
-                          className="text-center text-slate-700 pt-3"
+                          className="text-center text-foreground pt-3"
                         >
                           {avg}
                         </td>
@@ -2017,16 +2101,16 @@ export function AnalyticsPage() {
 
         {/* ── Historical Trends ────────────────────────────────────────── */}
         <TabsContent value="historical" className="m-0 space-y-4">
-          <Card className="border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <Card className="border-border overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
               <div>
-                <div className="text-slate-900">Year-over-Year Performance</div>
-                <div className="text-xs text-slate-500 mt-1">
+                <div className="text-foreground">Year-over-Year Performance</div>
+                <div className="text-xs text-muted-foreground mt-1">
                   Historical exam performance trends across years
                 </div>
               </div>
               {historicalLoading && (
-                <RefreshCw className="size-4 animate-spin text-slate-400" />
+                <RefreshCw className="size-4 animate-spin text-muted-foreground" />
               )}
             </div>
 
@@ -2043,8 +2127,8 @@ export function AnalyticsPage() {
                       }}
                       className={`px-4 py-2 rounded-lg whitespace-nowrap text-sm font-medium transition-all ${
                         selectedYear === year
-                          ? "bg-blue-600 text-white"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground hover:bg-muted"
                       }`}
                     >
                       {year}
@@ -2062,7 +2146,7 @@ export function AnalyticsPage() {
                         className={`px-4 py-2 rounded-lg whitespace-nowrap text-sm font-medium transition-all ${
                           selectedSessionIndex === index
                             ? "bg-slate-900 text-white"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                            : "bg-muted text-foreground hover:bg-muted"
                         }`}
                       >
                         {session.exam} · {session.timestamp}
@@ -2073,19 +2157,19 @@ export function AnalyticsPage() {
 
                 {selectedSession ? (
                   <div className="grid lg:grid-cols-[1.4fr_0.8fr] gap-4">
-                    <Card className="p-5 border-slate-200 bg-white">
+                    <Card className="p-5 border-border bg-card">
                       <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div>
-                          <div className="text-slate-900">{selectedSession.exam}</div>
-                          <div className="text-xs text-slate-500 mt-1">
+                          <div className="text-foreground">{selectedSession.exam}</div>
+                          <div className="text-xs text-muted-foreground mt-1">
                             Year {selectedSession.year} · {selectedSession.timestamp}
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-blue-600">
+                          <div className="text-2xl font-bold text-primary">
                             {Math.round(selectedSession.avgLearningScore * 100)}%
                           </div>
-                          <div className="text-xs text-slate-500 mt-1">
+                          <div className="text-xs text-muted-foreground mt-1">
                             Average learning score
                           </div>
                         </div>
@@ -2094,12 +2178,12 @@ export function AnalyticsPage() {
                       <div className="mt-5 grid sm:grid-cols-3 gap-3">
                         {Object.entries(selectedSession.performanceBandDistribution).map(([band, count]) => {
                           const bandColors: Record<string, string> = {
-                            High: "bg-emerald-100 text-emerald-700",
+                            High: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
                             Medium: "bg-amber-100 text-amber-700",
-                            Low: "bg-red-100 text-red-700",
+                            Low: "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300",
                           };
                           return (
-                            <div key={band} className={`p-3 rounded-lg text-center ${bandColors[band] ?? "bg-slate-100 text-slate-700"}`}>
+                            <div key={band} className={`p-3 rounded-lg text-center ${bandColors[band] ?? "bg-muted text-foreground"}`}>
                               <div className="text-sm font-semibold">{count}</div>
                               <div className="text-xs mt-1">{band}</div>
                             </div>
@@ -2108,18 +2192,18 @@ export function AnalyticsPage() {
                       </div>
 
                       <div className="mt-5 space-y-3">
-                        <div className="text-xs font-semibold text-slate-700">Top student summaries</div>
+                        <div className="text-xs font-semibold text-foreground">Top student summaries</div>
                         {selectedSession.studentSummary.slice(0, 5).map((student) => (
-                          <div key={student.student_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 gap-3">
+                          <div key={student.student_id} className="flex items-center justify-between p-3 bg-muted rounded-lg border border-border text-xs text-muted-foreground gap-3">
                             <div>
-                              <div className="text-sm text-slate-900">{student.student_id}</div>
+                              <div className="text-sm text-foreground">{student.student_id}</div>
                               <div className="mt-1">{titleCase(student.dominant_cognitive_level)} · {student.performance_band}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-sm font-semibold text-slate-900">
+                              <div className="text-sm font-semibold text-foreground">
                                 {Math.round(student.average_learning_score * 100)}%
                               </div>
-                              <div className="text-[11px] text-slate-500 mt-1">
+                              <div className="text-[11px] text-muted-foreground mt-1">
                                 {student.weak_questions.length} weak questions
                               </div>
                             </div>
@@ -2129,25 +2213,25 @@ export function AnalyticsPage() {
                     </Card>
 
                     <div className="space-y-4">
-                      <Card className="p-5 border-slate-200 bg-white">
-                        <div className="text-slate-900">Output files</div>
-                        <div className="text-xs text-slate-500 mt-0.5">Raw JSON snapshot for the selected session</div>
+                      <Card className="p-5 border-border bg-card">
+                        <div className="text-foreground">Output files</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">Raw JSON snapshot for the selected session</div>
                         <div className="mt-4 space-y-3 text-xs">
-                          <div className="flex items-center justify-between"><span className="text-slate-600">student_summary.json</span><span className="text-slate-900">{selectedSession.studentSummary.length} rows</span></div>
-                          <div className="flex items-center justify-between"><span className="text-slate-600">student_report.json</span><span className="text-slate-900">{selectedSession.studentReport.length} rows</span></div>
-                          <div className="flex items-center justify-between"><span className="text-slate-600">weak_topics.json</span><span className="text-slate-900">{selectedSession.weakTopics.length} rows</span></div>
-                          <div className="flex items-center justify-between"><span className="text-slate-600">cognitive_gap_analysis.json</span><span className="text-slate-900">{selectedSession.cognitiveGapAnalysis.length} rows</span></div>
-                          <div className="flex items-center justify-between"><span className="text-slate-600">misunderstood_questions.json</span><span className="text-slate-900">{selectedSession.misunderstoodQuestions.length} rows</span></div>
+                          <div className="flex items-center justify-between"><span className="text-muted-foreground">student_summary.json</span><span className="text-foreground">{selectedSession.studentSummary.length} rows</span></div>
+                          <div className="flex items-center justify-between"><span className="text-muted-foreground">student_report.json</span><span className="text-foreground">{selectedSession.studentReport.length} rows</span></div>
+                          <div className="flex items-center justify-between"><span className="text-muted-foreground">weak_topics.json</span><span className="text-foreground">{selectedSession.weakTopics.length} rows</span></div>
+                          <div className="flex items-center justify-between"><span className="text-muted-foreground">cognitive_gap_analysis.json</span><span className="text-foreground">{selectedSession.cognitiveGapAnalysis.length} rows</span></div>
+                          <div className="flex items-center justify-between"><span className="text-muted-foreground">misunderstood_questions.json</span><span className="text-foreground">{selectedSession.misunderstoodQuestions.length} rows</span></div>
                         </div>
                       </Card>
 
-                      <Card className="p-5 border-slate-200 bg-white">
-                        <div className="text-slate-900">Weak topics</div>
-                        <div className="text-xs text-slate-500 mt-0.5">Topics with lower learning score</div>
+                      <Card className="p-5 border-border bg-card">
+                        <div className="text-foreground">Weak topics</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">Topics with lower learning score</div>
                         <div className="mt-4 space-y-3">
                           {selectedSession.weakTopics.slice(0, 5).map((topic) => (
                             <div key={topic.topic} className="space-y-1">
-                              <div className="flex items-center justify-between text-xs text-slate-600 gap-2">
+                              <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
                                 <span className="truncate">{topic.topic}</span>
                                 <span>{Math.round(topic.average_learning_score * 100)}%</span>
                               </div>
@@ -2159,14 +2243,14 @@ export function AnalyticsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-8 text-center text-slate-500">
+                  <div className="p-8 text-center text-muted-foreground">
                     <FileText className="size-8 mx-auto mb-2 opacity-50" />
                     <div className="text-sm">Select a year to view session data</div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="p-8 text-center text-slate-500">
+              <div className="p-8 text-center text-muted-foreground">
                 <FileText className="size-8 mx-auto mb-2 opacity-50" />
                 <div className="text-sm">No historical data available</div>
                 <div className="text-xs mt-1">
@@ -2177,6 +2261,14 @@ export function AnalyticsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <StudentDetailsModal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedStudent(null);
+        }}
+        student={selectedStudent}
+      />
     </div>
   );
 }
