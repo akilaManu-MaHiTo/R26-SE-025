@@ -1,13 +1,5 @@
 import re
-from pathlib import Path
 from typing import Dict, Tuple, List, Optional
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_COGNITIVE_MODEL_PATH = PROJECT_ROOT / "model" / "cognitive_bloom" / "cognitive_bloom_model.joblib"
-
-_CACHED_COGNITIVE_MODEL = None
-_CACHED_MODEL_LOAD_FAILED = False
 
 # Bloom's Taxonomy keyword mapping
 BLOOM_LEVELS = {
@@ -107,10 +99,6 @@ def cognitive_score(question: str, student_answer: str, use_strict: bool = False
     Returns:
         Dict: Cognitive analysis results
     """
-    model = _get_cognitive_bloom_model()
-    if model is not None:
-        return model.compare(question, student_answer, use_strict=use_strict)
-
     q_level, q_conf = detect_level(question, "question")
     s_level, s_conf = detect_level(student_answer, "answer")
     
@@ -158,26 +146,6 @@ def cognitive_score(question: str, student_answer: str, use_strict: bool = False
         "cognitive_gap": cognitive_gap,
         "gap_severity": gap_severity
     }
-
-
-def _get_cognitive_bloom_model():
-    global _CACHED_COGNITIVE_MODEL, _CACHED_MODEL_LOAD_FAILED
-
-    if _CACHED_COGNITIVE_MODEL is not None:
-        return _CACHED_COGNITIVE_MODEL
-
-    if _CACHED_MODEL_LOAD_FAILED or not DEFAULT_COGNITIVE_MODEL_PATH.exists():
-        _CACHED_MODEL_LOAD_FAILED = True
-        return None
-
-    try:
-        from .cognitive_bloom_model import CognitiveBloomModel
-
-        _CACHED_COGNITIVE_MODEL = CognitiveBloomModel(model_path=DEFAULT_COGNITIVE_MODEL_PATH)
-        return _CACHED_COGNITIVE_MODEL
-    except Exception:
-        _CACHED_MODEL_LOAD_FAILED = True
-        return None
 
 
 def level_to_label(level: str) -> str:
