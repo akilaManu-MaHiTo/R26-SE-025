@@ -72,7 +72,10 @@ REASON_MESSAGES = {
         "Audio analysis failed, so we cannot tell whether the student spoke. "
         "No official mark — this is a pipeline issue, not a silent-student result."
     ),
-    "video_insufficient": "Face coverage is too low to score the video.",
+    "video_insufficient": (
+        "No usable face on camera. Emotion and engagement cannot be measured, "
+        "so this recording is incomplete — point the webcam at the student and re-record."
+    ),
     "audio_insufficient": "Recorded audio is too short or empty to score.",
     "no_scorable_families": "No scorable evidence families were available.",
     "duration_below_engine_minimum": "Audio duration is below the engine minimum.",
@@ -185,26 +188,37 @@ def validate_features(features: Dict[str, Any]) -> Dict[str, Any]:
     speech_reason = classify_speech_evidence(features)
     if speech_reason:
         reasons.append(speech_reason)
-        unique = list(dict.fromkeys(reasons))
+
+    unique = list(dict.fromkeys(reasons))
+
+    # Face is required: emotion/engagement cannot be inferred from audio alone.
+    if not video_ok:
+        return {
+            "status": STATUS_INCOMPLETE,
+            "reasons": unique,
+            "message": REASON_MESSAGES.get("video_insufficient"),
+        }
+
+    if speech_reason:
         return {
             "status": STATUS_INCOMPLETE,
             "reasons": unique,
             "message": REASON_MESSAGES.get(speech_reason),
         }
 
-    if not video_ok and not audio_ok:
-        unique = list(dict.fromkeys(reasons))
-        primary = unique[0] if unique else "no_scorable_families"
+    if not audio_ok:
+        primary = unique[0] if unique else "audio_insufficient"
         return {
             "status": STATUS_INCOMPLETE,
             "reasons": unique,
-            "message": REASON_MESSAGES.get(primary),
+            "message": REASON_MESSAGES.get(primary) or REASON_MESSAGES.get("audio_insufficient"),
         }
 
-    return {"status": STATUS_VALID, "reasons": reasons, "message": None}
+    return {"status": STATUS_VALID, "reasons": unique, "message": None}
 
 
 def _engagement_family(features: Dict[str, Any]) -> Tuple[Optional[float], List[Dict[str, Any]]]:
+    # stage1_cnn_engagement only. Not diagnostic_engagement or feature_complete_engagement.
     value = (features.get("video") or {}).get("average_engagement_score")
     if value is None:
         return None, []
@@ -481,4 +495,6 @@ def attach_assessment(
         mode=mode,
         technical_accuracy=technical_accuracy,
     )
-    return enriched
+    from services.feature_complete import attach_feature_complete
+
+    return attach_feature_complete(enriched)

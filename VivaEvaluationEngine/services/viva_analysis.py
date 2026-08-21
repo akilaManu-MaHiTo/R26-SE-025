@@ -17,6 +17,7 @@ from services.diarization import (
     words_and_text_for_speaker,
 )
 from services.transcript_features import extract_transcript_features
+from services.normalization import energy_consistency_score, pitch_stability_score
 from transcribe import transcribe_audio
 
 
@@ -135,6 +136,9 @@ def _fallback_audio_emotion(acoustic_features: Dict[str, Any], transcript: str) 
         "valence": _emotion_valence(emotion),
         "confidence": round(confidence, 4),
         "source": "heuristic",
+        "backend": None,
+        "model": None,
+        "fallback_reason": "extractor_unavailable",
         "probabilities": probabilities,
     }
 
@@ -325,6 +329,8 @@ def _pack_audio_payload(
     whisper_reason: Optional[str] = None,
 ) -> Dict[str, Any]:
     predicted_emotion = str(emotion_features.get("predicted_emotion", "unknown")).strip() or "unknown"
+    ser_source = str(emotion_features.get("source", "heuristic"))
+    ser_is_model = ser_source.strip().lower() == "model"
     payload: Dict[str, Any] = {
         "status": status,
         "transcript": transcript_text,
@@ -343,22 +349,55 @@ def _pack_audio_payload(
             "predicted_emotion": predicted_emotion,
             "valence": _emotion_valence(predicted_emotion),
             "confidence": round(_clamp(_safe_float(emotion_features.get("confidence"), 0.0) or 0.0), 4),
-            "source": str(emotion_features.get("source", "heuristic")),
+            "source": ser_source,
+            "backend": emotion_features.get("backend") if ser_is_model else None,
+            "model": emotion_features.get("model") if ser_is_model else None,
+            "fallback_reason": None
+            if ser_is_model
+            else (
+                emotion_features.get("fallback_reason")
+                or emotion_features.get("model_error")
+            ),
             "probabilities": emotion_features.get("emotion_probabilities")
             or emotion_features.get("probabilities", {}),
+            "interpretation": emotion_features.get("interpretation"),
+            "label_margin": emotion_features.get("label_margin"),
+            "taxonomy": emotion_features.get("taxonomy"),
+            "domain_note": emotion_features.get("domain_note"),
+            "analyzed_duration_seconds": emotion_features.get("analyzed_duration_seconds"),
+            "sample_rate": emotion_features.get("sample_rate"),
+            "input_track": emotion_features.get("input_track"),
         },
         "acoustic_features": {
             "duration_seconds": round(_safe_float(acoustic_features.get("duration_seconds"), 0.0) or 0.0, 2),
             "tempo_bpm": round(_safe_float(acoustic_features.get("tempo"), 0.0) or 0.0, 2),
             "rms_mean": round(_safe_float(acoustic_features.get("rms_mean"), 0.0) or 0.0, 6),
+            "rms_std": _optional_float(acoustic_features.get("rms_std")),
             "pitch_mean_hz": round(pitch_mean, 2),
             "pitch_min_hz": round(pitch_min, 2),
             "pitch_max_hz": round(pitch_max, 2),
             "pitch_std_hz": round(pitch_std, 2),
+            "pitch_measured": bool(acoustic_features.get("pitch_measured", pitch_mean > 0)),
+            "pitch_range_hz": (
+                round(pitch_max - pitch_min, 2)
+                if pitch_mean > 0 and pitch_max >= pitch_min
+                else None
+            ),
+            "pitch_stability": pitch_stability_score(pitch_std if pitch_mean > 0 or pitch_std > 0 else None),
             "jitter_local": _optional_float(acoustic_features.get("jitter_local")),
             "shimmer_local": _optional_float(acoustic_features.get("shimmer_local")),
             "hnr_mean_db": _optional_float(acoustic_features.get("hnr_mean")),
             "voice_quality_measured": bool(acoustic_features.get("voice_quality_measured")),
+            "energy_consistency": energy_consistency_score(
+                acoustic_features.get("rms_mean"),
+                acoustic_features.get("rms_std"),
+            ),
+            "energy_consistency_not_loudness": True,
+            "mfcc_mean": acoustic_features.get("mfcc_mean"),
+            "mfcc_std": acoustic_features.get("mfcc_std"),
+            "mfcc_n_coefficients": acoustic_features.get("mfcc_n_coefficients"),
+            "mfcc_sample_rate": acoustic_features.get("mfcc_sample_rate"),
+            "mfcc_role": acoustic_features.get("mfcc_role") or "feature_representation",
         },
         "transcript_features": transcript_features or {},
         "grade_breakdown": grade_breakdown,
@@ -421,6 +460,9 @@ def analyze_audio_from_video(
             "valence": "unknown",
             "confidence": 0.0,
             "source": "unknown",
+            "backend": None,
+            "model": None,
+            "fallback_reason": None,
             "probabilities": {},
         },
         "acoustic_features": {},
@@ -542,6 +584,9 @@ def analyze_audio_from_video(
         emotion_features: Dict[str, Any] = {}
         try:
             emotion_features = extract_speech_emotion(scoring_wav)
+            emotion_features["input_track"] = diarization.get("scored_track") or (
+                "student" if scoring_wav == student_audio_path else "mixed"
+            )
         except Exception as exc:
             if debug:
                 print(f"Audio emotion extraction failed: {exc}")

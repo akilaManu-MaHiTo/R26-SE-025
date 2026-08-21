@@ -56,6 +56,8 @@ def _heuristic_speech_emotion(audio_path: str) -> Dict[str, object]:
             "predicted_emotion": "neutral",
             "confidence": 0.3,
             "source": "heuristic",
+            "backend": None,
+            "model": None,
             "emotion_probabilities": {"neutral": 1.0},
         }
 
@@ -100,7 +102,16 @@ def _heuristic_speech_emotion(audio_path: str) -> Dict[str, object]:
         "predicted_emotion": emotion,
         "confidence": round(confidence, 4),
         "source": "heuristic",
+        "backend": None,
+        "model": None,
         "emotion_probabilities": probs,
+        **_ser_diagnostics(
+            {
+                "predicted_emotion": emotion,
+                "confidence": round(confidence, 4),
+                "emotion_probabilities": probs,
+            }
+        ),
     }
 
 
@@ -127,12 +138,39 @@ def _normalize_ranked(scores: List[Tuple[str, float]]) -> Dict[str, object]:
     top_label, top_score = ordered[0]
     total = sum(v for _, v in ordered) or 1.0
     probs = {label: round(score / total, 4) for label, score in ordered}
-    return {
+    result = {
         "predicted_emotion": top_label,
         "confidence": round(_clamp(top_score if top_score <= 1.0 else top_score / total), 4),
         "source": "model",
         "emotion_probabilities": probs,
     }
+    result.update(_ser_diagnostics(result))
+    return result
+
+
+def _ser_diagnostics(result: Dict[str, object]) -> Dict[str, object]:
+    """Label-confidence metadata. Does not rewrite predicted_emotion."""
+    probs = result.get("emotion_probabilities") or {}
+    ordered = sorted(
+        (float(value) for value in probs.values() if isinstance(value, (int, float))),
+        reverse=True,
+    )
+    top = float(ordered[0]) if ordered else float(result.get("confidence") or 0.0)
+    second = float(ordered[1]) if len(ordered) > 1 else 0.0
+    margin = round(top - second, 4)
+    low = top < 0.55 or margin < 0.15
+    source = str(result.get("source") or "").strip().lower()
+    extra: Dict[str, object] = {
+        "label_margin": margin,
+        "interpretation": "low_confidence" if low else "majority_label",
+    }
+    if source == "model":
+        extra["taxonomy"] = "iemocap_er_4class"
+        extra["domain_note"] = (
+            "IEMOCAP-trained 4-class ER (neu/hap/ang/sad). "
+            "Projected presentation speech is often labelled angry; this is not a viva affect diagnosis."
+        )
+    return extra
 
 
 @lru_cache(maxsize=1)
@@ -178,10 +216,16 @@ def _predict_huggingface(audio_path: str) -> Dict[str, object]:
 
     lines = [line for line in (proc.stdout or "").splitlines() if line.strip()]
     raw = json.loads(lines[-1] if lines else "[]")
+    analyzed_duration = None
+    sample_rate = None
     if isinstance(raw, dict):
         if raw.get("error"):
             raise RuntimeError(str(raw["error"]))
-        raw = [raw]
+        analyzed_duration = raw.get("analyzed_duration_seconds")
+        sample_rate = raw.get("sample_rate")
+        raw = raw.get("scores") or raw.get("results") or []
+        if isinstance(raw, dict):
+            raw = [raw]
     scores: List[Tuple[str, float]] = []
     for item in raw or []:
         label = str(item.get("label", ""))
@@ -191,6 +235,10 @@ def _predict_huggingface(audio_path: str) -> Dict[str, object]:
     result = _normalize_ranked(scores)
     result["model"] = _hf_model_id()
     result["backend"] = "huggingface"
+    if analyzed_duration is not None:
+        result["analyzed_duration_seconds"] = analyzed_duration
+    if sample_rate is not None:
+        result["sample_rate"] = sample_rate
     return result
 
 
@@ -224,7 +272,9 @@ def extract_speech_emotion(audio_path: str) -> Dict[str, object]:
     """
     backend = _ser_backend()
     if backend == "heuristic":
-        return _heuristic_speech_emotion(audio_path)
+        result = _heuristic_speech_emotion(audio_path)
+        result["fallback_reason"] = "backend_forced_heuristic"
+        return result
 
     try:
         if backend == "speechbrain":
@@ -233,5 +283,8 @@ def extract_speech_emotion(audio_path: str) -> Dict[str, object]:
     except Exception as exc:
         fallback = _heuristic_speech_emotion(audio_path)
         fallback["model_error"] = f"{type(exc).__name__}: {exc}"
+        fallback["fallback_reason"] = f"{type(exc).__name__}: {exc}"
         fallback["requested_backend"] = backend
+        fallback["backend"] = None
+        fallback["model"] = None
         return fallback

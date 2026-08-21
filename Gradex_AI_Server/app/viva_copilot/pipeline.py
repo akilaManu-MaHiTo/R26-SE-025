@@ -51,6 +51,10 @@ def _append_utterance(buffer: str, piece: str) -> str:
     return f"{buffer} {piece}".strip()
 
 
+MAX_PENDING_AUDIO = 8
+MAX_PENDING_FOLLOWUPS = 4
+
+
 async def ingest_audio_chunk(
     session: CopilotSession,
     audio_bytes: bytes,
@@ -62,13 +66,27 @@ async def ingest_audio_chunk(
 ) -> None:
     if session.phase not in {"presentation", "viva"}:
         return
+    overflow = False
     async with session.lock:
         if session.stt_busy:
-            session.pending_audio = audio_bytes
-            session.pending_filename = filename
-            session.pending_content_type = content_type
-            return
-        session.stt_busy = True
+            if len(session.pending_audio) >= MAX_PENDING_AUDIO:
+                session.pending_audio.popleft()
+                overflow = True
+            session.pending_audio.append((audio_bytes, filename, content_type))
+            queued = True
+        else:
+            session.stt_busy = True
+            queued = False
+    if overflow:
+        await broadcast(
+            session,
+            events.copilot_error(
+                session.session_id,
+                "Audio backlog was full; the oldest unpublished slice was dropped.",
+            ),
+        )
+    if queued:
+        return
     text = ""
     failed = False
     try:
@@ -87,15 +105,11 @@ async def ingest_audio_chunk(
             session.last_error_at = now
             await broadcast(session, events.copilot_error(session.session_id, message))
     finally:
-        pending = None
-        pending_name = filename
-        pending_type = content_type
+        next_chunk = None
         async with session.lock:
             session.stt_busy = False
-            pending = session.pending_audio
-            pending_name = session.pending_filename
-            pending_type = session.pending_content_type
-            session.pending_audio = None
+            if session.pending_audio:
+                next_chunk = session.pending_audio.popleft()
 
     if not failed:
         text = (text or "").strip()
@@ -118,12 +132,12 @@ async def ingest_audio_chunk(
         if to_finalize:
             await _finalize_utterance(session, to_finalize, generate=generate)
 
-    if pending:
+    if next_chunk:
         await ingest_audio_chunk(
             session,
-            pending,
-            filename=pending_name,
-            content_type=pending_type,
+            next_chunk[0],
+            filename=next_chunk[1],
+            content_type=next_chunk[2],
             transcribe=transcribe,
             generate=generate,
         )
@@ -266,9 +280,33 @@ async def _run_followups(
     from_presentation: bool = False,
     generate: Optional[GenerateFn] = None,
 ) -> None:
-    if session.busy_llm:
+    overflow = False
+    async with session.lock:
+        if session.busy_llm:
+            if len(session.pending_followups) >= MAX_PENDING_FOLLOWUPS:
+                session.pending_followups.popleft()
+                overflow = True
+            session.pending_followups.append(
+                {
+                    "answer_id": answer_id,
+                    "candidate_answer": candidate_answer,
+                    "from_presentation": from_presentation,
+                }
+            )
+            queued = True
+        else:
+            session.busy_llm = True
+            queued = False
+    if overflow:
+        await broadcast(
+            session,
+            events.copilot_error(
+                session.session_id,
+                "Suggestion backlog was full; the oldest pending follow-up was dropped.",
+            ),
+        )
+    if queued:
         return
-    session.busy_llm = True
     context = build_llm_context(
         session_id=session.session_id,
         project_context=session.project_context,
@@ -303,4 +341,16 @@ async def _run_followups(
     except Exception as exc:
         await broadcast(session, events.copilot_error(session.session_id, f"Suggestion generation failed: {exc}"))
     finally:
-        session.busy_llm = False
+        next_job = None
+        async with session.lock:
+            session.busy_llm = False
+            if session.pending_followups:
+                next_job = session.pending_followups.popleft()
+        if next_job:
+            await _run_followups(
+                session,
+                next_job["answer_id"],
+                candidate_answer=next_job["candidate_answer"],
+                from_presentation=bool(next_job.get("from_presentation")),
+                generate=generate,
+            )

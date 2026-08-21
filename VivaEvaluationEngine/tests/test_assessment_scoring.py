@@ -174,6 +174,31 @@ class ModeAndFusionTests(unittest.TestCase):
 
 
 class IncompleteRecordingTests(unittest.TestCase):
+    def test_face_required_even_when_audio_ok(self):
+        result = _sample_result(
+            video_status="insufficient_face_coverage",
+            coverage={
+                "frames_sampled": 8,
+                "frames_with_face": 0,
+                "face_coverage_ratio": 0.0,
+                "blinks_measured": False,
+                "scores_emitted": False,
+            },
+            engagement_summary={
+                "average_engagement_score": None,
+                "very_low_ratio": 0.0,
+                "low_ratio": 0.0,
+                "high_ratio": 0.0,
+                "very_high_ratio": 0.0,
+            },
+        )
+        assessment = build_assessment(result)
+        self.assertEqual(assessment["status"], STATUS_INCOMPLETE)
+        self.assertIn("video_insufficient", assessment["validation"]["reasons"])
+        self.assertIsNone(assessment["final_score"])
+        self.assertIsNone(assessment["ai_performance"]["score"])
+        self.assertIn("face", (assessment["validation"]["message"] or "").lower())
+
     def test_insufficient_video_and_audio(self):
         result = _sample_result(
             video_status="insufficient_face_coverage",

@@ -27,6 +27,7 @@ export function CopilotCamera({ streaming, onChunk, disabled = false }: CopilotC
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const loopRef = useRef(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
   const onChunkRef = useRef(onChunk);
   const [previewOn, setPreviewOn] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -38,6 +39,14 @@ export function CopilotCamera({ streaming, onChunk, disabled = false }: CopilotC
 
   const stopTracks = () => {
     loopRef.current = false;
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      try {
+        recorderRef.current.stop();
+      } catch {
+        // already stopped
+      }
+    }
+    recorderRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
@@ -124,6 +133,7 @@ export function CopilotCamera({ streaming, onChunk, disabled = false }: CopilotC
         }
       };
       recorder.start();
+      recorderRef.current = recorder;
       window.setTimeout(() => {
         if (recorder.state !== "inactive") recorder.stop();
       }, SLICE_MS);
@@ -133,6 +143,14 @@ export function CopilotCamera({ streaming, onChunk, disabled = false }: CopilotC
     return () => {
       cancelled = true;
       loopRef.current = false;
+      if (recorderRef.current && recorderRef.current.state !== "inactive") {
+        try {
+          recorderRef.current.stop();
+        } catch {
+          // already stopped
+        }
+      }
+      recorderRef.current = null;
     };
   }, [streaming, previewOn, disabled]);
 

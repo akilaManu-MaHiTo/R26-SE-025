@@ -22,6 +22,7 @@ from Gradex_AI_Server.app.viva_copilot.pipeline import (
     ingest_audio_chunk,
     should_refresh_presentation_suggestions,
     _finalize_utterance,
+    _run_followups,
 )
 from Gradex_AI_Server.app.viva_copilot.session_store import CopilotSession
 
@@ -277,6 +278,62 @@ class PipelineFlowTests(unittest.IsolatedAsyncioTestCase):
         await ingest_audio_chunk(session, b"abc" * 400, transcribe=transcribe_silence_sync)
         self.assertEqual(session.utterance_buffer, "")
         self.assertEqual(len(session.presentation_parts), 1)
+
+    async def test_busy_stt_queues_chunks_fifo(self):
+        session = CopilotSession(session_id="session_test")
+        session.phase = "presentation"
+        order: list[str] = []
+
+        def transcribe(data, filename="chunk.webm", content_type="audio/webm"):
+            order.append(data.decode())
+            return ""
+
+        session.stt_busy = True
+        await ingest_audio_chunk(session, b"one", transcribe=transcribe)
+        await ingest_audio_chunk(session, b"two", transcribe=transcribe)
+        self.assertEqual(len(session.pending_audio), 2)
+        session.stt_busy = False
+        await ingest_audio_chunk(session, b"three", transcribe=transcribe)
+        self.assertEqual(order, ["three", "one", "two"])
+        self.assertEqual(len(session.pending_audio), 0)
+
+    async def test_busy_llm_queues_followup(self):
+        session = CopilotSession(session_id="session_test")
+        session.phase = "viva"
+        session.current_question = "What is JWT?"
+        called: list[str] = []
+
+        def fake_generate(context, _asked):
+            called.append(context["candidateAnswer"]["text"])
+            return {
+                "analysis": {"topics": [], "concepts": [], "technologies": [], "claims": [], "gaps": []},
+                "main_points": [],
+                "suggestions": [
+                    {
+                        "question": "How do you expire tokens?",
+                        "reason": "Not covered.",
+                        "difficulty": "intermediate",
+                        "priority": "high",
+                    }
+                ],
+            }
+
+        session.busy_llm = True
+        await _finalize_utterance(
+            session,
+            "We use JWT authentication with NestJS for our API.",
+            generate=fake_generate,
+        )
+        self.assertEqual(called, [])
+        self.assertEqual(len(session.pending_followups), 1)
+        session.busy_llm = False
+        await _run_followups(
+            session,
+            "answer_flush",
+            candidate_answer="Flush queued follow-up from the first answer now.",
+            generate=fake_generate,
+        )
+        self.assertGreaterEqual(len(called), 2)
 
 
 if __name__ == "__main__":

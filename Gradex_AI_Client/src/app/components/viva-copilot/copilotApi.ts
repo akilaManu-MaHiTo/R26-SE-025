@@ -58,6 +58,14 @@ const backendBaseUrl =
   ((import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL) ??
   "http://localhost:8001";
 
+const apiKey =
+  ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env?.VITE_GRADEX_API_KEY) ??
+  "";
+
+function authHeaders(): Record<string, string> {
+  return apiKey ? { "X-API-Key": apiKey } : {};
+}
+
 export function normalizeAnalysis(value: unknown): CopilotAnalysis | null {
   if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
@@ -101,7 +109,9 @@ export function copilotHttpBase(): string {
 export function copilotWsUrl(sessionId: string): string {
   const http = copilotHttpBase();
   const ws = http.startsWith("https") ? http.replace(/^https/, "wss") : http.replace(/^http/, "ws");
-  return `${ws}/api/viva-copilot/ws/${sessionId}`;
+  const base = `${ws}/api/viva-copilot/ws/${sessionId}`;
+  if (!apiKey) return base;
+  return `${base}?api_key=${encodeURIComponent(apiKey)}`;
 }
 
 async function parseError(response: Response): Promise<string> {
@@ -123,6 +133,7 @@ async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
       headers: {
         Accept: "application/json",
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...authHeaders(),
         ...(init?.headers ?? {}),
       },
     });

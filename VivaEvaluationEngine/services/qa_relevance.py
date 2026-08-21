@@ -4,6 +4,7 @@ One Groq call per pair. Does not grade, mark, or judge technical correctness.
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import urllib.error
 import urllib.request
@@ -11,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from services.conversation import MAX_PAIRS, pair_question_answers
 from services.conversation_understanding import apply_conversation_understanding
-from services.llm_judge import _api_key, _extract_json_object, _model_name
+from services.llm_judge import _api_key, _extract_json_object, _model_candidates, _model_name
 
 
 RELEVANCE_VALUES = frozenset({"high", "medium", "low", "irrelevant"})
@@ -113,7 +114,7 @@ def _unavailable(reason: str) -> Dict[str, Any]:
     }
 
 
-def _call_groq_pair(question: str, answer: str, api_key: str, model: str) -> str:
+def _call_groq_pair_once(question: str, answer: str, api_key: str, model: str) -> str:
     user = (
         "Question:\n"
         f"{question.strip()}\n\n"
@@ -143,6 +144,28 @@ def _call_groq_pair(question: str, answer: str, api_key: str, model: str) -> str
     with urllib.request.urlopen(request, timeout=45) as response:
         raw = json.loads(response.read().decode("utf-8"))
     return str(raw["choices"][0]["message"]["content"])
+
+
+def _call_groq_pair(question: str, answer: str, api_key: str, model: str) -> str:
+    last_error: Optional[BaseException] = None
+    for candidate in _model_candidates(model):
+        try:
+            return _call_groq_pair_once(question, answer, api_key, candidate)
+        except urllib.error.HTTPError as exc:
+            last_error = exc
+            try:
+                body = exc.read().decode("utf-8", errors="replace")
+            except Exception:
+                body = str(exc.reason or exc)
+            lowered = body.lower()
+            if exc.code == 404 or (
+                exc.code == 400 and ("model" in lowered or "not exist" in lowered or "not found" in lowered)
+            ):
+                continue
+            raise
+    if last_error:
+        raise last_error
+    raise RuntimeError("Groq Q&A call failed")
 
 
 def analyze_pair(
@@ -204,10 +227,17 @@ def run_qa_analysis(result: Dict[str, Any], debug: bool = False, groq_call=_call
     model = _model_name()
     api_key = _api_key()
     analyzed: List[Dict[str, Any]] = []
-    for pair in pairs:
-        analyzed.append(
-            analyze_pair(pair, api_key=api_key, model=model, debug=debug, groq_call=groq_call)
-        )
+    if pairs:
+        workers = min(4, len(pairs))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            analyzed = list(
+                pool.map(
+                    lambda pair: analyze_pair(
+                        pair, api_key=api_key, model=model, debug=debug, groq_call=groq_call
+                    ),
+                    pairs,
+                )
+            )
 
     if not pairs:
         status = "empty"

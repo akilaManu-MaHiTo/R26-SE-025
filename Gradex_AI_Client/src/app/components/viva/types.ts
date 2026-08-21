@@ -28,21 +28,36 @@ export interface AudioEmotion {
   valence?: string;
   confidence?: number;
   source?: string;
+  backend?: string | null;
+  model?: string | null;
+  fallback_reason?: string | null;
+  requested_backend?: string;
   probabilities?: Record<string, number>;
+  interpretation?: string | null;
+  label_margin?: number | null;
+  taxonomy?: string;
+  domain_note?: string;
+  analyzed_duration_seconds?: number | null;
+  sample_rate?: number | null;
+  input_track?: string | null;
 }
 
 export interface AcousticFeatures {
   duration_seconds?: number;
   tempo_bpm?: number;
   rms_mean?: number;
+  rms_std?: number;
   pitch_mean_hz?: number;
   pitch_min_hz?: number;
   pitch_max_hz?: number;
   pitch_std_hz?: number;
+  pitch_measured?: boolean;
   jitter_local?: number | null;
   shimmer_local?: number | null;
   hnr_mean_db?: number | null;
   voice_quality_measured?: boolean;
+  mfcc_mean?: number[];
+  mfcc_std?: number[];
 }
 
 export interface TranscriptFeatures {
@@ -55,8 +70,11 @@ export interface TranscriptFeatures {
   speech_rate_band?: string | null;
   pause_count?: number;
   long_pause_count?: number;
-  long_pauses?: Array<{ start: number; end: number }>;
+  long_pauses?: Array<{ start: number; end: number; duration?: number }>;
+  total_pause_duration?: number;
+  max_pause_duration?: number;
   sentence_completion_ratio?: number | null;
+  fragmented_sentence_count?: number;
   pause_detection_granularity?: string;
   sentence_completion_is_heuristic?: boolean;
 }
@@ -223,6 +241,10 @@ export interface CoverageInfo {
   min_face_coverage_ratio?: number;
   blinks_measured?: boolean;
   blinks_per_minute?: number | null;
+  blink_count?: number | null;
+  blink_status?: string;
+  blink_reason?: string | null;
+  blink_note?: string | null;
   scores_emitted?: boolean;
   frames_rejected_quality?: number;
   frames_enhanced?: number;
@@ -235,7 +257,37 @@ export interface EngagementSummary {
   low_ratio?: number;
   high_ratio?: number;
   very_high_ratio?: number;
+  /** stage1_cnn_engagement (0–1). Official Stage-1 engagement family. */
   average_engagement_score?: number;
+}
+
+export interface EngagementMetrics {
+  stage1_cnn_engagement?: {
+    metric_id: "stage1_cnn_engagement";
+    value?: number | null;
+    scale?: string;
+    used_by?: string;
+    source?: string;
+    result_field?: string;
+  };
+  diagnostic_engagement?: {
+    metric_id: "diagnostic_engagement";
+    value?: number | null;
+    scale?: string;
+    used_by?: string;
+    source?: string;
+    result_field?: string;
+    not_official?: boolean;
+  };
+  feature_complete_engagement?: {
+    metric_id: "feature_complete_engagement";
+    value?: number | null;
+    scale?: string;
+    used_by?: string;
+    source?: string;
+    result_field?: string;
+    not_official?: boolean;
+  };
 }
 
 export interface EmotionSummary {
@@ -247,8 +299,10 @@ export interface EmotionSummary {
 export interface AnalysisResult {
   timeline: TimelineItem[];
   confidence_score: number | null;
+  /** diagnostic_engagement 0–100. Not official Stage-1. */
   engagement_score: number | null;
   engagement_summary?: EngagementSummary;
+  engagement_metrics?: EngagementMetrics;
   summary: EmotionSummary;
   coverage?: CoverageInfo;
   video_status?: string;
@@ -257,6 +311,22 @@ export interface AnalysisResult {
   qa_analysis?: QaAnalysis;
   assessment?: VivaAssessment;
   mark_id?: string;
+  persistence_error?: string;
+  video_features?: Record<string, unknown>;
+  feature_complete?: Record<string, unknown>;
+  scoring?: {
+    current_stage1?: {
+      ai_performance?: number | null;
+      final_score?: number | null;
+      status?: string;
+      scoring_version?: string;
+    };
+    feature_complete?: {
+      engagement?: number | null;
+      audio?: number | null;
+      transcript?: number | null;
+    };
+  };
 }
 
 export type AssessmentMode = "WITHOUT_TECHNICAL_ACCURACY" | "WITH_TECHNICAL_ACCURACY";

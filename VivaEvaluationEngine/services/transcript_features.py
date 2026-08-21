@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from config import PAUSE_LONG_SECONDS, PAUSE_SHORT_SECONDS, SPEECH_RATE_OPTIMAL_WPM
+
 
 HEDGE_PHRASES = [
     "i think",
@@ -27,9 +29,9 @@ HEDGE_PHRASES = [
 # Skip ambiguous "like" as filler for v1 (also a content word).
 FILLER_WORDS = ["um", "uh", "uhh", "umm", "hmm", "er", "erm"]
 
-_SPEECH_RATE_OPTIMAL = (120.0, 160.0)
-_PAUSE_SHORT_S = 0.5
-_PAUSE_LONG_S = 2.0
+_SPEECH_RATE_OPTIMAL = SPEECH_RATE_OPTIMAL_WPM
+_PAUSE_SHORT_S = PAUSE_SHORT_SECONDS
+_PAUSE_LONG_S = PAUSE_LONG_SECONDS
 
 
 def _normalize_text(text: str) -> str:
@@ -128,7 +130,7 @@ def _find_filler_hits(
 def _pause_stats(
     timed_words: Sequence[Dict[str, Any]],
     segments: Sequence[Dict[str, Any]],
-) -> Tuple[str, int, int, List[Dict[str, float]]]:
+) -> Dict[str, Any]:
     gaps: List[Tuple[float, float, float]] = []
     granularity = "none"
 
@@ -159,13 +161,20 @@ def _pause_stats(
                 if gap > 0:
                     gaps.append((gap, start, end))
 
-    pause_count = sum(1 for gap, _s, _e in gaps if gap > _PAUSE_SHORT_S)
+    qualifying = [gap for gap, _s, _e in gaps if gap > _PAUSE_SHORT_S]
     long_pauses = [
-        {"start": round(start, 2), "end": round(end, 2)}
+        {"start": round(start, 2), "end": round(end, 2), "duration": round(gap, 2)}
         for gap, start, end in gaps
         if gap > _PAUSE_LONG_S
     ]
-    return granularity, pause_count, len(long_pauses), long_pauses
+    return {
+        "granularity": granularity,
+        "pause_count": len(qualifying),
+        "long_pause_count": len(long_pauses),
+        "long_pauses": long_pauses[:30],
+        "total_pause_duration": round(sum(qualifying), 2) if qualifying else 0.0,
+        "max_pause_duration": round(max(qualifying), 2) if qualifying else 0.0,
+    }
 
 
 def _sentence_completion_ratio(transcript: str) -> Optional[float]:
@@ -181,15 +190,54 @@ def _sentence_completion_ratio(transcript: str) -> Optional[float]:
     return round(completed / len(parts), 4) if parts else None
 
 
-def _speech_rate_band(wpm: Optional[float]) -> Optional[str]:
+def _fragmented_sentence_count(transcript: str) -> int:
+    text = (transcript or "").strip()
+    if not text:
+        return 0
+    parts = [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
+    if not parts:
+        return 0
+    fragmented = 0
+    for part in parts:
+        if part.endswith((".", "!", "?")):
+            continue
+        fragmented += 1
+    return fragmented
+
+
+def _speech_rate_band(wpm: Optional[float], word_count: int) -> Optional[str]:
+    if word_count <= 0:
+        return "unknown"
     if wpm is None:
-        return None
+        return "unknown"
     low, high = _SPEECH_RATE_OPTIMAL
     if wpm < low:
         return "too_slow"
     if wpm > high:
         return "too_fast"
     return "optimal"
+
+
+def _response_structure(transcript: str, word_count: int) -> Dict[str, Any]:
+    """Diagnostic only. Documented PRD item; no validated scoring schema."""
+    text = (transcript or "").strip()
+    if word_count <= 0 or not text:
+        return {
+            "status": "unavailable",
+            "scored": False,
+            "reason": "no_student_transcript",
+            "sentence_count": 0,
+            "word_count": word_count,
+        }
+    parts = [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
+    return {
+        "status": "diagnostic_only",
+        "scored": False,
+        "reason": "no_validated_schema",
+        "sentence_count": len(parts) if parts else 1,
+        "word_count": word_count,
+        "has_terminal_punctuation": text.endswith((".", "!", "?")),
+    }
 
 
 def extract_transcript_features(
@@ -208,9 +256,11 @@ def extract_transcript_features(
     tokens = _word_tokens(transcript_text)
     word_count = len(tokens)
     duration = float(duration_seconds) if duration_seconds and duration_seconds > 0 else None
-    speech_rate_wpm = round(word_count / (duration / 60.0), 2) if duration else None
+    speech_rate_wpm = None
+    if duration and word_count > 0:
+        speech_rate_wpm = round(word_count / (duration / 60.0), 2)
 
-    granularity, pause_count, long_pause_count, long_pauses = _pause_stats(timed_words, segments)
+    pauses = _pause_stats(timed_words, segments)
 
     return {
         "hedge_count": len(hedge_hits),
@@ -219,11 +269,15 @@ def extract_transcript_features(
         "filler_words": filler_hits[:50],
         "word_count": word_count,
         "speech_rate_wpm": speech_rate_wpm,
-        "speech_rate_band": _speech_rate_band(speech_rate_wpm),
-        "pause_count": pause_count,
-        "long_pause_count": long_pause_count,
-        "long_pauses": long_pauses[:30],
+        "speech_rate_band": _speech_rate_band(speech_rate_wpm, word_count),
+        "pause_count": pauses["pause_count"],
+        "long_pause_count": pauses["long_pause_count"],
+        "long_pauses": pauses["long_pauses"],
+        "total_pause_duration": pauses["total_pause_duration"],
+        "max_pause_duration": pauses["max_pause_duration"],
         "sentence_completion_ratio": _sentence_completion_ratio(transcript_text),
-        "pause_detection_granularity": granularity,
+        "fragmented_sentence_count": _fragmented_sentence_count(transcript_text),
+        "pause_detection_granularity": pauses["granularity"],
         "sentence_completion_is_heuristic": True,
+        "response_structure": _response_structure(transcript_text, word_count),
     }

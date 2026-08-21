@@ -92,6 +92,12 @@ def compute_engagement_score(
     gaze_signals: List[Dict | None],
     blinks_per_minute: Optional[float],
 ) -> float:
+    """UI/diagnostic engagement 0–100.
+
+    This is diagnostic_engagement (result.engagement_score). It is NOT
+    stage1_cnn_engagement and NOT feature_complete_engagement. Official /100
+    uses average_engagement_score only.
+    """
     total = len(timeline)
     if total == 0:
         return 0.0
@@ -115,7 +121,13 @@ def compute_engagement_score(
     valid_gaze = [g for g in gaze_signals if g is not None]
     if valid_gaze:
         gaze_score = sum(1 for g in valid_gaze if g.get("gaze_ok")) / len(valid_gaze)
-        yaw_values = [float(g["yaw"]) for g in valid_gaze if g.get("yaw") is not None]
+        yaw_values = []
+        for g in valid_gaze:
+            proxy = g.get("yaw_proxy")
+            if proxy is None:
+                proxy = g.get("yaw")
+            if proxy is not None:
+                yaw_values.append(float(proxy))
         if yaw_values:
             head_stability = 1.0 - min(1.0, float(np.std(yaw_values)) * 10.0)
         else:

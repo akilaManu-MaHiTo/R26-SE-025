@@ -19,7 +19,7 @@ from services.conversation import (
     full_transcript_text,
     pair_question_answers,
 )
-from services.llm_judge import _api_key, _extract_json_object, _model_name
+from services.llm_judge import _api_key, _extract_json_object, _model_candidates, _model_name
 
 
 SEGMENT_TYPES = frozenset(
@@ -471,35 +471,53 @@ def _refresh_counts(conversation: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _call_groq_structure(transcript: str, api_key: str, model: str) -> str:
-    body = {
-        "model": model,
-        "temperature": 0.1,
-        "response_format": {"type": "json_object"},
-        "messages": [
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    "Classify this viva transcript. Use only the given turn IDs.\n\n"
-                    + transcript
-                ),
+    last_error: Optional[BaseException] = None
+    for candidate in _model_candidates(model):
+        body = {
+            "model": candidate,
+            "temperature": 0.1,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": (
+                        "Classify this viva transcript. Use only the given turn IDs.\n\n"
+                        + transcript
+                    ),
+                },
+            ],
+        }
+        request = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=json.dumps(body).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "GradexVivaEvaluationEngine/1.0",
             },
-        ],
-    }
-    request = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": "GradexVivaEvaluationEngine/1.0",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=90) as response:
-        raw = json.loads(response.read().decode("utf-8"))
-    return str(raw["choices"][0]["message"]["content"])
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=90) as response:
+                raw = json.loads(response.read().decode("utf-8"))
+            return str(raw["choices"][0]["message"]["content"])
+        except urllib.error.HTTPError as exc:
+            last_error = exc
+            try:
+                err_body = exc.read().decode("utf-8", errors="replace")
+            except Exception:
+                err_body = str(exc.reason or exc)
+            lowered = err_body.lower()
+            if exc.code == 404 or (
+                exc.code == 400 and ("model" in lowered or "not exist" in lowered or "not found" in lowered)
+            ):
+                continue
+            raise
+    if last_error:
+        raise last_error
+    raise RuntimeError("Groq structure call failed")
 
 
 def _analyze_chunk(

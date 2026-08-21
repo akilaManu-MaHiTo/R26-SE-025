@@ -61,6 +61,72 @@ HEURISTIC_EMOTION_CONFIDENCE_CAP: float = 0.4
 MIN_FACE_FRAMES: int = 3
 MIN_FACE_COVERAGE_RATIO: float = 0.15
 
+# --- Feature-complete baseline (does not replace Stage-1 /100) ---
+# Iris offset sum below this → gaze_on_camera. Used only from GazeHeadAnalyser.
+GAZE_ON_CAMERA_THRESHOLD: float = 0.04
+GAZE_DIRECTION_DEADZONE: float = 0.015
+
+# Landmark-proxy head-pose std scales for 1/(1+(std/S)^2) → [0,1].
+# These are FaceMesh normalized distances, not Euler-angle degrees.
+HEAD_POSE_YAW_STD_SCALE: float = 0.04
+HEAD_POSE_PITCH_STD_SCALE: float = 0.04
+HEAD_POSE_ROLL_STD_SCALE: float = 0.03
+
+# EAR blink sampler. Rate above this is flagged (neutral wording only).
+# 0.25 is the classic Soukupova pixel-EAR open/close split. MediaPipe 6-point
+# EAR on viva webcams sits lower (open-eye median ≈ 0.22, blink troughs ≈ 0.03
+# on only boy talking.mp4). 0.15 is below that open-eye mass and above troughs.
+BLINK_EAR_THRESHOLD: float = 0.15
+# Closed if EAR < max(absolute, relative * session-median). High-EAR cameras
+# (open median ≈ 0.55) never stay below 0.15 for two samples; relative catch
+# is required. Isolated deep troughs still count (10 fps misses ~100 ms blinks).
+BLINK_RELATIVE_CLOSE_RATIO: float = 0.55
+BLINK_ISOLATED_MIN_DROP: float = 0.04
+BLINK_MIN_CONSECUTIVE: int = 2
+BLINK_SAMPLE_FPS: int = 10
+BLINK_MIN_VALID_EYE_FRAMES: int = 8
+BLINK_MIN_DURATION_SECONDS: float = 3.0
+BLINK_ELEVATED_PER_MINUTE: float = 25.0
+BLINK_PENALTY_PER_BPM_OVER: float = 0.01
+
+# Facial-guide engagement mix. Missing components are omitted and renormalized.
+ENGAGEMENT_FEATURE_WEIGHTS = {
+    "emotion": 0.30,
+    "gaze": 0.30,
+    "head": 0.20,
+    "blink": 0.10,
+    "temporal": 0.10,
+}
+
+# Engagement contribution of facial emotion labels (not psychological diagnosis).
+EMOTION_ENGAGEMENT_MAP = {
+    "neutral": 1.0,
+    "happy": 0.9,
+    "surprise": 0.6,
+    "sad": 0.3,
+    "fear": 0.2,
+    "angry": 0.2,
+    "disgust": 0.1,
+    "contempt": 0.2,
+}
+
+SPEECH_RATE_OPTIMAL_WPM = (120.0, 160.0)
+PAUSE_SHORT_SECONDS: float = 0.5
+PAUSE_LONG_SECONDS: float = 2.0
+
+# Diagnostic transcript evidence only — does not change Stage-1 or FC scores.
+# <8 words cannot populate hedge/filler scales (8 / 12). <40 words or <15s
+# is shorter than a few sentences at 120–160 WPM, so pause/hedge zeros are
+# weak evidence rather than "perfect delivery".
+TRANSCRIPT_COVERAGE_INSUFFICIENT_WORDS: int = 8
+TRANSCRIPT_COVERAGE_LIMITED_WORDS: int = 40
+TRANSCRIPT_COVERAGE_LIMITED_SECONDS: float = 15.0
+
+# Pitch stability: 1 - clamp(std_hz / this). Same bound as Stage-1 audio family.
+PITCH_STD_SCALE_HZ: float = 120.0
+
+TEMPORAL_ENGAGEMENT_CHECKPOINT: str = "models/temporal_engagement.pt"
+
 # Face-crop quality: enhance webcam frames, then warn (do not skip) if still
 # dark/blurry. Skip only empty or tiny crops — a single-student camera has no
 # other face to fall back on. No generative deblur (GFPGAN/CodeFormer).
@@ -114,7 +180,7 @@ class AppConfig:
     output_path: str = "outputs/results.json"
     target_fps: int = 1
     min_face_confidence: float = 0.5
-    gaze_threshold: float = 0.04
+    gaze_threshold: float = GAZE_ON_CAMERA_THRESHOLD
     emotion_model_path: str = "models/hsemotion_improved.pt"
     engagement_model_path: str = "models/engagement_cnn.pt"
     positive_emotions: Set[str] = field(default_factory=lambda: set(POSITIVE_EMOTIONS))

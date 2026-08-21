@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import librosa
 import numpy as np
@@ -77,17 +77,39 @@ def extract_acoustic_features(audio_path: str) -> Dict[str, Any]:
 
     pitch = _safe_pitch_stats(y, sr)
     voice_quality = _safe_voice_quality(audio_path)
+    rms_mean = float(np.mean(rms)) if rms.size else 0.0
+    rms_std = float(np.std(rms)) if rms.size else 0.0
+
+    mfcc_mean: Optional[List[float]] = None
+    mfcc_std: Optional[List[float]] = None
+    try:
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+        if mfcc.size:
+            mfcc_mean = [round(float(v), 4) for v in np.mean(mfcc, axis=1)]
+            mfcc_std = [round(float(v), 4) for v in np.std(mfcc, axis=1)]
+    except Exception:
+        mfcc_mean = None
+        mfcc_std = None
+
+    pitch_measured = bool(pitch["pitch_mean"] > 0 or pitch["pitch_std"] > 0)
 
     return {
         "duration_seconds": float(duration),
         "tempo": max(0.0, tempo_value),
-        "rms_mean": float(np.mean(rms)) if rms.size else 0.0,
+        "rms_mean": rms_mean,
+        "rms_std": rms_std,
         "pitch_mean": pitch["pitch_mean"],
         "pitch_min": pitch["pitch_min"],
         "pitch_max": pitch["pitch_max"],
         "pitch_std": pitch["pitch_std"],
+        "pitch_measured": pitch_measured,
         "jitter_local": voice_quality["jitter_local"],
         "shimmer_local": voice_quality["shimmer_local"],
         "hnr_mean": voice_quality["hnr_mean"],
         "voice_quality_measured": bool(voice_quality.get("voice_quality_measured")),
+        "mfcc_mean": mfcc_mean,
+        "mfcc_std": mfcc_std,
+        "mfcc_n_coefficients": 13 if mfcc_mean is not None else None,
+        "mfcc_sample_rate": SR if mfcc_mean is not None else None,
+        "mfcc_role": "feature_representation",
     }

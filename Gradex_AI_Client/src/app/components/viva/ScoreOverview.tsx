@@ -1,5 +1,6 @@
-import { Gauge, Activity, AudioLines } from "lucide-react";
+import { Award, ScanFace, AudioLines } from "lucide-react";
 import { Card } from "../ui/card";
+import { VivaAssessment } from "./types";
 
 interface ScoreCardProps {
   icon: React.ReactNode;
@@ -34,74 +35,88 @@ function ScoreCard({ icon, label, value, unit, hint, tone }: ScoreCardProps) {
 }
 
 interface ScoreOverviewProps {
-  confidenceScore: number | null;
-  engagementScore: number | null;
-  audioGrade?: number | null;
+  assessment?: VivaAssessment;
   videoStatus?: string;
   faceCoverageRatio?: number;
   framesRejectedQuality?: number;
   framesEnhanced?: number;
   framesQualityWarning?: number;
+  confidenceScore?: number | null;
+  engagementScore?: number | null;
+  audioGrade?: number | null;
 }
 
 export function ScoreOverview({
-  confidenceScore,
-  engagementScore,
-  audioGrade,
+  assessment,
   videoStatus,
   faceCoverageRatio,
   framesRejectedQuality,
   framesEnhanced,
   framesQualityWarning,
+  confidenceScore,
+  engagementScore,
+  audioGrade,
 }: ScoreOverviewProps) {
+  const incomplete = assessment?.status === "INCOMPLETE";
+  const official = assessment?.final_score ?? assessment?.ai_performance?.score ?? null;
+  const grade = assessment?.grade ?? null;
   const coveragePct =
-    faceCoverageRatio != null ? `${Math.round(faceCoverageRatio * 100)}% face coverage` : "Facial affect positivity";
+    faceCoverageRatio != null ? `${Math.round(faceCoverageRatio * 100)}%` : "—";
   const notes: string[] = [];
   if (framesEnhanced && framesEnhanced > 0) {
-    notes.push(`${framesEnhanced} frame${framesEnhanced === 1 ? "" : "s"} enhanced`);
+    notes.push(`${framesEnhanced} enhanced`);
   }
   if (framesQualityWarning && framesQualityWarning > 0) {
     notes.push(`${framesQualityWarning} still soft/dark`);
   }
   if (framesRejectedQuality && framesRejectedQuality > 0) {
-    notes.push(`${framesRejectedQuality} too small to score`);
+    notes.push(`${framesRejectedQuality} too small`);
   }
   const extra = notes.length ? ` · ${notes.join(" · ")}` : "";
-  const confidenceHint =
-    videoStatus === "insufficient_face_coverage"
-      ? "Withheld — face coverage too low"
-      : `${coveragePct}${extra}`;
+  const faceHint =
+    videoStatus === "insufficient_face_coverage" || incomplete
+      ? "Required — no official mark without a visible face"
+      : `Face on camera${extra}`;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <ScoreCard
-        icon={<Gauge className="size-4" />}
-        label="Facial Positivity"
-        value={confidenceScore != null ? confidenceScore.toFixed(1) : "—"}
-        unit="/ 100"
-        hint={confidenceHint}
-        tone="violet"
-      />
-      <ScoreCard
-        icon={<Activity className="size-4" />}
-        label="Engagement"
-        value={engagementScore != null ? engagementScore.toFixed(1) : "—"}
-        unit={engagementScore != null ? "%" : ""}
-        hint={
-          videoStatus === "insufficient_face_coverage"
-            ? "Withheld — face coverage too low"
-            : "Overall engagement"
-        }
-        tone="emerald"
-      />
-      <ScoreCard
-        icon={<AudioLines className="size-4" />}
-        label="Audio Quality"
-        value={audioGrade != null ? audioGrade.toFixed(2) : "—"}
-        unit="/ 10"
-        hint="Voice analysis"
-        tone="amber"
-      />
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <ScoreCard
+          icon={<Award className="size-4" />}
+          label="Official mark"
+          value={official != null ? official.toFixed(1) : "—"}
+          unit="/ 100"
+          hint={
+            incomplete
+              ? assessment?.validation?.message || "Incomplete — face required"
+              : "Stage-1 engine score (not LLM rubric cards)"
+          }
+          tone="violet"
+        />
+        <ScoreCard
+          icon={<ScanFace className="size-4" />}
+          label="Face coverage"
+          value={coveragePct}
+          unit={faceCoverageRatio != null ? "" : ""}
+          hint={faceHint}
+          tone="emerald"
+        />
+        <ScoreCard
+          icon={<AudioLines className="size-4" />}
+          label="Grade"
+          value={grade ?? "—"}
+          unit=""
+          hint={incomplete ? "Withheld until a face is on camera" : "From the official mark"}
+          tone="amber"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Supporting signals (not the official mark): facial positivity{" "}
+        {confidenceScore != null ? confidenceScore.toFixed(1) : "—"}/100 · engagement blend{" "}
+        {engagementScore != null ? engagementScore.toFixed(1) : "—"}
+        {engagementScore != null ? "%" : ""} · audio quality{" "}
+        {audioGrade != null ? audioGrade.toFixed(2) : "—"}/10
+      </p>
     </div>
   );
 }

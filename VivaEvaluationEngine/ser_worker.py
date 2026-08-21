@@ -35,7 +35,14 @@ def main() -> int:
     raw = classifier({"raw": y, "sampling_rate": int(sr)})
     if isinstance(raw, dict):
         raw = [raw]
-    print(json.dumps(raw))
+    print(json.dumps({
+        "scores": raw,
+        "model_id": model_id,
+        "sample_rate": int(sr),
+        "analyzed_duration_seconds": round(float(len(y) / sr), 3) if sr else 0.0,
+        "max_seconds_cap": max_seconds,
+        "channels": 1,
+    }))
     return 0
 
 

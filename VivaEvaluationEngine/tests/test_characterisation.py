@@ -66,12 +66,81 @@ class SerNormalizationTests(unittest.TestCase):
                 wf.writeframes(frames)
             result = extract_speech_emotion(path)
             self.assertEqual(result["source"], "heuristic")
+            self.assertIsNone(result.get("backend"))
+            self.assertIsNone(result.get("model"))
+            self.assertEqual(result["fallback_reason"], "backend_forced_heuristic")
             os.unlink(path)
         finally:
             if prev is None:
                 os.environ.pop("VIVA_SER_BACKEND", None)
             else:
                 os.environ["VIVA_SER_BACKEND"] = prev
+
+    def test_pack_audio_emotion_keeps_real_model_provenance(self):
+        from services.viva_analysis import _pack_audio_payload
+
+        packed = _pack_audio_payload(
+            status="success",
+            transcript_text="hello",
+            excerpt="hello",
+            word_count=1,
+            segment_count=1,
+            audio_grade=5.0,
+            pitch_level="mid",
+            pitch_mean=180.0,
+            pitch_min=160.0,
+            pitch_max=200.0,
+            pitch_std=12.0,
+            emotion_features={
+                "predicted_emotion": "neutral",
+                "confidence": 0.88,
+                "source": "model",
+                "backend": "huggingface",
+                "model": "superb/wav2vec2-base-superb-er",
+                "emotion_probabilities": {"neutral": 0.88},
+            },
+            acoustic_features={"duration_seconds": 2.0, "rms_mean": 0.04},
+            grade_breakdown={},
+            degraded_reasons=[],
+        )
+        emotion = packed["audio_emotion"]
+        self.assertEqual(emotion["source"], "model")
+        self.assertEqual(emotion["backend"], "huggingface")
+        self.assertEqual(emotion["model"], "superb/wav2vec2-base-superb-er")
+        self.assertIsNone(emotion["fallback_reason"])
+
+    def test_pack_heuristic_strips_model_identity(self):
+        from services.viva_analysis import _pack_audio_payload
+
+        packed = _pack_audio_payload(
+            status="degraded",
+            transcript_text="",
+            excerpt="",
+            word_count=0,
+            segment_count=0,
+            audio_grade=None,
+            pitch_level="unknown",
+            pitch_mean=0.0,
+            pitch_min=0.0,
+            pitch_max=0.0,
+            pitch_std=0.0,
+            emotion_features={
+                "predicted_emotion": "neutral",
+                "confidence": 0.3,
+                "source": "heuristic",
+                "backend": "huggingface",
+                "model": "should-not-appear",
+                "fallback_reason": "RuntimeError: worker failed",
+            },
+            acoustic_features={},
+            grade_breakdown={},
+            degraded_reasons=["emotion_heuristic"],
+        )
+        emotion = packed["audio_emotion"]
+        self.assertEqual(emotion["source"], "heuristic")
+        self.assertIsNone(emotion["backend"])
+        self.assertIsNone(emotion["model"])
+        self.assertEqual(emotion["fallback_reason"], "RuntimeError: worker failed")
 
 
 class TaxonomyTests(unittest.TestCase):
@@ -271,6 +340,42 @@ class LlmJudgeTests(unittest.TestCase):
             llm_judge._api_key = original
         self.assertEqual(evaluation["status"], "fallback")
         self.assertEqual(evaluation["source"], "formula_fallback")
+
+    def test_groq_404_tries_next_live_model(self):
+        import io
+        import json
+        import urllib.error
+        import services.llm_judge as llm_judge
+
+        calls: list[str] = []
+
+        def fake_once(_payload, _api_key, model):
+            calls.append(model)
+            if model == "dead-model-xyz":
+                raise urllib.error.HTTPError(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    404,
+                    "Not Found",
+                    {},
+                    io.BytesIO(b'{"error":{"message":"The model does not exist"}}'),
+                )
+            return json.dumps(
+                {
+                    "communication_clarity": {"score": 7, "justification": "ok"},
+                    "confidence": {"score": 7, "justification": "ok"},
+                    "engagement": {"score": 7, "justification": "ok"},
+                }
+            )
+
+        original = llm_judge._call_groq_chat_once
+        llm_judge._call_groq_chat_once = fake_once
+        try:
+            content = llm_judge._call_groq_chat({}, "fake-key", "dead-model-xyz")
+        finally:
+            llm_judge._call_groq_chat_once = original
+        self.assertEqual(calls[0], "dead-model-xyz")
+        self.assertIn("openai/gpt-oss-20b", calls)
+        self.assertIn("communication_clarity", content)
 
 
 if __name__ == "__main__":
