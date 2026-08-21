@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 from statistics import mean, pstdev
-import math
 
 import joblib
 from sklearn.linear_model import LogisticRegression
@@ -53,36 +52,6 @@ def _safe_mean(values):
 
 def _safe_std(values):
     return pstdev(values) if len(values) > 1 else 0.0
-
-
-def _sigmoid(x: float) -> float:
-    return 1.0 / (1.0 + math.exp(-x))
-
-
-def compute_weak_score(row: dict) -> float:
-    """Compute deterministic weak score from topic feature row.
-
-    weak_score =
-      (1 - avg_learning_score) * 0.4 +
-      (1 - avg_performance_score) * 0.3 +
-      (1 - avg_cognitive_score) * 0.2 +
-      score_variance * 0.1
-
-    Then apply sigmoid to normalize to [0, 1].
-    """
-    learning = row.get("average_learning_score", 0.0)
-    performance = row.get("average_performance_score", 0.0)
-    cognitive = row.get("average_cognitive_score", 0.0)
-    stddev = row.get("score_stddev", 0.0)
-    variance = stddev ** 2
-
-    weak_score = (
-        (1.0 - learning) * 0.4 +
-        (1.0 - performance) * 0.3 +
-        (1.0 - cognitive) * 0.2 +
-        variance * 0.1
-    )
-    return _sigmoid(weak_score)
 
 
 def build_topic_feature_rows(results, weak_threshold=0.5, minimum_students=2, minimum_below_share=0.4):
@@ -141,7 +110,7 @@ def build_topic_feature_rows(results, weak_threshold=0.5, minimum_students=2, mi
         attempts = len(learning_scores)
         average_learning_score = _safe_mean(learning_scores)
 
-        row = {
+        rows.append({
             "topic": topic,
             "average_learning_score": round(average_learning_score, 3),
             "average_performance_score": round(_safe_mean(performance_scores), 3),
@@ -154,9 +123,7 @@ def build_topic_feature_rows(results, weak_threshold=0.5, minimum_students=2, mi
             "weak_student_share": round(weak_share, 3),
             "average_level_gap": round(_safe_mean(level_gaps), 3),
             "label": int(students_attempted >= minimum_students and weak_share >= minimum_below_share),
-        }
-        row["weak_score"] = round(compute_weak_score(row), 3)
-        rows.append(row)
+        })
 
     return rows
 
@@ -206,33 +173,7 @@ class WeakTopicModel:
         self.pipeline.fit(self._matrix(rows), labels)
         return self
 
-    def predict(self, rows, use_deterministic=True):
-        if use_deterministic:
-            predictions = []
-            for row in rows:
-                weak_probability = row.get("weak_score", compute_weak_score(row))
-                predictions.append({
-                    "topic": row["topic"],
-                    "average_learning_score": row["average_learning_score"],
-                    "average_performance_score": row["average_performance_score"],
-                    "average_concept_score": row["average_concept_score"],
-                    "average_cognitive_score": row["average_cognitive_score"],
-                    "score_stddev": row["score_stddev"],
-                    "weak_student_count": row["weak_student_count"],
-                    "students_attempted": row["students_attempted"],
-                    "attempts": row["attempts"],
-                    "weak_student_share": row["weak_student_share"],
-                    "average_level_gap": row["average_level_gap"],
-                    "weak_probability": round(weak_probability, 3),
-                    "status": "WEAK" if weak_probability >= self.weak_probability_threshold else "REVIEW",
-                })
-
-            return sorted(
-                predictions,
-                key=lambda item: (item["weak_probability"], item["weak_student_share"], -item["average_learning_score"]),
-                reverse=True,
-            )
-
+    def predict(self, rows):
         if not self.pipeline:
             raise ValueError("Weak topic model is not trained or loaded")
 

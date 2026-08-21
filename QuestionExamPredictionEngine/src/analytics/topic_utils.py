@@ -11,7 +11,7 @@ import json
 
 
 def _load_canonical_topics():
-    project_root = Path(__file__).resolve().parents[2]
+    project_root = Path(__file__).resolve().parents[3]
     topics_path = project_root / "data" / "topics.json"
     try:
         with topics_path.open("r", encoding="utf-8") as f:

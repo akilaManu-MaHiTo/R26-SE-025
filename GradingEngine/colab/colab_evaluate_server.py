@@ -44,11 +44,109 @@ def _coerce_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def _extract_balanced_json_object(text: str, start_idx: int) -> str | None:
+    if start_idx < 0 or start_idx >= len(text) or text[start_idx] != "{":
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start_idx, len(text)):
+        ch = text[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start_idx : i + 1]
+    return None
+
+
+def grade_dict_from_model_text(text: str) -> dict | None:
+    """
+    Pull a grading object out of fine-tuned model markdown, e.g.:
+      ### Grade & Feedback: {"total_score": 10, "justification": "..."}
+    """
+    raw = strip_markdown_json_fence(text or "")
+    if not raw.strip():
+        return None
+
+    marker = re.search(r"(?:###\s*)?Grade\s*&\s*Feedback\s*:\s*", raw, flags=re.IGNORECASE)
+    if marker:
+        brace = raw.find("{", marker.end())
+        blob = _extract_balanced_json_object(raw, brace) if brace >= 0 else None
+        if blob:
+            try:
+                parsed = json.loads(blob)
+                if isinstance(parsed, dict):
+                    if not parsed.get("feedback"):
+                        expl = re.search(
+                            r"###\s*Explanation\s*:\s*(.+?)(?:\n###|\Z)",
+                            raw,
+                            flags=re.IGNORECASE | re.DOTALL,
+                        )
+                        if expl:
+                            parsed["feedback"] = expl.group(1).strip()
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            # Wrapper from older Colab cells
+            if "evaluation_output" in parsed and not any(
+                parsed.get(k) is not None for k in ("total_score", "score", "marks")
+            ):
+                nested = grade_dict_from_model_text(str(parsed.get("evaluation_output") or ""))
+                if nested:
+                    return nested
+            return parsed
+        if isinstance(parsed, str):
+            return grade_dict_from_model_text(parsed)
+    except json.JSONDecodeError:
+        pass
+
+    for match in re.finditer(r"\{", raw):
+        blob = _extract_balanced_json_object(raw, match.start())
+        if not blob:
+            continue
+        try:
+            parsed = json.loads(blob)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict) and (
+            "total_score" in parsed
+            or "score" in parsed
+            or "marks" in parsed
+            or isinstance(parsed.get("results"), list)
+        ):
+            return parsed
+    return None
+
+
 def sanitize_grading_response(data: dict) -> dict:
     """
     Build a clean JSON-serializable grading payload.
     Keeps feedback as plain text (never nested JSON objects).
+    Always returns top-level total_score (what GradingEngine expects).
     """
+    if "evaluation_output" in data and not any(
+        data.get(k) is not None for k in ("total_score", "score", "marks")
+    ):
+        extracted = grade_dict_from_model_text(str(data.get("evaluation_output") or ""))
+        if extracted:
+            data = extracted
+
     feedback = data.get("feedback", "")
     if isinstance(feedback, (dict, list)):
         feedback = json.dumps(feedback, ensure_ascii=False)
@@ -62,7 +160,9 @@ def sanitize_grading_response(data: dict) -> dict:
         justification = str(justification or "")
 
     max_score = _coerce_float(data.get("max_score"))
-    total_score = _coerce_float(data.get("total_score"))
+    total_score = _coerce_float(
+        data.get("total_score", data.get("score", data.get("marks")))
+    )
 
     results = data.get("results")
     if isinstance(results, list) and results:
@@ -73,13 +173,15 @@ def sanitize_grading_response(data: dict) -> dict:
         if recomputed > 0:
             total_score = round(recomputed, 4)
 
-    return {
+    out = {
         "max_score": max_score,
         "total_score": total_score,
         "justification": justification.strip(),
         "feedback": feedback.strip(),
-        **({"results": results} if isinstance(results, list) else {}),
     }
+    if isinstance(results, list):
+        out["results"] = results
+    return out
 
 
 def parse_model_json(raw_output: str) -> dict:
@@ -87,6 +189,10 @@ def parse_model_json(raw_output: str) -> dict:
     text = strip_markdown_json_fence(raw_output)
     if not text:
         raise ValueError("Model returned empty output.")
+
+    extracted = grade_dict_from_model_text(text)
+    if extracted is not None:
+        return sanitize_grading_response(extracted)
 
     parsed = json.loads(text)
     if isinstance(parsed, str):
@@ -172,9 +278,13 @@ def mock_grade_with_model(payload: dict) -> str:
 def grade_with_model(payload: dict) -> str:
     """
     Replace this with your fine-tuned model / RAG pipeline in Colab.
-    Must return a JSON string (or text containing a JSON object).
 
-    Expected request keys: topic, rubric, snippet, answer
+    IMPORTANT: return either:
+      - a JSON string with total_score / justification / feedback (preferred), OR
+      - the model's markdown text containing `### Grade & Feedback: {...}`
+
+    This server will unwrap markdown and ALWAYS respond with clean grading JSON
+    (never {"status","evaluation_output"}).
     """
     if COLAB_USE_MOCK:
         return mock_grade_with_model(payload)

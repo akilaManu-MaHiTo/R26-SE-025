@@ -51,7 +51,7 @@ def test_analyze_trends():
     answers_path = PROJECT_ROOT / "data" / "answers" / "student_answers2021.json"
     
     if not answers_path.exists():
-        print(f"[WARN] {answers_path} not found, skipping trend analysis test")
+        print(f"⚠ {answers_path} not found, skipping trend analysis test")
         return
     
     with answers_path.open() as f:
@@ -85,16 +85,16 @@ def test_analyze_trends():
 
 
 def main():
-    print("[RUN] Testing topic matching and trend analysis...\n")
+    print("🚀 Testing predict_topics and analyze_trends implementations...\n")
     
     try:
         test_predict_topics()
         test_analyze_trends()
         print("\n" + "="*60)
-        print("[PASS] All tests completed successfully!")
+        print("✅ All tests completed successfully!")
         print("="*60 + "\n")
     except Exception as e:
-        print(f"\n[ERROR] {e}")
+        print(f"\n❌ Error: {e}")
         import traceback
         traceback.print_exc()
         return 1

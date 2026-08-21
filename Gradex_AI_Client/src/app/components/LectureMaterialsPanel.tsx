@@ -87,7 +87,7 @@ export async function fetchCourses(apiBaseUrl: string): Promise<CourseItem[]> {
 export function formatCourseLabel(course: CourseItem): string {
   const name = (course.name || "").trim();
   if (!name || name === course.code) return course.code;
-  return `${course.code} — ${name}`;
+  return `${course.code} - ${name}`;
 }
 
 export function LectureMaterialsPanel({
@@ -111,6 +111,7 @@ export function LectureMaterialsPanel({
   const [dragOver, setDragOver] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<LectureMaterialItem | null>(null);
   const [pendingCourseDelete, setPendingCourseDelete] = useState<CourseItem | null>(null);
+  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
 
   const loadCourses = useCallback(async () => {
     setCoursesLoading(true);
@@ -258,7 +259,9 @@ export function LectureMaterialsPanel({
       }
 
       const indexed = data.indexed_items ?? data.indexed_pages ?? 0;
-      setSuccess(`Indexed ${indexed} page(s)/slide(s) from ${data.filename ?? file.name} under ${trimmedCourse}.`);
+      setSuccess(
+        `Indexed ${indexed} page(s)/slide(s) from ${data.filename ?? file.name} under ${trimmedCourse}.`,
+      );
       await loadMaterials();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to upload lecture material.");
@@ -270,7 +273,13 @@ export function LectureMaterialsPanel({
 
   const handleFileInput = (fileList: FileList | null) => {
     const file = fileList?.[0];
-    if (file) void uploadFile(file);
+    if (file) setPendingUploadFile(file);
+  };
+
+  const confirmUpload = async () => {
+    const file = pendingUploadFile;
+    setPendingUploadFile(null);
+    if (file) await uploadFile(file);
   };
 
   const confirmDelete = async () => {
@@ -306,17 +315,17 @@ export function LectureMaterialsPanel({
     if (docType.toUpperCase() === "PPTX") {
       return <Presentation className="size-4 text-orange-600 shrink-0" />;
     }
-    return <FileText className="size-4 text-primary shrink-0" />;
+    return <FileText className="size-4 text-blue-600 shrink-0" />;
   };
 
   return (
     <div className="space-y-6">
       {/* Manage courses */}
-      <div className="space-y-3 rounded-xl border border-border bg-muted/80 p-4">
+      <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-sm text-foreground">Manage subjects / courses</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className="text-sm text-slate-800">Manage subjects / courses</div>
+            <p className="text-xs text-slate-500 mt-1">
               Add course codes once. Use the same codes when grading so RAG stays filtered correctly.
             </p>
           </div>
@@ -360,11 +369,11 @@ export function LectureMaterialsPanel({
         </div>
 
         {coursesLoading ? (
-          <div className="text-sm text-muted-foreground flex items-center gap-2 py-2">
+          <div className="text-sm text-slate-500 flex items-center gap-2 py-2">
             <RefreshCw className="size-4 animate-spin" /> Loading courses...
           </div>
         ) : courses.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-2">
+          <div className="text-sm text-slate-500 py-2">
             No courses yet. Add one above before uploading materials.
           </div>
         ) : (
@@ -372,12 +381,12 @@ export function LectureMaterialsPanel({
             {courses.map((course) => (
               <div
                 key={course._id}
-                className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2"
+                className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-foreground font-medium">{formatCourseLabel(course)}</div>
+                  <div className="text-sm text-slate-900 font-medium">{formatCourseLabel(course)}</div>
                   {course.description ? (
-                    <div className="text-xs text-muted-foreground truncate">{course.description}</div>
+                    <div className="text-xs text-slate-500 truncate">{course.description}</div>
                   ) : null}
                 </div>
                 <Button
@@ -404,11 +413,11 @@ export function LectureMaterialsPanel({
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 text-sm text-foreground">
-              <BookOpen className="size-4 text-primary" />
+            <div className="flex items-center gap-2 text-sm text-slate-700">
+              <BookOpen className="size-4 text-violet-600" />
               <span>Lecture materials (RAG)</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Upload PDFs or PowerPoints under a managed course. Multiple files per course are supported.
             </p>
           </div>
@@ -425,13 +434,13 @@ export function LectureMaterialsPanel({
         </div>
 
         <div>
-          <label className="text-sm text-foreground mb-2 block">Course for upload / filter</label>
+          <label className="text-sm text-slate-700 mb-2 block">Course for upload / filter</label>
           <Select
             value={selectedCourse || undefined}
             onValueChange={setSelectedCourse}
             disabled={courses.length === 0}
           >
-            <SelectTrigger className="w-full bg-card">
+            <SelectTrigger className="w-full bg-white">
               <SelectValue placeholder={courses.length ? "Select a course" : "Add a course first"} />
             </SelectTrigger>
             <SelectContent>
@@ -442,7 +451,7 @@ export function LectureMaterialsPanel({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             Must match the subject used in grading sessions for RAG filtering.
           </p>
         </div>
@@ -461,31 +470,31 @@ export function LectureMaterialsPanel({
           onClick={() => !uploading && courses.length > 0 && fileInputRef.current?.click()}
           className={`border-2 border-dashed rounded-xl p-5 transition-colors ${
             courses.length === 0
-              ? "border-border bg-muted cursor-not-allowed opacity-70"
+              ? "border-slate-200 bg-slate-50 cursor-not-allowed opacity-70"
               : uploading
-                ? "border-border bg-muted cursor-wait"
+                ? "border-slate-200 bg-slate-50 cursor-wait"
                 : dragOver
-                  ? "border-primary/40 bg-accent cursor-pointer"
-                  : "border-border bg-muted hover:bg-violet-50 hover:border-violet-300 cursor-pointer"
+                  ? "border-violet-400 bg-violet-50 cursor-pointer"
+                  : "border-slate-200 bg-slate-50 hover:bg-violet-50 hover:border-violet-300 cursor-pointer"
           }`}
         >
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-full bg-card border border-border flex items-center justify-center shrink-0">
+            <div className="size-10 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0">
               {uploading ? (
-                <RefreshCw className="size-5 text-primary animate-spin" />
+                <RefreshCw className="size-5 text-violet-600 animate-spin" />
               ) : (
-                <Upload className="size-5 text-muted-foreground" />
+                <Upload className="size-5 text-slate-500" />
               )}
             </div>
             <div>
-              <div className="text-sm text-foreground">
+              <div className="text-sm text-slate-800">
                 {uploading
                   ? "Indexing lecture material..."
                   : courses.length === 0
                     ? "Add a course before uploading"
                     : "Upload PDF or PPTX"}
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
+              <div className="text-xs text-slate-500 mt-0.5">
                 Drop a file here or click to browse
               </div>
             </div>
@@ -500,25 +509,25 @@ export function LectureMaterialsPanel({
         />
 
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm text-foreground">Indexed materials</div>
-          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+          <div className="text-sm text-slate-700">Indexed materials</div>
+          <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
             <input
               type="checkbox"
               checked={showAllCourses}
               onChange={(e) => setShowAllCourses(e.target.checked)}
-              className="rounded border-border"
+              className="rounded border-slate-300"
             />
             Show all courses
           </label>
         </div>
 
         {loading ? (
-          <div className="text-sm text-muted-foreground flex items-center gap-2 py-4">
+          <div className="text-sm text-slate-500 flex items-center gap-2 py-4">
             <RefreshCw className="size-4 animate-spin" />
             Loading lecture materials...
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-muted px-4 py-5 text-sm text-muted-foreground">
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
             {showAllCourses
               ? "No lecture materials indexed yet. Upload a PDF or PPTX to enable RAG."
               : `No lecture materials for ${selectedCourse || "this course"} yet. Upload slides or notes above.`}
@@ -531,17 +540,17 @@ export function LectureMaterialsPanel({
               return (
                 <div
                   key={rowKey}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
+                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
                 >
                   {typeIcon(item.type)}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-foreground truncate">{item.filename}</div>
+                    <div className="text-sm text-slate-900 truncate">{item.filename}</div>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       <Badge variant="outline" className="text-[10px]">
                         {item.type}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">{item.course_name}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-slate-500">{item.course_name}</span>
+                      <span className="text-xs text-slate-400">
                         {item.indexed_items} page{item.indexed_items === 1 ? "" : "s"}/slide
                         {item.indexed_items === 1 ? "" : "s"}
                       </span>
@@ -576,14 +585,46 @@ export function LectureMaterialsPanel({
       )}
       {success && <div className="text-sm text-emerald-600">{success}</div>}
 
+      <AlertDialog
+        open={pendingUploadFile != null}
+        onOpenChange={(open) => {
+          if (!open && !uploading) setPendingUploadFile(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Upload lecture material?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Upload{" "}
+              <span className="font-medium text-slate-800">{pendingUploadFile?.name}</span> to course{" "}
+              <span className="font-medium text-slate-800">{selectedCourse || "—"}</span> and index it
+              for RAG?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={uploading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-violet-600 hover:bg-violet-700"
+              disabled={uploading}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmUpload();
+              }}
+            >
+              {uploading ? "Uploading…" : "Upload"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={pendingDelete != null} onOpenChange={(open) => !open && setPendingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove lecture material?</AlertDialogTitle>
             <AlertDialogDescription>
               This deletes all indexed pages/slides for{" "}
-              <span className="font-medium text-foreground">{pendingDelete?.filename}</span> from{" "}
-              <span className="font-medium text-foreground">{pendingDelete?.course_name}</span>. Grading will no
+              <span className="font-medium text-slate-800">{pendingDelete?.filename}</span> from{" "}
+              <span className="font-medium text-slate-800">{pendingDelete?.course_name}</span>. Grading will no
               longer retrieve this content via RAG.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -611,7 +652,7 @@ export function LectureMaterialsPanel({
             <AlertDialogTitle>Delete course?</AlertDialogTitle>
             <AlertDialogDescription>
               This removes{" "}
-              <span className="font-medium text-foreground">
+              <span className="font-medium text-slate-800">
                 {pendingCourseDelete ? formatCourseLabel(pendingCourseDelete) : ""}
               </span>{" "}
               and purges all indexed lecture materials tagged with that course code.
