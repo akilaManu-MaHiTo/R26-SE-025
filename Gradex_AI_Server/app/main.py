@@ -13,7 +13,7 @@ for path in (PROJECT_ROOT, ENGINE_ROOT, V2_ROOT):
     if path_str not in sys.path:
         sys.path.append(path_str)
 
-from Gradex_AI_Server.app.predict_api import router as predict_router
+from Gradex_AI_Server.app.analytics_api import router as analytics_router
 
 app = FastAPI(title="Gradex AI Server", version="1.0.0")
 
@@ -25,7 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(predict_router)
+app.include_router(analytics_router)
 
 UPLOAD_DIR = PROJECT_ROOT / "Gradex_AI_Server" / "app" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
