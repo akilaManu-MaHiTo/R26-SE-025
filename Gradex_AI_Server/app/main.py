@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+import os
 import sys
 import json
 from uuid import uuid4
 from typing import Optional
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from bson import ObjectId
@@ -20,12 +21,28 @@ for path in (PROJECT_ROOT, ENGINE_ROOT):
         sys.path.append(path_str)
 
 from Gradex_AI_Server.app.analytics_report import build_exam_report, run_exam_analysis
+from Gradex_AI_Server.app.auth import configured_api_key, ensure_dev_api_key, require_api_key
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
 
 
+MAX_VIVA_UPLOAD_BYTES = 1024 * 1024 * 1024
+VIDEO_SUFFIXES = {".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v"}
+
+
+def _analyze_timeout_seconds() -> float:
+    raw = (os.getenv("VIVA_ANALYZE_TIMEOUT_SECONDS") or "600").strip()
+    try:
+        value = float(raw)
+    except ValueError:
+        return 600.0
+    return value if value > 0 else 600.0
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not configured_api_key():
+        ensure_dev_api_key()
     await connect_to_mongo()
     yield
     await close_mongo_connection()
@@ -36,7 +53,7 @@ app = FastAPI(title="Gradex AI Server", version="1.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -246,11 +263,15 @@ async def analytics_historical():
         raise HTTPException(status_code=500, detail=f"Failed to load historical data: {exc}") from exc
 
 
-@app.patch("/api/viva-marks/{mark_id}/publish")
+@app.patch("/api/viva-marks/{mark_id}/publish", dependencies=[Depends(require_api_key)])
 async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
     """Persist published assessment: canonical X, human technical (or null), server-computed /100 + grade."""
+    object_id = _parse_object_id(mark_id)
     if db_instance.marks_col is None:
-        raise HTTPException(status_code=503, detail="MongoDB is not connected.")
+        raise HTTPException(
+            status_code=503,
+            detail="MongoDB is not connected. Check MONGODB_URL / DATABASE_NAME and Atlas credentials.",
+        )
 
     from VivaEvaluationEngine.services.assessment_scoring import (
         MODE_WITH,
@@ -268,8 +289,13 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
     else:
         technical = payload.technical_accuracy
 
-    object_id = _parse_object_id(mark_id)
-    existing = await db_instance.marks_col.find_one({"_id": object_id})
+    try:
+        existing = await db_instance.marks_col.find_one({"_id": object_id})
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="MongoDB is not reachable. Marks cannot be published until Atlas auth succeeds.",
+        ) from None
     if not existing:
         raise HTTPException(status_code=404, detail="Mark not found.")
 
@@ -317,7 +343,7 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
     }
 
 
-@app.post("/api/viva-analyze")
+@app.post("/api/viva-analyze", dependencies=[Depends(require_api_key)])
 async def viva_analyze(video: UploadFile = File(...)):
     """
     Analyze a viva recording for emotion detection and engagement scoring.
@@ -329,23 +355,30 @@ async def viva_analyze(video: UploadFile = File(...)):
         - coverage / video_status: Face-hit diagnostics
         - audio_analysis: Transcript, acoustics, grade (may be degraded/insufficient)
         - summary: Summary statistics
+        - assessment: Official Stage-1 mark (INCOMPLETE when the face is missing)
     """
     import asyncio
     import time
     request_start = time.time()
-    
-    if not video.content_type or not video.content_type.startswith("video/"):
+
+    filename = video.filename or ""
+    suffix = Path(filename).suffix.lower()
+    content_type = (video.content_type or "").lower()
+    looks_like_video = content_type.startswith("video/") or suffix in VIDEO_SUFFIXES
+    if not looks_like_video:
         raise HTTPException(status_code=400, detail="Only video uploads are supported.")
 
     contents = await video.read()
     upload_complete = time.time()
     upload_time = upload_complete - request_start
     print(f"[VIVA] Upload received: {len(contents) / 1024 / 1024:.2f} MB in {upload_time:.2f}s")
-    
+
     if not contents:
         raise HTTPException(status_code=400, detail="Empty upload.")
+    if len(contents) > MAX_VIVA_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail="File size must be less than 1 GB.")
 
-    ext = Path(video.filename or "").suffix or ".mp4"
+    ext = suffix if suffix in VIDEO_SUFFIXES else ".mp4"
     file_path = UPLOAD_DIR / f"{uuid4().hex}{ext}"
     file_path.write_bytes(contents)
     file_saved = time.time()
@@ -355,45 +388,73 @@ async def viva_analyze(video: UploadFile = File(...)):
         from Gradex_AI_Server.app.viva_service import analyze_video_file
 
         analysis_start = time.time()
+        timeout_s = _analyze_timeout_seconds()
         # ML pipeline is CPU/GPU-bound; keep the event loop free for other requests.
-        result = await asyncio.to_thread(analyze_video_file, str(file_path), False)
+        try:
+            result = await asyncio.wait_for(
+                asyncio.to_thread(analyze_video_file, str(file_path), False),
+                timeout=timeout_s,
+            )
+        except asyncio.TimeoutError as exc:
+            raise HTTPException(
+                status_code=504,
+                detail=f"Analysis exceeded {int(timeout_s)}s. Try a shorter recording.",
+            ) from exc
         analysis_complete = time.time()
         analysis_time = analysis_complete - analysis_start
         total_time = analysis_complete - request_start
-        
+
         print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")
-        
-        # Clean up the uploaded file after analysis
-        try:
-            file_path.unlink()
-        except Exception:
-            pass
         # Persist the result to MongoDB (vivamark.marks). Best-effort: a
         # storage failure should not fail an otherwise-successful analysis.
-        try:
-            mark_doc = {
-                "video_filename": video.filename,
-                "processed_at": datetime.now(timezone.utc),
-                "confidence_score": result.get("confidence_score"),
-                "engagement_score": result.get("engagement_score"),
-                "video_status": result.get("video_status"),
-                "assessment": result.get("assessment"),
-                "scoring_version": (result.get("assessment") or {}).get("scoring_version"),
-                "feature_schema_version": (result.get("assessment") or {}).get("feature_schema_version"),
-                "result": result,
-            }
-            insert_result = await db_instance.marks_col.insert_one(mark_doc)
-            result["mark_id"] = str(insert_result.inserted_id)
-        except Exception as exc:
-            print(f"[VIVA] Warning: failed to persist result to MongoDB: {exc}")
+        if db_instance.marks_col is None:
+            result["persistence_error"] = (
+                "MongoDB is not connected — mark was not saved. Publish is unavailable."
+            )
+            print(f"[VIVA] Warning: {result['persistence_error']}")
+        else:
+            try:
+                mark_doc = {
+                    "video_filename": video.filename,
+                    "processed_at": datetime.now(timezone.utc),
+                    "confidence_score": result.get("confidence_score"),
+                    "engagement_score": result.get("engagement_score"),
+                    "video_status": result.get("video_status"),
+                    "assessment": result.get("assessment"),
+                    "scoring_version": (result.get("assessment") or {}).get("scoring_version"),
+                    "feature_schema_version": (result.get("assessment") or {}).get("feature_schema_version"),
+                    "result": result,
+                }
+                insert_result = await db_instance.marks_col.insert_one(mark_doc)
+                result["mark_id"] = str(insert_result.inserted_id)
+            except Exception:
+                result["persistence_error"] = (
+                    "Could not save mark (Mongo authentication or network failed)."
+                )
+                print("[VIVA] Warning: failed to persist result to MongoDB.")
         return result
     except ModuleNotFoundError as exc:
         raise HTTPException(status_code=503, detail=f"Viva analysis unavailable: {exc}") from exc
     except FileNotFoundError as exc:
-        # Model files or other required files missing
+        message = str(exc)
+        if "Could not open video" in message or "video file" in message.lower():
+            raise HTTPException(
+                status_code=400,
+                detail="This file could not be opened as a video. Upload MP4 or WEBM.",
+            ) from exc
         raise HTTPException(status_code=503, detail=f"Viva model file not found: {exc}") from exc
+    except HTTPException:
+        raise
     except Exception as exc:
+        if exc.__class__.__name__ == "VideoUnreadableError" or "could not be opened as a video" in str(exc).lower():
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         raise HTTPException(status_code=500, detail=f"Viva analysis failed: {exc}") from exc
+    finally:
+        try:
+            if file_path.exists():
+                file_path.unlink()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

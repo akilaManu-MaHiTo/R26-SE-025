@@ -21,10 +21,12 @@ Copilot does **not** write Mongo, does **not** import `viva_service.py`, and doe
 
 Env:
 
-- Client: `VITE_BACKEND_URL` (fallback `http://localhost:8001`) in `copilotApi.ts`.
-- Server: `Gradex_AI_Server/app/.env` — `AI_API_KEY` or `GROQ_API_KEY`. Optional `VIVA_COPILOT_LLM_MODEL`, `VIVA_COPILOT_STT_MODEL`.
+- Client: `VITE_BACKEND_URL` (fallback `http://localhost:8001`) and `VITE_GRADEX_API_KEY` (must match server `GRADEX_API_KEY`).
+- Server: `Gradex_AI_Server/app/.env` — `GRADEX_API_KEY`, `AI_API_KEY` or `GROQ_API_KEY`. Optional `VIVA_COPILOT_LLM_MODEL` (fallback `openai/gpt-oss-20b`; Llama chat ids retired 16 Aug 2026), `VIVA_COPILOT_STT_MODEL`.
+- REST sends `X-API-Key`. WebSocket uses `?api_key=`.
+- STT chunks queue FIFO (cap 8). Follow-up LLM jobs queue (cap 4). Oldest is dropped only if the cap is exceeded.
 
-Restart uvicorn after Python changes.
+Restart uvicorn after Python changes. Restart Vite after changing `.env.local`.
 
 ---
 
@@ -165,7 +167,7 @@ Camera 12s WebM
   → WS binary
   → router.copilot_ws
   → pipeline.ingest_audio_chunk
-       if STT already busy: keep latest pending bytes (coalesce)
+       if STT already busy: enqueue FIFO (cap 8 slices; drop oldest only if full)
        else asyncio.to_thread(stt.transcribe_chunk)
             → groq_client.groq_transcribe
                POST https://api.groq.com/openai/v1/audio/transcriptions
@@ -235,7 +237,8 @@ After a finalized pause (≥5 words, not duplicate):
 
 1. WS `candidate.answer.final`
 2. Pair with `currentQuestion` into `recent_qa` (max 5 pairs)
-3. **One LLM call** for that answer (unless `busy_llm`)
+3. **One LLM call** for that answer (queued FIFO, cap 4, if `busy_llm`)
+   Ask this is REST **409** during presentation / idle.
 4. WS `followup.suggestions.generated` → toasts + panel
 
 **Answer complete** (optional): `POST /sessions/{id}/finalize` forces flush of `utterance_buffer` if the pause detector is slow.
@@ -248,7 +251,7 @@ After a finalized pause (≥5 words, not duplicate):
 |---|---|
 | User | **Ask this** on a toast or the side panel |
 | Client | `POST /sessions/{id}/ask` `{ "question": "…" }` |
-| Server | `ask_question()` — sets `currentQuestion`, appends interviewer turn, WS `interviewer.question.asked` + `transcript.final` (speaker interviewer) |
+| Server | **409** unless `phase === viva`. Else `ask_question()` — sets `currentQuestion`, appends interviewer turn, WS `interviewer.question.asked` + `transcript.final` (speaker interviewer) |
 | Client | Pins the question; dismisses matching toast |
 
 **Groq:** none. Human-in-the-loop: the AI never asks the student.
@@ -302,7 +305,7 @@ There is **no** `setInterval` poll of `/sessions/{id}` during the live session. 
 - `presentation_parts`, `main_points`, `analysis`, `suggestions`
 - `utterance_buffer`, `transcript_log` (capped 200)
 - `current_question`, `asked_questions`, `recent_qa`
-- `ws_clients`, `busy_llm`, `stt_busy`, `pending_audio`
+- `ws_clients`, `busy_llm`, `stt_busy`, `pending_audio` (deque), `pending_followups`
 - `last_suggest_at`, `last_suggest_word_count`
 
 Lost on process restart. Not written to Mongo.

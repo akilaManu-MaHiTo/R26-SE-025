@@ -35,9 +35,8 @@ class CopilotSession:
     created_at: float = field(default_factory=time.time)
     last_chunk_had_speech: bool = False
     stt_busy: bool = False
-    pending_audio: Optional[bytes] = None
-    pending_filename: str = "chunk.webm"
-    pending_content_type: str = "audio/webm"
+    pending_audio: Deque[tuple] = field(default_factory=deque)
+    pending_followups: Deque[Dict[str, Any]] = field(default_factory=deque)
     last_error_message: str = ""
     last_error_at: float = 0.0
     last_suggest_at: float = 0.0

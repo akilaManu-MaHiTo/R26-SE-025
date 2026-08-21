@@ -74,8 +74,8 @@ def extract_canonical_features(result: Dict[str, Any]) -> Dict[str, Any]:
                 "neutral": _f(summary.get("neutral_ratio")),
                 "negative": _f(summary.get("negative_ratio")),
             },
-            # Single engagement representation: CNN-frame mean (0–1).
-            # Not engagement_score (parent) and not label ratios at the same time.
+            # stage1_cnn_engagement: per-frame CNN mean (0–1). Official /100 family only.
+            # Not engagement_score (diagnostic_engagement) and not feature_complete_engagement.
             "average_engagement_score": _f(engagement_summary.get("average_engagement_score")),
             "blinks_per_minute": _f(coverage.get("blinks_per_minute"))
             if coverage.get("blinks_measured")
@@ -88,6 +88,9 @@ def extract_canonical_features(result: Dict[str, Any]) -> Dict[str, Any]:
             "jitter_local": _f(acoustics.get("jitter_local")),
             "shimmer_local": _f(acoustics.get("shimmer_local")),
             "rms_mean": _f(acoustics.get("rms_mean")),
+            "rms_std": _f(acoustics.get("rms_std")),
+            "energy_consistency": _f(acoustics.get("energy_consistency")),
+            "pitch_range_hz": _f(acoustics.get("pitch_range_hz")),
         },
         "transcript": {
             "speech_rate_wpm": _f(transcript_features.get("speech_rate_wpm")),
@@ -96,12 +99,17 @@ def extract_canonical_features(result: Dict[str, Any]) -> Dict[str, Any]:
             "filler_count": _i(transcript_features.get("filler_count")),
             "pause_count": _i(transcript_features.get("pause_count")),
             "long_pause_count": _i(transcript_features.get("long_pause_count")),
+            "total_pause_duration": _f(transcript_features.get("total_pause_duration")),
+            "max_pause_duration": _f(transcript_features.get("max_pause_duration")),
             "sentence_completion_ratio": _f(transcript_features.get("sentence_completion_ratio")),
+            "fragmented_sentence_count": _i(transcript_features.get("fragmented_sentence_count")),
         },
         "ser": {
             "source": audio_emotion.get("source"),
             "emotion": audio_emotion.get("predicted_emotion"),
             "confidence": _f(audio_emotion.get("confidence")),
+            "backend": audio_emotion.get("backend"),
+            "model": audio_emotion.get("model"),
         },
     }
 
@@ -145,6 +153,8 @@ def flatten_canonical_features(features: Dict[str, Any]) -> Dict[str, Any]:
         "long_pause_count": transcript.get("long_pause_count"),
         "sentence_completion_ratio": transcript.get("sentence_completion_ratio"),
         "ser_source": ser.get("source"),
+        "ser_backend": ser.get("backend"),
+        "ser_model": ser.get("model"),
         "ser_emotion": ser.get("emotion") if quality.get("ser_source_is_model") else None,
         "ser_confidence": ser.get("confidence") if quality.get("ser_source_is_model") else None,
     }

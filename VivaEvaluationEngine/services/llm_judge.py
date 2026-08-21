@@ -16,7 +16,7 @@ import re
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 CRITERIA = ("communication_clarity", "confidence", "engagement")
@@ -62,7 +62,23 @@ def _api_key() -> Optional[str]:
 
 def _model_name() -> str:
     _load_env_files()
-    return os.getenv("VIVA_LLM_MODEL") or os.getenv("GROQ_MODEL") or "llama-3.3-70b-versatile"
+    return os.getenv("VIVA_LLM_MODEL") or os.getenv("GROQ_MODEL") or "openai/gpt-oss-20b"
+
+
+# Groq retired llama-3.3-70b-versatile / llama-3.1-8b-instant on 16 Aug 2026.
+LIVE_CHAT_MODELS = (
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.6-27b",
+)
+
+
+def _model_candidates(preferred: Optional[str] = None) -> List[str]:
+    ordered: List[str] = []
+    for name in (preferred or _model_name(), *LIVE_CHAT_MODELS):
+        if name and name not in ordered:
+            ordered.append(name)
+    return ordered
 
 _SYSTEM_PROMPT = """You are an academic viva examiner assistant. You are given pre-computed
 acoustic, transcript, and video-engagement features for one student's oral exam
@@ -223,7 +239,7 @@ def _extract_json_object(text: str) -> Optional[Dict[str, Any]]:
     return parsed if isinstance(parsed, dict) else None
 
 
-def _call_groq_chat(payload: Dict[str, Any], api_key: str, model: str) -> str:
+def _call_groq_chat_once(payload: Dict[str, Any], api_key: str, model: str) -> str:
     body = {
         "model": model,
         "temperature": 0.2,
@@ -253,6 +269,34 @@ def _call_groq_chat(payload: Dict[str, Any], api_key: str, model: str) -> str:
     with urllib.request.urlopen(request, timeout=45) as response:
         raw = json.loads(response.read().decode("utf-8"))
     return str(raw["choices"][0]["message"]["content"])
+
+
+def _call_groq_chat(payload: Dict[str, Any], api_key: str, model: str) -> str:
+    last_error: Optional[Exception] = None
+    used_model = model
+    for candidate in _model_candidates(model):
+        used_model = candidate
+        try:
+            content = _call_groq_chat_once(payload, api_key, candidate)
+            _call_groq_chat.last_model = candidate  # type: ignore[attr-defined]
+            return content
+        except urllib.error.HTTPError as exc:
+            last_error = exc
+            body = ""
+            try:
+                body = exc.read().decode("utf-8", errors="replace")
+            except Exception:
+                body = str(exc.reason or exc)
+            lowered = body.lower()
+            if exc.code == 404 or (
+                exc.code == 400 and ("model" in lowered or "not exist" in lowered or "not found" in lowered)
+            ):
+                continue
+            raise
+    _call_groq_chat.last_model = used_model  # type: ignore[attr-defined]
+    if last_error:
+        raise last_error
+    raise RuntimeError("Groq chat failed")
 
 
 def assemble_judge_input(result: Dict[str, Any]) -> Dict[str, Any]:
@@ -342,10 +386,11 @@ def run_llm_judge(result: Dict[str, Any], debug: bool = False) -> Dict[str, Any]
                 if debug:
                     print(f"[llm_judge] attempt {attempt + 1}: {last_error}")
                 continue
+            resolved = getattr(_call_groq_chat, "last_model", model)
             return {
                 "source": "llm",
                 "status": "success",
-                "model": model,
+                "model": resolved,
                 **validated,
                 "formula_fallback": {
                     key: fallback[key]

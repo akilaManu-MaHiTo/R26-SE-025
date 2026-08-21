@@ -3,8 +3,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, Literal, Optional
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
+
+from Gradex_AI_Server.app.auth import require_api_key, require_websocket_api_key
 
 from Gradex_AI_Server.app.viva_copilot import events
 from Gradex_AI_Server.app.viva_copilot.pipeline import (
@@ -17,6 +19,7 @@ from Gradex_AI_Server.app.viva_copilot.pipeline import (
 from Gradex_AI_Server.app.viva_copilot.session_store import broadcast, store
 
 router = APIRouter(prefix="/api/viva-copilot", tags=["viva-copilot"])
+_AUTH = [Depends(require_api_key)]
 
 
 class ProjectContextPayload(BaseModel):
@@ -48,7 +51,7 @@ def _session_or_404(session_id: str):
     return session
 
 
-@router.post("/sessions")
+@router.post("/sessions", dependencies=_AUTH)
 async def create_session(payload: CreateSessionPayload | None = None) -> Dict[str, Any]:
     context = {}
     if payload and payload.projectContext:
@@ -57,13 +60,13 @@ async def create_session(payload: CreateSessionPayload | None = None) -> Dict[st
     return {"sessionId": session.session_id, "phase": session.phase}
 
 
-@router.get("/sessions/{session_id}")
+@router.get("/sessions/{session_id}", dependencies=_AUTH)
 async def get_session(session_id: str) -> Dict[str, Any]:
     session = _session_or_404(session_id)
     return {"sessionId": session.session_id, **session.snapshot()}
 
 
-@router.post("/sessions/{session_id}/phase")
+@router.post("/sessions/{session_id}/phase", dependencies=_AUTH)
 async def set_phase(session_id: str, payload: PhasePayload) -> Dict[str, Any]:
     session = _session_or_404(session_id)
     if payload.phase == "presentation":
@@ -73,28 +76,33 @@ async def set_phase(session_id: str, payload: PhasePayload) -> Dict[str, Any]:
     return {"sessionId": session.session_id, "phase": session.phase}
 
 
-@router.post("/sessions/{session_id}/finalize")
+@router.post("/sessions/{session_id}/finalize", dependencies=_AUTH)
 async def finalize_utterance(session_id: str) -> Dict[str, Any]:
     session = _session_or_404(session_id)
     await finalize_pending(session)
     return {"ok": True, "sessionId": session.session_id}
 
 
-@router.post("/sessions/{session_id}/ask")
+@router.post("/sessions/{session_id}/ask", dependencies=_AUTH)
 async def ask(session_id: str, payload: AskPayload) -> Dict[str, Any]:
     session = _session_or_404(session_id)
+    if session.phase != "viva":
+        raise HTTPException(
+            status_code=409,
+            detail="Ask this is only available during the viva phase.",
+        )
     await ask_question(session, payload.question)
     return {"sessionId": session.session_id, "currentQuestion": session.current_question}
 
 
-@router.post("/sessions/{session_id}/context")
+@router.post("/sessions/{session_id}/context", dependencies=_AUTH)
 async def set_context(session_id: str, payload: ContextPayload) -> Dict[str, Any]:
     session = _session_or_404(session_id)
     session.project_context = payload.projectContext.model_dump()
     return {"sessionId": session.session_id, "projectContext": session.project_context}
 
 
-@router.delete("/sessions/{session_id}")
+@router.delete("/sessions/{session_id}", dependencies=_AUTH)
 async def end_session(session_id: str) -> Dict[str, Any]:
     session = _session_or_404(session_id)
     await broadcast(session, events.phase_changed(session.session_id, "ended"))
@@ -104,6 +112,8 @@ async def end_session(session_id: str) -> Dict[str, Any]:
 
 @router.websocket("/ws/{session_id}")
 async def copilot_ws(websocket: WebSocket, session_id: str) -> None:
+    if not await require_websocket_api_key(websocket):
+        return
     session = store.get(session_id)
     if session is None:
         await websocket.close(code=1008)

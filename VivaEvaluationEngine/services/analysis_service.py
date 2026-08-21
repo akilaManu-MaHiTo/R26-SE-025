@@ -2,6 +2,7 @@ from typing import Dict, List, Optional
 
 from config import (
     AppConfig,
+    BLINK_SAMPLE_FPS,
     ENGAGEMENT_LEVEL_SCORES,
     MIN_FACE_COVERAGE_RATIO,
     MIN_FACE_FRAMES,
@@ -15,11 +16,32 @@ from config import (
 from services.engagement_detector import EngagementDetector
 from services.emotion_detector import EmotionDetector
 from services.face_detector import FaceDetector
+from services.face_landmarker import iter_landmark_samples, nearest_landmarks, video_duration_seconds
 from services.face_quality import prepare_face_for_emotion
 from services.gaze_head_analyser import GazeHeadAnalyser
-from services.blink_sampler import BlinkSampler
+from services.blink_sampler import blinks_from_samples, unavailable_blinks
+from services.engagement_scoring import build_video_features
 from services.scoring import compute_confidence_score, compute_engagement_score, smooth_emotions
 from services.video_processor import VideoProcessor
+
+_EMOTION_DETECTORS: Dict[str, EmotionDetector] = {}
+_ENGAGEMENT_DETECTORS: Dict[str, EngagementDetector] = {}
+
+
+def _cached_emotion_detector(model_path: str, debug: bool) -> EmotionDetector:
+    detector = _EMOTION_DETECTORS.get(model_path)
+    if detector is None:
+        detector = EmotionDetector(model_path=model_path, debug=debug)
+        _EMOTION_DETECTORS[model_path] = detector
+    return detector
+
+
+def _cached_engagement_detector(model_path: str, debug: bool) -> EngagementDetector:
+    detector = _ENGAGEMENT_DETECTORS.get(model_path)
+    if detector is None:
+        detector = EngagementDetector(model_path=model_path, debug=debug)
+        _ENGAGEMENT_DETECTORS[model_path] = detector
+    return detector
 
 
 def build_summary(timeline: List[Dict[str, object]]) -> Dict[str, float]:
@@ -97,17 +119,25 @@ def _coverage_is_sufficient(frames_sampled: int, frames_with_face: int) -> bool:
 
 
 def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, object]:
-    blinks_per_minute = BlinkSampler().count_blinks(config.video_path)
+    landmark_samples = list(
+        iter_landmark_samples(config.video_path, sample_fps=BLINK_SAMPLE_FPS)
+    )
+    duration_seconds = video_duration_seconds(config.video_path)
+    if landmark_samples:
+        blink_report = blinks_from_samples(
+            landmark_samples,
+            sample_fps=BLINK_SAMPLE_FPS,
+            duration_seconds=duration_seconds or None,
+        )
+    elif duration_seconds <= 0:
+        blink_report = unavailable_blinks("video_unreadable")
+    else:
+        blink_report = unavailable_blinks("face_mesh_unavailable")
+    blinks_per_minute = blink_report.get("blink_rate_per_minute")
 
     video_processor = VideoProcessor(target_fps=config.target_fps)
-    emotion_detector = EmotionDetector(
-        model_path=config.emotion_model_path,
-        debug=config.debug,
-    )
-    engagement_detector = EngagementDetector(
-        model_path=config.engagement_model_path,
-        debug=config.debug,
-    )
+    emotion_detector = _cached_emotion_detector(config.emotion_model_path, config.debug)
+    engagement_detector = _cached_engagement_detector(config.engagement_model_path, config.debug)
 
     timeline: List[Dict[str, object]] = []
     gaze_signals: List[Optional[Dict]] = []
@@ -118,8 +148,13 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
         debug=config.debug,
     ) as face_detector:
         with GazeHeadAnalyser(gaze_threshold=config.gaze_threshold) as gaze_analyser:
+            dense_gaze: List[Optional[Dict]] = [
+                gaze_analyser.from_landmarks(sample.landmarks) for sample in landmark_samples
+            ]
             for frame_data in video_processor.iter_frames(config.video_path):
-                gaze = gaze_analyser.analyse(frame_data.frame)
+                gaze = gaze_analyser.from_landmarks(
+                    nearest_landmarks(landmark_samples, frame_data.time_sec)
+                )
                 gaze_signals.append(gaze)
                 mouth_open = None
                 talking = False
@@ -218,14 +253,16 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
     paired = list(zip(timeline, gaze_signals))
     clean_pairs = [(t, g) for t, g in paired if t.get("valid", True) is True]
     clean_timeline = [t for t, _g in clean_pairs]
-    clean_gaze = [g for _t, g in clean_pairs]
+    gaze_for_features = dense_gaze if any(item is not None for item in dense_gaze) else [
+        g for _t, g in clean_pairs
+    ]
 
     smoothed_timeline = smooth_emotions(clean_timeline)
 
     if scores_emitted:
         confidence_score: Optional[float] = compute_confidence_score(smoothed_timeline)
         engagement_score: Optional[float] = compute_engagement_score(
-            smoothed_timeline, clean_gaze, blinks_per_minute
+            smoothed_timeline, gaze_for_features, blinks_per_minute
         )
         video_status = "success"
     else:
@@ -239,8 +276,13 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
         "face_coverage_ratio": face_coverage_ratio,
         "min_face_frames": MIN_FACE_FRAMES,
         "min_face_coverage_ratio": MIN_FACE_COVERAGE_RATIO,
-        "blinks_measured": blinks_per_minute is not None,
+        "blinks_measured": blink_report.get("status") == "available",
         "blinks_per_minute": blinks_per_minute,
+        "blink_count": blink_report.get("blink_count"),
+        "blink_status": blink_report.get("status"),
+        "blink_reason": blink_report.get("reason"),
+        "blink_note": blink_report.get("note"),
+        "blink_measurement_quality": blink_report.get("measurement_quality"),
         "scores_emitted": scores_emitted,
         "frames_rejected_quality": frames_rejected_quality,
         "frames_enhanced": frames_enhanced,
@@ -248,14 +290,23 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
         "quality_reject_reasons": reject_reasons,
     }
 
+    video_features = build_video_features(
+        timeline=smoothed_timeline,
+        gaze_signals=gaze_for_features,
+        blink=blink_report,
+        coverage=coverage,
+    )
+
     response: Dict[str, object] = {
         "timeline": smoothed_timeline,
-        "confidence_score": confidence_score,
+        # diagnostic_engagement (0–100). Not official Stage-1. See engagement_metrics after attach_assessment.
         "engagement_score": engagement_score,
+        "confidence_score": confidence_score,
         "engagement_summary": build_engagement_summary(smoothed_timeline),
         "coverage": coverage,
         "video_status": video_status,
         "face_cues": face_cues,
+        "video_features": video_features,
     }
 
     if include_summary:

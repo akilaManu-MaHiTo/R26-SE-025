@@ -167,7 +167,9 @@ def groq_chat(system_prompt: str, user_payload: Dict[str, Any], *, api_key_value
         except HTTPError as exc:
             detail = _read_http_error(exc)
             last_error = RuntimeError(friendly_groq_error(detail, kind="Follow-up generation"))
-            if exc.code in {400, 404} and ("model" in detail.lower() or "not exist" in detail.lower()):
+            if exc.code == 404 or (
+                exc.code == 400 and ("model" in detail.lower() or "not exist" in detail.lower())
+            ):
                 continue
             raise last_error from exc
         except URLError as exc:

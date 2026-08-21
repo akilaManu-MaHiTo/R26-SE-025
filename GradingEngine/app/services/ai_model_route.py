@@ -14,7 +14,7 @@ router = APIRouter()
 COLAB_URL = os.getenv("COLAB_EVALUATE_URL", "").strip()
 # Per-question Colab calls need more headroom than the old whole-paper default.
 COLAB_TIMEOUT_SECONDS = int(os.getenv("COLAB_TIMEOUT_SECONDS", "25"))
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 GROQ_API_KEY = os.getenv("BACKUP_API_KEY") or os.getenv("AI_API_KEY")
 
 

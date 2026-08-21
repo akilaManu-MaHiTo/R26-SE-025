@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 AI_API_KEY = os.getenv("AI_API_KEY")
-MODEL_NAME = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+MODEL_NAME = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 client = Groq(api_key=AI_API_KEY) if AI_API_KEY else None
 
 

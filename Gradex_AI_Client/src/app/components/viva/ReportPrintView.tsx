@@ -61,24 +61,22 @@ export function ReportPrintView({
 
       <div className="grid grid-cols-3 gap-4 mt-6">
         <div className="border border-gray-300 rounded p-3">
-          <div className="text-[10px] uppercase tracking-wide text-gray-500">Facial Positivity</div>
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Official mark</div>
           <div className="text-2xl font-semibold mt-1">
-            {analysisResult.confidence_score != null ? analysisResult.confidence_score.toFixed(1) : "—"}
+            {finalScore != null ? finalScore.toFixed(1) : "—"}
             <span className="text-xs font-normal text-gray-500"> / 100</span>
           </div>
         </div>
         <div className="border border-gray-300 rounded p-3">
-          <div className="text-[10px] uppercase tracking-wide text-gray-500">Engagement</div>
-          <div className="text-2xl font-semibold mt-1">
-            {analysisResult.engagement_score != null ? analysisResult.engagement_score.toFixed(1) : "—"}
-            <span className="text-xs font-normal text-gray-500">%</span>
-          </div>
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Grade</div>
+          <div className="text-2xl font-semibold mt-1">{grade ?? "—"}</div>
         </div>
         <div className="border border-gray-300 rounded p-3">
-          <div className="text-[10px] uppercase tracking-wide text-gray-500">Audio Quality</div>
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Face coverage</div>
           <div className="text-2xl font-semibold mt-1">
-            {audio?.audio_grade != null ? audio.audio_grade.toFixed(2) : "—"}
-            <span className="text-xs font-normal text-gray-500"> / 10</span>
+            {analysisResult.coverage?.face_coverage_ratio != null
+              ? `${Math.round(analysisResult.coverage.face_coverage_ratio * 100)}%`
+              : "—"}
           </div>
         </div>
       </div>

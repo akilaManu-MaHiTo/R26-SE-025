@@ -61,9 +61,13 @@ export function VivaPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoPlayerRef = useRef<VivaVideoPlayerHandle>(null);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
   const backendBaseUrl =
     ((import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL) ??
-    "http://localhost:8000";
+    "http://localhost:8001";
+  const apiKey =
+    ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env?.VITE_GRADEX_API_KEY) ??
+    "";
 
   const resetAssessmentState = () => {
     setAssessmentMode("WITHOUT_TECHNICAL_ACCURACY");
@@ -73,11 +77,19 @@ export function VivaPage() {
     setPublishing(false);
   };
 
+  useEffect(() => {
+    return () => {
+      xhrRef.current?.abort();
+    };
+  }, []);
+
   const handlePublish = async () => {
     const markId = analysisResult?.mark_id;
     if (!markId) {
       toast.error("Cannot publish", {
-        description: "No saved mark_id from analysis — Mongo may be offline.",
+        description:
+          analysisResult?.persistence_error ||
+          "No saved mark_id from analysis — Mongo may be offline.",
       });
       return;
     }
@@ -87,7 +99,10 @@ export function VivaPage() {
     try {
       const response = await fetch(`${backendBaseUrl}/api/viva-marks/${markId}/publish`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiKey ? { "X-API-Key": apiKey } : {}),
+        },
         body: JSON.stringify({
           assessment_mode: assessmentMode,
           technical_accuracy:
@@ -205,8 +220,10 @@ export function VivaPage() {
     setVideoDuration(null);
     resetAssessmentState();
 
-    const preview = URL.createObjectURL(file);
-    setVideoPreview(preview);
+    setVideoPreview((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return URL.createObjectURL(file);
+    });
     if (options?.autoAnalyze) {
       void analyzeVideo(file);
     }
@@ -267,8 +284,14 @@ export function VivaPage() {
 
         xhr.addEventListener("error", () => reject(new Error("Upload failed")));
         xhr.addEventListener("abort", () => reject(new Error("Upload aborted")));
+        xhr.addEventListener("timeout", () =>
+          reject(new Error("Analysis timed out. Try a shorter recording.")),
+        );
 
         xhr.open("POST", apiUrl, true);
+        xhr.timeout = 600000;
+        if (apiKey) xhr.setRequestHeader("X-API-Key", apiKey);
+        xhrRef.current = xhr;
         xhr.send(formData);
       });
 
@@ -279,7 +302,11 @@ export function VivaPage() {
       setPublishing(false);
       setAssessmentMode("WITHOUT_TECHNICAL_ACCURACY");
       setTechnicalAccuracy(null);
-      if (data.assessment) {
+      if (data.persistence_error) {
+        toast.warning("Analysis complete — mark not saved", {
+          description: data.persistence_error,
+        });
+      } else if (data.assessment) {
         toast.success("Analysis complete", {
           description:
             data.assessment.status === "INCOMPLETE"
@@ -508,6 +535,7 @@ export function VivaPage() {
       {analysisResult && (
         <>
           <ScoreOverview
+            assessment={analysisResult.assessment}
             confidenceScore={analysisResult.confidence_score}
             engagementScore={analysisResult.engagement_score}
             audioGrade={audioAnalysis?.audio_grade}
@@ -550,6 +578,8 @@ export function VivaPage() {
                       size="sm"
                       disabled={isAnalyzing}
                       onClick={() => {
+                        xhrRef.current?.abort();
+                        if (videoPreview) URL.revokeObjectURL(videoPreview);
                         setUploadedFile(null);
                         setVideoPreview("");
                         setAnalysisResult(null);

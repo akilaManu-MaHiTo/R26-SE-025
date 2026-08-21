@@ -76,6 +76,9 @@ def main() -> int:
         if not args.video_only:
             result = attach_qa_analysis(result, debug=args.debug)
 
+        from services.assessment_scoring import attach_assessment
+
+        result = attach_assessment(result)
         save_output(result, config.output_path)
 
         print(json.dumps(result, indent=2))
@@ -84,7 +87,10 @@ def main() -> int:
         if not result.get("timeline"):
             print("Warning: No faces detected in sampled frames (1 FPS).")
         if result.get("video_status") == "insufficient_face_coverage":
-            print("Warning: Face coverage too low — confidence/engagement scores withheld.")
+            print("Error: Face coverage too low — official mark is INCOMPLETE. Point the camera at the student.")
+        assessment = result.get("assessment") or {}
+        if assessment.get("status") == "INCOMPLETE":
+            print(f"Assessment INCOMPLETE: {assessment.get('validation', {}).get('message')}")
         llm = result.get("llm_evaluation") or {}
         if llm.get("status") == "fallback":
             print(f"Note: LLM judge used formula fallback ({llm.get('error')})")
@@ -95,6 +101,11 @@ def main() -> int:
         print(f"Error: {exc}")
         return 1
     except Exception as exc:
+        from services.video_processor import VideoUnreadableError
+
+        if isinstance(exc, VideoUnreadableError):
+            print(f"Error: {exc}")
+            return 1
         print(f"Unexpected error: {exc}")
         return 1
 
