@@ -108,14 +108,20 @@ def resolve_effective_batch_root(batch_dir: Path) -> Path:
     Does **not** unwrap when the single folder holds loose files (e.g. one
     student folder ``IT123`` with ``page.jpg`` inside — those are files, not
     only nested dirs).
+
+    Metadata files/dirs (names starting with ``_`` or ``.``) are ignored so
+    that ``_id_scan.json`` does not block unwrapping.
     """
     current = batch_dir.resolve()
     if not current.is_dir():
         return current
 
+    def _is_meta(name: str) -> bool:
+        return (not name) or name.startswith(".") or name.startswith("_")
+
     while True:
         try:
-            children = [p for p in current.iterdir() if p.name and not p.name.startswith(".")]
+            children = [p for p in current.iterdir() if not _is_meta(p.name)]
         except OSError:
             break
         dirs = [p for p in children if p.is_dir()]
@@ -124,7 +130,7 @@ def resolve_effective_batch_root(batch_dir: Path) -> Path:
             break
         sole = dirs[0]
         try:
-            inner = [p for p in sole.iterdir() if p.name and not p.name.startswith(".")]
+            inner = [p for p in sole.iterdir() if not _is_meta(p.name)]
         except OSError:
             break
         inner_dirs = [p for p in inner if p.is_dir()]
