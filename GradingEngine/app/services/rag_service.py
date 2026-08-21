@@ -10,6 +10,10 @@ _collection = None
 COLLECTION_NAME = os.getenv("CHROMA_COLLECTION_NAME", "lecture_notes")
 EMBEDDING_MODEL = os.getenv("CHROMA_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 RAG_N_RESULTS = int(os.getenv("RAG_N_RESULTS", "3"))
+# Cosine-style distance (lower = closer). Default 0.45 ≈ require decent similarity.
+RAG_MAX_DISTANCE = float(os.getenv("RAG_MAX_DISTANCE", "0.45"))
+# Keep only chunks within this margin of the best hit (drops weak runners-up).
+RAG_DISTANCE_MARGIN = float(os.getenv("RAG_DISTANCE_MARGIN", "0.12"))
 
 
 def get_chroma_db_path() -> Path:
@@ -70,12 +74,15 @@ def retrieve_relevant_context(
         )
 
     top_k = n_results or RAG_N_RESULTS
+    # Fetch extras so we can drop weak matches after distance filtering.
+    fetch_k = max(top_k * 3, top_k)
 
     try:
         collection = get_collection()
         query_kwargs: dict = {
             "query_texts": [query],
-            "n_results": top_k,
+            "n_results": fetch_k,
+            "include": ["documents", "metadatas", "distances"],
         }
         if course:
             query_kwargs["where"] = {"course": course}
@@ -84,40 +91,89 @@ def retrieve_relevant_context(
 
         documents = results.get("documents") or []
         metadatas = results.get("metadatas") or [[]]
+        distances = results.get("distances") or [[]]
         if documents and documents[0]:
-            chunks = []
+            candidates: list[tuple[float | None, str, dict]] = []
             for idx, doc in enumerate(documents[0]):
                 if not isinstance(doc, str) or not doc.strip():
+                    continue
+                # Skip tiny/noisy chunks (often junk slides).
+                if len(doc.strip()) < 40:
+                    continue
+                dist = None
+                if distances and distances[0] and idx < len(distances[0]):
+                    try:
+                        dist = float(distances[0][idx])
+                    except (TypeError, ValueError):
+                        dist = None
+                if dist is not None and dist > RAG_MAX_DISTANCE:
+                    print(
+                        f"RAG: dropping weak chunk dist={dist:.4f} "
+                        f"(max={RAG_MAX_DISTANCE})"
+                    )
                     continue
                 meta = {}
                 if metadatas and metadatas[0] and idx < len(metadatas[0]):
                     meta = metadatas[0][idx] if isinstance(metadatas[0][idx], dict) else {}
-                source = str(meta.get("source_file") or "").strip()
-                page_number = meta.get("page_number")
-                label_parts = []
-                if source:
-                    label_parts.append(source)
-                if page_number is not None:
-                    label_parts.append(f"p{page_number}")
-                label = f"[{', '.join(label_parts)}] " if label_parts else ""
-                chunks.append(f"{label}{doc.strip()}")
+                candidates.append((dist, doc.strip(), meta))
 
-            if chunks:
-                matched_course = course or (
-                    (metadatas[0][0] or {}).get("course", "Unknown Course")
-                    if metadatas and metadatas[0] and isinstance(metadatas[0][0], dict)
-                    else "Unknown Course"
-                )
-                print(
-                    f"RAG match from course={matched_course} "
-                    f"({len(chunks)} chunk(s), filtered={bool(course)})"
-                )
-                return {
-                    "snippet": "\n\n".join(chunks),
-                    "rag_chunks": len(chunks),
-                    "rag_context_used": True,
-                    "course_name": matched_course,
-                }
+            if candidates:
+                numbered = [(d if d is not None else 999.0, t, m) for d, t, m in candidates]
+                best = min(d for d, _, _ in numbered)
+                filtered = [
+                    (d, t, m)
+                    for d, t, m in numbered
+                    if d <= best + RAG_DISTANCE_MARGIN
+                ]
+                filtered.sort(key=lambda row: row[0])
+                filtered = filtered[:top_k]
+
+                chunks = []
+                kept_distances: list[float] = []
+                for dist, doc, meta in filtered:
+                    source = str(meta.get("source_file") or "").strip()
+                    page_number = meta.get("page_number")
+                    label_parts = []
+                    if source:
+                        label_parts.append(source)
+                    if page_number is not None:
+                        label_parts.append(f"p{page_number}")
+                    label = f"[{', '.join(label_parts)}] " if label_parts else ""
+                    chunks.append(f"{label}{doc}")
+                    if dist < 900:
+                        kept_distances.append(dist)
+
+                if chunks:
+                    matched_course = course or (
+                        (filtered[0][2] or {}).get("course", "Unknown Course")
+                        if isinstance(filtered[0][2], dict)
+                        else "Unknown Course"
+                    )
+                    dist_note = (
+                        f", dist=[{', '.join(f'{d:.3f}' for d in kept_distances)}]"
+                        if kept_distances
+                        else ""
+                    )
+                    print(
+                        f"RAG match from course={matched_course} "
+                        f"({len(chunks)} chunk(s), filtered={bool(course)}{dist_note})"
+                    )
+                    return {
+                        "snippet": "\n\n".join(chunks),
+                        "rag_chunks": len(chunks),
+                        "rag_context_used": True,
+                        "course_name": matched_course,
+                        "rag_distances": kept_distances,
+                    }
+
+            return _empty_rag_result(
+                (
+                    f"No lecture materials for course '{course}' passed the relevance threshold."
+                    if course
+                    else "No lecture materials passed the relevance threshold for this topic."
+                ),
+                course,
+            )
 
         if course:
             return _empty_rag_result(

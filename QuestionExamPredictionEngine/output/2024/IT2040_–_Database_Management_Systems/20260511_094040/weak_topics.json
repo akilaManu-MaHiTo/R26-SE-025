@@ -1,0 +1,62 @@
+[
+  {
+    "topic": "SQL",
+    "average_learning_score": 0.72,
+    "average_performance_score": 0.755,
+    "average_concept_score": 0.62,
+    "average_cognitive_score": 0.749,
+    "score_stddev": 0.127,
+    "weak_student_count": 0,
+    "students_attempted": 5,
+    "attempts": 15,
+    "weak_student_share": 0.0,
+    "average_level_gap": 0.067,
+    "weak_probability": 0.107,
+    "status": "REVIEW"
+  },
+  {
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "average_learning_score": 0.801,
+    "average_performance_score": 0.729,
+    "average_concept_score": 0.943,
+    "average_cognitive_score": 0.851,
+    "score_stddev": 0.121,
+    "weak_student_count": 0,
+    "students_attempted": 5,
+    "attempts": 10,
+    "weak_student_share": 0.0,
+    "average_level_gap": -1.1,
+    "weak_probability": 0.025,
+    "status": "REVIEW"
+  },
+  {
+    "topic": "Schema refinement",
+    "average_learning_score": 0.802,
+    "average_performance_score": 0.76,
+    "average_concept_score": 0.858,
+    "average_cognitive_score": 0.875,
+    "score_stddev": 0.113,
+    "weak_student_count": 0,
+    "students_attempted": 5,
+    "attempts": 10,
+    "weak_student_share": 0.0,
+    "average_level_gap": -1.3,
+    "weak_probability": 0.024,
+    "status": "REVIEW"
+  },
+  {
+    "topic": "Database Utilities",
+    "average_learning_score": 0.817,
+    "average_performance_score": 0.764,
+    "average_concept_score": 0.851,
+    "average_cognitive_score": 0.971,
+    "score_stddev": 0.136,
+    "weak_student_count": 0,
+    "students_attempted": 5,
+    "attempts": 15,
+    "weak_student_share": 0.0,
+    "average_level_gap": -1.4,
+    "weak_probability": 0.024,
+    "status": "REVIEW"
+  }
+]
