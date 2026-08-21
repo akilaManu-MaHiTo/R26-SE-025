@@ -76,6 +76,7 @@ def process_and_index_lecture(file_path: str, course_name: str) -> int:
     collection = get_collection()
     indexed_count = 0
     course_slug = course_name.lower().replace(" ", "_")
+    file_slug = "".join(ch if ch.isalnum() else "_" for ch in path.stem).strip("_").lower()[:80] or "file"
 
     if extension == ".pdf":
         reader = PdfReader(str(path))
@@ -84,7 +85,7 @@ def process_and_index_lecture(file_path: str, course_name: str) -> int:
             if not page_text.strip():
                 continue
 
-            doc_id = f"{course_slug}_pdf_p{page_num}"
+            doc_id = f"{course_slug}_pdf_{file_slug}_p{page_num}"
             _index_chunk(
                 collection,
                 doc_id=doc_id,
@@ -102,7 +103,7 @@ def process_and_index_lecture(file_path: str, course_name: str) -> int:
             if not slide_text.strip():
                 continue
 
-            doc_id = f"{course_slug}_pptx_s{slide_num}"
+            doc_id = f"{course_slug}_pptx_{file_slug}_s{slide_num}"
             _index_chunk(
                 collection,
                 doc_id=doc_id,

@@ -82,7 +82,7 @@ Thumbs.db
 uploads/
 
 # Local vector store
-
+chroma_db/
 
 # Sample ingest artifacts
 sample_university_lecture.pdf

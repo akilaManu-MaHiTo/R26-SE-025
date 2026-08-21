@@ -92,7 +92,7 @@ def main():
             print(f"    Overall change: {q1_trend['change']}")
     
     print("\n" + "="*70)
-    print("[PASS] Comprehensive test completed!")
+    print("✅ Comprehensive test completed!")
     print("="*70)
 
 

@@ -79,7 +79,23 @@
         <mxCell id="l_rsession" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_rsession" target="e_rubric"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="l_rsubject" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_rsubject" target="e_rubric"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="l_rfile" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_rfile" target="e_rubric"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a_rsubjname" value="subject_name" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="520" y="200" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a_ryear" value="year" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="620" y="340" width="70" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="a_rmonth" value="month" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="700" y="360" width="70" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="a_rsem" value="semester" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="780" y="370" width="80" height="36" as="geometry" />
+        </mxCell>
         <mxCell id="l_rparsed" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_rparsed" target="e_rubric"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l_rsubjname" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_rsubjname" target="e_rubric"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l_ryear" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_ryear" target="e_rubric"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l_rmonth" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_rmonth" target="e_rubric"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l_rsem" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_rsem" target="e_rubric"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="l_rqs" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_rqs" target="e_rubric"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="l_qno" style="endArrow=none;html=1;strokeColor=#94A3B8;" edge="1" parent="1" source="a_qno" target="a_rqs"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="l_qtext" style="endArrow=none;html=1;strokeColor=#94A3B8;" edge="1" parent="1" source="a_qtext" target="a_rqs"><mxGeometry relative="1" as="geometry" /></mxCell>
@@ -108,6 +124,18 @@
         </mxCell>
         <mxCell id="a_ssubject" value="subject_code" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="640" y="880" width="100" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="a_ssubjname" value="subject_name" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="560" y="900" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a_syear" value="year" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="680" y="940" width="70" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="a_smonth" value="month" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="760" y="960" width="70" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="a_ssem" value="semester" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="850" y="950" width="80" height="36" as="geometry" />
         </mxCell>
         <mxCell id="a_status" value="status" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="760" y="900" width="80" height="42" as="geometry" />
@@ -208,6 +236,10 @@
         <mxCell id="l_stuid" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_stuid" target="e_sub"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="l_ssession" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_ssession" target="e_sub"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="l_ssubject" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_ssubject" target="e_sub"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l_ssubjname" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_ssubjname" target="e_sub"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l_syear" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_syear" target="e_sub"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l_smonth" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_smonth" target="e_sub"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l_ssem" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_ssem" target="e_sub"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="l_status" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_status" target="e_sub"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="l_proc" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_proc" target="e_sub"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="l_note" style="endArrow=none;html=1;strokeColor=#64748B;" edge="1" parent="1" source="a_note" target="e_sub"><mxGeometry relative="1" as="geometry" /></mxCell>
@@ -288,7 +320,7 @@
         <mxCell id="er3a" value="1" style="endArrow=none;html=1;strokeColor=#D97706;strokeWidth=1.5;fontSize=13;fontStyle=1;" edge="1" parent="1" source="e_rubric" target="r_grades"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="er3b" value="N" style="endArrow=none;html=1;strokeColor=#D97706;strokeWidth=1.5;fontSize=13;fontStyle=1;" edge="1" parent="1" source="r_grades" target="e_sub"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="note" value="Notation&#xa;• Double oval = multivalued (array)&#xa;• Nested ovals on evaluation / questions = composite attributes&#xa;• COURSE : RUBRIC = 1 : N&#xa;• RUBRIC : SUBMISSION = 1 : N&#xa;• evaluation is embedded in SUBMISSION (not a separate entity)" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fillColor=#F9FAFB;strokeColor=#9CA3AF;fontColor=#374151;fontSize=11;" vertex="1" parent="1">
+        <mxCell id="note" value="Notation&#xa;• Double oval = multivalued (array)&#xa;• Nested ovals on evaluation / questions = composite attributes&#xa;• COURSE : RUBRIC = 1 : N&#xa;• RUBRIC : SUBMISSION = 1 : N&#xa;• evaluation is embedded in SUBMISSION (not a separate entity)&#xa;• Also on RUBRIC &amp; SUBMISSION: subject_name, year, month, semester" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fillColor=#F9FAFB;strokeColor=#9CA3AF;fontColor=#374151;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="40" y="980" width="360" height="130" as="geometry" />
         </mxCell>
 

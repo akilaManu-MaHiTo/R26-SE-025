@@ -1,35 +1,14 @@
-from src.analytics.weak_topic_model import (
-    DEFAULT_MODEL_PATH,
-    WeakTopicModel,
-    build_topic_feature_rows,
-)
-
-
-_MODEL_UNSET = object()
+from src.analytics.weak_topic_model import DEFAULT_MODEL_PATH, WeakTopicModel, build_topic_feature_rows
 
 
 class WeakTopicAnalyzer:
     """Analyzes weak topics from student performance data."""
 
-    def __init__(
-        self,
-        exam_data=None,
-        threshold=0.5,
-        model_path=DEFAULT_MODEL_PATH,
-        probability_threshold=0.55,
-        model=_MODEL_UNSET,
-    ):
+    def __init__(self, exam_data=None, threshold=0.5, model_path=DEFAULT_MODEL_PATH, probability_threshold=0.55):
         """Initialize the weak topic analyzer."""
         self.exam_data = exam_data or {}
         self.threshold = threshold
-        self.model = (
-            WeakTopicModel(
-                model_path=model_path,
-                weak_probability_threshold=probability_threshold,
-            )
-            if model is _MODEL_UNSET
-            else model
-        )
+        self.model = WeakTopicModel(model_path=model_path, weak_probability_threshold=probability_threshold)
 
     def analyze(self, results):
         """Perform weak topic analysis."""
@@ -38,7 +17,7 @@ class WeakTopicAnalyzer:
         if not topic_rows:
             return []
 
-        if self.model is not None and self.model.pipeline:
+        if self.model.pipeline:
             return self.model.predict(topic_rows)
 
         weak_topics = []
