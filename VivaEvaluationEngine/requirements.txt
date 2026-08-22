@@ -1,10 +1,26 @@
-opencv-python
-mediapipe
-hsemotion-onnx
-numpy
-fastapi
-uvicorn
-python-multipart
-timm
-torch
-torchvision
+numpy>=1.26,<2.3
+opencv-python>=4.10,<5
+mediapipe>=0.10,<0.11
+timm>=1.0,<2
+torch>=2.4,<3
+torchvision>=0.19,<1
+torchaudio>=2.4,<3
+librosa>=0.10,<0.12
+soundfile>=0.12,<1
+praat-parselmouth>=0.4,<0.5
+scipy>=1.13,<2
+openai-whisper>=20240930
+transformers>=4.44,<5
+# Optional SpeechBrain SER backend (only if VIVA_SER_BACKEND=speechbrain):
+#   pip install speechbrain
+# Optional two-speaker diarization (default backend is local MFCC k-means, no extra dep):
+#   VIVA_DIARIZATION_BACKEND=pyannote  # requires: pip install pyannote.audio and HUGGINGFACE_TOKEN
+#
+# Optional: LLM-as-judge uses Groq's OpenAI-compatible HTTP API via stdlib urllib.
+# Set AI_API_KEY or GROQ_API_KEY (and optionally GROQ_MODEL / VIVA_LLM_MODEL).
+# No extra Python package is required for the judge call.
+#
+# SER (speech emotion): default VIVA_SER_BACKEND=huggingface
+#   VIVA_SER_MODEL=ehcalabres/wav2vec2-lg-xlsr-en-speech-emotion-recognition
+#   VIVA_SER_BACKEND=heuristic   # force pitch/RMS fallback (excluded from grades)
+#   VIVA_SER_BACKEND=speechbrain # requires speechbrain package

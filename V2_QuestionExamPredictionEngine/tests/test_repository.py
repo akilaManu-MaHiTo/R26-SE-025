@@ -1,0 +1,551 @@
+from copy import deepcopy
+
+from app.db import repository
+from app.db.repository import (
+    create_indexes,
+    find_attempts,
+    find_exam_analysis_status,
+    find_exam_analytics,
+    find_generated_questions,
+    insert_attempts,
+    save_run,
+    upsert_exam_analytics,
+    upsert_exam_analysis_status,
+    upsert_generated_questions,
+)
+from tests.fixtures.fixture_data import expected_attempt_records
+from tests.test_exam_analytics import exam_document
+
+
+async def test_indexes_created(test_db):
+    await create_indexes(test_db)
+    info = await test_db["question_catalog"].index_information()
+    index_keys = [info[name]["key"] for name in info]
+    assert any("course_code" in dict(k) for k in index_keys)
+
+
+async def test_insert_attempts_idempotent(test_db):
+    await create_indexes(test_db)
+    first = await insert_attempts(test_db, expected_attempt_records[:5])
+    second = await insert_attempts(test_db, expected_attempt_records[:5])
+    assert first == 5
+    assert second == 5
+    found = await find_attempts(test_db, "run-fixture")
+    assert len(found) == 5
+
+
+async def test_save_run_upsert(test_db):
+    await create_indexes(test_db)
+    await save_run(test_db, {"run_id": "r1", "course_code": "SE2032", "exam_id": "e1"})
+    await save_run(test_db, {"run_id": "r1", "course_code": "SE2032", "exam_id": "e1", "status": "running"})
+    doc = await test_db["analysis_runs"].find_one({"run_id": "r1"})
+    assert doc["status"] == "running"
+
+
+from datetime import datetime, timezone
+
+from app.db.repository import find_attempts_by_student, insert_attempts, latest_run_id, save_run
+
+
+async def test_find_attempts_by_student_filters_by_student(test_db):
+    from tests.fixtures.fixture_data import expected_attempt_records
+
+    await insert_attempts(test_db, expected_attempt_records)
+    rows = await find_attempts_by_student(test_db, "run-fixture", "stu-001")
+    assert len(rows) == 6
+    assert all(r["student_key"] == "stu-001" for r in rows)
+
+
+async def test_find_attempts_by_student_unknown_returns_empty(test_db):
+    rows = await find_attempts_by_student(test_db, "run-fixture", "nobody")
+    assert rows == []
+
+
+async def test_latest_run_id_returns_most_recent(test_db):
+    now = datetime.now(timezone.utc)
+    await save_run(test_db, {"run_id": "older", "course_code": "SE2032", "exam_id": "e", "status": "ready", "created_at": now.replace(minute=0)})
+    await save_run(test_db, {"run_id": "newer", "course_code": "SE2032", "exam_id": "e", "status": "ready", "created_at": now.replace(minute=1)})
+    assert await latest_run_id(test_db) == "newer"
+
+
+async def test_latest_run_id_empty_returns_none(test_db):
+    await test_db["analysis_runs"].delete_many({})
+    assert await latest_run_id(test_db) is None
+
+
+from app.db.repository import find_recommendations, save_recommendations
+
+
+async def test_find_recommendations_returns_sorted_by_priority(test_db):
+    await test_db["exam_recommendations"].delete_many({})
+    await save_recommendations(
+        test_db,
+        [
+            {
+                "recommendation_id": "r-low",
+                "run_id": "run-1",
+                "course_code": "SE2032",
+                "exam_id": "e1",
+                "topic": "SQL",
+                "bloom_level": "Apply",
+                "priority_score": 0.3,
+            },
+            {
+                "recommendation_id": "r-high",
+                "run_id": "run-1",
+                "course_code": "SE2032",
+                "exam_id": "e1",
+                "topic": "Schema Refinement",
+                "bloom_level": "Analyze",
+                "priority_score": 0.9,
+            },
+        ],
+    )
+    recs = await find_recommendations(test_db, "run-1")
+    assert [r["recommendation_id"] for r in recs] == ["r-high", "r-low"]
+
+
+async def test_find_recommendations_other_run_returns_empty(test_db):
+    await test_db["exam_recommendations"].delete_many({})
+    await save_recommendations(
+        test_db,
+        [
+            {
+                "recommendation_id": "r-other",
+                "run_id": "run-other",
+                "course_code": "SE2032",
+                "exam_id": "e1",
+                "topic": "SQL",
+                "bloom_level": "Apply",
+                "priority_score": 0.5,
+            }
+        ],
+    )
+    assert await find_recommendations(test_db, "run-1") == []
+
+
+def valid_document(
+    *,
+    student_id: str = "IT22145976",
+    course_code: str = "SE3040",
+    session_name: str = "Semester 1 Final Exam",
+) -> dict:
+    return {
+        "student_id": student_id,
+        "subject_code": course_code,
+        "subject_name": "Software Engineering",
+        "year": 2022,
+        "month": 7,
+        "semester": 1,
+        "session_name": session_name,
+        "overall_performance": {
+            "score": 6.0,
+            "maximum": 10.0,
+            "percentage": 60.0,
+            "status": "Developing",
+        },
+        "question_performance": [],
+        "topic_performance": [
+            {
+                "topic": "Testing",
+                "questions_attempted": 1,
+                "score": 6.0,
+                "max_score": 10.0,
+                "percentage": 60.0,
+                "status": "Developing",
+            }
+        ],
+        "bloom_performance": [
+            {
+                "level": "Understand",
+                "questions_attempted": 1,
+                "average_score": 60.0,
+                "status": "Developing",
+            }
+        ],
+        "learning_analysis": {
+            "overall_performance": "Developing",
+            "strong_topics": [],
+            "developing_topics": ["Testing"],
+            "weak_topics": [],
+            "critical_topics": [],
+            "learning_gaps": [],
+        },
+        "recommendations": [],
+        "next_question_strategy": {
+            "recommended_topics": ["Testing"],
+            "recommended_bloom_levels": ["Understand"],
+            "recommended_difficulty": "Medium",
+            "number_of_questions": 5,
+        },
+        "model_metadata": {
+            "bloom_model": "qwen3:8b",
+            "bloom_model_type": "base",
+            "grading_source": "rubric",
+            "rag_context_used": False,
+        },
+        "generated_at": "2026-08-12T00:00:00Z",
+        "analysis_version": "1.0",
+    }
+
+
+async def test_student_analytics_unique_compound_index_is_named(test_db):
+    await create_indexes(test_db)
+    info = await test_db["student_analytics"].index_information()
+
+    assert info["uniq_student_analytics"]["key"] == [
+        ("student_id", 1),
+        ("subject_code", 1),
+        ("session_name", 1),
+    ]
+    assert info["uniq_student_analytics"]["unique"] is True
+
+
+async def test_upsert_student_analytics_is_idempotent(test_db):
+    student_id = "IT-TASK-5-IDEMPOTENT"
+    document = valid_document(student_id=student_id)
+    original = deepcopy(document)
+    try:
+        await repository.upsert_student_analytics(test_db, document)
+        assert document == original
+
+        document["overall_performance"]["score"] = 7.0
+        document["overall_performance"]["percentage"] = 70.0
+        await repository.upsert_student_analytics(test_db, document)
+        saved = await test_db["student_analytics"].find(
+            {"student_id": student_id}
+        ).to_list(length=None)
+
+        assert len(saved) == 1
+        assert saved[0]["overall_performance"]["score"] == 7.0
+        assert "_id" not in document
+    finally:
+        await test_db["student_analytics"].delete_many({"student_id": student_id})
+
+
+async def test_upsert_student_analytics_is_idempotent_by_exam_id(test_db):
+    student_id = "IT22145976"
+    document = valid_document(
+        student_id=student_id,
+        course_code="IT2040",
+        session_name="Final Examination 2021",
+    )
+    try:
+        await repository.upsert_student_analytics(test_db, document)
+        document["overall_performance"]["score"] = 70.0
+        document["overall_performance"]["percentage"] = 70.0
+        await repository.upsert_student_analytics(test_db, document)
+        saved = await test_db["student_analytics"].find(
+            {"student_id": student_id}
+        ).to_list(length=None)
+        assert len(saved) == 1
+        assert saved[0]["overall_performance"]["score"] == 70.0
+    finally:
+        await test_db["student_analytics"].delete_many({"student_id": student_id})
+
+
+async def test_find_student_analytics_matches_course_and_session(test_db):
+    student_id = "IT22145976"
+    await repository.upsert_student_analytics(
+        test_db,
+        valid_document(
+            student_id=student_id,
+            course_code="IT2040",
+            session_name="Final Examination 2021",
+        ),
+    )
+    try:
+        found = await repository.find_student_analytics(
+            test_db, student_id, "IT2040", "Final Examination 2021"
+        )
+        assert found["subject_code"] == "IT2040"
+        assert found["session_name"] == "Final Examination 2021"
+    finally:
+        await test_db["student_analytics"].delete_many({"student_id": student_id})
+
+
+async def test_find_graded_submission_matches_student_course_and_session(test_db):
+    student_id = "task-5-graded-submission"
+    await test_db["submissions"].insert_many(
+        [
+            {
+                "student_id": student_id,
+                "subject_code": "IT2040",
+                "session_name": "Final Examination 2021",
+                "status": "graded",
+            },
+            {
+                "student_id": student_id,
+                "subject_code": "IT2040",
+                "session_name": "Final Examination 2021",
+                "status": "pending",
+            },
+        ]
+    )
+    try:
+        found = await repository.find_graded_submission(
+            test_db, student_id, "IT2040", "Final Examination 2021"
+        )
+        assert found is not None
+        assert found["status"] == "graded"
+    finally:
+        await test_db["submissions"].delete_many({"student_id": student_id})
+
+
+async def test_find_graded_submissions_for_exam_filters_by_session(test_db):
+    student_ids = ["task-5-exam-s1", "task-5-exam-s2", "task-5-exam-s3"]
+    await test_db["submissions"].insert_many(
+        [
+            {
+                "student_id": student_ids[0],
+                "subject_code": "IT2040",
+                "session_name": "Final Examination 2021",
+                "status": "graded",
+            },
+            {
+                "student_id": student_ids[1],
+                "subject_code": "IT2040",
+                "session_name": "Final Examination 2021",
+                "status": "graded",
+            },
+            {
+                "student_id": student_ids[2],
+                "subject_code": "IT2040",
+                "session_name": "Other Session",
+                "status": "graded",
+            },
+        ]
+    )
+    try:
+        found = await repository.find_graded_submissions_for_exam(
+            test_db, "IT2040", "Final Examination 2021"
+        )
+        assert {doc["student_id"] for doc in found} == {
+            student_ids[0],
+            student_ids[1],
+        }
+    finally:
+        await test_db["submissions"].delete_many(
+            {"student_id": {"$in": student_ids}}
+        )
+
+
+async def test_find_student_analytics_filters_and_returns_id_free_copy(test_db):
+    student_id = "IT-TASK-5-LOOKUP"
+    document = valid_document(
+        student_id=student_id,
+        course_code="T5A101",
+        session_name="Task 5 Analytics Session",
+    )
+    try:
+        await repository.upsert_student_analytics(test_db, document)
+        found = await repository.find_student_analytics(
+            test_db, student_id, "T5A101", "Task 5 Analytics Session"
+        )
+        stored = await test_db["student_analytics"].find_one(
+            {"student_id": student_id}
+        )
+
+        assert found["subject_code"] == "T5A101"
+        assert found["session_name"] == "Task 5 Analytics Session"
+        assert "_id" not in found
+        assert "_id" in stored
+        assert "_id" not in document
+    finally:
+        await test_db["student_analytics"].delete_many({"student_id": student_id})
+
+
+async def test_find_graded_submissions_filters_out_other_statuses(test_db):
+    student_ids = ["task-5-graded", "task-5-pending"]
+    await test_db["submissions"].insert_many(
+        [
+            {"student_id": student_ids[0], "status": "graded"},
+            {"student_id": student_ids[1], "status": "pending"},
+        ]
+    )
+    try:
+        found = await repository.find_graded_submissions(test_db)
+        task_documents = [doc for doc in found if doc.get("student_id") in student_ids]
+
+        assert [doc["student_id"] for doc in task_documents] == ["task-5-graded"]
+    finally:
+        await test_db["submissions"].delete_many({"student_id": {"$in": student_ids}})
+
+
+async def test_find_course_prefers_exact_course_code(test_db):
+    course_ids = ["task-5-course-exact", "task-5-course-fallback"]
+    await test_db["courses"].insert_many(
+        [
+            {
+                "_id": course_ids[0],
+                "course_code": "T5C101",
+                "name": "Exact course",
+            },
+            {
+                "_id": course_ids[1],
+                "subject_code": "T5C101",
+                "session_name": "Task 5 Session",
+                "name": "Fallback course",
+            },
+        ]
+    )
+    try:
+        found = await repository.find_course_for_submission(
+            test_db,
+            {
+                "course_code": "T5C101",
+                "subject_code": "T5C101",
+                "session_name": "Task 5 Session",
+            },
+        )
+
+        assert found["_id"] == course_ids[0]
+    finally:
+        await test_db["courses"].delete_many({"_id": {"$in": course_ids}})
+
+
+async def test_find_course_falls_back_to_subject_and_session(test_db):
+    course_id = "task-5-course-sample"
+    await test_db["courses"].insert_one(
+        {
+            "_id": course_id,
+            "subject_code": "T5C102",
+            "session_name": "Task 5 Sample Session",
+        }
+    )
+    try:
+        found = await repository.find_course_for_submission(
+            test_db,
+            {"subject_code": "T5C102", "session_name": "Task 5 Sample Session"},
+        )
+
+        assert found["_id"] == course_id
+    finally:
+        await test_db["courses"].delete_one({"_id": course_id})
+
+
+async def test_find_rubric_prefers_exact_reference(test_db):
+    rubric_ids = ["task-5-rubric-exact", "task-5-rubric-fallback"]
+    await test_db["rubricCollection"].insert_many(
+        [
+            {
+                "_id": rubric_ids[0],
+                "subject_code": "T5R101",
+                "session_name": "Exact session",
+            },
+            {
+                "_id": rubric_ids[1],
+                "subject_code": "T5R101",
+                "session_name": "Exact session",
+            },
+        ]
+    )
+    try:
+        found = await repository.find_rubric_for_submission(
+            test_db,
+            {
+                "rubric_ref": rubric_ids[0],
+                "subject_code": "T5R101",
+                "session_name": "Exact session",
+            },
+        )
+
+        assert found["_id"] == rubric_ids[0]
+    finally:
+        await test_db["rubricCollection"].delete_many({"_id": {"$in": rubric_ids}})
+
+
+async def test_find_rubric_uses_sample_fallback_for_placeholder_reference(test_db):
+    placeholder_id = "ObjectId('task-5-...')"
+    fallback_id = "task-5-rubric-sample"
+    await test_db["rubricCollection"].insert_many(
+        [
+            {
+                "_id": placeholder_id,
+                "subject_code": "WRONG",
+                "session_name": "Wrong session",
+            },
+            {
+                "_id": fallback_id,
+                "subject_code": "T5R102",
+                "session_name": "Task 5 Sample Session",
+            },
+        ]
+    )
+    try:
+        found = await repository.find_rubric_for_submission(
+            test_db,
+            {
+                "rubric_ref": placeholder_id,
+                "subject_code": "T5R102",
+                "session_name": "Task 5 Sample Session",
+            },
+        )
+
+        assert found["_id"] == fallback_id
+    finally:
+        await test_db["rubricCollection"].delete_many(
+            {"_id": {"$in": [placeholder_id, fallback_id]}}
+        )
+
+
+async def test_upsert_and_find_exam_analytics_round_trip(test_db):
+    from app.schemas.exam_analytics import ExamAnalyticsDocument
+
+    doc = ExamAnalyticsDocument.model_validate(exam_document()).model_dump(mode="json")
+    await upsert_exam_analytics(test_db, doc)
+    found = await find_exam_analytics(test_db, "IT2040", "Final Examination")
+    assert found["subject_code"] == "IT2040"
+    assert found["session_name"] == "Final Examination"
+
+
+async def test_exam_analysis_status_unique_index_and_round_trip(test_db):
+    await create_indexes(test_db)
+    info = await test_db["analyzedExams"].index_information()
+
+    assert info["uniq_analyzedExams"]["key"] == [
+        ("subject_code", 1),
+        ("session_name", 1),
+    ]
+    assert info["uniq_analyzedExams"]["unique"] is True
+
+    document = {
+        "subject_code": "IT2040",
+        "subject_name": "Database Management Systems",
+        "year": 2022,
+        "month": 7,
+        "semester": 1,
+        "session_name": "Final Examination",
+        "analyzed": "done",
+        "analyzed_at": "2026-08-13T00:00:00Z",
+    }
+    await upsert_exam_analysis_status(test_db, document)
+    found = await find_exam_analysis_status(test_db, "IT2040", "Final Examination")
+    assert found["analyzed"] == "done"
+    assert "_id" not in found
+
+    document["analyzed"] = "pending"
+    document.pop("analyzed_at", None)
+    await upsert_exam_analysis_status(test_db, document)
+    saved = await test_db["analyzedExams"].find(
+        {"subject_code": "IT2040", "session_name": "Final Examination"}
+    ).to_list(length=None)
+    assert len(saved) == 1
+    assert saved[0]["analyzed"] == "pending"
+    await test_db["analyzedExams"].delete_many({})
+
+
+async def test_generated_questions_round_trip(test_db):
+    document = {
+        "student_id": "IT22145976",
+        "exam_id": "IT2040@Final Examination 2021",
+        "course": {"code": "IT2040", "name": "Database Management Systems"},
+        "request": {"recommended_topics": ["SQL"], "recommended_bloom_levels": ["Understand"], "recommended_difficulty": "Medium", "number_of_questions": 5},
+        "questions": [{"prompt": "Write an authentication query.", "bloom_level": "Understand", "topic": "SQL", "difficulty": "Medium", "hints": ["Use CREATE LOGIN"]}],
+        "generated_at": "2026-08-12T00:00:00Z",
+        "generation_version": "1.0",
+    }
+    await upsert_generated_questions(test_db, document)
+    found = await find_generated_questions(test_db, "IT22145976", "IT2040@Final Examination 2021")
+    assert found["student_id"] == "IT22145976"
+    assert found["questions"][0]["prompt"].startswith("Write")

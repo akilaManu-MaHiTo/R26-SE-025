@@ -5,6 +5,10 @@ import cv2
 import numpy as np
 
 
+class VideoUnreadableError(ValueError):
+    """The path exists but OpenCV cannot decode it as video."""
+
+
 @dataclass
 class FrameData:
     time_sec: float
@@ -21,7 +25,9 @@ class VideoProcessor:
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             cap.release()
-            raise FileNotFoundError(f"Could not open video file: {video_path}")
+            raise VideoUnreadableError(
+                "This file could not be opened as a video. Upload MP4 or WEBM with a student face on camera."
+            )
 
         source_fps = cap.get(cv2.CAP_PROP_FPS)
         if source_fps <= 0:
