@@ -1,1 +1,0 @@
-"""Training entry points for the similarity model."""
