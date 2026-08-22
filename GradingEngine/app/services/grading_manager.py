@@ -7,6 +7,7 @@ from bson import ObjectId
 
 from app.core.database import db_instance as db
 from app.services.answer_splitter import clean_ocr_transcript
+from app.services.ai_model_route import probe_colab_availability
 from app.services.llm_service import generate_grading_report, regrade_single_question
 from app.services.ocr_service import process_student_answer
 
@@ -256,6 +257,8 @@ async def run_batch_grading(
     id_map = {str(k): str(v) for k, v in (student_id_by_paper or {}).items()}
     keys = _list_paper_keys(upload_path, allow)
     rubric_oid = ObjectId(rubric_id)
+
+    await asyncio.to_thread(probe_colab_availability, force=True)
 
     for paper_key in keys:
         student_folder_path = os.path.join(upload_path, paper_key)
