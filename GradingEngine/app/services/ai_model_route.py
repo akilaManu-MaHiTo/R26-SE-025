@@ -19,6 +19,14 @@ COLAB_TIMEOUT_SECONDS = int(os.getenv("COLAB_TIMEOUT_SECONDS", "120"))
 COLAB_CONNECT_TIMEOUT_SECONDS = int(os.getenv("COLAB_CONNECT_TIMEOUT_SECONDS", "20"))
 COLAB_RETRIES = max(1, int(os.getenv("COLAB_RETRIES", "3")))
 COLAB_RETRY_DELAY_SECONDS = float(os.getenv("COLAB_RETRY_DELAY_SECONDS", "2"))
+COLAB_HEALTH_CHECK_SECONDS = float(os.getenv("COLAB_HEALTH_CHECK_SECONDS", "5"))
+COLAB_HEALTH_CACHE_SECONDS = float(os.getenv("COLAB_HEALTH_CACHE_SECONDS", "60"))
+
+_colab_availability_cache: dict = {
+    "available": None,
+    "reason": "",
+    "checked_at": 0.0,
+}
 # Appended to Colab snippet so fine-tuned models get a stricter marking policy.
 COLAB_STRICT_GRADING = os.getenv("COLAB_STRICT_GRADING", "1").strip().lower() in {
     "1",
@@ -624,10 +632,133 @@ def _emergency_fallback_response() -> dict:
     }
 
 
+def _colab_health_url() -> str:
+    """Derive GET /health URL from COLAB_EVALUATE_URL (typically .../evaluate)."""
+    if not COLAB_URL:
+        return ""
+    url = COLAB_URL.rstrip("/")
+    if url.endswith("/evaluate"):
+        return url[: -len("/evaluate")] + "/health"
+    if url.endswith("/health"):
+        return url
+    return f"{url}/health"
+
+
+def _colab_probe_headers() -> dict[str, str]:
+    return {"ngrok-skip-browser-warning": "true"}
+
+
+def reset_colab_availability_cache() -> None:
+    """Clear cached Colab availability (tests / manual recovery)."""
+    _colab_availability_cache["available"] = None
+    _colab_availability_cache["reason"] = ""
+    _colab_availability_cache["checked_at"] = 0.0
+
+
+def _mark_colab_unavailable(reason: str) -> None:
+    _colab_availability_cache["available"] = False
+    _colab_availability_cache["reason"] = reason
+    _colab_availability_cache["checked_at"] = time.monotonic()
+
+
+def _mark_colab_available(reason: str) -> None:
+    _colab_availability_cache["available"] = True
+    _colab_availability_cache["reason"] = reason
+    _colab_availability_cache["checked_at"] = time.monotonic()
+
+
+def _colab_cache_fresh() -> bool:
+    if _colab_availability_cache["available"] is None:
+        return False
+    age = time.monotonic() - _colab_availability_cache["checked_at"]
+    return age < COLAB_HEALTH_CACHE_SECONDS
+
+
+def _colab_is_available_cached() -> bool | None:
+    if _colab_cache_fresh():
+        return bool(_colab_availability_cache["available"])
+    return None
+
+
+def _probe_colab_endpoint(url: str) -> tuple[bool, str]:
+    if not url:
+        return False, "empty URL"
+    connect_timeout = min(
+        COLAB_CONNECT_TIMEOUT_SECONDS,
+        max(1, int(COLAB_HEALTH_CHECK_SECONDS)),
+    )
+    timeout = (connect_timeout, COLAB_HEALTH_CHECK_SECONDS)
+    try:
+        response = requests.get(
+            url,
+            timeout=timeout,
+            headers=_colab_probe_headers(),
+            allow_redirects=True,
+        )
+        if response.status_code == 404:
+            return False, f"HTTP 404 at {url}"
+        if response.status_code < 500:
+            return True, f"HTTP {response.status_code} at {url}"
+        return False, f"HTTP {response.status_code} at {url}"
+    except requests.exceptions.Timeout:
+        return False, f"timeout ({COLAB_HEALTH_CHECK_SECONDS}s)"
+    except requests.exceptions.ConnectionError as err:
+        return False, f"connection error ({err})"
+    except requests.exceptions.RequestException as err:
+        return False, f"{type(err).__name__}: {err}"
+
+
+def probe_colab_availability(*, force: bool = False) -> bool:
+    """
+    Probe Colab once; cache the result for COLAB_HEALTH_CACHE_SECONDS.
+    Returns True when Colab should be used for grading in this window.
+    """
+    if not COLAB_URL:
+        return False
+
+    if not force:
+        cached = _colab_is_available_cached()
+        if cached is not None:
+            return cached
+
+    health_url = _colab_health_url()
+    ok, reason = _probe_colab_endpoint(health_url)
+    if ok:
+        _mark_colab_available(reason)
+        print(f"Colab health check passed ({reason}).")
+        return True
+
+    ok_eval, reason_eval = _probe_colab_endpoint(COLAB_URL)
+    if ok_eval:
+        _mark_colab_available(reason_eval)
+        print(f"Colab health check passed via evaluate URL ({reason_eval}).")
+        return True
+
+    combined = f"health: {reason}; evaluate: {reason_eval}"
+    _mark_colab_unavailable(combined)
+    print(
+        f"Colab health check failed ({combined}). "
+        "Skipping Colab for this batch; using Groq fallback."
+    )
+    return False
+
+
 def try_forward_to_colab(payload: dict) -> dict | None:
     if not COLAB_URL:
         print("COLAB_EVALUATE_URL not set — skipping Colab, using fallback.")
         return None
+
+    cached = _colab_is_available_cached()
+    if cached is False:
+        reason = _colab_availability_cache.get("reason") or "unknown"
+        print(f"Colab skipped (cached unavailable: {reason}).")
+        return None
+    if cached is None:
+        probe_colab_availability(force=False)
+        if _colab_is_available_cached() is False:
+            reason = _colab_availability_cache.get("reason") or "unknown"
+            print(f"Colab skipped after health probe ({reason}).")
+            return None
 
     colab_body = {
         "topic": payload.get("topic", ""),
@@ -658,7 +789,13 @@ def try_forward_to_colab(payload: dict) -> dict | None:
             if response.status_code != 200:
                 print(f"Colab returned HTTP {response.status_code} on attempt {attempt}.")
                 last_err = RuntimeError(f"HTTP {response.status_code}")
-                # Retry transient 5xx / 429; fail fast on 4xx.
+                # Tunnel gone / auth — don't retry or hammer remaining questions.
+                if response.status_code in (404, 403, 410):
+                    _mark_colab_unavailable(
+                        f"HTTP {response.status_code} on evaluate (attempt {attempt})"
+                    )
+                    return None
+                # Retry transient 5xx / 429; fail fast on other 4xx.
                 if response.status_code < 500 and response.status_code != 429:
                     return None
             else:
@@ -693,6 +830,7 @@ def try_forward_to_colab(payload: dict) -> dict | None:
 
     if last_err is not None:
         print(f"Primary engine exhausted retries ({type(last_err).__name__}).")
+        _mark_colab_unavailable(f"exhausted retries ({type(last_err).__name__})")
     return None
 
 
