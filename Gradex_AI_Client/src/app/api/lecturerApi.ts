@@ -77,6 +77,10 @@ export interface ExamAnalytics {
   question_performance: QuestionPerformance[];
   attention_areas: AttentionArea[];
   insights: string[];
+  canonical_topic_performance: CanonicalTopic[];
+  canonical_attention_areas: CanonicalAttentionArea[];
+  canonical_insights: string[];
+  unmapped_topics: string[];
   generated_at: string;
   analytics_version: string;
 }
@@ -91,6 +95,34 @@ export interface StudentRow {
   status: string;
   analysis_status: string;
   submitted_at: string | null;
+}
+
+export interface CanonicalTopic {
+  topic: string;
+  average_percentage: number;
+  status: string;
+  priority: string;
+  question_count: number;
+  student_count: number;
+  contributing_fragments: string[];
+  is_estimated: boolean;
+}
+
+export interface CanonicalAttentionArea {
+  type: string;
+  name: string;
+  average_percentage: number;
+  priority: string;
+  question_count: number;
+  student_count: number;
+}
+
+export interface TeachingAction {
+  topic: string;
+  priority: string;
+  performance_percentage: number;
+  actions: string[];
+  generated_at: string;
 }
 
 /* ─── API Functions ────────────────────────────────────────────────────── */
@@ -122,5 +154,16 @@ export async function fetchExamStudents(
     `${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/students`,
   );
   if (!res.ok) throw new Error("Failed to fetch students");
+  return res.json();
+}
+
+export async function fetchTeachingActions(
+  courseCode: string,
+  sessionName: string,
+): Promise<TeachingAction[]> {
+  const res = await fetch(
+    `${API_BASE}/api/lecturers/exams/${encodeURIComponent(courseCode)}/${encodeURIComponent(sessionName)}/teaching-actions`,
+  );
+  if (!res.ok) throw new Error("Failed to fetch teaching actions");
   return res.json();
 }
