@@ -6,11 +6,19 @@ from app.db.repository import (
     find_exam_analytics,
     find_graded_submissions_for_exam,
     find_student_analytics,
+    list_all_exams,
 )
 from app.schemas.exam_analytics import ExamAnalyticsDocument
 from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
 
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
+
+
+@router.get("/exams")
+async def list_exams(db=Depends(get_db)):
+    """List all available exams with basic stats."""
+    exams = await list_all_exams(db)
+    return exams
 
 
 @router.get(
