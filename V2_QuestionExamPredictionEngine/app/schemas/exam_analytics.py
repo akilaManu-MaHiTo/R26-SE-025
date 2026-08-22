@@ -49,6 +49,34 @@ class AttentionArea(BaseModel):
     priority: RecommendationPriority
 
 
+class CanonicalTopicSummary(BaseModel):
+    topic: str = Field(min_length=1)
+    average_percentage: float = Field(ge=0, le=100)
+    status: PerformanceStatus
+    priority: RecommendationPriority
+    question_count: int = Field(ge=0)
+    student_count: int = Field(ge=0)
+    contributing_fragments: list[str] = Field(default_factory=list)
+    is_estimated: bool = False
+
+
+class CanonicalAttentionArea(BaseModel):
+    type: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    average_percentage: float = Field(ge=0, le=100)
+    priority: RecommendationPriority
+    question_count: int = Field(ge=0)
+    student_count: int = Field(ge=0)
+
+
+class TeachingAction(BaseModel):
+    topic: str = Field(min_length=1)
+    priority: RecommendationPriority
+    performance_percentage: float = Field(ge=0, le=100)
+    actions: list[str] = Field(default_factory=list)
+    generated_at: datetime
+
+
 class ExamAnalyticsDocument(BaseModel):
     subject_code: str = Field(min_length=1)
     subject_name: str = Field(min_length=1)
@@ -63,6 +91,10 @@ class ExamAnalyticsDocument(BaseModel):
     question_performance: list[QuestionPerformanceSummary] = Field(default_factory=list)
     attention_areas: list[AttentionArea] = Field(default_factory=list)
     insights: list[str] = Field(default_factory=list)
+    canonical_topic_performance: list[CanonicalTopicSummary] = Field(default_factory=list)
+    canonical_attention_areas: list[CanonicalAttentionArea] = Field(default_factory=list)
+    canonical_insights: list[str] = Field(default_factory=list)
+    unmapped_topics: list[str] = Field(default_factory=list)
     generated_at: datetime
     analytics_version: str = Field(min_length=1)
 
