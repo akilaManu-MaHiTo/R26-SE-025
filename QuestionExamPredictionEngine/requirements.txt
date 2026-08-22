@@ -1,5 +1,0 @@
-sentence-transformers>=5.4.1
-datasets>=4.8.5
-accelerate>=1.13.0
-scikit-learn>=1.5.0
-joblib>=1.4.2

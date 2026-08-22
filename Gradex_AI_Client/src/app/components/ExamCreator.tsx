@@ -26,6 +26,40 @@ const diffColor: Record<string, string> = {
 export function ExamCreator() {
   const [selected, setSelected] = useState<string[]>(["Q-1041", "Q-1042", "Q-1043", "Q-1045"]);
 
+  interface ExamRecommendation {
+    topic?: string;
+    bloom_level?: string;
+    question_type?: string;
+    mark_range?: number[];
+    priority_score?: number;
+    evidence?: Record<string, unknown>;
+  }
+
+  const backendBaseUrl =
+    (import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL ??
+    "http://localhost:8000";
+
+  const [recs, setRecs] = useState<ExamRecommendation[]>([]);
+  const [recStatus, setRecStatus] = useState<"idle" | "loading" | "loaded" | "no_run" | "error">("idle");
+  const [recError, setRecError] = useState<string | null>(null);
+
+  const loadRecommendations = async () => {
+    setRecStatus("loading");
+    setRecError(null);
+    try {
+      const response = await fetch(`${backendBaseUrl}/api/predict/exam-recommendations`);
+      if (!response.ok) {
+        throw new Error((await response.text()) || "Failed to load recommendations.");
+      }
+      const data = await response.json();
+      setRecs(data.recommendations ?? []);
+      setRecStatus(data.status === "no_run" ? "no_run" : "loaded");
+    } catch (error) {
+      setRecStatus("error");
+      setRecError(error instanceof Error ? error.message : "Failed to load recommendations.");
+    }
+  };
+
   const exam = bank.filter((q) => selected.includes(q.id));
   const total = exam.reduce((a, b) => a + b.marks, 0);
 
@@ -51,8 +85,73 @@ export function ExamCreator() {
         </div>
       </div>
 
+      {/* AI exam recommendations */}
+      <Card className="p-4 border-border">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-foreground">AI exam recommendations</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Evidence-based topic × Bloom targets from the predictive engine.
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void loadRecommendations()}
+            disabled={recStatus === "loading"}
+          >
+            <Sparkles className="size-4 mr-1.5 text-primary" />
+            {recStatus === "loading" ? "Loading…" : "Refresh"}
+          </Button>
+        </div>
+        <div className="mt-3">
+          {recStatus === "idle" && (
+            <p className="text-xs text-muted-foreground">
+              Click Auto-balance to load topic × Bloom recommendations.
+            </p>
+          )}
+          {recStatus === "no_run" && (
+            <p className="text-xs text-muted-foreground">
+              Run analytics first — upload exam + answers in Student Analytics.
+            </p>
+          )}
+          {recStatus === "error" && (
+            <p className="text-xs text-red-500">{recError}</p>
+          )}
+          {recStatus === "loaded" && recs.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No recommendations available for the latest run.
+            </p>
+          )}
+          {recStatus === "loaded" && recs.length > 0 && (
+            <div className="grid sm:grid-cols-2 gap-2">
+              {recs.map((r, i) => (
+                <div key={`rec-${i}`} className="rounded-lg border border-border p-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="secondary" className="bg-accent text-primary border-0">{r.topic ?? "—"}</Badge>
+                    <Badge variant="outline" className="border-border text-muted-foreground">{r.bloom_level ?? "—"}</Badge>
+                    <Badge className="bg-primary text-primary-foreground border-0 ml-auto">
+                      {r.priority_score != null ? r.priority_score.toFixed(2) : "—"}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    {r.question_type ?? "problem_solving"} · {r.mark_range?.[0] ?? 1}–{r.mark_range?.[1] ?? 4} marks
+                  </div>
+                  {r.evidence && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      mastery {typeof r.evidence.mastery === "number" ? r.evidence.mastery.toFixed(2) : "—"} ·{" "}
+                      {String(r.evidence.evidence_status ?? "")}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+
       {/* Filters */}
-      <Card className="p-4 border-slate-200">
+      <Card className="p-4 border-border">
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <Select defaultValue="3">
             <SelectTrigger><SelectValue placeholder="Year/Level" /></SelectTrigger>
@@ -137,7 +236,15 @@ export function ExamCreator() {
                 <div className="text-slate-900">Database Systems — Final Exam</div>
                 <div className="text-xs text-slate-500 mt-0.5">{exam.length} questions · {total} marks · 3 hours</div>
               </div>
-              <Button variant="outline" size="sm"><Sparkles className="size-4 mr-1.5 text-blue-600" />Auto-balance</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void loadRecommendations()}
+                disabled={recStatus === "loading"}
+              >
+                <Sparkles className="size-4 mr-1.5 text-primary" />
+                {recStatus === "loading" ? "Loading…" : "Auto-balance"}
+              </Button>
             </div>
             <div className="p-5 space-y-3">
               {exam.map((q, i) => (
