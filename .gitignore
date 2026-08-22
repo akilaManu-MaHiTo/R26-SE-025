@@ -81,6 +81,7 @@ VivaEvaluationEngine/docs/
 .agents
 .claude
 .superpowers
+Gradex_AI_Client/guidelines
 skills-lock.json
 docs
 **/CLAUDE.md
