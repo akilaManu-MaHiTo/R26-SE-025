@@ -1,3 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
 .venv/
 venv/
 env/
@@ -41,6 +60,7 @@ Desktop.ini
 *.sql
 
 # Generated / runtime data (subproject-specific)
+VivaEvaluationEngine/docs/
 **/uploads/
 **/runs/
 **/images/
@@ -63,3 +83,8 @@ Desktop.ini
 .superpowers
 skills-lock.json
 docs
+**/CLAUDE.md
+skills-lock.json
+
+# Playwright MCP testing artifacts
+.playwright-mcp/
