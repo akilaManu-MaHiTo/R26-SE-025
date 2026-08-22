@@ -81,6 +81,8 @@ VivaEvaluationEngine/docs/
 .agents
 .claude
 .superpowers
+skills-lock.json
+docs
 **/CLAUDE.md
 skills-lock.json
 
