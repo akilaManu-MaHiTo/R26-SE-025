@@ -10,6 +10,7 @@ from app.db.repository import (
 )
 from app.schemas.exam_analytics import ExamAnalyticsDocument
 from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
+from app.services.topic_canonicalization import canonicalize_topics
 
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
 
@@ -34,6 +35,8 @@ async def lecturer_exam_analytics(
             document = await compute_exam_analytics(db, course_code, session_name)
         except ExamNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+    canonical = await canonicalize_topics(db, document, course_code, session_name)
+    document.update(canonical)
     return ExamAnalyticsDocument.model_validate(document)
 
 
