@@ -61,6 +61,7 @@ Desktop.ini
 
 # Generated / runtime data (subproject-specific)
 VivaEvaluationEngine/docs/
+**/chroma_db/
 **/uploads/
 **/runs/
 **/images/
