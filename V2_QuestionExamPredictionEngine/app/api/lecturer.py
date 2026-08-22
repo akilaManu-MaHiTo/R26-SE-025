@@ -10,6 +10,7 @@ from app.db.repository import (
 )
 from app.schemas.exam_analytics import ExamAnalyticsDocument
 from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
+from app.services.teaching_actions import get_teaching_actions
 from app.services.topic_canonicalization import canonicalize_topics
 
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
@@ -79,3 +80,19 @@ async def lecturer_student_list(
             }
         )
     return rows
+
+
+@router.get("/exams/{course_code}/{session_name}/teaching-actions")
+async def lecturer_teaching_actions(
+    course_code: str, session_name: str, db=Depends(get_db)
+):
+    document = await find_exam_analytics(db, course_code, session_name)
+    if document is None:
+        raise HTTPException(status_code=404, detail="No analytics found")
+    return await get_teaching_actions(
+        db,
+        course_code,
+        session_name,
+        document.get("canonical_topic_performance", []),
+        document.get("question_performance", []),
+    )
