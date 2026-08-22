@@ -25,10 +25,8 @@ for path in (PROJECT_ROOT, ENGINE_ROOT, V2_ROOT):
         sys.path.append(path_str)
 
 from DiagramEvaluationEngine.predict import run_er_pipeline
-from Gradex_AI_Server.app.analytics_report import build_exam_report, run_exam_analysis
 from Gradex_AI_Server.app.mongodb import insert_diagram_evaluation, list_diagram_evaluations
 from Gradex_AI_Server.app.analytics_api import router as analytics_router
-from Gradex_AI_Server.app.analytics_report import build_exam_report, run_exam_analysis
 from Gradex_AI_Server.app.auth import configured_api_key, ensure_dev_api_key, require_api_key
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
