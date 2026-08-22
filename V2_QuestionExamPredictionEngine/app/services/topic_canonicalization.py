@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 from app.analytics.student_document import performance_status
 
-_CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+_CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config"
 
 def _load_taxonomy() -> dict[str, dict]:
     with open(_CONFIG_DIR / "topic_taxonomy.json", encoding="utf-8") as f:
