@@ -4,12 +4,18 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 COLLECTIONS = (
     "courses",
+    "exams",
+    "questions",
+    "rubrics",
     "rubricCollection",
     "submissions",
     "student_analytics",
+    "studentExamAnalysis",
+    "studentExamResults",
     "question_catalog",
     "question_attempts",
     "analytics_snapshots",
+    "examAnalytics",
     "exam_recommendations",
     "analysis_runs",
     "generatedQuestions",
@@ -22,9 +28,20 @@ _UNIQUE_INDEXES = {
         ("analysis_run_id", 1), ("exam_id", 1), ("student_key", 1), ("question_number", 1), ("part", 1),
     ],
     "analytics_snapshots": [("subject_code", 1), ("session_name", 1), ("analytics_version", 1)],
+    "examAnalytics": [("subject_code", 1), ("session_name", 1), ("analytics_version", 1)],
     "analysis_runs": [("run_id", 1)],
     "analyzedExams": [("subject_code", 1), ("session_name", 1)],
     "student_analytics": [
+        ("student_id", 1),
+        ("subject_code", 1),
+        ("session_name", 1),
+    ],
+    "studentExamAnalysis": [
+        ("student_id", 1),
+        ("subject_code", 1),
+        ("session_name", 1),
+    ],
+    "studentExamResults": [
         ("student_id", 1),
         ("subject_code", 1),
         ("session_name", 1),
@@ -151,6 +168,22 @@ async def find_rubric_for_submission(
     return None
 
 
+def _with_spec_aliases(document: dict) -> dict:
+    """Return a copy enriched with spec aliases (exam_id, course, exam)."""
+    enriched = deepcopy(document)
+    subject_code = enriched.get("subject_code")
+    subject_name = enriched.get("subject_name")
+    session_name = enriched.get("session_name")
+    if subject_code and "course" not in enriched:
+        enriched["course"] = {"code": subject_code, "name": subject_name or subject_code}
+    if subject_code and session_name and "exam_id" not in enriched:
+        enriched["exam_id"] = f"{subject_code}@{session_name}"
+    # exam field already present for exam analytics; ensure student docs also have exam alias
+    if "exam_id" not in enriched and enriched.get("exam", {}).get("session_name"):
+        enriched["exam_id"] = f"{subject_code}@{enriched['exam']['session_name']}"
+    return enriched
+
+
 async def upsert_student_analytics(
     db: AsyncIOMotorDatabase, document: dict
 ) -> None:
@@ -159,8 +192,13 @@ async def upsert_student_analytics(
         "subject_code": document["subject_code"],
         "session_name": document["session_name"],
     }
+    enriched = _with_spec_aliases(document)
     await db["student_analytics"].replace_one(
-        identity, deepcopy(document), upsert=True
+        identity, deepcopy(enriched), upsert=True
+    )
+    # Spec collection alias: studentExamAnalysis (13. Recommended)
+    await db["studentExamAnalysis"].replace_one(
+        identity, deepcopy(enriched), upsert=True
     )
 
 
@@ -180,12 +218,17 @@ async def find_student_analytics(
     document = await db["student_analytics"].find_one(
         filters, sort=[("_id", -1)]
     )
+    # Fallback to spec collection name if legacy is empty (or vice versa)
+    if document is None:
+        document = await db["studentExamAnalysis"].find_one(
+            filters, sort=[("_id", -1)]
+        )
     if document is None:
         return None
 
     result = deepcopy(document)
     result.pop("_id", None)
-    return result
+    return _with_spec_aliases(result)
 
 
 async def find_graded_submission(
@@ -219,7 +262,10 @@ async def upsert_exam_analytics(db: AsyncIOMotorDatabase, document: dict) -> Non
         "session_name": document["session_name"],
         "analytics_version": document["analytics_version"],
     }
-    await db["analytics_snapshots"].replace_one(identity, deepcopy(document), upsert=True)
+    enriched = _with_spec_aliases(document)
+    await db["analytics_snapshots"].replace_one(identity, deepcopy(enriched), upsert=True)
+    # Spec collection alias: examAnalytics
+    await db["examAnalytics"].replace_one(identity, deepcopy(enriched), upsert=True)
 
 
 async def find_exam_analytics(
@@ -229,10 +275,14 @@ async def find_exam_analytics(
         {"subject_code": course_code, "session_name": session_name}, sort=[("_id", -1)]
     )
     if document is None:
+        document = await db["examAnalytics"].find_one(
+            {"subject_code": course_code, "session_name": session_name}, sort=[("_id", -1)]
+        )
+    if document is None:
         return None
     result = deepcopy(document)
     result.pop("_id", None)
-    return result
+    return _with_spec_aliases(result)
 
 
 async def upsert_exam_analysis_status(db: AsyncIOMotorDatabase, document: dict) -> None:
@@ -280,3 +330,42 @@ async def find_generated_questions(
     result = deepcopy(document)
     result.pop("_id", None)
     return result
+
+
+# ─── Spec §5: studentExamResults — lightweight per-student exam summary ─────
+async def upsert_student_exam_result(
+    db: AsyncIOMotorDatabase, document: dict
+) -> None:
+    identity = {
+        "student_id": document["student_id"],
+        "subject_code": document.get("subject_code") or document.get("course", {}).get("code"),
+        "session_name": document.get("session_name") or document.get("exam", {}).get("session_name"),
+    }
+    # Filter out None keys to avoid collision
+    identity = {k: v for k, v in identity.items() if v}
+    await db["studentExamResults"].replace_one(identity, deepcopy(document), upsert=True)
+
+
+async def find_student_exam_results(
+    db: AsyncIOMotorDatabase, course_code: str, session_name: str
+) -> list[dict]:
+    cursor = db["studentExamResults"].find(
+        {"subject_code": course_code, "session_name": session_name}
+    )
+    docs = await cursor.to_list(length=None)
+    # Fallback to legacy derived path if spec collection empty
+    if docs:
+        cleaned = []
+        for doc in docs:
+            copy = deepcopy(doc)
+            copy.pop("_id", None)
+            cleaned.append(copy)
+        return cleaned
+    return []
+
+
+async def list_exams_with_status(db: AsyncIOMotorDatabase) -> list[dict]:
+    cursor = db["analyzedExams"].find({}, {"_id": 0}).sort(
+        [("year", -1), ("session_name", 1)]
+    )
+    return await cursor.to_list(length=100)

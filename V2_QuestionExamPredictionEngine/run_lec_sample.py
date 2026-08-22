@@ -75,12 +75,12 @@ async def build_lecturer_student_rows(db, course_code: str, session_name: str) -
 async def main(db_name: str, course_code: str, session_name: str) -> int:
     print(f"database={db_name}")
     print(f"exam={course_code} / {session_name}")
-    print(f"mongodb_uri={settings.mongodb_uri}")
+    print(f"mongodb_uri={settings.effective_mongodb_uri}")
 
     courses, rubrics, _ = load_raw_sample_documents()
     print(f"sample_data: courses={len(courses)} rubrics={len(rubrics)} (using {course_code}/{session_name})")
 
-    client = AsyncIOMotorClient(settings.mongodb_uri)
+    client = AsyncIOMotorClient(settings.effective_mongodb_uri)
     db = client[db_name]
 
     try:

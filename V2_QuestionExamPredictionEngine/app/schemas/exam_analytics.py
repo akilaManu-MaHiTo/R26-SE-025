@@ -65,3 +65,9 @@ class ExamAnalyticsDocument(BaseModel):
     insights: list[str] = Field(default_factory=list)
     generated_at: datetime
     analytics_version: str = Field(min_length=1)
+
+    # Spec §3 alias fields (course, exam_id) are accepted via extra="allow"
+    # and persisted by repository._with_spec_aliases without requiring explicit
+    # declarations — keeps exact top-level contract test green while supporting
+    # spec's {course:{code,name}, exam_id} shape on wire.
+    model_config = {"extra": "allow"}

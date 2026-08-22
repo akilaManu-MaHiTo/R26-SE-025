@@ -2,8 +2,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    mongodb_uri: str = "mongodb://127.0.0.1:27017"
-    mongodb_db: str = "dbms_analytics"
+    mongodb_uri: str = "mongodb+srv://admin:harithe2002@cluster0.ynphhn4.mongodb.net/Grading?retryWrites=true&w=majority&appName=Cluster0"
+    mongodb_local_uri: str = "mongodb://127.0.0.1:27017"
+    mongodb_mode: str = "local"
+    mongodb_db: str = "grading"
     pass_threshold: float = 0.5
     min_students: int = 10
     min_attempts: int = 2
@@ -22,6 +24,13 @@ class Settings(BaseSettings):
     candidate_similarity_threshold: float = 0.85
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @property
+    def effective_mongodb_uri(self) -> str:
+        """Return the MongoDB URI based on ``mongodb_mode`` setting."""
+        if self.mongodb_mode == "local":
+            return self.mongodb_local_uri
+        return self.mongodb_uri
 
     @property
     def llm_model(self) -> str:
