@@ -133,7 +133,12 @@ def course_settings(course: dict) -> dict:
 
 def load_real() -> tuple[dict, list[dict], list[dict]]:
     courses = _load("courses/courses.json")
-    rubric = _load("rubricCollection/rubricCollection.json")
+    raw_rubric = _load("rubricCollection/rubricCollection.json")
+    # Support both storage shapes: dict (single) or list (multiple)
+    if isinstance(raw_rubric, list):
+        rubric = raw_rubric[0] if raw_rubric else {}
+    else:
+        rubric = raw_rubric
 
     paper = parse_paper(rubric)
     subject_code = paper["course_code"]
@@ -149,7 +154,9 @@ def load_real() -> tuple[dict, list[dict], list[dict]]:
 
     submissions = []
     for sub_path in sorted((SAMPLE_DIR / "submissions").glob("submission*.json")):
-        for sub in _load(f"submissions/{sub_path.name}"):
+        loaded = _load(f"submissions/{sub_path.name}")
+        subs = loaded if isinstance(loaded, list) else [loaded]
+        for sub in subs:
             submissions.extend(
                 parse_submission(
                     sub, paper["exam_id"], paper["course_code"], rubric["questions"]

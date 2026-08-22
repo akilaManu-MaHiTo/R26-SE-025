@@ -32,10 +32,23 @@ def load_raw_sample_documents() -> tuple[list[dict], list[dict], list[dict]]:
             return loads(fh.read())
 
     courses = load(SAMPLE_DIR / "courses" / "courses.json")
-    rubrics = [load(SAMPLE_DIR / "rubricCollection" / "rubricCollection.json")]
+    raw_rubric = load(SAMPLE_DIR / "rubricCollection" / "rubricCollection.json")
+    if isinstance(raw_rubric, list):
+        rubrics = raw_rubric
+    elif isinstance(raw_rubric, dict):
+        rubrics = [raw_rubric]
+    else:
+        rubrics = [raw_rubric]
+    # Normalize submissions: file may be a single doc (dict) or list
     submissions: list[dict] = []
     for path in sorted((SAMPLE_DIR / "submissions").glob("submission*.json")):
-        submissions.extend(load(path))
+        loaded = load(path)
+        if isinstance(loaded, list):
+            submissions.extend(loaded)
+        elif isinstance(loaded, dict):
+            submissions.append(loaded)
+        else:
+            submissions.extend(loaded)
     return courses, rubrics, submissions
 
 
