@@ -60,7 +60,7 @@ export default function AnalyticsPage() {
   if (!selectedExam) {
     return (
       <div className="space-y-6">
-        <AIPageBanner />
+        <AIPageBanner model="pulse" />
         <h1 className="text-2xl font-bold">Lecturer Analytics</h1>
         {loadingExams ? (
           <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
