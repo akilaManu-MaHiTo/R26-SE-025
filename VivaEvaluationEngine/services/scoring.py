@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import Dict, List
+from typing import Dict, List, Optional
 import numpy as np
 from config import (
     ENGAGEMENT_LEVEL_SCORES,
@@ -37,7 +37,10 @@ def smooth_emotions(timeline: List[Dict[str, object]], window: int = 3) -> List[
 
 
 def compute_confidence_score(timeline: List[Dict[str, object]]) -> float:
-    valid_timeline = [item for item in timeline if str(item.get('emotion', '')).lower() not in ('noface', 'no_face')]
+    valid_timeline = [
+        item for item in timeline
+        if canonical_emotion_label(str(item.get('emotion', ''))) not in ('noface', 'no_face', 'lowquality', 'low_quality')
+    ]
     total_frames = len(valid_timeline)
     if total_frames == 0:
         return 0.0
@@ -48,7 +51,7 @@ def compute_confidence_score(timeline: List[Dict[str, object]]) -> float:
     negative_frames = 0
 
     for item in valid_timeline:
-        emotion = str(item.get('emotion', '')).strip().lower()
+        emotion = canonical_emotion_label(str(item.get('emotion', '')))
         if emotion in POSITIVE_EMOTIONS:
             positive_frames += 1
         elif emotion in SURPRISE_EMOTIONS:
@@ -73,30 +76,71 @@ def compute_confidence_score(timeline: List[Dict[str, object]]) -> float:
     return final_score
 
 
+def _weighted_mean(parts: Dict[str, Optional[float]], weights: Dict[str, float], default: float = 0.5) -> float:
+    """Average only measured components; renormalize their weights. Empty → default."""
+    available = {key: value for key, value in parts.items() if value is not None}
+    if not available:
+        return default
+    weight_sum = sum(weights[key] for key in available)
+    if weight_sum <= 0:
+        return default
+    return sum(weights[key] * float(available[key]) for key in available) / weight_sum
+
+
 def compute_engagement_score(
     timeline: List[Dict[str, object]],
     gaze_signals: List[Dict | None],
-    blinks_per_minute: float,
+    blinks_per_minute: Optional[float],
 ) -> float:
+    """UI/diagnostic engagement 0–100.
+
+    This is diagnostic_engagement (result.engagement_score). It is NOT
+    stage1_cnn_engagement and NOT feature_complete_engagement. Official /100
+    uses average_engagement_score only.
+    """
     total = len(timeline)
     if total == 0:
         return 0.0
 
     emotion_map = {
-        "happy": 0.9, "neutral": 1.0, "surprise": 0.6,
-        "sad": 0.3, "fear": 0.2, "angry": 0.2, "disgust": 0.1,
+        "happy": 0.9,
+        "neutral": 1.0,
+        "surprise": 0.6,
+        "sad": 0.3,
+        "fear": 0.2,
+        "angry": 0.2,
+        "disgust": 0.1,
+        "contempt": 0.2,
     }
 
     avg_emotion = sum(
-        emotion_map.get(str(t.get("emotion","")).lower(), 0.5)
+        emotion_map.get(canonical_emotion_label(str(t.get("emotion", ""))), 0.5)
         for t in timeline
     ) / total
 
     valid_gaze = [g for g in gaze_signals if g is not None]
-    gaze_score     = sum(1 for g in valid_gaze if g["gaze_ok"]) / len(valid_gaze) if valid_gaze else 0.5
-    head_stability = 1.0 - min(1.0, np.std([g["yaw"] for g in valid_gaze])*10) if valid_gaze else 0.5
+    if valid_gaze:
+        gaze_score = sum(1 for g in valid_gaze if g.get("gaze_ok")) / len(valid_gaze)
+        yaw_values = []
+        for g in valid_gaze:
+            proxy = g.get("yaw_proxy")
+            if proxy is None:
+                proxy = g.get("yaw")
+            if proxy is not None:
+                yaw_values.append(float(proxy))
+        if yaw_values:
+            head_stability = 1.0 - min(1.0, float(np.std(yaw_values)) * 10.0)
+        else:
+            head_stability = None
+    else:
+        gaze_score = None
+        head_stability = None
 
-    blink_penalty  = max(0.0, (blinks_per_minute - 25) * 0.01)
+    if blinks_per_minute is None:
+        blink_term = None
+    else:
+        blink_penalty = max(0.0, (float(blinks_per_minute) - 25.0) * 0.01)
+        blink_term = max(0.0, 1.0 - blink_penalty)
 
     engagement_scores = []
     for item in timeline:
@@ -112,11 +156,21 @@ def compute_engagement_score(
 
     engagement_model_score = sum(engagement_scores) / total if engagement_scores else 0.5
 
-    score = (
-        0.30 * avg_emotion +
-        0.30 * gaze_score +
-        0.20 * head_stability +
-        0.10 * max(0.0, 1.0 - blink_penalty) +
-        0.10 * engagement_model_score
+    score = _weighted_mean(
+        {
+            "emotion": avg_emotion,
+            "gaze": gaze_score,
+            "head": head_stability,
+            "blink": blink_term,
+            "model": engagement_model_score,
+        },
+        {
+            "emotion": 0.30,
+            "gaze": 0.30,
+            "head": 0.20,
+            "blink": 0.10,
+            "model": 0.10,
+        },
+        default=0.5,
     )
     return round(min(100.0, score * 100), 2)

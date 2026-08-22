@@ -9,3 +9,5 @@ joblib>=1.4.2
 motor>=3.7.1
 pydantic-settings>=2.14.2
 httpx>=0.28.1
+motor
+python-dotenv
