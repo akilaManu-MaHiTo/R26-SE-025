@@ -43,12 +43,23 @@ def load_raw_sample_documents() -> tuple[list[dict], list[dict], list[dict]]:
     submissions: list[dict] = []
     for path in sorted((SAMPLE_DIR / "submissions").glob("submission*.json")):
         loaded = load(path)
+        # Support both shapes: flat list of docs or nested list where last entry is array
+        def _flatten(items: object, out: list[dict]) -> None:
+            if isinstance(items, list):
+                for item in items:
+                    if isinstance(item, list):
+                        _flatten(item, out)
+                    elif isinstance(item, dict):
+                        out.append(item)
+            elif isinstance(items, dict):
+                out.append(items)
+
         if isinstance(loaded, list):
-            submissions.extend(loaded)
+            _flatten(loaded, submissions)
         elif isinstance(loaded, dict):
             submissions.append(loaded)
         else:
-            submissions.extend(loaded)
+            _flatten(loaded, submissions)
     return courses, rubrics, submissions
 
 
@@ -141,7 +152,7 @@ async def main(db_name: str) -> int:
         print("then run: python switch_llm.py colab <new-url> <new-key>")
         return 2
 
-    client = AsyncIOMotorClient(settings.mongodb_uri)
+    client = AsyncIOMotorClient(settings.effective_mongodb_uri)
     db = client[db_name]
     progress_bar: tqdm | None = None
 

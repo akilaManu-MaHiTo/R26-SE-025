@@ -155,11 +155,23 @@ def load_real() -> tuple[dict, list[dict], list[dict]]:
     submissions = []
     for sub_path in sorted((SAMPLE_DIR / "submissions").glob("submission*.json")):
         loaded = _load(f"submissions/{sub_path.name}")
-        subs = loaded if isinstance(loaded, list) else [loaded]
-        for sub in subs:
-            submissions.extend(
-                parse_submission(
-                    sub, paper["exam_id"], paper["course_code"], rubric["questions"]
+        # Flatten possible nested array (file contains [dict*5, [dict*4]])
+        def _flatten(items: object, out: list) -> None:
+            if isinstance(items, list):
+                for it in items:
+                    if isinstance(it, list):
+                        _flatten(it, out)
+                    else:
+                        out.append(it)
+            else:
+                out.append(items)
+        flat: list = []
+        _flatten(loaded, flat)
+        for sub in flat:
+            if isinstance(sub, dict):
+                submissions.extend(
+                    parse_submission(
+                        sub, paper["exam_id"], paper["course_code"], rubric["questions"]
+                    )
                 )
-            )
     return course, [paper], submissions
