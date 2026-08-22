@@ -5,7 +5,7 @@ import type { AIModel } from "./components/AIBrand";
 import { GradingPage } from "./components/GradingPage";
 import { DiagramGrading } from "./components/DiagramGrading";
 import { DiagramReconstructionPage } from "./components/DiagramReconstructionPage";
-import { AnalyticsPage } from "./components/AnalyticsPage";
+import AnalyticsPage from "./components/AnalyticsPage";
 import { ExamCreator } from "./components/ExamCreator";
 import { VivaPage } from "./components/VivaPage";
 
