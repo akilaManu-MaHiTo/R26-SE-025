@@ -1,8 +1,7 @@
 import React from "react";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { AlertTriangle, FileQuestion } from "lucide-react";
-import { SectionHeader } from "./SectionHeader";
+import { AlertTriangle } from "lucide-react";
 
 interface Question {
   question_id: string;
@@ -26,14 +25,12 @@ export function QuestionPerformanceTable({ questions, onSelectQuestion }: Props)
 
   return (
     <Card className="p-5">
-      <SectionHeader icon={FileQuestion} title="Question Performance" subtitle="Individual question analysis" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="font-medium">Question Performance</div>
+      </div>
       <div className="space-y-3">
         {questions.map((q) => {
           const isLowest = q.question_id === lowestId;
-          const status = q.average_percentage >= 75 ? "Strong"
-            : q.average_percentage >= 60 ? "Developing"
-            : q.average_percentage >= 40 ? "Needs Improvement"
-            : "Critical";
 
           return (
             <button
@@ -58,9 +55,7 @@ export function QuestionPerformanceTable({ questions, onSelectQuestion }: Props)
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all ${
-                    isLowest ? "bg-amber-500" : status === "Strong" ? "bg-emerald-500" : status === "Developing" ? "bg-amber-500" : "bg-orange-500"
-                  }`}
+                  className="h-full rounded-full transition-all bg-primary"
                   style={{ width: `${Math.min(q.average_percentage, 100)}%` }}
                 />
               </div>
