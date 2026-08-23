@@ -26,14 +26,17 @@ const kpis = [
 export function KpiCards({ statistics }: KpiCardsProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <Card className="col-span-full p-5">
+        <div className="font-medium">Performance Overview</div>
+      </Card>
       {kpis.map(({ key, label, icon: Icon, suffix }) => {
         const value = statistics[key];
         const isRate = key === "pass_rate" || key === "average_percentage";
         return (
           <Card key={key} className="p-5">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <div className="size-10 rounded-lg bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center">
-                <Icon className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+              <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+                <Icon className="size-5" />
               </div>
               {label}
             </div>
