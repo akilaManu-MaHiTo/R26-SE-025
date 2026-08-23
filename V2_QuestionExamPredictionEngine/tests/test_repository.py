@@ -506,6 +506,9 @@ async def test_exam_analysis_status_unique_index_and_round_trip(test_db):
     assert info["uniq_analyzedExams"]["key"] == [
         ("subject_code", 1),
         ("session_name", 1),
+        ("year", 1),
+        ("month", 1),
+        ("semester", 1),
     ]
     assert info["uniq_analyzedExams"]["unique"] is True
 

@@ -30,6 +30,7 @@ from Gradex_AI_Server.app.analytics_api import router as analytics_router
 from Gradex_AI_Server.app.auth import configured_api_key, ensure_dev_api_key, require_api_key
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
+from V2_QuestionExamPredictionEngine.app.api.lecturer import router as v2_lecturer_router
 
 
 MAX_VIVA_UPLOAD_BYTES = 1024 * 1024 * 1024
@@ -66,6 +67,7 @@ app.add_middleware(
 
 app.include_router(analytics_router)
 app.include_router(viva_copilot_router)
+app.include_router(v2_lecturer_router, prefix="/api")
 
 UPLOAD_DIR = PROJECT_ROOT / "Gradex_AI_Server" / "app" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
