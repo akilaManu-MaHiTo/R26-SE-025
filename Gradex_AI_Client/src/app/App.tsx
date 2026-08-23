@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useState, createContext, useContext } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
@@ -11,19 +11,28 @@ import { Toaster } from "./components/ui/sonner";
 
 type Role = "lecturer" | "student";
 
+export const HideSidebarContext = createContext<{ setHide: (v: boolean) => void } | null>(null);
+export function useHideSidebar() {
+  return useContext(HideSidebarContext);
+}
+
 function Layout({ role, onLogout }: { role: Role; onLogout: () => void }) {
   const location = useLocation();
   const meta = titleFor(location.pathname);
+  const [hideForEditor, setHideForEditor] = useState(false);
+  const hideSidebar = hideForEditor && location.pathname === "/question-exam/exam-creator";
   return (
-    <div className="flex bg-background min-h-screen text-foreground">
-      <Sidebar role={role} onLogout={onLogout} />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <TopBar title={meta.title} subtitle={meta.subtitle} />
-        <div className="flex-1">
-          <Outlet />
-        </div>
-      </main>
-    </div>
+    <HideSidebarContext.Provider value={{ setHide: setHideForEditor }}>
+      <div className="flex bg-background min-h-screen text-foreground">
+        {!hideSidebar && <Sidebar role={role} onLogout={onLogout} />}
+        <main className="flex-1 min-w-0 flex flex-col">
+          <TopBar title={meta.title} subtitle={meta.subtitle} />
+          <div className="flex-1">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </HideSidebarContext.Provider>
   );
 }
 

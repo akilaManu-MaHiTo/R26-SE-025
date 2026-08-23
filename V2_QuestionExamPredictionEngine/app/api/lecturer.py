@@ -1,4 +1,8 @@
+from datetime import datetime, timezone
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from app.analytics.student_document import performance_status
 from app.api.deps import get_db
@@ -107,6 +111,98 @@ async def lecturer_teaching_actions(
         document.get("canonical_topic_performance", []),
         document.get("question_performance", []),
     )
+
+
+class ExamDraftPaper(BaseModel):
+    exam: str = Field(min_length=1)
+    year: int
+    questions: list[dict] = Field(default_factory=list)
+
+
+class ExamDraftCreate(BaseModel):
+    draft_id: str | None = None
+    subject_code: str = Field(min_length=1)
+    subject_name: str | None = None
+    paper: ExamDraftPaper
+
+
+@router.post("/exams/drafts")
+async def create_exam_draft(payload: ExamDraftCreate, db=Depends(get_db)):
+    """Upload paper to cloud (Mongo exam_drafts) - accessible again via list/get."""
+    from app.db.repository import upsert_exam_draft
+
+    draft_id = payload.draft_id or f"draft_{uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "draft_id": draft_id,
+        "subject_code": payload.subject_code,
+        "subject_name": payload.subject_name or payload.subject_code,
+        "paper": payload.paper.model_dump(),
+        "total_marks": sum(sum(p.get("max_marks", 0) for p in q.get("parts", [])) for q in payload.paper.questions),
+        "question_count": len(payload.paper.questions),
+        "created_at": now,
+        "updated_at": now,
+    }
+    # preserve created_at if update
+    existing = await db["exam_drafts"].find_one({"draft_id": draft_id}, {"created_at": 1})
+    if existing and existing.get("created_at"):
+        doc["created_at"] = existing["created_at"]
+    await upsert_exam_draft(db, doc)
+    return doc
+
+
+@router.get("/exams/drafts")
+async def list_exam_drafts(course_code: str | None = Query(None), db=Depends(get_db)):
+    from app.db.repository import list_exam_drafts
+
+    return await list_exam_drafts(db, course_code)
+
+
+@router.get("/exams/drafts/{draft_id}")
+async def get_exam_draft(draft_id: str, db=Depends(get_db)):
+    from app.db.repository import find_exam_draft
+
+    doc = await find_exam_draft(db, draft_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="draft not found")
+    return doc
+
+
+@router.delete("/exams/drafts/{draft_id}")
+async def remove_exam_draft(draft_id: str, db=Depends(get_db)):
+    from app.db.repository import delete_exam_draft
+
+    ok = await delete_exam_draft(db, draft_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="draft not found")
+    return {"deleted": True, "draft_id": draft_id}
+
+
+@router.get("/question-bank")
+async def question_bank(
+    source_type: str | None = Query(None, description="lecture|tutorial|exam"),
+    year: int | None = Query(None),
+    canonical_topic: str | None = Query(None),
+    limit: int = Query(100, ge=1, le=200),
+):
+    """Browse question bank - filter by source/year/topic for ExamCreator right panel."""
+    import json
+    import pathlib
+
+    bank_path = pathlib.Path(__file__).resolve().parents[2] / "datasets" / "bloom_dataset" / "question_bank.json"
+    if not bank_path.exists():
+        return []
+    bank = json.loads(bank_path.read_text(encoding="utf-8"))
+    filtered = bank
+    if source_type:
+        filtered = [r for r in filtered if r.get("source_type") == source_type]
+    if year:
+        filtered = [r for r in filtered if r.get("year") == year]
+    if canonical_topic:
+        filtered = [r for r in filtered if r.get("canonical_topic") == canonical_topic]
+    # exam questions sorted by year desc, tutorials by topic
+    filtered.sort(key=lambda r: (r.get("year", 0), r.get("question_id")), reverse=True)
+    return filtered[:limit]
 
 
 @router.get("/exams/{course_code}/{session_name}/recommendations")

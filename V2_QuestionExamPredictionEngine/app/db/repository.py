@@ -20,6 +20,7 @@ COLLECTIONS = (
     "analysis_runs",
     "generatedQuestions",
     "analyzedExams",
+    "exam_drafts",
 )
 
 _UNIQUE_INDEXES = {
@@ -46,6 +47,7 @@ _UNIQUE_INDEXES = {
         ("subject_code", 1),
         ("session_name", 1),
     ],
+    "exam_drafts": [("draft_id", 1)],
 }
 
 
@@ -469,3 +471,28 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
 
     result.sort(key=lambda x: (x["year"], x["session_name"]), reverse=True)
     return result
+
+
+# ─── Exam Drafts (ExamCreator cloud save) ─────────────────────────────
+async def upsert_exam_draft(db, draft: dict) -> None:
+    await db["exam_drafts"].replace_one({"draft_id": draft["draft_id"]}, deepcopy(draft), upsert=True)
+
+
+async def list_exam_drafts(db, course_code: str | None = None) -> list[dict]:
+    query: dict = {}
+    if course_code:
+        query["subject_code"] = course_code
+    cursor = db["exam_drafts"].find(query, {"_id": 0}).sort("updated_at", -1)
+    return await cursor.to_list(length=100)
+
+
+async def find_exam_draft(db, draft_id: str) -> dict | None:
+    doc = await db["exam_drafts"].find_one({"draft_id": draft_id}, {"_id": 0})
+    if doc is None:
+        return None
+    return deepcopy(doc)
+
+
+async def delete_exam_draft(db, draft_id: str) -> bool:
+    res = await db["exam_drafts"].delete_one({"draft_id": draft_id})
+    return res.deleted_count > 0
