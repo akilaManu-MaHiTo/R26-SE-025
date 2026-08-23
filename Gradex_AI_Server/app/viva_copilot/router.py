@@ -1,6 +1,7 @@
 """FastAPI routes for the isolated live interviewer copilot."""
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Dict, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
@@ -16,7 +17,7 @@ from Gradex_AI_Server.app.viva_copilot.pipeline import (
     ingest_audio_chunk,
     start_presentation,
 )
-from Gradex_AI_Server.app.viva_copilot.session_store import broadcast, store
+from Gradex_AI_Server.app.viva_copilot.session_store import broadcast, session_ttl_seconds, store
 
 router = APIRouter(prefix="/api/viva-copilot", tags=["viva-copilot"])
 _AUTH = [Depends(require_api_key)]
@@ -47,7 +48,10 @@ class ContextPayload(BaseModel):
 def _session_or_404(session_id: str):
     session = store.get(session_id)
     if session is None:
-        raise HTTPException(status_code=404, detail="Unknown copilot session.")
+        raise HTTPException(
+            status_code=404,
+            detail="Unknown or expired copilot session. Create a new session.",
+        )
     return session
 
 
@@ -110,6 +114,13 @@ async def end_session(session_id: str) -> Dict[str, Any]:
     return {"ok": True}
 
 
+async def _close_expired_copilot_session(session, session_id: str, websocket: WebSocket) -> None:
+    ttl = session_ttl_seconds()
+    await broadcast(session, events.session_expired(session.session_id, ttl_seconds=ttl))
+    store.delete(session_id)
+    await websocket.close(code=1008)
+
+
 @router.websocket("/ws/{session_id}")
 async def copilot_ws(websocket: WebSocket, session_id: str) -> None:
     if not await require_websocket_api_key(websocket):
@@ -123,11 +134,18 @@ async def copilot_ws(websocket: WebSocket, session_id: str) -> None:
     await websocket.send_json(events.session_state(session.session_id, session.snapshot()))
     try:
         while True:
-            message = await websocket.receive()
+            if session.is_expired():
+                await _close_expired_copilot_session(session, session_id, websocket)
+                break
+            try:
+                message = await asyncio.wait_for(websocket.receive(), timeout=60.0)
+            except asyncio.TimeoutError:
+                continue
             if message.get("type") == "websocket.disconnect":
                 break
             data = message.get("bytes")
             if data:
+                session.touch()
                 filename = "chunk.webm"
                 content_type = "audio/webm"
                 await ingest_audio_chunk(
@@ -142,6 +160,10 @@ async def copilot_ws(websocket: WebSocket, session_id: str) -> None:
                 continue
             # Optional JSON control over the same socket.
             if text.strip() == "ping":
+                if session.is_expired():
+                    await _close_expired_copilot_session(session, session_id, websocket)
+                    break
+                session.touch()
                 await websocket.send_json({"event": "pong", "sessionId": session_id})
     except WebSocketDisconnect:
         pass

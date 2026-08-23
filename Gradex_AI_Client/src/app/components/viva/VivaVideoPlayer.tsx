@@ -42,7 +42,12 @@ export const VivaVideoPlayer = forwardRef<VivaVideoPlayerHandle, VivaVideoPlayer
           controlsList="nodownload"
           playsInline
           aria-label="Viva recording"
-          onLoadedMetadata={(e) => onDurationChange?.(e.currentTarget.duration)}
+          onLoadedMetadata={(e) => {
+            const duration = e.currentTarget.duration;
+            if (Number.isFinite(duration) && duration > 0) {
+              onDurationChange?.(duration);
+            }
+          }}
         />
         {durationLabel && (
           <div className="pointer-events-none absolute top-2 right-2 rounded-md bg-black/60 px-2 py-0.5 text-xs font-medium text-white">

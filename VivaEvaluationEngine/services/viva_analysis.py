@@ -18,11 +18,11 @@ from services.diarization import (
 )
 from services.transcript_features import extract_transcript_features
 from services.normalization import energy_consistency_score, pitch_stability_score
-from transcribe import transcribe_audio
+from transcribe import transcribe_audio, resolve_whisper_model_size
 
 
 ENGINE_ROOT = Path(__file__).resolve().parents[1]
-WHISPER_MODEL_SIZE = os.getenv("VIVA_WHISPER_MODEL", "base")
+WHISPER_MODEL_SIZE = resolve_whisper_model_size(os.getenv("VIVA_WHISPER_MODEL"))
 
 # Healthy-ish voice-quality anchors (Praat local jitter/shimmer as fractions).
 # Below low → near-perfect; above high → near-zero. Tuned to published adult norms.
@@ -327,6 +327,7 @@ def _pack_audio_payload(
     conversation: Optional[Dict[str, Any]] = None,
     whisper_available: Optional[bool] = None,
     whisper_reason: Optional[str] = None,
+    whisper_model: Optional[str] = None,
 ) -> Dict[str, Any]:
     predicted_emotion = str(emotion_features.get("predicted_emotion", "unknown")).strip() or "unknown"
     ser_source = str(emotion_features.get("source", "heuristic"))
@@ -420,6 +421,7 @@ def _pack_audio_payload(
         },
         "whisper_available": True if whisper_available is None else bool(whisper_available),
         "whisper_reason": whisper_reason,
+        "whisper_model": whisper_model or WHISPER_MODEL_SIZE,
     }
     if error:
         payload["error"] = error
@@ -645,6 +647,7 @@ def analyze_audio_from_video(
             conversation=conversation,
             whisper_available=bool(whisper_meta.get("available")),
             whisper_reason=whisper_meta.get("reason"),
+            whisper_model=str(whisper_meta.get("model") or WHISPER_MODEL_SIZE),
         )
 
         if not _audio_is_sufficient(acoustic_features, transcript_text):

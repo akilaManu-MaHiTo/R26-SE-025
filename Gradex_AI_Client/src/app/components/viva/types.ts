@@ -311,6 +311,11 @@ export interface AnalysisResult {
   qa_analysis?: QaAnalysis;
   assessment?: VivaAssessment;
   mark_id?: string;
+  published?: boolean;
+  auto_published?: boolean;
+  assessment_mode?: AssessmentMode;
+  final_score?: number | null;
+  final_grade?: string | null;
   persistence_error?: string;
   video_features?: Record<string, unknown>;
   feature_complete?: Record<string, unknown>;
@@ -346,9 +351,22 @@ export interface VivaAssessment {
     components?: Array<Record<string, unknown>>;
   };
   technical_accuracy?: number | null;
-  fusion?: Record<string, unknown> | null;
+  fusion?: VivaFusion | null;
   final_score?: number | null;
   grade?: string | null;
+}
+
+export interface VivaFusion {
+  mode?: AssessmentMode;
+  /** Weights this assessment actually applied (1.0 / 0.0 in without-technical mode). */
+  weight_ai?: number;
+  weight_technical?: number;
+  /** Weights a with-technical publish would apply — used for the examiner preview. */
+  with_technical?: {
+    weight_ai?: number;
+    weight_technical?: number;
+  };
+  pending?: string;
 }
 
 export function resolveGradeFromPercent(percent: number | null | undefined): string | null {
@@ -394,6 +412,7 @@ export function suggestGrade(totalScore: number, maxScore: number): string {
 /* ─── Formatting helpers ─── */
 
 export function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "—";
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;

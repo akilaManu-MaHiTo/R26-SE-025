@@ -1,6 +1,7 @@
 import { Award, ScanFace, AudioLines } from "lucide-react";
 import { Card } from "../ui/card";
-import { VivaAssessment } from "./types";
+import { AnalysisResult, AssessmentMode, VivaAssessment } from "./types";
+import { resolveOfficialMark } from "./officialMark";
 
 interface ScoreCardProps {
   icon: React.ReactNode;
@@ -36,6 +37,10 @@ function ScoreCard({ icon, label, value, unit, hint, tone }: ScoreCardProps) {
 
 interface ScoreOverviewProps {
   assessment?: VivaAssessment;
+  analysisResult?: Pick<AnalysisResult, "final_score" | "final_grade"> | null;
+  assessmentMode: AssessmentMode;
+  technicalAccuracy: number | null;
+  published: boolean;
   videoStatus?: string;
   faceCoverageRatio?: number;
   framesRejectedQuality?: number;
@@ -48,6 +53,10 @@ interface ScoreOverviewProps {
 
 export function ScoreOverview({
   assessment,
+  analysisResult,
+  assessmentMode,
+  technicalAccuracy,
+  published,
   videoStatus,
   faceCoverageRatio,
   framesRejectedQuality,
@@ -58,8 +67,15 @@ export function ScoreOverview({
   audioGrade,
 }: ScoreOverviewProps) {
   const incomplete = assessment?.status === "INCOMPLETE";
-  const official = assessment?.final_score ?? assessment?.ai_performance?.score ?? null;
-  const grade = assessment?.grade ?? null;
+  // Same rule as EvaluationPanel and ReportPrintView — one source of truth for
+  // the official mark, so the hero card cannot disagree with the panel.
+  const { finalScore: official, grade, isPreview } = resolveOfficialMark({
+    assessment,
+    analysisResult,
+    assessmentMode,
+    technicalAccuracy,
+    published,
+  });
   const coveragePct =
     faceCoverageRatio != null ? `${Math.round(faceCoverageRatio * 100)}%` : "—";
   const notes: string[] = [];
@@ -89,7 +105,9 @@ export function ScoreOverview({
           hint={
             incomplete
               ? assessment?.validation?.message || "Incomplete — face required"
-              : "Stage-1 engine score (not LLM rubric cards)"
+              : isPreview
+                ? "Preview with technical accuracy — publish to save"
+                : "Stage-1 engine score (not LLM rubric cards)"
           }
           tone="violet"
         />

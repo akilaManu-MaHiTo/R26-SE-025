@@ -6,7 +6,8 @@
 // is the mechanism this relies on — no PDF-generation library is added for
 // what a print stylesheet already covers.
 
-import { AnalysisResult, AssessmentMode, KeyMoment, formatTime, resolveGradeFromPercent } from "./types";
+import { AnalysisResult, AssessmentMode, KeyMoment, formatTime } from "./types";
+import { resolveOfficialMark } from "./officialMark";
 
 interface ReportPrintViewProps {
   videoFileName?: string;
@@ -33,13 +34,13 @@ export function ReportPrintView({
   const assessment = analysisResult.assessment;
   const aiScore = assessment?.ai_performance?.score;
   const withTech = assessmentMode === "WITH_TECHNICAL_ACCURACY";
-  const fusionAi = 0.5;
-  const fusionTech = 0.5;
-  let finalScore = aiScore ?? null;
-  if (withTech && aiScore != null && technicalAccuracy != null) {
-    finalScore = Math.round((fusionAi * aiScore + fusionTech * (technicalAccuracy / 10) * 100) * 100) / 100;
-  }
-  const grade = resolveGradeFromPercent(finalScore);
+  const { finalScore, grade } = resolveOfficialMark({
+    assessment,
+    analysisResult,
+    assessmentMode,
+    technicalAccuracy,
+    published,
+  });
 
   return (
     <div className="p-10 text-black bg-white text-sm leading-relaxed">
@@ -52,7 +53,6 @@ export function ReportPrintView({
         </div>
         <div className="text-right text-xs text-gray-600">
           <div>Generated {generatedAt.toLocaleString()}</div>
-          {analysisResult.mark_id && <div>Reference ID: {analysisResult.mark_id}</div>}
           <div className="mt-1 font-medium">
             {published ? "Status: Published" : "Status: Draft (not yet published)"}
           </div>

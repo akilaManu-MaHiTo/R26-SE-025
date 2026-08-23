@@ -61,6 +61,13 @@ HEURISTIC_EMOTION_CONFIDENCE_CAP: float = 0.4
 MIN_FACE_FRAMES: int = 3
 MIN_FACE_COVERAGE_RATIO: float = 0.15
 
+# Multi-face gate: viva expects one student on camera. Ignore tiny partial faces
+# (second face area < this fraction of the largest). Fail when a significant
+# second face appears often enough or for several consecutive sampled frames.
+MIN_SECONDARY_FACE_AREA_RATIO: float = 0.20
+MIN_MULTI_FACE_FRAME_RATIO: float = 0.12
+MIN_CONSECUTIVE_MULTI_FACE_FRAMES: int = 3
+
 # --- Feature-complete baseline (does not replace Stage-1 /100) ---
 # Iris offset sum below this → gaze_on_camera. Used only from GazeHeadAnalyser.
 GAZE_ON_CAMERA_THRESHOLD: float = 0.04
