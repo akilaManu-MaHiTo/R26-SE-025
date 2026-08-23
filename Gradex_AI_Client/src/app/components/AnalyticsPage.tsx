@@ -44,10 +44,10 @@ export default function AnalyticsPage() {
     setLoadingAnalytics(true);
     setAnalytics(null);
     try {
-      const data = await fetchExamAnalytics(exam.course_code, exam.session_name);
+      const data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
       setAnalytics(data);
       setLoadingActions(true);
-      fetchTeachingActions(exam.course_code, exam.session_name)
+      fetchTeachingActions(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
         .then(setTeachingActions)
         .catch(() => setTeachingActions([]))
         .finally(() => setLoadingActions(false));

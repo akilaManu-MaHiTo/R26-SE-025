@@ -136,10 +136,14 @@ export async function fetchExams(): Promise<ExamListItem[]> {
 export async function fetchExamAnalytics(
   courseCode: string,
   sessionName: string,
+  year: number,
+  month: number,
+  semester: number,
 ): Promise<ExamAnalytics> {
   const encoded = encodeURIComponent(sessionName);
+  const params = new URLSearchParams({ year: String(year), month: String(month), semester: String(semester) });
   const res = await fetch(
-    `${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/analytics`,
+    `${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/analytics?${params}`,
   );
   if (!res.ok) throw new Error("Failed to fetch exam analytics");
   return res.json();
@@ -160,9 +164,13 @@ export async function fetchExamStudents(
 export async function fetchTeachingActions(
   courseCode: string,
   sessionName: string,
+  year: number,
+  month: number,
+  semester: number,
 ): Promise<TeachingAction[]> {
+  const params = new URLSearchParams({ year: String(year), month: String(month), semester: String(semester) });
   const res = await fetch(
-    `${API_BASE}/api/lecturers/exams/${encodeURIComponent(courseCode)}/${encodeURIComponent(sessionName)}/teaching-actions`,
+    `${API_BASE}/api/lecturers/exams/${encodeURIComponent(courseCode)}/${encodeURIComponent(sessionName)}/teaching-actions?${params}`,
   );
   if (!res.ok) throw new Error("Failed to fetch teaching actions");
   return res.json();

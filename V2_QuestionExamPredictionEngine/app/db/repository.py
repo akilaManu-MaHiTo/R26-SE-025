@@ -248,11 +248,17 @@ async def find_graded_submission(
 
 
 async def find_graded_submissions_for_exam(
-    db: AsyncIOMotorDatabase, course_code: str, session_name: str
+    db: AsyncIOMotorDatabase, course_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> list[dict]:
-    cursor = db["submissions"].find(
-        {"subject_code": course_code, "session_name": session_name, "status": "graded"}
-    )
+    query: dict = {"subject_code": course_code, "session_name": session_name, "status": "graded"}
+    if year is not None:
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+    cursor = db["submissions"].find(query)
     return await cursor.to_list(length=None)
 
 
@@ -269,15 +275,20 @@ async def upsert_exam_analytics(db: AsyncIOMotorDatabase, document: dict) -> Non
 
 
 async def find_exam_analytics(
-    db: AsyncIOMotorDatabase, course_code: str, session_name: str
+    db: AsyncIOMotorDatabase, course_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> dict | None:
-    document = await db["analytics_snapshots"].find_one(
-        {"subject_code": course_code, "session_name": session_name}, sort=[("_id", -1)]
-    )
+    query: dict = {"subject_code": course_code, "session_name": session_name}
+    if year is not None:
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+
+    document = await db["analytics_snapshots"].find_one(query, sort=[("_id", -1)])
     if document is None:
-        document = await db["examAnalytics"].find_one(
-            {"subject_code": course_code, "session_name": session_name}, sort=[("_id", -1)]
-        )
+        document = await db["examAnalytics"].find_one(query, sort=[("_id", -1)])
     if document is None:
         return None
     result = deepcopy(document)
@@ -420,7 +431,7 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
         total_marks = sum(float(q.get("max_marks", 0)) for q in questions)
 
         analytics = await db["analytics_snapshots"].find_one(
-            {"subject_code": course_code, "session_name": session_name},
+            {"subject_code": course_code, "session_name": session_name, "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
             {"_id": 0, "generated_at": 1, "analytics_version": 1}
         )
 
