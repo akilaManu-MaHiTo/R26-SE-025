@@ -41,7 +41,7 @@ async def lecturer_exam_analytics(
             document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
         except ExamNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
-    canonical = await canonicalize_topics(db, document, course_code, session_name)
+    canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
     document.update(canonical)
     return ExamAnalyticsDocument.model_validate(document)
 
