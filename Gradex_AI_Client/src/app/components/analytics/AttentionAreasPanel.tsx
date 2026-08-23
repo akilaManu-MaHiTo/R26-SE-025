@@ -1,16 +1,17 @@
 import React, { useState } from "react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
-import { ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { CanonicalAttentionArea } from "../../api/lecturerApi";
-import { SectionHeader } from "./SectionHeader";
+import { Badge } from "../ui/badge";
+
 
 interface Props { areas: CanonicalAttentionArea[]; }
 
 const priorityConfig = [
-  { priority: "Critical", color: "border-l-red-500", bg: "bg-red-50 dark:bg-red-500/5", icon: "🔴" },
-  { priority: "High", color: "border-l-orange-500", bg: "bg-orange-50 dark:bg-orange-500/5", icon: "🟠" },
-  { priority: "Medium", color: "border-l-amber-500", bg: "bg-amber-50 dark:bg-amber-500/5", icon: "🟡" },
+  { priority: "Critical", badge: "destructive" },
+  { priority: "High", badge: "bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300" },
+  { priority: "Medium", badge: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300" },
 ];
 
 export function AttentionAreasPanel({ areas }: Props) {
@@ -18,18 +19,22 @@ export function AttentionAreasPanel({ areas }: Props) {
 
   return (
     <Card className="p-5">
-      <SectionHeader icon={AlertTriangle} title="Needs Attention" subtitle="Topics requiring focus" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="font-medium">Needs Attention</div>
+      </div>
       <div className="space-y-4">
-        {priorityConfig.map(({ priority, color, bg, icon }) => {
+        {priorityConfig.map(({ priority, badge }) => {
           const items = areas.filter((a) => a.priority === priority);
           const isExpanded = expanded[priority];
 
+          const badgeProps = ["destructive", "secondary", "default", "outline"].includes(badge)
+            ? { variant: badge }
+            : { className: badge };
+
           return (
-            <div key={priority} className={`border-l-4 ${color} rounded-r-lg ${bg} p-3`}>
+            <div key={priority} className="p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">
-                  {icon} {priority} Priority
-                </span>
+                <Badge {...badgeProps}>{priority} Priority</Badge>
                 {items.length > 0 && (
                   <span className="text-xs text-muted-foreground">{items.length} items</span>
                 )}
