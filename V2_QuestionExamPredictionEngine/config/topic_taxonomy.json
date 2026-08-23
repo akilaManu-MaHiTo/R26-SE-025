@@ -1,46 +1,197 @@
 {
-  "sql_queries_triggers": {
-    "label": "SQL Queries & Triggers",
+  "intro_dbms": {
+    "canonical_topic": "Introduction to DBMS & Conceptual Database Design",
+    "aliases": ["Database Management Systems"],
+    "subtopics": [
+      "Definition of Database and DBMS",
+      "Advantages of DBMS over File Systems",
+      "Characteristics and Benefits of Database Systems",
+      "Database Design Process Overview (six phases)",
+      "Requirement Collection and Analysis",
+      "Conceptual Database Design using ER Model",
+      "Entities, Attributes (simple, composite, multivalued), and Keys",
+      "Binary Relationships and Cardinalities (1:1, 1:N, M:N)",
+      "Weak Entities and Identifying Relationships",
+      "Ternary vs. Binary Relationships",
+      "Specialization and Generalization (ISA)",
+      "Overlapping and Covering Constraints",
+      "Aggregation",
+      "Modeling Traps (Fan and Chasm Traps)"
+    ]
+  },
+  "logical_database_design": {
+    "canonical_topic": "Logical Database Design",
+    "aliases": ["Database Design and Relational Algebra"],
+    "subtopics": [
+      "Logical Database Design Process and Relational Model Overview",
+      "Relational Model Components: Relations, Schemas, and Instances",
+      "Integrity Constraints: Domain Constraints",
+      "Integrity Constraints: Key Constraints (Candidate and Primary Keys)",
+      "Integrity Constraints: Referential Integrity and Foreign Keys",
+      "Integrity Constraints: Other Constraints (Table Constraints and Assertions)",
+      "ER to Relational Mapping: Mapping Entities and Attributes",
+      "Mapping Binary and N-ary Relationships",
+      "Mapping ISA Hierarchies: Option 1 (Superclass + separate subclasses)",
+      "Mapping ISA Hierarchies: Option 2 (Separate subclasses with all attributes, total)",
+      "Mapping ISA Hierarchies: Option 3 (Single table with type attribute, disjoint)",
+      "Mapping ISA Hierarchies: Option 4 (Single table with Boolean flags, overlapping)",
+      "Mapping Aggregation Relationships",
+      "Relational Algebra: Selection (σ), Projection (π), Union, Intersection, Difference",
+      "Relational Algebra: Cartesian Product, Joins (Natural, Theta, Outer), Division",
+      "Relational Algebra: Rename (ρ) and Complex Expression Composition"
+    ]
+  },
+  "schema_refinement": {
+    "canonical_topic": "Schema Refinement",
+    "aliases": [],
+    "subtopics": [
+      "Pitfalls of Incorrect Attribute Grouping (Redundancy, Anomalies)",
+      "Properties of Good Decomposition: Lossless Join and Dependency Preservation",
+      "Functional Dependencies (FDs) – Definition and Purpose",
+      "Computing Attribute Closure and Candidate Keys using Armstrong's Axioms",
+      "Key Terminology: Superkey, Candidate Key, Primary Key, Prime/Nonprime Attributes",
+      "First Normal Form (1NF) – Atomic Domains",
+      "Second Normal Form (2NF) – Full Functional Dependency and Partial Dependency Elimination",
+      "Third Normal Form (3NF) – Transitive Dependency Elimination",
+      "Boyce-Codd Normal Form (BCNF) – Superkey Requirement for All Nontrivial FDs"
+    ]
+  },
+  "sql": {
+    "canonical_topic": "Structured Query Language (SQL)",
     "aliases": [
       "SQL",
       "SQL Queries and Triggers",
       "SQL Queries and Triggers in Database Management Systems",
       "SQL Queries, Triggers, Role-Based Access Control (RBAC)"
     ],
-    "subtopics": ["RBAC"]
-  },
-  "indexes_storage": {
-    "label": "Database Indexes & Storage",
-    "aliases": [
-      "Database Utilities",
-      "Database Indexes and Data Structures",
-      "Database Indexes and Storage Structures"
+    "subtopics": [
+      "Overview and History of SQL",
+      "SQL Terminology and Relational Model Mapping",
+      "Data Definition Language (DDL) – CREATE TABLE and Constraints",
+      "DDL – ALTER and DROP Commands",
+      "Data Manipulation Language (DML) – INSERT, DELETE, UPDATE",
+      "Basic SELECT Queries and WHERE Clause",
+      "Pattern Matching with LIKE",
+      "Checking NULL Values with IS [NOT] NULL",
+      "Eliminating Duplicates with DISTINCT",
+      "Range Conditions with BETWEEN",
+      "Sorting Results with ORDER BY",
+      "Inner Joins",
+      "Outer Joins (LEFT and RIGHT OUTER JOIN)",
+      "Subqueries with IN and EXISTS",
+      "Subqueries with ANY, SOME, and ALL",
+      "Aggregate Functions (SUM, COUNT, AVG, MIN, MAX)",
+      "Grouping with GROUP BY and HAVING",
+      "Complete SQL Query Structure (Clause Order)"
     ]
   },
-  "transactions_concurrency": {
-    "label": "Transactions & Concurrency Control",
+  "database_programming": {
+    "canonical_topic": "Database Programming",
+    "aliases": [],
+    "subtopics": [
+      "Views – Definition, Creation, and Querying",
+      "Views – Update Restrictions and Advantages/Disadvantages",
+      "Views as Access Control Mechanism",
+      "T-SQL Extensions – Variables and Control-of-Flow (IF...ELSE, WHILE)",
+      "User-Defined Functions (Scalar and Table-Valued)",
+      "Stored Procedures – Creation and Execution with IN/OUT Parameters",
+      "Triggers – Purpose, Types (AFTER, INSTEAD OF), and Virtual Tables",
+      "Triggers – Practical Examples for Auditing and Constraint Enforcement",
+      "Role-Based Access Control (RBAC) Implementation"
+    ]
+  },
+  "jdbc": {
+    "canonical_topic": "Java Database Connectivity (JDBC)",
+    "aliases": [
+      "Database Connectivity with JDBC",
+      "Database Connectivity and SQL Injection Prevention with JDBC",
+      "Database Connectivity and SQL Injection Prevention using JDBC"
+    ],
+    "subtopics": [
+      "Overview and Purpose of JDBC",
+      "JDBC Architecture (JDBC API, DriverManager, Drivers)",
+      "Types of JDBC Drivers (Type 1–4)",
+      "Steps for Using JDBC in a Java Program",
+      "Importing JDBC Packages and Key Interfaces",
+      "Loading and Registering the JDBC Driver",
+      "Establishing a Database Connection",
+      "Statement Types: Statement, PreparedStatement, CallableStatement",
+      "Executing SQL with Statement (execute, executeUpdate, executeQuery)",
+      "Using PreparedStatement with Parameter Markers",
+      "SQL Injection Prevention using PreparedStatement vs Statement",
+      "Using CallableStatement for Stored Procedures",
+      "Processing ResultSet (Cursor Navigation and Data Retrieval)",
+      "JDBC Exception Handling (SQLException)"
+    ]
+  },
+  "indexes_storage": {
+    "canonical_topic": "Database Indexes and Storage Structures",
+    "aliases": [
+      "Database Indexes and Data Structures",
+      "Database Indexes and Storage Structures"
+    ],
+    "subtopics": [
+      "Storage Structures and File Organization Overview",
+      "Heap vs Clustered vs Non-Clustered Organization",
+      "Index Types: Single-Column, Composite, Unique, Clustered vs Non-Clustered",
+      "B-Tree and Hash Index Structures",
+      "Index Selection and Performance Trade-offs"
+    ]
+  },
+  "transaction_concurrency": {
+    "canonical_topic": "Database Transaction Management and Concurrency Control",
     "aliases": [
       "Database Transaction Management and Concurrency Control",
       "Database Transactions and Concurrency Control"
+    ],
+    "subtopics": [
+      "Transaction Properties (ACID)",
+      "Transaction States and Schedules (Serial vs Interleaved)",
+      "Concurrency Control Problems: Lost Update, Dirty Read, Unrepeatable Read",
+      "Locking Protocols (2PL, Strict 2PL)",
+      "Deadlock Detection and Prevention",
+      "Concurrency Control without Locking (Timestamp, Optimistic)"
     ]
   },
-  "database_recovery": {
-    "label": "Database Recovery",
+  "recovery": {
+    "canonical_topic": "Database Recovery and Log Management",
     "aliases": [
       "Database Recovery Algorithms",
       "Database Recovery Algorithms and Log Management"
+    ],
+    "subtopics": [
+      "Recovery Concepts: Volatile vs Stable Storage, Failure Types",
+      "Log Management (WAL) and Checkpointing",
+      "Recovery Algorithms: UNDO/REDO, Shadow Paging",
+      "ARIES Recovery Overview"
     ]
   },
-  "database_management_systems": {
-    "label": "Database Management Systems",
-    "aliases": ["Database Management Systems"]
+  "database_utilities": {
+    "canonical_topic": "Database Utilities",
+    "aliases": [],
+    "subtopics": [
+      "Overview of Database Utilities in SQL Server",
+      "Data Transfer Methods and Tools (SSIS, Import/Export Wizard, BCP, BULK INSERT, SELECT INTO)",
+      "Using the SQL Server Import and Export Wizard (Excel to SQL Server)",
+      "BCP (Bulk Copy Program) Command-Line Utility",
+      "BULK INSERT Command for Loading Data Files",
+      "SELECT INTO Command for Table-to-Table Copying",
+      "Backup and Restore Concepts (Full, Differential, and Transaction Log Backups)",
+      "Creating and Managing Jobs in SQL Server",
+      "Database Maintenance Plans – Purpose and Typical Tasks"
+    ]
   },
-  "database_design": {
-    "label": "Database Design & Relational Algebra",
-    "aliases": ["Database Design and Relational Algebra"]
-  },
-  "jdbc_sql_injection": {
-    "label": "Database Connectivity & SQL Injection Prevention",
-    "aliases": ["Database Connectivity and SQL Injection Prevention with JDBC"]
+  "database_security": {
+    "canonical_topic": "Database Security",
+    "aliases": [],
+    "subtopics": [
+      "Objectives of Database Security (Secrecy, Integrity, Availability)",
+      "Security Policies and Access Control Mechanisms (Discretionary vs. Mandatory)",
+      "SQL Server Security Framework: Authentication, Authorization, Principals, Securables, and Permissions",
+      "Server-Level Security: Logins and Server Roles",
+      "Database-Level Security: Users and Database Roles",
+      "Managing Permissions with GRANT, DENY, and REVOKE",
+      "SQL Injection Attack Vectors and Mitigation (beyond JDBC)"
+    ]
   }
 }

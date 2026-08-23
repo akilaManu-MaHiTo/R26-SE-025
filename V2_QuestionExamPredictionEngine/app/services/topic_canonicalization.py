@@ -8,18 +8,28 @@ from app.analytics.student_document import performance_status
 _CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config"
 
 def _load_taxonomy() -> dict[str, dict]:
-    with open(_CONFIG_DIR / "topic_taxonomy.json", encoding="utf-8") as f:
-        return json.load(f)
+    # canonical source is config/topic_taxonomy.json, enriched via app.taxonomy.normalizer
+    from app.taxonomy.normalizer import load_taxonomy as _load_norm_taxonomy
+
+    return _load_norm_taxonomy()
+
 
 def _load_thresholds() -> list[dict]:
     with open(_CONFIG_DIR / "thresholds.json", encoding="utf-8") as f:
         return json.load(f)["status_thresholds"]
 
 def _build_alias_map(taxonomy: dict[str, dict]) -> dict[str, str]:
+    from app.taxonomy.normalizer import normalize_topic  # noqa: F401 - ensure cache built
+
+    # case-insensitive map: alias.casefold -> canonical_id + canonical_topic.casefold
     alias_map: dict[str, str] = {}
     for canonical_id, entry in taxonomy.items():
+        canon = entry.get("canonical_topic", "")
+        if canon:
+            alias_map[canon.casefold().strip()] = canonical_id
         for alias in entry.get("aliases", []):
-            alias_map[alias] = canonical_id
+            alias_map[alias.casefold().strip()] = canonical_id
+        alias_map[canonical_id.casefold()] = canonical_id
     return alias_map
 
 def _resolve_priority(status: str, thresholds: list[dict]) -> str:
@@ -41,13 +51,20 @@ async def canonicalize_topics(
     # Build canonical_id -> list of raw topic strings
     canonical_fragments: dict[str, list[str]] = {cid: [] for cid in taxonomy}
 
-    # Map each raw topic to its canonical ID
+    # Map each raw topic to its canonical ID (case-insensitive)
     topic_to_canonical: dict[str, str] = {}
     unmapped: list[str] = []
     for t in raw_topics:
         raw_name = t["topic"]
-        if raw_name in alias_map:
-            cid = alias_map[raw_name]
+        key = raw_name.casefold().strip()
+        cid = alias_map.get(key)
+        # fallback substring for noisy OCR merges
+        if not cid:
+            for alias_key, alias_cid in alias_map.items():
+                if len(alias_key) > 5 and (alias_key in key or key in alias_key):
+                    cid = alias_cid
+                    break
+        if cid:
             topic_to_canonical[raw_name] = cid
             canonical_fragments.setdefault(cid, []).append(raw_name)
         else:
@@ -66,12 +83,23 @@ async def canonicalize_topics(
         {"_id": 0, "student_id": 1, "evaluation.results": 1}
     ).to_list(length=500)
 
-    # Build question -> canonical_topic mapping
+    # Build question -> canonical_topic mapping (case-insensitive)
     question_canonical: dict[str, str] = {}
     for qp in question_perf:
         raw_topic = qp.get("topic", "")
-        if raw_topic in topic_to_canonical:
-            question_canonical[qp["question_id"]] = topic_to_canonical[raw_topic]
+        cid = topic_to_canonical.get(raw_topic)
+        if not cid:
+            # try alias map directly for question topics not in topic_performance
+            key = raw_topic.casefold().strip()
+            cid = alias_map.get(key)
+        if cid:
+            question_canonical[qp["question_id"]] = cid
+        elif raw_topic:
+            # still unmapped, try substring
+            for alias_key, alias_cid in alias_map.items():
+                if len(alias_key) > 5 and alias_key in raw_topic.casefold():
+                    question_canonical[qp["question_id"]] = alias_cid
+                    break
 
     # Recompute canonical topic averages from raw scores
     canonical_score: dict[str, float] = {}
@@ -120,7 +148,7 @@ async def canonicalize_topics(
         s_count = len(student_set.get(cid, set()))
 
         canonical_topic_perf.append({
-            "topic": entry["label"],
+            "topic": entry["canonical_topic"],
             "average_percentage": avg_pct,
             "status": status,
             "priority": priority,
