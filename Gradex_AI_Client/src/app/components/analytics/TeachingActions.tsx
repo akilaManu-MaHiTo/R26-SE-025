@@ -2,8 +2,8 @@ import React from "react";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Sparkles, Lightbulb, AlertTriangle, TrendingUp, Clock } from "lucide-react";
-import { SectionHeader } from "./SectionHeader";
+import { Lightbulb, Clock } from "lucide-react";
+
 import type { TeachingAction } from "../../api/lecturerApi";
 
 interface Props {
@@ -31,7 +31,9 @@ export function TeachingActions({ actions, loading }: Props) {
   if (loading) {
     return (
       <Card className="p-5">
-        <SectionHeader icon={Sparkles} title="AI Recommendations" subtitle="Personalized teaching actions" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="font-medium">AI Teaching Recommendations</div>
+        </div>
         <div className="space-y-4">
           {[1, 2].map((i) => (
             <div key={i} className="h-28 bg-muted animate-pulse rounded-xl" />
@@ -45,7 +47,9 @@ export function TeachingActions({ actions, loading }: Props) {
 
   return (
     <Card className="p-5">
-      <SectionHeader icon={Sparkles} title="AI Recommendations" subtitle="Personalized teaching actions" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="font-medium">AI Teaching Recommendations</div>
+      </div>
       <div className="space-y-4">
         {actions.map((action, i) => {
           const { color, iconColor, textColor } = getPriorityConfig(action.priority);
