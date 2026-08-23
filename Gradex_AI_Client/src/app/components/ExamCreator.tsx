@@ -1,229 +1,321 @@
-import { useState } from "react";
-import { Search, Plus, GripVertical, FileDown, Printer, FileText, Trash2, Sparkles } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Sparkles, Plus, Pencil, X, AlertTriangle, BookOpen, BarChart3, ChevronRight, Layers } from "lucide-react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Progress } from "./ui/progress";
-import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
+import { ProgressLoader, type LoadStep } from "./ProgressLoader";
+import { AIPageBanner } from "./AIBrand";
+import {
+  fetchExams,
+  fetchRecommendations,
+  type ExamListItem,
+  type RecommendationsResponse,
+  type Recommendation,
+} from "../api/lecturerApi";
 
-const bank = [
-  { id: "Q-1041", topic: "ER Modeling", diff: "Easy", bloom: "Remember", marks: 5, text: "Define an entity and give two examples." },
-  { id: "Q-1042", topic: "Normalization", diff: "Medium", bloom: "Apply", marks: 10, text: "Normalize the given relation to 3NF showing each step." },
-  { id: "Q-1043", topic: "SQL", diff: "Medium", bloom: "Apply", marks: 8, text: "Write a query to find top 3 departments by avg salary." },
-  { id: "Q-1044", topic: "Indexing", diff: "Hard", bloom: "Evaluate", marks: 12, text: "Compare B+ tree vs hash indexing for range queries." },
-  { id: "Q-1045", topic: "Transactions", diff: "Hard", bloom: "Analyze", marks: 10, text: "Explain ACID violations in the given schedule." },
-  { id: "Q-1046", topic: "Concurrency", diff: "Hard", bloom: "Create", marks: 15, text: "Design a 2PL protocol that avoids deadlocks for given workload." },
-];
+function PriorityBadge({ priority }: { priority: string }) {
+  const color =
+    priority === "High"
+      ? "bg-red-500 text-white"
+      : priority === "Medium"
+        ? "bg-amber-500 text-white"
+        : "bg-muted text-muted-foreground";
+  return <Badge className={color}>{priority}</Badge>;
+}
 
-const diffColor: Record<string, string> = {
-  Easy: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
-  Medium: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
-  Hard: "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300",
-};
-
-export function ExamCreator() {
-  const [selected, setSelected] = useState<string[]>(["Q-1041", "Q-1042", "Q-1043", "Q-1045"]);
-
-  const exam = bank.filter((q) => selected.includes(q.id));
-  const total = exam.reduce((a, b) => a + b.marks, 0);
-
-  const bloomDist = ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"].map((b) => ({
-    b,
-    v: exam.filter((q) => q.bloom === b).reduce((a, c) => a + c.marks, 0),
-  }));
-
-  const toggle = (id: string) =>
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-
+function RecommendationCard({
+  rec,
+  onAdd,
+  onEdit,
+  onReject,
+}: {
+  rec: Recommendation;
+  onAdd: () => void;
+  onEdit: () => void;
+  onReject: () => void;
+}) {
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h2 className="tracking-tight text-foreground">Exam Creator</h2>
-          <p className="text-sm text-muted-foreground mt-1">Compose, balance and export structured exams.</p>
+    <Card className="p-4 border-border hover:border-primary/30 transition-colors space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          <Badge variant="outline" className="border-border text-xs">
+            {rec.canonical_topic}
+          </Badge>
+          <Badge variant="secondary" className="text-xs">
+            {rec.bloom_level}
+          </Badge>
+          <Badge variant="secondary" className="text-xs">
+            {rec.difficulty}
+          </Badge>
+          {rec.marks > 0 && <Badge variant="outline" className="text-xs">{rec.marks} marks</Badge>}
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline"><Printer className="size-4 mr-2" />Print</Button>
-          <Button variant="outline"><FileText className="size-4 mr-2" />Word</Button>
-          <Button className="bg-primary hover:bg-primary/90"><FileDown className="size-4 mr-2" />Export PDF</Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-muted-foreground tabular-nums">{(rec.recommendation_score * 100).toFixed(1)}</span>
+          <PriorityBadge priority={rec.priority} />
         </div>
       </div>
 
-      {/* Filters */}
-      <Card className="p-4 border-border">
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <Select defaultValue="3">
-            <SelectTrigger><SelectValue placeholder="Year/Level" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">1st Year</SelectItem>
-              <SelectItem value="2">2nd Year</SelectItem>
-              <SelectItem value="3">3rd Year</SelectItem>
-              <SelectItem value="4">4th Year — Final</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select defaultValue="final">
-            <SelectTrigger><SelectValue placeholder="Exam type" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="midterm">Mid-term</SelectItem>
-              <SelectItem value="final">Final</SelectItem>
-              <SelectItem value="quiz">Quiz</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select defaultValue="all">
-            <SelectTrigger><SelectValue placeholder="Topic" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All topics</SelectItem>
-              <SelectItem value="er">ER Modeling</SelectItem>
-              <SelectItem value="norm">Normalization</SelectItem>
-              <SelectItem value="sql">SQL</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select defaultValue="all">
-            <SelectTrigger><SelectValue placeholder="Difficulty" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="easy">Easy</SelectItem>
-              <SelectItem value="med">Medium</SelectItem>
-              <SelectItem value="hard">Hard</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="relative">
-            <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input className="pl-9" placeholder="Search question bank…" />
-          </div>
+      <p className="text-sm leading-relaxed line-clamp-3">{rec.text}</p>
+
+      <div className="rounded-md bg-muted/50 p-3 space-y-1.5 text-xs">
+        <div className="font-medium flex items-center gap-1.5">
+          <BarChart3 className="size-3.5" /> Why recommended
         </div>
-      </Card>
+        <div className="grid grid-cols-2 gap-1 text-muted-foreground">
+          <span>Student success: {(100 - rec.reason.weakness_pct).toFixed(1)}% (weakness {rec.reason.weakness_pct}%)</span>
+          <span>Lecture: {rec.reason.lecture ? "covered" : "not covered"}</span>
+          <span>Tutorial: {rec.reason.tutorial_count} questions</span>
+          <span>Recent exam: {rec.reason.exam_recent_count} times</span>
+          <span>Bloom gap: {(rec.bloom_gap * 100).toFixed(0)}%</span>
+          <span>Source: {rec.source_id}</span>
+        </div>
+      </div>
 
-      <div className="grid lg:grid-cols-5 gap-6">
-        {/* Question bank */}
-        <Card className="lg:col-span-2 border-border">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-            <div className="text-foreground">Question bank</div>
-            <Badge variant="secondary" className="bg-muted border-0">{bank.length} items</Badge>
+      <div className="flex gap-2">
+        <Button size="sm" onClick={onAdd} className="flex-1">
+          <Plus className="size-4 mr-1" /> Add to Exam
+        </Button>
+        <Button size="sm" variant="outline" onClick={onEdit}>
+          <Pencil className="size-4 mr-1" /> Edit
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onReject} className="text-muted-foreground">
+          <X className="size-4 mr-1" /> Reject
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+export function ExamCreator() {
+  const [exams, setExams] = useState<ExamListItem[]>([]);
+  const [selectedExam, setSelectedExam] = useState<ExamListItem | null>(null);
+  const [recommendations, setRecommendations] = useState<RecommendationsResponse | null>(null);
+  const [draftIds, setDraftIds] = useState<Set<string>>(new Set());
+  const [rejectedIds, setRejectedIds] = useState<Set<string>>(new Set());
+  const [loadingExams, setLoadingExams] = useState(true);
+  const [loadingRecs, setLoadingRecs] = useState(false);
+  const [loadSteps, setLoadSteps] = useState<LoadStep[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+
+  useEffect(() => {
+    setLoadSteps([{ label: "Fetching exams..." }]);
+    fetchExams()
+      .then(setExams)
+      .catch(console.error)
+      .finally(() => setLoadingExams(false));
+  }, []);
+
+  const handleSelectExam = useCallback(async (exam: ExamListItem) => {
+    setSelectedExam(exam);
+    setLoadingRecs(true);
+    setRecommendations(null);
+    setDraftIds(new Set());
+    setRejectedIds(new Set());
+    const steps: LoadStep[] = [
+      { label: "Loading student weakness..." },
+      { label: "Scoring against curriculum..." },
+      { label: "Ranking recommendations..." },
+    ];
+    setLoadSteps(steps);
+    setCurrentStep(0);
+    try {
+      setCurrentStep(0);
+      const data = await fetchRecommendations(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester, 12);
+      setCurrentStep(2);
+      setRecommendations(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingRecs(false);
+    }
+  }, []);
+
+  const handleAdd = (rec: Recommendation) => {
+    setDraftIds((prev) => new Set(prev).add(rec.question_id));
+  };
+  const handleReject = (rec: Recommendation) => {
+    setRejectedIds((prev) => new Set(prev).add(rec.question_id));
+  };
+
+  const visibleRecs = recommendations?.recommendations.filter((r) => !rejectedIds.has(r.question_id)) ?? [];
+  const high = visibleRecs.filter((r) => r.priority === "High");
+  const medium = visibleRecs.filter((r) => r.priority === "Medium");
+  const low = visibleRecs.filter((r) => r.priority === "Low");
+
+  // Exam creator list view
+  if (!selectedExam) {
+    return (
+      <div className="p-6 md:p-8 space-y-6">
+        <AIPageBanner model="pulse" />
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Layers className="size-4" /> Exam Creator
+            <ChevronRight className="size-4" /> Select Exam
           </div>
-          <div className="divide-y divide-border max-h-[640px] overflow-auto">
-            {bank.map((q) => {
-              const on = selected.includes(q.id);
-              return (
-                <div key={q.id} className="p-4 hover:bg-muted flex gap-3 group">
-                  <GripVertical className="size-4 text-muted-foreground mt-1 cursor-grab" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-muted-foreground">{q.id}</span>
-                      <Badge variant="secondary" className="bg-accent text-primary border-0">{q.topic}</Badge>
-                      <Badge variant="secondary" className={diffColor[q.diff] + " border-0"}>{q.diff}</Badge>
-                      <Badge variant="outline" className="border-border text-muted-foreground">{q.bloom}</Badge>
-                      <span className="text-xs text-muted-foreground ml-auto">{q.marks} mk</span>
-                    </div>
-                    <div className="text-sm text-foreground mt-2">{q.text}</div>
+          <h2 className="tracking-tight text-foreground">Adaptive Exam Question Recommendation Engine</h2>
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            Based on student analytics + curriculum + previous assessments. Select an exam to get weak-area-driven question recommendations.
+          </p>
+        </div>
+        {loadingExams ? (
+          <ProgressLoader steps={loadSteps} currentStep={currentStep} className="min-h-[300px]" />
+        ) : exams.length === 0 ? (
+          <Card className="p-12 text-center border-border">
+            <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+            <p className="text-muted-foreground">No exams found. Ingest submissions first.</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {exams.map((exam) => (
+              <Card
+                key={`${exam.course_code}-${exam.year}-${exam.session_name}`}
+                className="group p-5 border-border hover:border-primary/40 cursor-pointer transition-colors"
+                onClick={() => handleSelectExam(exam)}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="size-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+                    <Sparkles className="size-5" />
                   </div>
-                  <Button size="icon" variant={on ? "default" : "outline"} onClick={() => toggle(q.id)}
-                          className={"size-8 " + (on ? "bg-primary hover:bg-primary/90" : "")}>
-                    <Plus className={"size-4 " + (on ? "rotate-45" : "")} />
-                  </Button>
+                  <Badge variant="secondary">{exam.student_count} students</Badge>
                 </div>
-              );
-            })}
+                <div className="font-semibold">{exam.course_code} — {exam.session_name}</div>
+                <div className="text-sm text-muted-foreground">{exam.subject_name} · {exam.year}</div>
+                <div className="text-xs text-muted-foreground mt-2">Avg {exam.average_percentage.toFixed(1)}% · Pass {exam.pass_rate.toFixed(0)}%</div>
+              </Card>
+            ))}
           </div>
-        </Card>
+        )}
+      </div>
+    );
+  }
 
-        {/* Builder + preview */}
-        <div className="lg:col-span-3 space-y-4">
-          <Card className="border-border">
-            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-              <div>
-                <div className="text-foreground">Database Systems — Final Exam</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{exam.length} questions · {total} marks · 3 hours</div>
-              </div>
-              <Button variant="outline" size="sm"><Sparkles className="size-4 mr-1.5 text-primary" />Auto-balance</Button>
+  // Detail view with recommendations + draft
+  return (
+    <div className="p-6 md:p-8 space-y-6">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Layers className="size-4" /> Exam Creator
+        <ChevronRight className="size-4" /> {selectedExam.course_code} {selectedExam.year}
+        <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setSelectedExam(null)}>
+          Change exam
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="tracking-tight text-foreground">Exam Question Recommendations</h2>
+          <p className="text-sm text-muted-foreground">Based on student analytics + curriculum + previous assessments</p>
+        </div>
+        <Badge variant="outline" className="border-border">
+          Draft: {draftIds.size} questions
+        </Badge>
+      </div>
+
+      {loadingRecs ? (
+        <ProgressLoader steps={loadSteps} currentStep={currentStep} className="min-h-[400px]" />
+      ) : recommendations ? (
+        <>
+          {/* Weak areas summary */}
+          <Card className="p-4 border-border">
+            <div className="flex items-center gap-2 font-medium mb-3">
+              <AlertTriangle className="size-4 text-amber-500" /> Weak Areas to Assess
             </div>
-            <div className="p-5 space-y-3">
-              {exam.map((q, i) => (
-                <div key={q.id} className="flex gap-3 p-3 rounded-lg border border-border bg-card">
-                  <div className="size-7 rounded-md bg-accent text-primary flex items-center justify-center text-sm shrink-0">
-                    {i + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm text-foreground">{q.text}</div>
-                    <div className="flex gap-2 mt-1.5">
-                      <Badge variant="secondary" className="bg-muted border-0 text-xs">{q.topic}</Badge>
-                      <Badge variant="outline" className="text-xs">{q.bloom}</Badge>
-                      <span className="text-xs text-muted-foreground ml-auto">{q.marks} marks</span>
-                    </div>
-                  </div>
-                  <Button size="icon" variant="ghost" onClick={() => toggle(q.id)} className="size-8">
-                    <Trash2 className="size-4 text-muted-foreground" />
-                  </Button>
-                </div>
+            <div className="flex flex-wrap gap-2">
+              {recommendations.ranked_weak_topics.map(([topic, weakness]) => (
+                <Badge
+                  key={topic}
+                  variant="outline"
+                  className={
+                    weakness >= 0.4 ? "border-red-300 text-red-600 bg-red-50" : weakness >= 0.3 ? "border-amber-300 text-amber-600 bg-amber-50" : "border-border"
+                  }
+                >
+                  {topic} — {(weakness * 100).toFixed(0)}% weak
+                </Badge>
               ))}
             </div>
           </Card>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Card className="p-5 border-border">
-              <div className="text-foreground">Bloom's level distribution</div>
-              <div className="h-40 mt-3">
-                <ResponsiveContainer>
-                  <BarChart data={bloomDist}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="b" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                    <YAxis hide />
-                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="v" radius={[4, 4, 0, 0]}>
-                      {bloomDist.map((_, i) => (
-                        <Cell key={i} fill={["#a78bfa", "#60a5fa", "#34d399", "#fbbf24", "#fb923c", "#f87171"][i]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+          {/* Draft preview */}
+          {draftIds.size > 0 && (
+            <Card className="p-4 border-primary/30 bg-primary/5">
+              <div className="font-medium mb-2 flex items-center gap-2">
+                <Layers className="size-4" /> Draft Exam ({draftIds.size})
               </div>
-            </Card>
-
-            <Card className="p-5 border-border">
-              <div className="text-foreground">Topic coverage</div>
-              <div className="space-y-3 mt-3">
-                {[
-                  { t: "ER Modeling", v: 25 },
-                  { t: "Normalization", v: 30 },
-                  { t: "SQL", v: 20 },
-                  { t: "Transactions", v: 25 },
-                ].map((c) => (
-                  <div key={c.t}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-foreground">{c.t}</span>
-                      <span className="text-muted-foreground">{c.v}%</span>
-                    </div>
-                    <Progress value={c.v} className="h-1.5 mt-1.5" />
-                  </div>
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from(draftIds).map((id) => (
+                  <Badge key={id} variant="secondary" className="text-xs">
+                    {id}
+                  </Badge>
                 ))}
               </div>
             </Card>
+          )}
+
+          {/* High priority */}
+          <div className="space-y-3">
+            <h3 className="font-semibold flex items-center gap-2">
+              <span className="size-2 rounded-full bg-red-500" /> High Priority
+              <span className="text-sm font-normal text-muted-foreground">({high.length})</span>
+            </h3>
+            {high.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No high priority recommendations. Good coverage.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {high.map((rec) => (
+                  <RecommendationCard
+                    key={rec.question_id}
+                    rec={rec}
+                    onAdd={() => handleAdd(rec)}
+                    onEdit={() => console.log("Edit", rec.question_id)}
+                    onReject={() => handleReject(rec)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
-          <Card className="p-5 border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-foreground">Template library</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Reuse formats from past semesters</div>
+          {/* Medium priority */}
+          {medium.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-semibold flex items-center gap-2">
+                <span className="size-2 rounded-full bg-amber-500" /> Medium Priority
+                <span className="text-sm font-normal text-muted-foreground">({medium.length})</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {medium.map((rec) => (
+                  <RecommendationCard
+                    key={rec.question_id}
+                    rec={rec}
+                    onAdd={() => handleAdd(rec)}
+                    onEdit={() => console.log("Edit", rec.question_id)}
+                    onReject={() => handleReject(rec)}
+                  />
+                ))}
               </div>
-              <Button variant="ghost" size="sm" className="text-primary">Browse all</Button>
             </div>
-            <div className="grid grid-cols-3 gap-3 mt-4">
-              {["DB Final 2024", "OS Mid-term 2025", "DSA Final 2023"].map((t, i) => (
-                <div key={t} className="rounded-lg border border-border p-3 hover:border-primary/50 cursor-pointer">
-                  <div className="aspect-[4/3] rounded bg-gradient-to-br from-muted to-muted/60 flex items-center justify-center">
-                    <FileText className="size-7 text-muted-foreground" />
-                  </div>
-                  <div className="text-sm text-foreground mt-2">{t}</div>
-                  <div className="text-xs text-muted-foreground">{[8, 10, 12][i]} questions · {[60, 75, 100][i]} mk</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
+          )}
+
+          {/* Low priority collapsed */}
+          {low.length > 0 && (
+            <details className="space-y-3">
+              <summary className="font-semibold cursor-pointer flex items-center gap-2">
+                <span className="size-2 rounded-full bg-muted-foreground" /> Low Priority
+                <span className="text-sm font-normal text-muted-foreground">({low.length}) — click to expand</span>
+              </summary>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                {low.map((rec) => (
+                  <RecommendationCard
+                    key={rec.question_id}
+                    rec={rec}
+                    onAdd={() => handleAdd(rec)}
+                    onEdit={() => console.log("Edit", rec.question_id)}
+                    onReject={() => handleReject(rec)}
+                  />
+                ))}
+              </div>
+            </details>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }

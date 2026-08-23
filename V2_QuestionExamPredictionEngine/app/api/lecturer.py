@@ -10,6 +10,7 @@ from app.db.repository import (
 )
 from app.schemas.exam_analytics import ExamAnalyticsDocument
 from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
+from app.services.recommendation import recommend_for_weak_areas
 from app.services.teaching_actions import get_teaching_actions
 from app.services.topic_canonicalization import canonicalize_topics
 
@@ -106,3 +107,48 @@ async def lecturer_teaching_actions(
         document.get("canonical_topic_performance", []),
         document.get("question_performance", []),
     )
+
+
+@router.get("/exams/{course_code}/{session_name}/recommendations")
+async def lecturer_recommendations(
+    course_code: str,
+    session_name: str,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    semester: int | None = Query(None),
+    limit: int = Query(10, ge=1, le=50),
+    db=Depends(get_db),
+):
+    """Lecturer dashboard: weak areas + ranked exam question recommendations.
+
+    Uses student analytics (Phase 3 weakness) + curriculum (question_bank, Phase 1)
+    + taxonomy (Phase 2) + weighted scoring (Phase 4).
+    """
+    document = await find_exam_analytics(db, course_code, session_name, year, month, semester)
+    if document is None:
+        try:
+            document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
+        except ExamNotFound as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+    # enrich with canonical if missing
+    if not document.get("canonical_topic_performance"):
+        try:
+            canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
+            document.update(canonical)
+        except Exception:
+            pass
+    result = recommend_for_weak_areas(document, limit=limit)
+    return {
+        "exam_id": f"{course_code}@{session_name}",
+        "subject_code": course_code,
+        "session_name": session_name,
+        "year": document.get("year"),
+        "month": document.get("month"),
+        "semester": document.get("semester"),
+        "weakness_scores": result["weakness_scores"],
+        "ranked_weak_topics": result["ranked_weak_topics"],
+        "recommendations": result["recommendations"],
+        "high_priority": result["high_priority"],
+        "medium_priority": result["medium_priority"],
+        "total_candidates": len(result["recommendations"]),
+    }
