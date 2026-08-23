@@ -1,7 +1,8 @@
 import React from "react";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, FileQuestion } from "lucide-react";
+import { SectionHeader } from "./SectionHeader";
 
 interface Question {
   question_id: string;
@@ -18,23 +19,29 @@ interface Props {
 
 export function QuestionPerformanceTable({ questions, onSelectQuestion }: Props) {
   if (!questions.length) return null;
+
   const lowestId = questions.reduce((min, q) =>
     q.average_percentage < min.average_percentage ? q : min
   ).question_id;
 
   return (
-    <Card className="p-4">
-      <h3 className="text-lg font-semibold mb-3">Question Performance</h3>
-      <div className="space-y-2">
+    <Card className="p-5">
+      <SectionHeader icon={FileQuestion} title="Question Performance" subtitle="Individual question analysis" />
+      <div className="space-y-3">
         {questions.map((q) => {
           const isLowest = q.question_id === lowestId;
+          const status = q.average_percentage >= 75 ? "Strong"
+            : q.average_percentage >= 60 ? "Developing"
+            : q.average_percentage >= 40 ? "Needs Improvement"
+            : "Critical";
+
           return (
             <button
               key={q.question_id}
               onClick={() => onSelectQuestion(q)}
-              className="w-full text-left p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+              className="w-full text-left p-4 rounded-xl border bg-card hover:bg-accent/50 transition-all hover:shadow-sm"
             >
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{q.question_id}</span>
                   {isLowest && (
@@ -44,16 +51,17 @@ export function QuestionPerformanceTable({ questions, onSelectQuestion }: Props)
                     </Badge>
                   )}
                 </div>
-                <span className="font-mono text-sm">{q.average_percentage.toFixed(2)}%</span>
+                <span className="text-sm font-mono font-semibold">{q.average_percentage.toFixed(1)}%</span>
               </div>
-              <div className="text-xs text-muted-foreground">{q.topic} · {q.bloom_level}</div>
-              <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="text-xs text-muted-foreground mb-2">
+                {q.topic} · {q.bloom_level}
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${q.average_percentage}%`,
-                    backgroundColor: isLowest ? "#f59e0b" : "#3b82f6",
-                  }}
+                  className={`h-full rounded-full transition-all ${
+                    isLowest ? "bg-amber-500" : status === "Strong" ? "bg-emerald-500" : status === "Developing" ? "bg-amber-500" : "bg-orange-500"
+                  }`}
+                  style={{ width: `${Math.min(q.average_percentage, 100)}%` }}
                 />
               </div>
             </button>
