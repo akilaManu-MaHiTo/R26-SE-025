@@ -139,3 +139,7 @@ class StudentAnalyticsDocument(BaseModel):
     model_metadata: ModelMetadata
     generated_at: datetime
     analysis_version: str = Field(min_length=1)
+
+    # Spec §7 alias fields (course, exam_id) accepted via extra="allow"
+    # — persisted by repository._with_spec_aliases, not required for validation.
+    model_config = {"extra": "allow"}
