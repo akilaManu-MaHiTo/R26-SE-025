@@ -36,8 +36,10 @@ function getProgressColor(pct: number): string {
 
 export function CanonicalTopicTable({ topics, onSelectTopic }: Props) {
   return (
-    <Card className="p-4">
-      <h3 className="text-lg font-semibold mb-3">Topic Performance (Canonical)</h3>
+    <Card className="p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="font-medium">Topic Mastery</div>
+      </div>
       <div className="space-y-2">
         {topics.map((t) => {
           const barColor = progressBarColor[t.status] || getProgressColor(t.average_percentage);
@@ -64,7 +66,7 @@ export function CanonicalTopicTable({ topics, onSelectTopic }: Props) {
               </div>
               <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ease-out ${barColor}`}
+                  className="h-full rounded-full transition-all bg-primary"
                   style={{ width: `${Math.min(t.average_percentage, 100)}%` }}
                 />
               </div>
