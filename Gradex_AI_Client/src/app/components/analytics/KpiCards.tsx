@@ -24,42 +24,46 @@ const kpis = [
 ] as const;
 
 export function KpiCards({ statistics }: KpiCardsProps) {
+  const showSampleWarning = statistics.total_students < 10;
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-      <Card className="col-span-full p-5">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <div className="font-medium">Performance Overview</div>
-      </Card>
-      {kpis.map(({ key, label, icon: Icon, suffix }) => {
-        const value = statistics[key];
-        const isRate = key === "pass_rate" || key === "average_percentage";
-        return (
-          <Card key={key} className="p-5">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
-                <Icon className="size-5" />
+        {showSampleWarning && (
+          <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+            <span title="Based on a small number of responses - interpret with caution">
+              Low sample size (n={statistics.total_students})
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {kpis.map(({ key, label, icon: Icon, suffix }) => {
+          const value = statistics[key];
+          const isRate = key === "pass_rate" || key === "average_percentage";
+          return (
+            <Card key={key} className="p-5">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+                  <Icon className="size-5" />
+                </div>
+                {label}
               </div>
-              {label}
-            </div>
-            <div className="text-2xl font-bold">
-              {typeof value === "number" ? value.toFixed(isRate ? 2 : 0) : value}
-              {suffix}
-            </div>
-            {key === "total_students" && (
-              <div className="text-xs text-muted-foreground mt-1">
-                {statistics.attempted_students} attempted
+              <div className="text-2xl font-bold">
+                {typeof value === "number" ? value.toFixed(isRate ? 2 : 0) : value}
+                {suffix}
               </div>
-            )}
-            {statistics.total_students < 10 && (
-              <div className="mt-2 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-                <span title="Based on a small number of responses - interpret with caution">
-                  Low sample size (n={statistics.total_students})
-                </span>
-              </div>
-            )}
-          </Card>
-        );
-      })}
+              {key === "total_students" && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  {statistics.attempted_students} attempted
+                </div>
+              )}
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }
