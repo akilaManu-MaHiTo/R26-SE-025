@@ -30,6 +30,7 @@ import { QaRelevancePanel } from "./viva/QaRelevancePanel";
 import { LiveVivaRecorder } from "./viva/LiveVivaRecorder";
 import { EvaluationPanel } from "./viva/EvaluationPanel";
 import { ReportPrintView } from "./viva/ReportPrintView";
+import { publishVivaMark } from "./viva/vivaMarksApi";
 import {
   AnalysisResult,
   AssessmentMode,
@@ -56,6 +57,7 @@ export function VivaPage() {
   const [technicalAccuracy, setTechnicalAccuracy] = useState<number | null>(null);
   const [studentId, setStudentId] = useState("");
   const [published, setPublished] = useState(false);
+  const [autoPublishedWithoutTech, setAutoPublishedWithoutTech] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [sourceTab, setSourceTab] = useState<"upload" | "live">("upload");
 
@@ -74,7 +76,17 @@ export function VivaPage() {
     setTechnicalAccuracy(null);
     setStudentId("");
     setPublished(false);
+    setAutoPublishedWithoutTech(false);
     setPublishing(false);
+  };
+
+  const handleAssessmentModeChange = (mode: AssessmentMode) => {
+    setAssessmentMode(mode);
+    if (mode === "WITHOUT_TECHNICAL_ACCURACY") {
+      setPublished(autoPublishedWithoutTech);
+      return;
+    }
+    setPublished(false);
   };
 
   useEffect(() => {
@@ -93,39 +105,45 @@ export function VivaPage() {
       });
       return;
     }
+    if (assessmentMode !== "WITH_TECHNICAL_ACCURACY") {
+      return;
+    }
     if (published || publishing) return;
 
     setPublishing(true);
     try {
-      const response = await fetch(`${backendBaseUrl}/api/viva-marks/${markId}/publish`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(apiKey ? { "X-API-Key": apiKey } : {}),
-        },
-        body: JSON.stringify({
-          assessment_mode: assessmentMode,
-          technical_accuracy:
-            assessmentMode === "WITH_TECHNICAL_ACCURACY" ? technicalAccuracy : null,
-          student_id: studentId.trim() || null,
-          published: true,
-        }),
+      const saved = await publishVivaMark(markId, {
+        assessment_mode: assessmentMode,
+        technical_accuracy: technicalAccuracy,
+        student_id: studentId.trim() || null,
+        published: true,
       });
-      if (!response.ok) {
-        let detail = `HTTP ${response.status}`;
-        try {
-          const payload = await response.json();
-          if (typeof payload?.detail === "string" && payload.detail.trim()) {
-            detail = payload.detail.trim();
-          }
-        } catch {
-          // ignore
+      // The server recomputes the fused mark on publish. Merge it back, or the
+      // panel and the printed report keep showing the pre-fusion score.
+      setAnalysisResult((previous) => {
+        if (!previous) return previous;
+        const merged: AnalysisResult = {
+          ...previous,
+          final_score: saved.final_score ?? previous.final_score,
+          final_grade: saved.final_grade ?? previous.final_grade,
+          assessment_mode: assessmentMode,
+        };
+        if (previous.assessment) {
+          merged.assessment = {
+            ...previous.assessment,
+            final_score: saved.final_score ?? previous.assessment.final_score,
+            grade: saved.final_grade ?? previous.assessment.grade,
+            technical_accuracy: technicalAccuracy,
+            assessment_mode: assessmentMode,
+          };
         }
-        throw new Error(detail);
-      }
+        return merged;
+      });
       setPublished(true);
       toast.success("Assessment published", {
-        description: "Final score and grade saved from the engine scorer.",
+        description: `Final mark ${
+          saved.final_score != null ? saved.final_score.toFixed(1) : "—"
+        }/100 (grade ${saved.final_grade ?? "—"}) saved to MongoDB.`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to publish";
@@ -298,13 +316,26 @@ export function VivaPage() {
       const data = JSON.parse(response) as AnalysisResult;
       setAnalysisResult(data);
       setAnalysisPhase("complete");
-      setPublished(false);
-      setPublishing(false);
       setAssessmentMode("WITHOUT_TECHNICAL_ACCURACY");
       setTechnicalAccuracy(null);
+      const wasAutoPublished = Boolean(data.auto_published && data.published);
+      setAutoPublishedWithoutTech(wasAutoPublished);
+      setPublished(wasAutoPublished);
+      setPublishing(false);
       if (data.persistence_error) {
         toast.warning("Analysis complete — mark not saved", {
           description: data.persistence_error,
+        });
+      } else if (wasAutoPublished) {
+        toast.success("Analysis complete — score saved", {
+          description: `Final mark ${data.final_score?.toFixed(1) ?? data.assessment?.final_score ?? "—"}/100 (grade ${data.final_grade ?? data.assessment?.grade ?? "—"}) saved to MongoDB.`,
+        });
+      } else if (data.mark_id) {
+        toast.success("Analysis complete", {
+          description:
+            data.assessment?.status === "INCOMPLETE"
+              ? "Recording is incomplete — no official grade saved."
+              : "Draft saved — choose With technical accuracy to publish a fused mark.",
         });
       } else if (data.assessment) {
         toast.success("Analysis complete", {
@@ -536,6 +567,10 @@ export function VivaPage() {
         <>
           <ScoreOverview
             assessment={analysisResult.assessment}
+            analysisResult={analysisResult}
+            assessmentMode={assessmentMode}
+            technicalAccuracy={technicalAccuracy}
+            published={published}
             confidenceScore={analysisResult.confidence_score}
             engagementScore={analysisResult.engagement_score}
             audioGrade={audioAnalysis?.audio_grade}
@@ -660,15 +695,23 @@ export function VivaPage() {
                 <EvaluationPanel
                   assessment={analysisResult.assessment}
                   assessmentMode={assessmentMode}
-                  onChangeMode={setAssessmentMode}
+                  onChangeMode={handleAssessmentModeChange}
                   technicalAccuracy={technicalAccuracy}
                   onChangeTechnicalAccuracy={setTechnicalAccuracy}
                   studentId={studentId}
                   onChangeStudentId={setStudentId}
                   aiRecommendation={aiRecommendation}
+                  markId={analysisResult.mark_id}
+                  persistenceError={analysisResult.persistence_error}
+                  autoPublishedWithoutTech={autoPublishedWithoutTech}
                   published={published}
                   publishing={publishing}
                   onPublish={handlePublish}
+                  analysisResult={{
+                    final_score: analysisResult.final_score,
+                    final_grade: analysisResult.final_grade,
+                    auto_published: analysisResult.auto_published,
+                  }}
                 />
               </Card>
             </div>

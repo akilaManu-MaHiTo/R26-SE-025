@@ -253,84 +253,114 @@ async def diagram_evaluate_details():
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
-@app.patch("/api/viva-marks/{mark_id}/publish", dependencies=[Depends(require_api_key)])
-async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
-    """Persist published assessment: canonical X, human technical (or null), server-computed /100 + grade."""
-    object_id = _parse_object_id(mark_id)
+def _require_marks_collection():
     if db_instance.marks_col is None:
         raise HTTPException(
             status_code=503,
             detail="MongoDB is not connected. Check MONGODB_URL / DATABASE_NAME and Atlas credentials.",
         )
+    return db_instance.marks_col
 
-    from VivaEvaluationEngine.services.assessment_scoring import (
-        MODE_WITH,
-        MODE_WITHOUT,
-        build_assessment,
-    )
+
+def _summarize_mark_document(document: dict[str, Any]) -> dict[str, Any]:
+    assessment = document.get("assessment") or {}
+    return {
+        "mark_id": str(document.get("_id")),
+        "video_filename": document.get("video_filename"),
+        "student_id": document.get("student_id"),
+        "processed_at": document.get("processed_at"),
+        "published": bool(document.get("published")),
+        "published_at": document.get("published_at"),
+        "assessment_mode": document.get("assessment_mode"),
+        "video_status": document.get("video_status"),
+        "confidence_score": document.get("confidence_score"),
+        "engagement_score": document.get("engagement_score"),
+        "ai_performance_score": document.get("ai_performance_score"),
+        "technical_accuracy": document.get("technical_accuracy"),
+        "final_score": document.get("final_score"),
+        "final_grade": document.get("final_grade"),
+        "status": assessment.get("status"),
+        "scoring_version": document.get("scoring_version"),
+    }
+
+
+@app.get("/api/viva-marks", dependencies=[Depends(require_api_key)])
+async def list_viva_marks(
+    limit: int = 20,
+    student_id: Optional[str] = None,
+    published: Optional[bool] = None,
+):
+    """List recent viva marks saved after POST /api/viva-analyze."""
+    marks_col = _require_marks_collection()
+    safe_limit = max(1, min(limit, 100))
+    query: dict[str, Any] = {}
+    if student_id and student_id.strip():
+        query["student_id"] = student_id.strip()
+    if published is not None:
+        query["published"] = published
+
+    try:
+        cursor = marks_col.find(query).sort("processed_at", -1).limit(safe_limit)
+        documents = await cursor.to_list(length=safe_limit)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"MongoDB query failed: {exc}") from exc
+
+    return {
+        "items": [_summarize_mark_document(doc) for doc in documents],
+        "count": len(documents),
+    }
+
+
+@app.get("/api/viva-marks/{mark_id}", dependencies=[Depends(require_api_key)])
+async def get_viva_mark(mark_id: str):
+    """Fetch one saved viva mark by Mongo ObjectId."""
+    marks_col = _require_marks_collection()
+    object_id = _parse_object_id(mark_id)
+    try:
+        document = await marks_col.find_one({"_id": object_id})
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"MongoDB query failed: {exc}") from exc
+    if not document:
+        raise HTTPException(status_code=404, detail="Mark not found.")
+    return _json_safe(document)
+
+
+@app.patch("/api/viva-marks/{mark_id}/publish", dependencies=[Depends(require_api_key)])
+async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
+    """Persist published assessment: canonical X, human technical (or null), server-computed /100 + grade."""
+    from Gradex_AI_Server.app.viva_marks import apply_publish_to_mark
+    from VivaEvaluationEngine.services.assessment_scoring import MODE_WITH, MODE_WITHOUT
+
+    object_id = _parse_object_id(mark_id)
+    marks_col = _require_marks_collection()
 
     mode = payload.assessment_mode.strip()
     if mode not in {MODE_WITHOUT, MODE_WITH}:
         raise HTTPException(status_code=400, detail="assessment_mode must be WITHOUT_TECHNICAL_ACCURACY or WITH_TECHNICAL_ACCURACY.")
     if mode == MODE_WITH and payload.technical_accuracy is None:
         raise HTTPException(status_code=400, detail="technical_accuracy is required for WITH_TECHNICAL_ACCURACY.")
-    if mode == MODE_WITHOUT:
-        technical = None
-    else:
-        technical = payload.technical_accuracy
+
+    student_id = (payload.student_id or "").strip() or None
+    technical = None if mode == MODE_WITHOUT else payload.technical_accuracy
 
     try:
-        existing = await db_instance.marks_col.find_one({"_id": object_id})
+        return await apply_publish_to_mark(
+            marks_col,
+            object_id,
+            mode=mode,
+            technical_accuracy=technical,
+            student_id=student_id,
+            human_published=True,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Mark not found.") from None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception:
         raise HTTPException(
             status_code=503,
             detail="MongoDB is not reachable. Marks cannot be published until Atlas auth succeeds.",
         ) from None
-    if not existing:
-        raise HTTPException(status_code=404, detail="Mark not found.")
-
-    engine_result = existing.get("result") or {}
-    assessment = build_assessment(
-        engine_result,
-        mode=mode,
-        technical_accuracy=technical,
-    )
-    published_at = datetime.now(timezone.utc)
-    student_id = (payload.student_id or "").strip() or None
-    update = {
-        "published": bool(payload.published),
-        "human_published": True,
-        "published_at": published_at,
-        "student_id": student_id,
-        "assessment_mode": mode,
-        "features": assessment.get("training_features"),
-        "feature_schema_version": assessment.get("feature_schema_version"),
-        "scoring_version": assessment.get("scoring_version"),
-        "ai_performance_score": (assessment.get("ai_performance") or {}).get("score"),
-        "technical_accuracy": assessment.get("technical_accuracy"),
-        "final_score": assessment.get("final_score"),
-        "final_grade": assessment.get("grade"),
-        "assessment": assessment,
-    }
-
-    result = await db_instance.marks_col.update_one({"_id": object_id}, {"$set": update})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Mark not found.")
-
-    return {
-        "mark_id": mark_id,
-        "published": update["published"],
-        "published_at": published_at.isoformat(),
-        "student_id": student_id,
-        "assessment_mode": mode,
-        "ai_performance_score": update["ai_performance_score"],
-        "technical_accuracy": update["technical_accuracy"],
-        "final_score": update["final_score"],
-        "final_grade": update["final_grade"],
-        "status": assessment.get("status"),
-        "scoring_version": update["scoring_version"],
-        "feature_schema_version": update["feature_schema_version"],
-    }
 
 
 @app.post("/api/viva-analyze", dependencies=[Depends(require_api_key)])
@@ -397,7 +427,9 @@ async def viva_analyze(video: UploadFile = File(...)):
         print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")
         # Persist the result to MongoDB (vivamark.marks). Best-effort: a
         # storage failure should not fail an otherwise-successful analysis.
-        if db_instance.marks_col is None:
+        from Gradex_AI_Server.app.core.database import ensure_marks_collection
+
+        if not await ensure_marks_collection():
             result["persistence_error"] = (
                 "MongoDB is not connected — mark was not saved. Publish is unavailable."
             )
@@ -407,6 +439,9 @@ async def viva_analyze(video: UploadFile = File(...)):
                 mark_doc = {
                     "video_filename": video.filename,
                     "processed_at": datetime.now(timezone.utc),
+                    "published": False,
+                    "human_published": False,
+                    "student_id": None,
                     "confidence_score": result.get("confidence_score"),
                     "engagement_score": result.get("engagement_score"),
                     "video_status": result.get("video_status"),
@@ -416,12 +451,31 @@ async def viva_analyze(video: UploadFile = File(...)):
                     "result": result,
                 }
                 insert_result = await db_instance.marks_col.insert_one(mark_doc)
-                result["mark_id"] = str(insert_result.inserted_id)
-            except Exception:
+                mark_object_id = insert_result.inserted_id
+                result["mark_id"] = str(mark_object_id)
+                result["published"] = False
+                from Gradex_AI_Server.app.viva_marks import (
+                    auto_publish_without_technical,
+                    merge_auto_publish_into_analyze_result,
+                )
+
+                try:
+                    auto_payload = await auto_publish_without_technical(
+                        db_instance.marks_col,
+                        mark_object_id,
+                        result,
+                    )
+                    if auto_payload:
+                        merge_auto_publish_into_analyze_result(result, auto_payload)
+                        print(f"[VIVA] Auto-published mark {result['mark_id']} (without technical accuracy)")
+                except Exception as auto_exc:
+                    print(f"[VIVA] Warning: auto-publish failed; mark remains draft. ({auto_exc})")
+            except Exception as exc:
                 result["persistence_error"] = (
                     "Could not save mark (Mongo authentication or network failed)."
                 )
-                print("[VIVA] Warning: failed to persist result to MongoDB.")
+                print(f"[VIVA] Warning: failed to persist result to MongoDB ({type(exc).__name__}: {exc})")
+                await ensure_marks_collection()
         return result
     except ModuleNotFoundError as exc:
         raise HTTPException(status_code=503, detail=f"Viva analysis unavailable: {exc}") from exc

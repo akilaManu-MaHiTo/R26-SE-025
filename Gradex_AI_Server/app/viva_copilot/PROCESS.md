@@ -307,6 +307,7 @@ There is **no** `setInterval` poll of `/sessions/{id}` during the live session. 
 - `current_question`, `asked_questions`, `recent_qa`
 - `ws_clients`, `busy_llm`, `stt_busy`, `pending_audio` (deque), `pending_followups`
 - `last_suggest_at`, `last_suggest_word_count`
+- `created_at`, `last_activity_at` — idle expiry via `VIVA_COPILOT_SESSION_TTL_SECONDS` (default **14400** = 4 h). Set **0** to disable. Purged on `store.get()` / `store.create()` and when WebSocket or STT sees an expired session.
 
 Lost on process restart. Not written to Mongo.
 

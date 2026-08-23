@@ -134,6 +134,14 @@ function LiveCopilotScreen() {
         }
         break;
       }
+      case "session.expired": {
+        const message =
+          event.message || "Session expired after inactivity. Create a new session to continue.";
+        setError(message);
+        toast.warning("Session expired", { description: message });
+        setPhase("ended");
+        break;
+      }
       default:
         break;
     }
