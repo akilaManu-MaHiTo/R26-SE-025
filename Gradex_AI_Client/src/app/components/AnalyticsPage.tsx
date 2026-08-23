@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, Download, FileText, BarChart3, Users, Calendar, ChevronRight } from "lucide-react";
+import { ArrowLeft, Download, FileText, BarChart3, Users, ChevronRight } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -100,9 +100,10 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="font-semibold text-lg">{exam.course_code}</div>
                 <div className="text-sm text-muted-foreground mt-0.5">{exam.subject_name}</div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-                  <Calendar className="size-3" />
-                  <span>{exam.session_name} · {exam.year}</span>
+                <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                  <Badge variant="outline" className="text-xs border-border">Year {exam.year}</Badge>
+                  <Badge variant="outline" className="text-xs border-border">Month {exam.month}</Badge>
+                  <Badge variant="outline" className="text-xs border-border">Sem {exam.semester}</Badge>
                 </div>
                 <div className="mt-4 pt-4 border-t border-border">
                   <div className="flex items-center justify-between text-sm">
