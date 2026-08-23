@@ -125,6 +125,47 @@ export interface TeachingAction {
   generated_at: string;
 }
 
+export interface Recommendation {
+  question_id: string;
+  source_type: string;
+  source_id: string;
+  canonical_topic: string;
+  subtopic: string;
+  bloom_level: string;
+  difficulty: string;
+  marks: number;
+  text: string;
+  weakness: number;
+  lecture_coverage: number;
+  tutorial_evidence: number;
+  exam_relevance: number;
+  bloom_gap: number;
+  recommendation_score: number;
+  priority: string;
+  reason: {
+    weakness_pct: number;
+    lecture: boolean;
+    tutorial_count: number;
+    exam_recent_count: number;
+    bloom_gap: number;
+  };
+}
+
+export interface RecommendationsResponse {
+  exam_id: string;
+  subject_code: string;
+  session_name: string;
+  year: number;
+  month: number;
+  semester: number;
+  weakness_scores: Record<string, { average_percentage: number; weakness: number; status: string; priority: string }>;
+  ranked_weak_topics: [string, number][];
+  recommendations: Recommendation[];
+  high_priority: Recommendation[];
+  medium_priority: Recommendation[];
+  total_candidates: number;
+}
+
 /* ─── API Functions ────────────────────────────────────────────────────── */
 
 export async function fetchExams(): Promise<ExamListItem[]> {
@@ -173,5 +214,26 @@ export async function fetchTeachingActions(
     `${API_BASE}/api/lecturers/exams/${encodeURIComponent(courseCode)}/${encodeURIComponent(sessionName)}/teaching-actions?${params}`,
   );
   if (!res.ok) throw new Error("Failed to fetch teaching actions");
+  return res.json();
+}
+
+export async function fetchRecommendations(
+  courseCode: string,
+  sessionName: string,
+  year: number,
+  month: number,
+  semester: number,
+  limit = 10,
+): Promise<RecommendationsResponse> {
+  const params = new URLSearchParams({
+    year: String(year),
+    month: String(month),
+    semester: String(semester),
+    limit: String(limit),
+  });
+  const res = await fetch(
+    `${API_BASE}/api/lecturers/exams/${encodeURIComponent(courseCode)}/${encodeURIComponent(sessionName)}/recommendations?${params}`,
+  );
+  if (!res.ok) throw new Error("Failed to fetch recommendations");
   return res.json();
 }

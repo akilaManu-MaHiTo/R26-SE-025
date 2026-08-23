@@ -41,6 +41,16 @@ LECTURE_TOPIC_MAP = {
     "IT2040_Lecture08_2024.pdf": "database_security",
 }
 
+# Tutorial number -> canonical topic (learning outcomes order)
+TUTORIAL_TOPIC_MAP = {
+    "01": "intro_dbms",
+    "03": "schema_refinement",
+    "04": "sql",
+    "05": "sql",
+    "06": "database_programming",
+    "07": "database_security",
+}
+
 # Heuristic keywords to guess canonical topic when not lecture
 KEYWORD_TO_CANONICAL = {
     "er diagram": "intro_dbms",
@@ -170,22 +180,39 @@ def parse_exam_marks(text: str) -> list[dict[str, Any]]:
 
 
 def parse_tutorial_questions(text: str) -> list[dict[str, Any]]:
-    """Split tutorial text by numbered questions '1. ', '2.' etc."""
+    """Split tutorial text by numbered questions '1. ', '2.' etc.
+
+    Merges lettered subparts (a. b. c. i. ii. iii. a) b) ) into parent numbered question.
+    So Q6 with a/b/c subparts stays as one record, not three.
+    """
     # Remove header
     text = re.sub(r"BSc.*?Tutorial\s*\d+", " ", text, flags=re.IGNORECASE | re.DOTALL)
-    # Split on \n <num>. or <num>.
+    # Remove page footers like "B.Sc (Hons)..." that leak between questions
+    text = re.sub(r"B\.Sc\s*\(Hons\).*?Information Technology\s*\d+", " ", text, flags=re.IGNORECASE | re.DOTALL)
+    # Split on numbered headers: start-of-line or newline + digits + dot + space
+    # Avoid splitting on lettered subparts: ensure preceding char is newline/start and not a letter
     splitter = re.compile(r"(?:^|\n)\s*(\d+)\.\s+")
     parts = splitter.split(text)
-    # parts: ['', '1', ' text1', '2', ' text2', ...]
     questions = []
     for i in range(1, len(parts), 2):
         num = parts[i]
-        body = normalize_ws(parts[i + 1]) if i + 1 < len(parts) else ""
+        raw_body = parts[i + 1] if i + 1 < len(parts) else ""
+        body = normalize_ws(raw_body)
         if len(body) < 20:
             continue
-        # Trim very long questions to 2000 chars
-        questions.append({"q_no": num, "body": body[:2000]})
-    return questions
+        # Ensure subparts like 'a. ', 'b. ', 'i. ', 'ii. ', 'a) ', '1) ' at line start stay inside body
+        # (splitter already ignores them because it requires \d+\. at line start, but normalize leading letter splits would false)
+        # Trim very long questions to 3000 chars to preserve all subparts a/b/c
+        questions.append({"q_no": num, "body": body[:3000]})
+    # Merge orphan letter-only fragments (e.g., "a. Find..." was not split, but if it was, merge back)
+    merged: list[dict[str, Any]] = []
+    for q in questions:
+        # If body looks like a lone subpart (starts with a. / b. / i. / ii. and is short) merge to previous
+        if merged and re.match(r"^[a-z]\.\s+|^i{1,3}\.\s+|^[a-z]\)\s+", q["body"], re.IGNORECASE) and len(q["body"]) < 600:
+            merged[-1]["body"] = normalize_ws(merged[-1]["body"] + " " + q["body"])[:3000]
+        else:
+            merged.append(q)
+    return merged
 
 
 def bloom_from_keywords(text: str) -> str:
@@ -230,39 +257,82 @@ def build_question_bank() -> list[dict[str, Any]]:
     canon_names = {k: v["canonical_topic"] for k, v in taxonomy.items()}
     records: list[dict[str, Any]] = []
 
-    # --- Lectures: 1 record per lecture as coverage signal ---
-    lectures_dir = BASE / "lectures"
-    for pdf in sorted(lectures_dir.glob("*.pdf")):
-        key = pdf.name
-        canon_id = LECTURE_TOPIC_MAP.get(key)
-        if not canon_id:
-            continue
-        txt = extract_text(pdf)
-        # Take objectives page (first 1500 chars after LECTURE CONTENT)
-        obj_match = re.search(r"LECTURE CONTENT(.*?)(?:\n\n|\Z)", txt, re.DOTALL | re.IGNORECASE)
-        snippet = normalize_ws(obj_match.group(1) if obj_match else txt[:800])[:800]
-        lec_match = re.search(r"Lecture0*(\d+)", key, re.IGNORECASE)
-        lec_no = lec_match.group(1).zfill(2) if lec_match else "00"
-        year_match = re.search(r"_(\d{4})\.pdf$", key)
-        year = int(year_match.group(1)) if year_match else 2024
-        records.append(
-            {
-                "question_id": f"IT2040_{year}_Lecture_{lec_no}",
-                "source_type": "lecture",
-                "source_id": pdf.stem,
-                "canonical_topic": canon_names[canon_id],
-                "canonical_id": canon_id,
-                "subtopic": snippet[:200],
-                "bloom_level": "Understand",
-                "difficulty": "Easy",
-                "marks": 0,
-                "question_type": "concept_check",
-                "text": snippet,
-                "year": year,
-                "semester": 1,
-                "original_topic_label": canon_names[canon_id],
-            }
-        )
+    # --- Lectures: prefer clean curriculum (90 subtopics) if available, fallback to PDF ---
+    curriculum_path = BASE / "curriculum_clean.json"
+    if curriculum_path.exists():
+        curriculum = json.loads(curriculum_path.read_text(encoding="utf-8"))
+        for idx, entry in enumerate(curriculum):
+            topic = entry.get("topic", "")
+            subtopic = entry.get("subtopic", "")
+            lo = entry.get("learning_objective", "")
+            # map topic -> canonical_id via normalizer
+            try:
+                from app.taxonomy.normalizer import normalize_topic
+
+                cid = normalize_topic(topic)
+            except Exception:
+                cid = None
+            # fallback to direct canonical name match
+            if not cid:
+                for k, v in canon_names.items():
+                    if v == topic:
+                        cid = k
+                        break
+            if not cid:
+                cid = "intro_dbms"
+            lecture_tag = entry.get("lecture", f"lec{(idx // 10) + 1:02d}")
+            # bloom heuristic from learning objective verb
+            bloom = bloom_from_keywords(lo)
+            records.append(
+                {
+                    "question_id": f"IT2040_2024_{lecture_tag.upper()}_{subtopic[:30].replace(' ', '_')[:30]}_{idx:03d}",
+                    "source_type": "lecture",
+                    "source_id": lecture_tag,
+                    "canonical_topic": canon_names.get(cid, topic),
+                    "canonical_id": cid,
+                    "subtopic": subtopic,
+                    "bloom_level": bloom,
+                    "difficulty": "Easy",
+                    "marks": 0,
+                    "question_type": "concept_check",
+                    "text": lo,
+                    "year": 2024,
+                    "semester": 1,
+                    "original_topic_label": topic,
+                }
+            )
+    else:
+        lectures_dir = BASE / "lectures"
+        for pdf in sorted(lectures_dir.glob("*.pdf")):
+            key = pdf.name
+            canon_id = LECTURE_TOPIC_MAP.get(key)
+            if not canon_id:
+                continue
+            txt = extract_text(pdf)
+            obj_match = re.search(r"LECTURE CONTENT(.*?)(?:\n\n|\Z)", txt, re.DOTALL | re.IGNORECASE)
+            snippet = normalize_ws(obj_match.group(1) if obj_match else txt[:800])[:800]
+            lec_match = re.search(r"Lecture0*(\d+)", key, re.IGNORECASE)
+            lec_no = lec_match.group(1).zfill(2) if lec_match else "00"
+            year_match = re.search(r"_(\d{4})\.pdf$", key)
+            year = int(year_match.group(1)) if year_match else 2024
+            records.append(
+                {
+                    "question_id": f"IT2040_{year}_Lecture_{lec_no}",
+                    "source_type": "lecture",
+                    "source_id": pdf.stem,
+                    "canonical_topic": canon_names[canon_id],
+                    "canonical_id": canon_id,
+                    "subtopic": snippet[:200],
+                    "bloom_level": "Understand",
+                    "difficulty": "Easy",
+                    "marks": 0,
+                    "question_type": "concept_check",
+                    "text": snippet,
+                    "year": year,
+                    "semester": 1,
+                    "original_topic_label": canon_names[canon_id],
+                }
+            )
 
     # --- Exams ---
     exams_dir = BASE / "Final exam"
@@ -317,8 +387,22 @@ def build_question_bank() -> list[dict[str, Any]]:
             continue
         for q in qs:
             body = q["body"]
-            guess = guess_canonical(body) or "intro_dbms"
-            canon_id = guess if guess in canon_names else "intro_dbms"
+            # Prefer tutorial-number mapping (02->logical, 04->sql) as primary; keyword as fallback
+            tut_canon = TUTORIAL_TOPIC_MAP.get(tut_no.zfill(2))
+            guess = guess_canonical(body)
+            # If guess is intro_dbms but tutorial says sql, trust tutorial (tutorial SQL queries lack SELECT keyword)
+            if tut_canon:
+                # Keep guess if it matches tut_canon's family (e.g., sql vs database_programming distinction via keywords)
+                if guess == tut_canon:
+                    canon_id = guess
+                elif guess in ("intro_dbms",) and tut_canon in ("sql", "database_programming", "schema_refinement", "database_security"):
+                    canon_id = tut_canon
+                elif guess:
+                    canon_id = guess if guess in canon_names else tut_canon
+                else:
+                    canon_id = tut_canon
+            else:
+                canon_id = guess if guess and guess in canon_names else "intro_dbms"
             records.append(
                 {
                     "question_id": f"IT2040_{year}_Tutorial{tut_no.zfill(2)}_Q{q['q_no'].zfill(2)}",
