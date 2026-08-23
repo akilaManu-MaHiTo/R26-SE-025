@@ -30,9 +30,11 @@ export function KpiCards({ statistics }: KpiCardsProps) {
         const value = statistics[key];
         const isRate = key === "pass_rate" || key === "average_percentage";
         return (
-          <Card key={key} className="p-4">
+          <Card key={key} className="p-5">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <Icon className="h-4 w-4" />
+              <div className="size-10 rounded-lg bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center">
+                <Icon className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+              </div>
               {label}
             </div>
             <div className="text-2xl font-bold">
