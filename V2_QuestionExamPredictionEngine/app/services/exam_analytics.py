@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from app.analytics.exam_analytics import compute_exam_analytics_stats
 from app.analytics.student_document import build_numeric_analysis
+from app.analytics.weakness import compute_weakness_scores
 from app.db.repository import (
     find_course_for_submission,
     find_graded_submissions_for_exam,
@@ -55,6 +56,23 @@ async def compute_exam_analytics(
         )
 
     stats = compute_exam_analytics_stats(students, pass_threshold=0.5)
+    # Phase 3: attach weakness scores for recommendation engine (canonical first, raw fallback)
+    # weakness computed here is persisted with the document; topic_canonicalization later
+    # enriches with canonical_topic_performance -> recalculate if available
+    try:
+        stats["weakness_scores"] = compute_weakness_scores(
+            canonical_topic_performance=None,
+            topic_performance=stats.get("topic_performance"),
+        )
+        stats["weakest_topics"] = [
+            t for t, _ in sorted(
+                ((k, v["weakness"]) for k, v in stats["weakness_scores"].items()),
+                key=lambda kv: kv[1],
+                reverse=True,
+            )
+        ]
+    except Exception:
+        pass
     total_marks = sum(float(q["max_marks"]) for q in (rubric or {}).get("questions", []))
     question_count = len((rubric or {}).get("questions", []))
     course_name = str((course or {}).get("name") or (course or {}).get("course_name") or "").strip()
