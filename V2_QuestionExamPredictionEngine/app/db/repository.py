@@ -396,7 +396,8 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
         subject_name = rubric.get("subject_name", "")
 
         submissions = await db["submissions"].find(
-            {"subject_code": course_code, "session_name": session_name, "status": "graded"},
+            {"subject_code": course_code, "session_name": session_name, "status": "graded",
+             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
             {"_id": 0, "evaluation.total_score": 1, "evaluation.max_score": 1, "max_marks_paper_total": 1}
         ).to_list(length=500)
 
