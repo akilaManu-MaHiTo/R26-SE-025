@@ -19,8 +19,11 @@ class ExamNotFound(Exception):
     """Raised when no graded submissions exist for the requested exam."""
 
 
-async def compute_exam_analytics(db, course_code: str, session_name: str) -> dict:
-    submissions = await find_graded_submissions_for_exam(db, course_code, session_name)
+async def compute_exam_analytics(
+    db, course_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
+) -> dict:
+    submissions = await find_graded_submissions_for_exam(db, course_code, session_name, year, month, semester)
     if not submissions:
         raise ExamNotFound(f"no graded submissions for {course_code} {session_name}")
 
