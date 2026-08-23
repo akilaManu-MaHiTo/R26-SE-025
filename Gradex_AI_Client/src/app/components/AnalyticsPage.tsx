@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, Download, FileText, BarChart3 } from "lucide-react";
+import { ArrowLeft, Download, FileText, BarChart3, Users, Calendar } from "lucide-react";
 import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import { AIPageBanner } from "./AIBrand";
 import {
@@ -66,39 +68,49 @@ export default function AnalyticsPage() {
           <p className="text-muted-foreground mt-1">Select an exam to view detailed performance insights</p>
         </div>
         {loadingExams ? (
-          <div className="space-y-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full" />)}</div>
-        ) : exams.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No exams found</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-40" />)}
           </div>
+        ) : exams.length === 0 ? (
+          <Card className="p-12 text-center">
+            <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+            <p className="text-muted-foreground">No exams found</p>
+          </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {exams.map((exam) => (
-              <button
+              <Card
                 key={`${exam.course_code}-${exam.session_name}`}
+                className="group p-5 hover:border-primary/40 transition-colors duration-200 cursor-pointer"
                 onClick={() => handleSelectExam(exam)}
-                className="w-full text-left p-5 rounded-xl border bg-card hover:bg-accent/50 transition-all hover:shadow-md"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="font-semibold text-lg">{exam.course_code} — {exam.subject_name}</div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {exam.session_name} · {exam.year}
-                    </div>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="size-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+                    <BarChart3 className="size-5" />
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold tabular-nums">{exam.average_percentage.toFixed(1)}%</div>
-                    <div className="text-sm text-muted-foreground">{exam.student_count} students</div>
+                  <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                    {exam.student_count} students
+                  </Badge>
+                </div>
+                <div className="font-semibold text-lg">{exam.course_code}</div>
+                <div className="text-sm text-muted-foreground mt-0.5">{exam.subject_name}</div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                  <Calendar className="size-3" />
+                  <span>{exam.session_name} · {exam.year}</span>
+                </div>
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Class Average</span>
+                    <span className="font-semibold text-lg tabular-nums">{exam.average_percentage.toFixed(1)}%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden mt-2">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{ width: `${Math.min(exam.average_percentage, 100)}%` }}
+                    />
                   </div>
                 </div>
-                <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full"
-                    style={{ width: `${Math.min(exam.average_percentage, 100)}%` }}
-                  />
-                </div>
-              </button>
+              </Card>
             ))}
           </div>
         )}
