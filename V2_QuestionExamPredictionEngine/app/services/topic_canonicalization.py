@@ -29,7 +29,8 @@ def _resolve_priority(status: str, thresholds: list[dict]) -> str:
     return "Medium"
 
 async def canonicalize_topics(
-    db, document: dict[str, Any], course_code: str, session_name: str
+    db, document: dict[str, Any], course_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> dict[str, Any]:
     taxonomy = _load_taxonomy()
     thresholds = _load_thresholds()
@@ -53,8 +54,15 @@ async def canonicalize_topics(
             unmapped.append(raw_name)
 
     # Fetch raw submissions for recomputation
+    submissions_query: dict = {"subject_code": course_code, "session_name": session_name, "status": "graded"}
+    if year is not None:
+        submissions_query["year"] = year
+    if month is not None:
+        submissions_query["month"] = month
+    if semester is not None:
+        submissions_query["semester"] = semester
     submissions = await db["submissions"].find(
-        {"subject_code": course_code, "session_name": session_name, "status": "graded"},
+        submissions_query,
         {"_id": 0, "student_id": 1, "evaluation.results": 1}
     ).to_list(length=500)
 

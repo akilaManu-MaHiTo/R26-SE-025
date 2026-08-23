@@ -2,6 +2,7 @@
   "sql_queries_triggers": {
     "label": "SQL Queries & Triggers",
     "aliases": [
+      "SQL",
       "SQL Queries and Triggers",
       "SQL Queries and Triggers in Database Management Systems",
       "SQL Queries, Triggers, Role-Based Access Control (RBAC)"
@@ -11,6 +12,7 @@
   "indexes_storage": {
     "label": "Database Indexes & Storage",
     "aliases": [
+      "Database Utilities",
       "Database Indexes and Data Structures",
       "Database Indexes and Storage Structures"
     ]
