@@ -1,10 +1,13 @@
 TOPICS: list[str] = [
-    "Introduction to DBMS and Conceptual Database Design",
+    "Introduction to DBMS & Conceptual Database Design",
     "Logical Database Design",
     "Schema Refinement",
-    "SQL",
+    "Structured Query Language (SQL)",
     "Database Programming",
     "Java Database Connectivity (JDBC)",
+    "Database Indexes and Storage Structures",
+    "Database Transaction Management and Concurrency Control",
+    "Database Recovery and Log Management",
     "Database Utilities",
     "Database Security",
 ]
