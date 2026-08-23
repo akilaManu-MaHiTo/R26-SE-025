@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, Download, FileText, BarChart3, Users, Calendar } from "lucide-react";
+import { ArrowLeft, Download, FileText, BarChart3, Users, Calendar, ChevronRight } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -61,27 +61,33 @@ export default function AnalyticsPage() {
   // Exam List View
   if (!selectedExam) {
     return (
-      <div className="space-y-6">
+      <div className="p-6 md:p-8 space-y-6">
         <AIPageBanner model="pulse" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Lecturer Analytics</h1>
-          <p className="text-muted-foreground mt-1">Select an exam to view detailed performance insights</p>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <BarChart3 className="size-4" /> Analytics
+            <ChevronRight className="size-4" /> Exam Selection
+          </div>
+          <h2 className="tracking-tight text-foreground">Lecturer Analytics</h2>
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            Select an exam to view detailed performance insights including topic mastery, cognitive analysis, and AI-powered teaching recommendations.
+          </p>
         </div>
         {loadingExams ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-40" />)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-48" />)}
           </div>
         ) : exams.length === 0 ? (
-          <Card className="p-12 text-center">
+          <Card className="p-12 text-center border-border">
             <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
             <p className="text-muted-foreground">No exams found</p>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {exams.map((exam) => (
               <Card
                 key={`${exam.course_code}-${exam.session_name}`}
-                className="group p-5 hover:border-primary/40 transition-colors duration-200 cursor-pointer"
+                className="group p-5 border-border hover:border-primary/40 transition-colors duration-200 cursor-pointer"
                 onClick={() => handleSelectExam(exam)}
               >
                 <div className="flex items-start justify-between mb-4">
@@ -98,7 +104,7 @@ export default function AnalyticsPage() {
                   <Calendar className="size-3" />
                   <span>{exam.session_name} · {exam.year}</span>
                 </div>
-                <div className="mt-4 pt-4 border-t">
+                <div className="mt-4 pt-4 border-t border-border">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Class Average</span>
                     <span className="font-semibold text-lg tabular-nums">{exam.average_percentage.toFixed(1)}%</span>
@@ -120,27 +126,32 @@ export default function AnalyticsPage() {
 
   // Analytics View
   return (
-    <div className="space-y-8">
+    <div className="p-6 md:p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => { setSelectedExam(null); setAnalytics(null); setTeachingActions([]); }}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">{selectedExam.course_code} — {selectedExam.subject_name}</h1>
-          <p className="text-sm text-muted-foreground">{selectedExam.session_name} · {selectedExam.year}</p>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <BarChart3 className="size-4" /> Analytics
+          <ChevronRight className="size-4" /> {selectedExam.course_code}
         </div>
-        <Button variant="outline" size="sm" disabled title="Coming soon">
-          <Download className="h-4 w-4 mr-1" /> Export
-        </Button>
-        <Button variant="outline" size="sm" disabled title="Coming soon">
-          <FileText className="h-4 w-4 mr-1" /> Report
-        </Button>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="tracking-tight text-foreground">{selectedExam.subject_name}</h2>
+            <p className="text-sm text-muted-foreground mt-1">{selectedExam.session_name} · {selectedExam.year}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled title="Coming soon">
+              <Download className="h-4 w-4 mr-1" /> Export
+            </Button>
+            <Button variant="outline" size="sm" disabled title="Coming soon">
+              <FileText className="h-4 w-4 mr-1" /> Report
+            </Button>
+          </div>
+        </div>
       </div>
 
       {loadingAnalytics ? (
         <div className="space-y-6">
-          <div className="grid grid-cols-6 gap-4">{Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-32" />)}</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">{Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-32" />)}</div>
           <Skeleton className="h-64" />
           <Skeleton className="h-64" />
         </div>
