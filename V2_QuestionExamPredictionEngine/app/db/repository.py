@@ -27,10 +27,10 @@ _UNIQUE_INDEXES = {
     "question_attempts": [
         ("analysis_run_id", 1), ("exam_id", 1), ("student_key", 1), ("question_number", 1), ("part", 1),
     ],
-    "analytics_snapshots": [("subject_code", 1), ("session_name", 1), ("analytics_version", 1)],
-    "examAnalytics": [("subject_code", 1), ("session_name", 1), ("analytics_version", 1)],
+    "analytics_snapshots": [("subject_code", 1), ("session_name", 1), ("year", 1), ("month", 1), ("semester", 1), ("analytics_version", 1)],
+    "examAnalytics": [("subject_code", 1), ("session_name", 1), ("year", 1), ("month", 1), ("semester", 1), ("analytics_version", 1)],
     "analysis_runs": [("run_id", 1)],
-    "analyzedExams": [("subject_code", 1), ("session_name", 1)],
+    "analyzedExams": [("subject_code", 1), ("session_name", 1), ("year", 1), ("month", 1), ("semester", 1)],
     "student_analytics": [
         ("student_id", 1),
         ("subject_code", 1),
@@ -266,6 +266,9 @@ async def upsert_exam_analytics(db: AsyncIOMotorDatabase, document: dict) -> Non
     identity = {
         "subject_code": document["subject_code"],
         "session_name": document["session_name"],
+        "year": document.get("year", 0),
+        "month": document.get("month", 0),
+        "semester": document.get("semester", 0),
         "analytics_version": document["analytics_version"],
     }
     enriched = _with_spec_aliases(document)
@@ -300,16 +303,25 @@ async def upsert_exam_analysis_status(db: AsyncIOMotorDatabase, document: dict) 
     identity = {
         "subject_code": document["subject_code"],
         "session_name": document["session_name"],
+        "year": document.get("year", 0),
+        "month": document.get("month", 0),
+        "semester": document.get("semester", 0),
     }
     await db["analyzedExams"].replace_one(identity, deepcopy(document), upsert=True)
 
 
 async def find_exam_analysis_status(
-    db: AsyncIOMotorDatabase, subject_code: str, session_name: str
+    db: AsyncIOMotorDatabase, subject_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> dict | None:
-    document = await db["analyzedExams"].find_one(
-        {"subject_code": subject_code, "session_name": session_name}
-    )
+    query: dict = {"subject_code": subject_code, "session_name": session_name}
+    if year is not None:
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+    document = await db["analyzedExams"].find_one(query)
     if document is None:
         return None
     result = deepcopy(document)

@@ -28,8 +28,12 @@ async def test_compute_exam_analytics_persists_and_returns_document(test_db, mon
             {"subject_code": "IT2040", "session_name": "Final Examination"}
         )
         assert saved is not None
+        saved_year = saved.get("year")
+        saved_month = saved.get("month")
+        saved_semester = saved.get("semester")
         status = await test_db["analyzedExams"].find_one(
-            {"subject_code": "IT2040", "session_name": "Final Examination"}
+            {"subject_code": "IT2040", "session_name": "Final Examination",
+             "year": saved_year, "month": saved_month, "semester": saved_semester}
         )
         assert status is not None
         assert status["analyzed"] == "done"
