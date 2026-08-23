@@ -3,7 +3,7 @@ import { ArrowLeft, Download, FileText, BarChart3, Users, ChevronRight } from "l
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Skeleton } from "./ui/skeleton";
+import { ProgressLoader, type LoadStep } from "./ProgressLoader";
 import { AIPageBanner } from "./AIBrand";
 import {
   fetchExams,
@@ -32,10 +32,14 @@ export default function AnalyticsPage() {
   const [loadingExams, setLoadingExams] = useState(true);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [loadingActions, setLoadingActions] = useState(false);
+  const [loadSteps, setLoadSteps] = useState<LoadStep[]>([]);
+  const [currentLoadStep, setCurrentLoadStep] = useState(0);
   const [selectedTopic, setSelectedTopic] = useState<CanonicalTopic | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
 
   useEffect(() => {
+    setLoadSteps([{ label: "Fetching exams..." }]);
+    setCurrentLoadStep(0);
     fetchExams().then((data) => { setExams(data); setLoadingExams(false); }).catch(console.error);
   }, []);
 
@@ -43,10 +47,23 @@ export default function AnalyticsPage() {
     setSelectedExam(exam);
     setLoadingAnalytics(true);
     setAnalytics(null);
+
+    const steps: LoadStep[] = [
+      { label: "Loading exam analytics..." },
+      { label: "Analyzing topic performance..." },
+      { label: "Generating teaching recommendations..." },
+    ];
+    setLoadSteps(steps);
+    setCurrentLoadStep(0);
+
     try {
+      setCurrentLoadStep(0);
       const data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
       setAnalytics(data);
+      setCurrentLoadStep(1);
+
       setLoadingActions(true);
+      setCurrentLoadStep(2);
       fetchTeachingActions(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
         .then(setTeachingActions)
         .catch(() => setTeachingActions([]))
@@ -74,9 +91,7 @@ export default function AnalyticsPage() {
           </p>
         </div>
         {loadingExams ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-48" />)}
-          </div>
+          <ProgressLoader steps={loadSteps} currentStep={currentLoadStep} className="min-h-[300px]" />
         ) : exams.length === 0 ? (
           <Card className="p-12 text-center border-border">
             <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
@@ -151,11 +166,7 @@ export default function AnalyticsPage() {
       </div>
 
       {loadingAnalytics ? (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">{Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-32" />)}</div>
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
-        </div>
+        <ProgressLoader steps={loadSteps} currentStep={currentLoadStep} className="min-h-[400px]" />
       ) : analytics ? (
         <>
           {/* Section 1: KPI Cards */}
