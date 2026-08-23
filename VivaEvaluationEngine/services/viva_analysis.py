@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
 import uuid
@@ -19,6 +20,8 @@ from services.diarization import (
 from services.transcript_features import extract_transcript_features
 from services.normalization import energy_consistency_score, pitch_stability_score
 from transcribe import transcribe_audio, resolve_whisper_model_size
+
+logger = logging.getLogger(__name__)
 
 
 ENGINE_ROOT = Path(__file__).resolve().parents[1]
@@ -590,6 +593,7 @@ def analyze_audio_from_video(
                 "student" if scoring_wav == student_audio_path else "mixed"
             )
         except Exception as exc:
+            logger.warning("Audio emotion extraction failed; will fall back to heuristic: %s", exc)
             if debug:
                 print(f"Audio emotion extraction failed: {exc}")
 
