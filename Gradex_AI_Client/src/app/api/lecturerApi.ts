@@ -237,3 +237,63 @@ export async function fetchRecommendations(
   if (!res.ok) throw new Error("Failed to fetch recommendations");
   return res.json();
 }
+
+export interface QuestionBankItem {
+  question_id: string;
+  source_type: string;
+  source_id: string;
+  canonical_topic: string;
+  canonical_id: string;
+  subtopic: string;
+  bloom_level: string;
+  difficulty: string;
+  marks: number;
+  question_type: string;
+  text: string;
+  year: number;
+}
+
+export async function fetchQuestionBank(params: { source_type?: string; year?: number; canonical_topic?: string; limit?: number } = {}): Promise<QuestionBankItem[]> {
+  const qs = new URLSearchParams();
+  if (params.source_type) qs.set("source_type", params.source_type);
+  if (params.year) qs.set("year", String(params.year));
+  if (params.canonical_topic) qs.set("canonical_topic", params.canonical_topic);
+  if (params.limit) qs.set("limit", String(params.limit));
+  const res = await fetch(`${API_BASE}/api/lecturers/question-bank?${qs}`);
+  if (!res.ok) throw new Error("Failed to fetch question bank");
+  return res.json();
+}
+
+export interface ExamDraft {
+  draft_id: string;
+  subject_code: string;
+  subject_name: string;
+  paper: { exam: string; year: number; questions: { question_number: number; topic: string; parts: { part: string; question: string; max_marks: number }[] }[] };
+  total_marks: number;
+  question_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function createExamDraft(subject_code: string, paper: { exam: string; year: number; questions: any[] }, draft_id?: string): Promise<ExamDraft> {
+  const res = await fetch(`${API_BASE}/api/lecturers/exams/drafts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subject_code, paper, draft_id }),
+  });
+  if (!res.ok) throw new Error("Failed to upload draft");
+  return res.json();
+}
+
+export async function listExamDrafts(course_code?: string): Promise<ExamDraft[]> {
+  const qs = course_code ? `?course_code=${encodeURIComponent(course_code)}` : "";
+  const res = await fetch(`${API_BASE}/api/lecturers/exams/drafts${qs}`);
+  if (!res.ok) throw new Error("Failed to fetch drafts");
+  return res.json();
+}
+
+export async function getExamDraft(draft_id: string): Promise<ExamDraft> {
+  const res = await fetch(`${API_BASE}/api/lecturers/exams/drafts/${encodeURIComponent(draft_id)}`);
+  if (!res.ok) throw new Error("Failed to fetch draft");
+  return res.json();
+}
