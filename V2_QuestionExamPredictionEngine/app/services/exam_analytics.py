@@ -31,11 +31,12 @@ async def compute_exam_analytics(
     course = None
     rubric = None
     students: list[dict] = []
+    classification_cache: dict = {}
     for submission in submissions:
         course = await find_course_for_submission(db, submission)
         rubric = await find_rubric_for_submission(db, submission)
         normalized = normalize_student_submission(course or {}, rubric or {}, submission)
-        semantics = await _classify_questions(normalized, {})
+        semantics = await _classify_questions(normalized, classification_cache)
         numeric = build_numeric_analysis(normalized, semantics)
         students.append(
             {
