@@ -38,11 +38,23 @@ function Layout({ role, onLogout }: { role: Role; onLogout: () => void }) {
 
 export default function App() {
   const [role, setRole] = useState<Role | null>(null);
+  const [studentId, setStudentId] = useState<string | null>(null);
+
+  const handleLogin = (r: Role, sid?: string) => {
+    setRole(r);
+    if (r === "student" && sid) setStudentId(sid);
+    else if (r === "lecturer") setStudentId(null);
+  };
+
+  const handleLogout = () => {
+    setRole(null);
+    setStudentId(null);
+  };
 
   if (!role) {
     return (
       <>
-        <LoginPage onLogin={(r) => setRole(r)} />
+        <LoginPage onLogin={handleLogin} />
         <Toaster />
       </>
     );
@@ -53,7 +65,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<Layout role={role} onLogout={() => setRole(null)} />}>
+        <Route element={<Layout role={role} onLogout={handleLogout} />}>
           <Route index element={<Navigate to={defaultPath} replace />} />
           <Route
             path="/dashboard"
@@ -64,7 +76,7 @@ export default function App() {
           <Route
             path="/student-dashboard"
             element={
-              role === "student" ? <StudentDashboard /> : <Navigate to={defaultPath} replace />
+              role === "student" ? <StudentDashboard studentId={studentId ?? "IT22134776"} /> : <Navigate to={defaultPath} replace />
             }
           />
           {role === "lecturer" &&
