@@ -9,7 +9,7 @@ from uuid import uuid4
 from typing import Any, Optional
 import os
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -364,9 +364,19 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
 
 
 @app.post("/api/viva-analyze", dependencies=[Depends(require_api_key)])
-async def viva_analyze(video: UploadFile = File(...)):
+async def viva_analyze(
+    video: UploadFile = File(...),
+    assessment_mode: str = Form(default="WITHOUT_TECHNICAL_ACCURACY"),
+):
     """
     Analyze a viva recording for emotion detection and engagement scoring.
+
+    `assessment_mode` is the examiner's upfront choice (before upload/recording,
+    not changeable afterward — see VivaPage.tsx): WITHOUT_TECHNICAL_ACCURACY for
+    communication/presentation vivas, WITH_TECHNICAL_ACCURACY for technical
+    modules. Only WITHOUT auto-publishes; WITH always leaves the mark as an
+    unpublished draft so a human must enter a technical score and publish before
+    it counts as a grade — see PRD "no grade issued purely on AI authority".
 
     Returns:
         - timeline: Frame-by-frame emotion and engagement analysis
@@ -379,7 +389,13 @@ async def viva_analyze(video: UploadFile = File(...)):
     """
     import asyncio
     import time
+    from VivaEvaluationEngine.services.assessment_scoring import MODE_WITH, MODE_WITHOUT
+
     request_start = time.time()
+    # A stray/unexpected value (or the Form(...) sentinel object seen when this
+    # function is called directly, bypassing FastAPI's request parsing — as the
+    # HTTP-layer tests do) falls back to the safe default rather than raising.
+    requested_mode = assessment_mode if assessment_mode in {MODE_WITH, MODE_WITHOUT} else MODE_WITHOUT
 
     filename = video.filename or ""
     suffix = Path(filename).suffix.lower()
@@ -454,22 +470,31 @@ async def viva_analyze(video: UploadFile = File(...)):
                 mark_object_id = insert_result.inserted_id
                 result["mark_id"] = str(mark_object_id)
                 result["published"] = False
-                from Gradex_AI_Server.app.viva_marks import (
-                    auto_publish_without_technical,
-                    merge_auto_publish_into_analyze_result,
-                )
+                result["assessment_mode"] = requested_mode
 
-                try:
-                    auto_payload = await auto_publish_without_technical(
-                        db_instance.marks_col,
-                        mark_object_id,
-                        result,
+                if requested_mode == MODE_WITH:
+                    # Technical viva: never auto-publish. The mark stays a draft
+                    # until an examiner enters a technical score and publishes —
+                    # this is what makes "reviewed before publishing" true rather
+                    # than aspirational for the assessments that need it.
+                    print(f"[VIVA] Technical viva — mark {result['mark_id']} saved as draft, awaiting examiner review.")
+                else:
+                    from Gradex_AI_Server.app.viva_marks import (
+                        auto_publish_without_technical,
+                        merge_auto_publish_into_analyze_result,
                     )
-                    if auto_payload:
-                        merge_auto_publish_into_analyze_result(result, auto_payload)
-                        print(f"[VIVA] Auto-published mark {result['mark_id']} (without technical accuracy)")
-                except Exception as auto_exc:
-                    print(f"[VIVA] Warning: auto-publish failed; mark remains draft. ({auto_exc})")
+
+                    try:
+                        auto_payload = await auto_publish_without_technical(
+                            db_instance.marks_col,
+                            mark_object_id,
+                            result,
+                        )
+                        if auto_payload:
+                            merge_auto_publish_into_analyze_result(result, auto_payload)
+                            print(f"[VIVA] Auto-published mark {result['mark_id']} (non-technical viva)")
+                    except Exception as auto_exc:
+                        print(f"[VIVA] Warning: auto-publish failed; mark remains draft. ({auto_exc})")
             except Exception as exc:
                 result["persistence_error"] = (
                     "Could not save mark (Mongo authentication or network failed)."

@@ -218,7 +218,7 @@
       <span>Herath B.K.H.M.B.L · IT22557056</span>
       <span>SLIIT</span>
       <span>Supervisor: Ms. Sanjeevi Chandrasiri</span>
-      <span>Line-by-line audit · 23 Aug 2026</span>
+      <span>Line-by-line audit · updated 24 Aug 2026</span>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:18px">
@@ -233,13 +233,13 @@
     </svg>
 
     <div class="vitals">
-      <div class="vital"><span class="n">18.4k</span><span class="l">Lines reviewed</span></div>
+      <div class="vital"><span class="n">19.3k</span><span class="l">Lines reviewed</span></div>
       <div class="vital"><span class="n">4 / 4</span><span class="l">Design docs</span></div>
-      <div class="vital"><span class="n">35</span><span class="l">Engine modules</span></div>
-      <div class="vital good"><span class="n">165</span><span class="l">Engine tests pass</span></div>
-      <div class="vital good"><span class="n">40</span><span class="l">Server tests pass</span></div>
-      <div class="vital good"><span class="n">5 / 5</span><span class="l">Aug criticals fixed</span></div>
-      <div class="vital good"><span class="n">4 / 5</span><span class="l">Audit items closed</span></div>
+      <div class="vital"><span class="n">37</span><span class="l">Engine modules</span></div>
+      <div class="vital good"><span class="n">169</span><span class="l">Engine tests pass</span></div>
+      <div class="vital good"><span class="n">41</span><span class="l">Server tests pass</span></div>
+      <div class="vital good"><span class="n">5 / 5</span><span class="l">Aug 15 criticals fixed</span></div>
+      <div class="vital good"><span class="n">5 / 5</span><span class="l">Audit items closed</span></div>
       <div class="vital"><span class="n">1</span><span class="l">Deferred by design</span></div>
       <div class="vital"><span class="n">9</span><span class="l">Validity gates</span></div>
     </div>
@@ -312,12 +312,60 @@
             </tr>
             <tr>
               <td><strong>Head pose was a cheek-width proxy called "yaw"</strong></td>
-              <td><span class="chip partial">Mitigated, not solved</span></td>
-              <td>Still a landmark proxy rather than <code>solvePnP</code> Euler angles — but now labelled honestly: <code>unit: "normalized_landmark_distance"</code>, <code>not_euler_degrees: true</code>, <code>validated: false</code>.</td>
+              <td><span class="chip partial">Improved, not solved</span></td>
+              <td>Still a landmark proxy rather than <code>solvePnP</code> Euler angles, and still labelled honestly (<code>not_euler_degrees: true</code>, <code>validated: false</code>) — but as of the 24 Aug commit below, it's now divided by inter-ocular distance, so a subject moving toward/away from the camera no longer reads identically to a head turn.</td>
             </tr>
           </tbody>
         </table>
       </div>
+    </div>
+  </section>
+
+  <!-- ================= 1B. SECOND AUDIT ALSO CLOSED ================= -->
+  <section id="second-audit">
+    <div class="s-head">
+      <span class="eyebrow">A second, earlier audit</span>
+      <h2>The original 9 August findings were also worked through</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="stack-lg">
+      <p class="measure">Before the 15 August audit above, a first-pass review on 9 August found 19 defects against an earlier commit — sharper in places, since it reproduced several scores by hand against a committed sample output. It was never formally tracked as an open list against the current codebase (the 15 August audit superseded it as the working reference), so its surviving items sat unaddressed. A commit made after this report was last published — <code>fc0ee11</code>, "Refactor import paths and enhance emotion scoring logic with time-aware smoothing" — closes five of them, with four new characterisation tests proving it rather than just asserting it.</p>
+
+      <div class="tw">
+        <table class="dense">
+          <thead><tr><th>9 Aug finding</th><th>Status</th><th>What changed</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Confidence scoring ignored the model's own certainty</strong> — a 0.26-confidence frame counted exactly as much as a 0.99 one</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td><code>compute_confidence_score</code> now weights each frame's vote by its <code>emotion_confidence</code>. Tests prove both the ordering (<code>test_confidence_score_weights_by_model_certainty</code>) and the magnitude (a 0.01-confidence frame scores under 5/100 on its own).</td>
+            </tr>
+            <tr>
+              <td><strong>Smoothing bridged across time gaps</strong> — array-adjacent frames minutes apart could outvote each other, and averaged confidence could belong to a different emotion than the one reported</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td><code>smooth_emotions</code> now walks outward from each frame only while the gap to its neighbour stays under ~2× the session's median frame spacing, and averages confidence only over the frames that actually share the winning label. <code>test_smoothing_does_not_bridge_a_time_gap</code> constructs exactly this scenario — four "happy" frames, a five-minute gap, two "sad" frames — and asserts the sad frames survive smoothing as sad.</td>
+            </tr>
+            <tr>
+              <td><strong>Configuration fields that silently did nothing</strong> — <code>AppConfig.positive_emotions</code> / <code>neutral_emotions</code> / <code>surprise_emotions</code> and <code>NEUTRAL_WEIGHT</code> were never read; overriding them had no effect</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td>All four removed from <code>config.py</code>. A config knob that appeared to work and didn't is now simply gone rather than a live footgun.</td>
+            </tr>
+            <tr>
+              <td><strong>Bare failures were indistinguishable from real zeros</strong> — a crashed Praat/librosa extraction and a genuine zero measurement produced the identical silent value</td>
+              <td><span class="chip partial">Improved</span></td>
+              <td>Every <code>except Exception:</code> in <code>extract_features.py</code> (pitch, voice quality, tempo, MFCC) and the SER fallback in <code>extract_emotion.py</code> now logs a <code>logger.warning</code> with the real exception before degrading — observable in server logs even though the returned value is still the same documented default (<code>None</code>/<code>0.0</code> per field, per the fixes already covered above).</td>
+            </tr>
+            <tr>
+              <td><strong>The package couldn't be imported as a package</strong> — internal absolute imports meant callers had to inject the engine directory onto <code>sys.path</code> themselves, and default paths (<code>output_path</code>, model paths) broke under a different working directory</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td>A new <code>VivaEvaluationEngine/__init__.py</code> registers the engine's own directory on <code>sys.path</code> as a side effect of import, so <code>viva_service.py</code> no longer needs its own workaround for it. <code>AppConfig</code>'s defaults now resolve against the engine's own directory rather than the caller's CWD.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="small muted measure">Not claimed as fixed by this commit: the head-pose proxy is <em>improved</em> (row above), not converted to real Euler angles; the <code>except Exception:</code> blocks still catch broadly rather than the specific library exceptions the 9 Aug audit asked for; and observability is still <code>print()</code> plus scattered <code>logger.warning</code> calls, not a structured logging setup.</p>
     </div>
   </section>
 
@@ -341,19 +389,19 @@
         </ul>
       </div>
       <div class="card">
-        <div class="card-h"><h3>Engine</h3><span class="chip ok">8,559 lines</span></div>
+        <div class="card-h"><h3>Engine</h3><span class="chip ok">11,737 lines</span></div>
         <ul class="tight">
-          <li>All 36 source modules</li>
+          <li>All 37 source modules (8,702) + all test modules (3,035)</li>
           <li>Both test suites executed, not just read</li>
           <li>Model checkpoints inspected on disk</li>
         </ul>
       </div>
       <div class="card">
-        <div class="card-h"><h3>Server &amp; client</h3><span class="chip ok">6,811 lines</span></div>
+        <div class="card-h"><h3>Server &amp; client</h3><span class="chip ok">7,608 lines</span></div>
         <ul class="tight">
-          <li>All viva routes, persistence, auth, database</li>
+          <li>All viva routes, persistence, auth, database (3,328) + tests (745)</li>
           <li>Full Live Copilot backend</li>
-          <li>All 15 viva components + copilot client</li>
+          <li>All 15 viva components + copilot client (3,535)</li>
         </ul>
       </div>
     </div>
@@ -691,8 +739,8 @@
       <div class="rule"></div>
     </div>
 
-    <p class="measure" style="margin-bottom:14px">All suites pass, re-run and verified: <strong>165 engine · 15 viva HTTP · 25 copilot = 205 tests</strong>, and the client builds clean. Four of the five findings below are closed and one is deliberately deferred; each was checked against the repo rather than taken from a summary. Verifying the fusion fix surfaced a further chain of bugs that hid the fused mark — those are fixed too, and pinned with regression tests.</p>
-    <p class="measure small muted" style="margin-bottom:26px"><strong>Claim not reproduced:</strong> the handoff reports <code>test_viva_http</code> failing to import for want of <code>pydantic_settings</code>. In this virtualenv <code>pydantic_settings</code> is installed at 2.15.0 and the module runs 15/15 clean. Likely a different interpreter in that session — worth confirming which Python the failing run used before treating it as a dependency gap.</p>
+    <p class="measure" style="margin-bottom:14px">All suites pass, re-run and verified: <strong>169 engine · 16 viva HTTP · 25 copilot = 210 tests</strong>, and the client builds clean. Four of the five findings below are closed, the fifth (the copilot STT lock) is deliberately deferred rather than fixed — but with the auto-publish item now resolved, there is no open High-severity finding left in this section. Each was checked against the repo rather than taken from a summary. Verifying the fusion fix surfaced a further chain of bugs that hid the fused mark — those are fixed too, and pinned with regression tests. Verifying the auto-publish fix led to redesigning when the assessment-type choice happens, not just relabelling the UI.</p>
+    <p class="measure small muted" style="margin-bottom:26px"><strong>Claim not reproduced:</strong> the handoff reports <code>test_viva_http</code> failing to import for want of <code>pydantic_settings</code>. In this virtualenv <code>pydantic_settings</code> is installed at 2.15.0 and the module runs clean. Likely a different interpreter in that session — worth confirming which Python the failing run used before treating it as a dependency gap.</p>
 
     <div class="stack">
 
@@ -764,16 +812,22 @@ preview = 0.5 x 67.0  +  0.5 x 90.0  =  <i>78.5</i>   <i>← matches the server 
         <p>Unchanged and verified as such. <code>_STT_LOCK</code> remains a module-level <code>threading.Lock</code> held across both a <code>time.sleep()</code> of up to 4 seconds and the HTTP request, so the gap is enforced process-wide rather than per session. Correctly deferred: it needs a per-session queue with a shared token budget, not a patch. It affects the copilot only and cannot touch a graded viva.</p>
       </div>
 
-      <div class="find partial">
-        <div class="find-h"><span class="chip partial">High</span><h3>Auto-publish sits in tension with the integrity rule in all four documents</h3></div>
-        <p class="where">main.py:462 · viva_marks.py:115</p>
-        <p>Every valid analysis is published immediately, before any human sees it. The code records <code>human_published: false</code>, so the distinction survives in the data — but PRD §8.4 states no grade is issued purely on AI authority, the March paper calls second marking essential, and the printed report's own footer claims scores are "reviewed by the evaluator prior to publishing." For an auto-published mark that sentence is not true. Either make the provisional state visible throughout the UI and the report, or restate the rule to match the build.</p>
+      <div class="find good">
+        <div class="find-h"><span class="chip ok">Fixed</span><h3>Auto-publish no longer contradicts the integrity rule — it's now structurally impossible for the vivas that need review</h3></div>
+        <p class="where">main.py::viva_analyze · VivaPage.tsx · EvaluationPanel.tsx · ReportPrintView.tsx</p>
+        <p>The prior fix was going to be "make the provisional state visible" — cosmetic. The actual fix changes when the assessment type is decided: the examiner now picks <strong>Non-technical</strong> or <strong>Technical</strong> from a tab pair <em>before</em> uploading or recording, not after seeing a score. That single ordering change closes the contradiction by construction rather than by disclosure:</p>
+        <ul class="tight">
+          <li><strong>Server</strong> — <code>/api/viva-analyze</code> takes the choice as a form field. Only <code>WITHOUT_TECHNICAL_ACCURACY</code> auto-publishes; <code>WITH_TECHNICAL_ACCURACY</code> never does — the mark sits as an unpublished draft until an examiner enters a technical score and hits publish. Pinned with a new test, <code>test_technical_mode_never_auto_publishes</code>.</li>
+          <li><strong>Client</strong> — the old post-hoc radio switcher in <code>EvaluationPanel</code> (which let the mode be flipped <em>after</em> the AI score was already visible — a softer version of the same problem) is gone, replaced by a locked, read-only badge.</li>
+          <li><strong>The exact sentence this audit flagged</strong> — the printed report's footer claiming every score was "reviewed by the evaluator prior to publishing" — is no longer a blanket claim. It now states the true, mode-specific fact per report: technical reports say the score was human-reviewed and fused; non-technical reports say plainly that it was automatic and disclosed as such.</li>
+        </ul>
+        <p><strong>Not yet committed</strong> — this fix (5 files: <code>main.py</code>, <code>test_viva_http.py</code>, <code>VivaPage.tsx</code>, <code>EvaluationPanel.tsx</code>, <code>ReportPrintView.tsx</code>) is verified (all 210 tests pass, client builds clean) but sits in the working tree, not yet staged.</p>
       </div>
 
       <div class="find info">
         <div class="find-h"><span class="chip acc">Medium</span><h3>Engine documentation describes a system that no longer exists</h3></div>
         <p class="where">VivaEvaluationEngine/CLAUDE.md · docs/plan.md · docs/implementation-notes.md</p>
-        <p>The engine's CLAUDE.md documents seven modules against thirty-five in the tree, describes <code>BlinkSampler().count_blinks</code> as the blink path, and presents <code>confidence_score</code>, <code>engagement_score</code> and <code>audio_grade</code> as the pipeline's outputs — none of which feed the official mark. The two planning documents are fully superseded: everything proposed in them shipped. The 15 Aug audit is now largely historical too, though it is worth keeping as evidence of the fixes.</p>
+        <p>The engine's CLAUDE.md documents seven modules against thirty-seven in the tree, describes <code>BlinkSampler().count_blinks</code> as the blink path, and presents <code>confidence_score</code>, <code>engagement_score</code> and <code>audio_grade</code> as the pipeline's outputs — none of which feed the official mark. The two planning documents are fully superseded: everything proposed in them shipped. Both the 9 Aug and 15 Aug audits are now historical rather than actionable, though worth keeping as evidence of the fixes — this report and <code>saved_resource.html</code> are what should be treated as current.</p>
       </div>
 
       <div class="find info">
@@ -813,6 +867,10 @@ preview = 0.5 x 67.0  +  0.5 x 90.0  =  <i>78.5</i>   <i>← matches the server 
         <p class="small muted">Nothing else can be validated without it, and it is the only thing standing between the current system and the trained fusion model all four documents specify. <code>flatten_canonical_features</code> already emits exactly the row a Random Forest would consume — the schema is waiting, the labels are not. Even 30–50 human-scored sessions would convert several unverified claims into measured ones and unblock the Kappa analysis.</p>
       </div>
       <div class="card">
+        <div class="card-h"><h3>Commit the assessment-type fix</h3><span class="chip crit">Uncommitted</span></div>
+        <p class="small muted">Five files (<code>main.py</code>, <code>test_viva_http.py</code>, <code>VivaPage.tsx</code>, <code>EvaluationPanel.tsx</code>, <code>ReportPrintView.tsx</code>) sit modified in the working tree — verified (210 tests, clean build) but not staged. This is what closes the auto-publish finding above; until it's committed, the fix exists only locally.</p>
+      </div>
+      <div class="card">
         <div class="card-h"><h3>Purge the 6 test rows</h3><span class="chip partial">One query</span></div>
         <p class="small muted">The leak itself is fixed, but <code>vivamark.marks</code> still holds six fixture documents among nineteen real ones. Delete them before the collection feeds anything, or the first thing your fusion model learns is a stub with a null score.</p>
       </div>
@@ -836,8 +894,8 @@ preview = 0.5 x 67.0  +  0.5 x 90.0  =  <i>78.5</i>   <i>← matches the server 
   </section>
 
   <footer>
-    <span>Line-by-line audit · 18,400 lines · 4 design documents</span>
-    <span>Verified against commit e42b107 (feat/viva-audit) · 23 Aug 2026</span>
+    <span>Line-by-line audit · 19,300 lines (incl. tests) · 4 design documents</span>
+    <span>Verified against commit fc0ee11 (feat/viva-audit) + uncommitted assessment-type fix · 24 Aug 2026</span>
   </footer>
 
 </div>
