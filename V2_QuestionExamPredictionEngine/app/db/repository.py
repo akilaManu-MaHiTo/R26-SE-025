@@ -21,6 +21,7 @@ COLLECTIONS = (
     "generatedQuestions",
     "analyzedExams",
     "exam_drafts",
+    "users",
 )
 
 _UNIQUE_INDEXES = {
@@ -48,6 +49,7 @@ _UNIQUE_INDEXES = {
         ("session_name", 1),
     ],
     "exam_drafts": [("draft_id", 1)],
+    "users": [("email", 1)],
 }
 
 
@@ -62,6 +64,19 @@ async def create_indexes(db: AsyncIOMotorDatabase) -> None:
                 continue
             await db[collection].drop_index(name)
         await db[collection].create_index(keys, unique=True, name=name)
+    # Extra unique index for users.student_id (separate from email)
+    try:
+        users_indexes = await db["users"].index_information()
+        if "uniq_users_student_id" not in users_indexes:
+            await db["users"].create_index([("student_id", 1)], unique=True, name="uniq_users_student_id")
+        else:
+            # ensure correct key
+            if tuple(users_indexes["uniq_users_student_id"]["key"]) != (("student_id", 1),):
+                await db["users"].drop_index("uniq_users_student_id")
+                await db["users"].create_index([("student_id", 1)], unique=True, name="uniq_users_student_id")
+    except Exception:
+        # collection may not exist yet; ignore
+        pass
 
 
 async def upsert_catalog(db: AsyncIOMotorDatabase, doc: dict) -> None:
@@ -496,3 +511,26 @@ async def find_exam_draft(db, draft_id: str) -> dict | None:
 async def delete_exam_draft(db, draft_id: str) -> bool:
     res = await db["exam_drafts"].delete_one({"draft_id": draft_id})
     return res.deleted_count > 0
+
+
+# ─── Users — student accounts provisioned on exam analysis ───────────────
+async def find_user_by_email(db, email: str) -> dict | None:
+    doc = await db["users"].find_one({"email": email})
+    if doc is None:
+        return None
+    result = deepcopy(doc)
+    result.pop("_id", None)
+    return result
+
+
+async def find_user_by_student_id(db, student_id: str) -> dict | None:
+    doc = await db["users"].find_one({"student_id": student_id})
+    if doc is None:
+        return None
+    result = deepcopy(doc)
+    result.pop("_id", None)
+    return result
+
+
+async def upsert_user(db, doc: dict) -> None:
+    await db["users"].replace_one({"email": doc["email"]}, deepcopy(doc), upsert=True)
