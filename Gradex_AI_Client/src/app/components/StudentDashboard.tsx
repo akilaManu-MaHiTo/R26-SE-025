@@ -53,9 +53,20 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
         setProfile({ email: p.email, examCount: p.exam_count });
         setExams(p.exams);
         if (p.exams.length > 0) {
-          // auto-select most recent (first in list is arbitrary; pick highest year)
-          const sorted = [...p.exams].sort((a, b) => b.year - a.year || b.month - a.month);
-          setSelectedExam(sorted[0]);
+          // Prefer most recent *analyzed* exam; backend now returns analyzed flag sorted by year desc
+          const sorted = [...p.exams].sort((a, b) => b.year - a.year || b.month - a.month || (b.semester ?? 0) - (a.semester ?? 0));
+          const analyzedSorted = sorted.filter((e) => e.analyzed);
+          // If lecture analyzed 2023/5/1, that will be first; don't fallback to 2022 if 2023 is analyzed
+          const pick = analyzedSorted.length > 0 ? analyzedSorted[0] : sorted[0];
+          // If the most recent is not analyzed but an older one is, still pick the analyzed one? No — show wait for the most recent
+          // The spec: check analyzedExams, if lecturer didn't analyze say wait. So if top is not analyzed, don't auto-fallback to older analyzed
+          const mostRecent = sorted[0];
+          if (mostRecent && mostRecent.analyzed === false) {
+            // Still select it so the 423 wait message is shown, rather than silently showing 2022
+            setSelectedExam(mostRecent);
+          } else {
+            setSelectedExam(pick);
+          }
         }
       })
       .catch(async () => {
@@ -65,8 +76,11 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
           if (cancelled) return;
           setExams(list);
           if (list.length > 0) {
-            const sorted = [...list].sort((a, b) => b.year - a.year || b.month - a.month);
-            setSelectedExam(sorted[0]);
+            const sorted = [...list].sort((a, b) => b.year - a.year || b.month - a.month || (b.semester ?? 0) - (a.semester ?? 0));
+            const analyzedSorted = sorted.filter((e) => e.analyzed);
+            const pick = analyzedSorted.length > 0 ? analyzedSorted[0] : sorted[0];
+            const mostRecent = sorted[0];
+            setSelectedExam(mostRecent && mostRecent.analyzed === false ? mostRecent : pick);
           }
           setProfile({ email: `${studentId.toLowerCase()}@my.sliit.lk`, examCount: list.length });
         } catch (e) {
@@ -84,6 +98,13 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
   // Fetch analytics when exam selected — this triggers background generation on first access (ensure_student_analytics)
   useEffect(() => {
     if (!selectedExam) return;
+    // If backend says not yet analyzed, show wait message immediately without hitting dashboard (which would 423)
+    if (selectedExam.analyzed === false) {
+      setAnalytics(null);
+      setError("Wait for lecture to analyze your data — this exam has not been analyzed yet");
+      setLoadingAnalytics(false);
+      return;
+    }
     let cancelled = false;
     setLoadingAnalytics(true);
     setAnalytics(null);
@@ -91,14 +112,23 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
     setCurrentStep(1);
     // simulate staged progress
     const t1 = setTimeout(() => !cancelled && setCurrentStep(2), 800);
-    fetchStudentDashboard(studentId, selectedExam.subject_code, selectedExam.session_name)
+    fetchStudentDashboard(studentId, selectedExam.subject_code, selectedExam.session_name, selectedExam.year, selectedExam.month, selectedExam.semester)
       .then((data) => {
         if (cancelled) return;
+        // Double-check year: backend should return matching year; if we got 2022 when requesting 2023, it's a bug — surface it
+        if (data.year !== selectedExam.year || data.session_name !== selectedExam.session_name) {
+          console.warn(`Dashboard year mismatch: requested ${selectedExam.year} got ${data.year}`);
+        }
         setAnalytics(data);
         setCurrentStep(3);
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load dashboard");
+        if (!cancelled) {
+          const msg = e instanceof Error ? e.message : "Failed to load dashboard";
+          // Surface 423 as wait message
+          if (msg.includes("Wait for lecture")) setError(msg);
+          else setError(msg);
+        }
       })
       .finally(() => {
         clearTimeout(t1);
@@ -172,38 +202,58 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
         )}
       </Card>
 
-      {/* Exam selector */}
-      {exams.length > 1 && (
+      {/* Exam selector — shows analyzed vs pending, fixes 2022 vs 2023 */}
+      {exams.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground">Exams:</span>
           {exams.map((ex) => {
-            const key = `${ex.subject_code}@${ex.session_name}@${ex.year}`;
-            const active = selectedExam && ex.subject_code === selectedExam.subject_code && ex.session_name === selectedExam.session_name;
+            const key = `${ex.subject_code}@${ex.session_name}@${ex.year}-${ex.month}-${ex.semester}`;
+            const active =
+              selectedExam &&
+              ex.subject_code === selectedExam.subject_code &&
+              ex.session_name === selectedExam.session_name &&
+              ex.year === selectedExam.year &&
+              ex.month === selectedExam.month &&
+              ex.semester === selectedExam.semester;
             return (
               <Button
                 key={key}
                 variant={active ? "default" : "outline"}
                 size="sm"
-                onClick={() => setSelectedExam(ex)}
-                className="text-xs"
+                onClick={() => {
+                  setSelectedExam(ex);
+                  setError(null);
+                }}
+                className="text-xs relative"
+                title={ex.analyzed ? `Analyzed ${ex.analyzed_at?.slice(0, 10) ?? ""}` : "Not yet analyzed by lecturer"}
               >
                 {ex.subject_code} · {ex.session_name} ({ex.year})
+                {ex.analyzed === false && <span className="ml-1.5 size-2 rounded-full bg-amber-500 inline-block" title="Pending lecture analysis" />}
+                {ex.analyzed && <span className="ml-1.5 size-2 rounded-full bg-emerald-500 inline-block" title="Analyzed" />}
               </Button>
             );
           })}
         </div>
       )}
 
-      {/* Error / Empty */}
+      {/* Error / Wait for lecture */}
       {error && !loadingAnalytics && !loadingExams && (
-        <Card className="p-6 border-red-200 bg-red-50 dark:bg-red-950/20">
+        <Card className={`p-6 border ${error.includes("Wait for lecture") ? "border-amber-200 bg-amber-50 dark:bg-amber-950/20" : "border-red-200 bg-red-50 dark:bg-red-950/20"}`}>
           <div className="flex gap-3">
-            <AlertCircle className="size-5 text-red-600 shrink-0 mt-0.5" />
+            {error.includes("Wait for lecture") ? (
+              <Clock className="size-5 text-amber-600 shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="size-5 text-red-600 shrink-0 mt-0.5" />
+            )}
             <div>
-              <div className="text-sm font-medium text-red-800 dark:text-red-300">Could not load your dashboard</div>
-              <div className="text-sm text-red-700 dark:text-red-400 mt-1">{error}</div>
+              <div className={`text-sm font-medium ${error.includes("Wait for lecture") ? "text-amber-800 dark:text-amber-300" : "text-red-800 dark:text-red-300"}`}>
+                {error.includes("Wait for lecture") ? "Waiting for lecturer analysis" : "Could not load your dashboard"}
+              </div>
+              <div className={`text-sm mt-1 ${error.includes("Wait for lecture") ? "text-amber-700 dark:text-amber-400" : "text-red-700 dark:text-red-400"}`}>{error}</div>
               <div className="text-xs text-muted-foreground mt-2">
-                If you just completed an exam, ask your lecturer to analyze it — your account ({studentId.toLowerCase()}@my.sliit.lk / Student@123) is provisioned then and analytics is generated in background.
+                {error.includes("Wait for lecture")
+                  ? `Your submission for ${selectedExam?.subject_code} ${selectedExam?.session_name} ${selectedExam?.year} is saved. Once your lecturer clicks Analyze for this exam, your personalized analytics will be generated in background and appear here.`
+                  : `If you just completed an exam, ask your lecturer to analyze it — your account (${studentId.toLowerCase()}@my.sliit.lk / Student@123) is provisioned then and analytics is generated in background.`}
               </div>
             </div>
           </div>

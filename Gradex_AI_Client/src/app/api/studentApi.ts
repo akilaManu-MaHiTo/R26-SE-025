@@ -10,6 +10,8 @@ export interface StudentExam {
   month: number;
   semester: number;
   question_count: number;
+  analyzed?: boolean;
+  analyzed_at?: string | null;
 }
 
 export interface StudentProfile {
@@ -84,11 +86,19 @@ export async function fetchStudentDashboard(
   studentId: string,
   courseCode: string,
   sessionName: string,
+  year?: number,
+  month?: number,
+  semester?: number,
 ): Promise<StudentAnalytics> {
   const params = new URLSearchParams({ course_code: courseCode, session_name: sessionName });
+  if (year !== undefined) params.set("year", String(year));
+  if (month !== undefined) params.set("month", String(month));
+  if (semester !== undefined) params.set("semester", String(semester));
   const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(studentId)}/dashboard?${params}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    // 423 = not yet analyzed, surface specific message
+    if (res.status === 423) throw new Error(body.detail || "Wait for lecture to analyze your data");
     throw new Error(body.detail || "Failed to fetch dashboard");
   }
   return res.json();
