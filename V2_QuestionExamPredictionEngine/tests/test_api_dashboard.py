@@ -287,6 +287,10 @@ def test_dashboard_openapi_exposes_required_course_and_session_params():
         parameter["name"]: parameter for parameter in operation["parameters"]
     }
 
-    assert set(params) == {"student_id", "course_code", "session_name"}
+    assert {"student_id", "course_code", "session_name"}.issubset(set(params))
     assert params["course_code"]["required"] is True
     assert params["session_name"]["required"] is True
+    # year/month/semester are optional (added for 2023 vs 2022 disambiguation)
+    for opt in ("year", "month", "semester"):
+        if opt in params:
+            assert params[opt]["required"] is False
