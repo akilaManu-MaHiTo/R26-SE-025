@@ -513,6 +513,38 @@ async def delete_exam_draft(db, draft_id: str) -> bool:
     return res.deleted_count > 0
 
 
+async def find_graded_submissions_for_student(
+    db: AsyncIOMotorDatabase, student_id: str
+) -> list[dict]:
+    cursor = db["submissions"].find({"student_id": student_id, "status": "graded"})
+    return await cursor.to_list(length=None)
+
+
+async def list_exams_for_student(
+    db: AsyncIOMotorDatabase, student_id: str
+) -> list[dict]:
+    submissions = await find_graded_submissions_for_student(db, student_id)
+    seen: dict[tuple, dict] = {}
+    for sub in submissions:
+        key = (sub.get("subject_code"), sub.get("session_name"), sub.get("year"), sub.get("month"), sub.get("semester"))
+        if key in seen:
+            continue
+        rubric = await db["rubricCollection"].find_one(
+            {"subject_code": sub.get("subject_code"), "session_name": sub.get("session_name")},
+            {"subject_name": 1, "year": 1, "month": 1, "semester": 1, "questions": 1},
+        )
+        seen[key] = {
+            "subject_code": sub.get("subject_code"),
+            "subject_name": (rubric or {}).get("subject_name") or sub.get("subject_code"),
+            "session_name": sub.get("session_name"),
+            "year": sub.get("year") or (rubric or {}).get("year") or 0,
+            "month": sub.get("month") or (rubric or {}).get("month") or 0,
+            "semester": sub.get("semester") or (rubric or {}).get("semester") or 0,
+            "question_count": len((rubric or {}).get("questions") or []),
+        }
+    return list(seen.values())
+
+
 # ─── Users — student accounts provisioned on exam analysis ───────────────
 async def find_user_by_email(db, email: str) -> dict | None:
     doc = await db["users"].find_one({"email": email})
