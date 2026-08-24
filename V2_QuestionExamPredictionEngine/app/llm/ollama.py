@@ -53,10 +53,34 @@ async def check_llm_detailed_health(timeout: float = 10.0) -> dict:
             "detail": detail,
         }
     # Ollama is reachable — check if the configured model is pulled
-    url = f"{settings.llm_base_url}/api/tags"
+    # Try /api/show first (precise, handles :latest normalization), fallback to /api/tags
     headers = {}
     if settings.ollama_api_key:
         headers["Authorization"] = f"Bearer {settings.ollama_api_key}"
+    # 1) Try show — 200 means model exists
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            show_resp = await client.post(
+                f"{settings.llm_base_url}/api/show", json={"name": model}, headers=headers
+            )
+        if show_resp.status_code == 200:
+            return {
+                "online": True,
+                "ollama_reachable": True,
+                "model": model,
+                "model_available": True,
+                "detail": "ok",
+            }
+        if show_resp.status_code not in (404, 400):
+            # unexpected error, fall through to tags check
+            pass
+        elif show_resp.status_code == 404:
+            # confirm via tags before declaring missing (show can 404 on some builds)
+            pass
+    except httpx.HTTPError:
+        pass
+
+    url = f"{settings.llm_base_url}/api/tags"
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.get(url, headers=headers)
@@ -79,25 +103,17 @@ async def check_llm_detailed_health(timeout: float = 10.0) -> dict:
     try:
         data = resp.json()
         models = data.get("models") or []
-        # model names in tags are like "qwen2.5:3b-instruct" or "qwen2.5:3b-instruct:latest"
         available_names = {m.get("name", "") for m in models if isinstance(m, dict)}
-        # also consider base name without tag
-        model_base = model.split(":")[0]
-        model_available = any(
-            name == model or name.startswith(model + ":") or name.split(":")[0] == model_base and model in name
-            or model_base == name.split(":")[0] and model.split(":")[0] == name.split(":")[0] and (model == name or name.startswith(model))
-            for name in available_names
-        )
-        # simpler exact or prefix check
-        if not model_available:
-            # fallback: check if any available name matches requested model exactly or with :latest
-            model_available = model in available_names or f"{model}:latest" in available_names
-            # also allow partial: if requested is "qwen2.5:3b-instruct" and available is "qwen2.5:3b-instruct" it's true
-            if not model_available:
-                for avail in available_names:
-                    if avail == model or avail.startswith(model + ":"):
-                        model_available = True
-                        break
+        # Robust match: exact, or avail startswith model, or model startswith avail (handles :latest)
+        model_available = False
+        for avail in available_names:
+            if avail == model or avail.startswith(model) or model.startswith(avail):
+                model_available = True
+                break
+            # also handle :latest suffix explicitly
+            if avail == f"{model}:latest" or model == f"{avail}:latest":
+                model_available = True
+                break
         if model_available:
             return {
                 "online": True,
@@ -111,7 +127,7 @@ async def check_llm_detailed_health(timeout: float = 10.0) -> dict:
             "ollama_reachable": True,
             "model": model,
             "model_available": False,
-            "detail": f"model '{model}' not found. Available: {', '.join(sorted(available_names)[:5]) or 'none'}",
+            "detail": f"model '{model}' not found. Available: {', '.join(sorted(available_names)[:5]) or 'none'} (tried show+tags)",
         }
     except Exception as exc:
         return {
