@@ -15,6 +15,7 @@ from app.db.repository import (
 from app.schemas.exam_analytics import ExamAnalyticsDocument
 from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
 from app.services.recommendation import recommend_for_weak_areas
+from app.services.student_accounts import provision_student_accounts
 from app.services.teaching_actions import get_teaching_actions
 from app.services.topic_canonicalization import canonicalize_topics
 
@@ -46,6 +47,11 @@ async def lecturer_exam_analytics(
             document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
         except ExamNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+    # Provision student accounts for all graded submissions of this exam (best-effort)
+    try:
+        await provision_student_accounts(db, course_code, session_name, year, month, semester)
+    except Exception:
+        pass
     canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
     document.update(canonical)
     return ExamAnalyticsDocument.model_validate(document)
