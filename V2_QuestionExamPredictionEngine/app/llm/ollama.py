@@ -139,7 +139,7 @@ async def check_llm_detailed_health(timeout: float = 10.0) -> dict:
         }
 
 
-async def generate(prompt: str, *, temperature: float | None = None) -> dict:
+async def generate(prompt: str, *, temperature: float | None = None, timeout: float | None = None) -> dict:
     url = f"{settings.llm_base_url}/api/generate"
     body = {
         "model": settings.llm_model,
@@ -155,8 +155,10 @@ async def generate(prompt: str, *, temperature: float | None = None) -> dict:
     headers = {}
     if settings.ollama_api_key:
         headers["Authorization"] = f"Bearer {settings.ollama_api_key}"
+    # Use shorter timeout for classification (30s) vs default 120s, to fail fast and fallback to rules
+    effective_timeout = timeout if timeout is not None else settings.ollama_timeout
     try:
-        async with httpx.AsyncClient(timeout=settings.ollama_timeout) as client:
+        async with httpx.AsyncClient(timeout=effective_timeout) as client:
             response = await client.post(url, json=body, headers=headers)
             if response.status_code >= 400:
                 raise OllamaUnavailable(f"Ollama returned HTTP {response.status_code}")
@@ -174,11 +176,12 @@ async def validate_with_retry(
     prompt: str,
     temperature: float,
     max_attempts: int = 2,
+    timeout: float | None = None,
 ) -> tuple[T | None, dict | None, bool]:
     raw: dict | None = None
     for attempt in range(max_attempts):
         try:
-            raw = await generate(prompt, temperature=temperature)
+            raw = await generate(prompt, temperature=temperature, timeout=timeout)
             return schema.model_validate(raw), raw, False
         except ValidationError as exc:
             logger.error(

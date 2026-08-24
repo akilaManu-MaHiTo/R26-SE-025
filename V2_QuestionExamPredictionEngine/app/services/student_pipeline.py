@@ -76,18 +76,32 @@ async def _classify_questions(
     semantics_by_question: dict[str, QuestionSemantics] = {}
     course = {"code": normalized.course_code, "name": normalized.course_name}
 
+    # Fast-path: if Ollama is clearly unreachable (3s probe), skip LLM entirely and use rules
+    from app.llm.ollama import check_llm_health
+
+    llm_healthy = True
+    try:
+        healthy, _ = await check_llm_health(timeout=3)
+        llm_healthy = healthy
+    except Exception:
+        llm_healthy = False
+
     for question in sorted(normalized.questions, key=lambda item: item.question_no):
         cache_key = (normalized.rubric_ref, question.question_no)
         semantics = cache.get(cache_key)
         if semantics is None:
-            try:
-                response = await classify_question_semantics(
-                    course,
-                    question.question_text,
-                    [criterion.criterion for criterion in question.criteria],
-                )
-            except OllamaUnavailable:
+            if not llm_healthy:
                 response = {"status": "degraded", "reason": "ollama_unavailable"}
+            else:
+                try:
+                    response = await classify_question_semantics(
+                        course,
+                        question.question_text,
+                        [criterion.criterion for criterion in question.criteria],
+                    )
+                except OllamaUnavailable:
+                    response = {"status": "degraded", "reason": "ollama_unavailable"}
+                    llm_healthy = False  # don't try LLM for remaining questions in this batch
 
             if response.get("status") == "ok":
                 try:

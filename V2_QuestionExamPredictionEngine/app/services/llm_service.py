@@ -197,7 +197,7 @@ async def generate_practice_questions(target: dict) -> dict:
     )
     try:
         parsed, _raw, _review = await validate_with_retry(
-            PracticeQuestions, prompt, temperature=settings.ollama_generate_temperature
+            PracticeQuestions, prompt, temperature=settings.ollama_generate_temperature, timeout=30
         )
     except OllamaUnavailable:
         return {"status": "degraded", "reason": "ollama_unavailable"}
@@ -222,7 +222,7 @@ async def generate_candidates(recommendation: dict, count: int = 3) -> dict:
     )
     try:
         parsed, raw, review = await validate_with_retry(
-            CandidateQuestions, prompt, temperature=settings.ollama_generate_temperature
+            CandidateQuestions, prompt, temperature=settings.ollama_generate_temperature, timeout=30
         )
     except OllamaUnavailable:
         return {"status": "degraded", "reason": "ollama_unavailable"}
