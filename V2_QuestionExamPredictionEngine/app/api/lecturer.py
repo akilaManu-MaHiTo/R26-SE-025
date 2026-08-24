@@ -41,20 +41,32 @@ async def lecturer_exam_analytics(
     semester: int | None = Query(None),
     db=Depends(get_db),
 ):
-    document = await find_exam_analytics(db, course_code, session_name, year, month, semester)
-    if document is None:
-        try:
-            document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
-        except ExamNotFound as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
+    try:
+        document = await find_exam_analytics(db, course_code, session_name, year, month, semester)
+        if document is None:
+            try:
+                document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
+            except ExamNotFound as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to compute analytics: {exc}") from exc
     # Provision student accounts for all graded submissions of this exam (best-effort)
     try:
         await provision_student_accounts(db, course_code, session_name, year, month, semester)
     except Exception:
         pass
-    canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
-    document.update(canonical)
-    return ExamAnalyticsDocument.model_validate(document)
+    try:
+        canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
+        document.update(canonical)
+    except Exception:
+        # canonicalization is best-effort; return base document if it fails
+        pass
+    try:
+        return ExamAnalyticsDocument.model_validate(document)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Analytics document validation failed: {exc}") from exc
 
 
 @router.get("/exams/{course_code}/{session_name}/students")
