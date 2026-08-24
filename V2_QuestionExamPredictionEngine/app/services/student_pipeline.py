@@ -73,50 +73,56 @@ async def _classify_questions(
     cache: dict[tuple[str, str], QuestionSemantics],
     progress: StepCallback | None = None,
 ) -> dict[str, QuestionSemantics]:
+    import asyncio
+
     semantics_by_question: dict[str, QuestionSemantics] = {}
     course = {"code": normalized.course_code, "name": normalized.course_name}
 
-    # Fast-path: if Ollama is clearly unreachable (3s probe), skip LLM entirely and use rules
-    from app.llm.ollama import check_llm_health
-
-    llm_healthy = True
-    try:
-        healthy, _ = await check_llm_health(timeout=3)
-        llm_healthy = healthy
-    except Exception:
-        llm_healthy = False
-
+    # Collect uncached questions — LLM is primary, rule fallback is last resort
+    uncached: list = []
     for question in sorted(normalized.questions, key=lambda item: item.question_no):
         cache_key = (normalized.rubric_ref, question.question_no)
         semantics = cache.get(cache_key)
-        if semantics is None:
-            if not llm_healthy:
-                response = {"status": "degraded", "reason": "ollama_unavailable"}
-            else:
-                try:
-                    response = await classify_question_semantics(
-                        course,
-                        question.question_text,
-                        [criterion.criterion for criterion in question.criteria],
-                    )
-                except OllamaUnavailable:
-                    response = {"status": "degraded", "reason": "ollama_unavailable"}
-                    llm_healthy = False  # don't try LLM for remaining questions in this batch
+        if semantics is not None:
+            semantics_by_question[question.question_no] = semantics
+            if progress is not None:
+                progress(f"classify q{question.question_no} (cached)")
+        else:
+            uncached.append(question)
 
-            if response.get("status") == "ok":
-                try:
-                    semantics = QuestionSemantics.model_validate(response.get("semantics"))
-                except ValidationError:
-                    semantics = _rule_semantics(question.question_text, "schema_failure")
-            else:
-                semantics = _rule_semantics(
-                    question.question_text,
-                    str(response.get("reason") or "model_degraded"),
-                )
-            cache[cache_key] = semantics
-        semantics_by_question[question.question_no] = semantics
+    if not uncached:
+        return semantics_by_question
+
+    async def classify_one(q) -> tuple[str, QuestionSemantics]:
+        try:
+            response = await classify_question_semantics(
+                course,
+                q.question_text,
+                [criterion.criterion for criterion in q.criteria],
+            )
+        except OllamaUnavailable:
+            response = {"status": "degraded", "reason": "ollama_unavailable"}
+
+        if response.get("status") == "ok":
+            try:
+                semantics = QuestionSemantics.model_validate(response.get("semantics"))
+            except ValidationError:
+                semantics = _rule_semantics(q.question_text, "schema_failure")
+        else:
+            semantics = _rule_semantics(
+                q.question_text,
+                str(response.get("reason") or "model_degraded"),
+            )
         if progress is not None:
-            progress(f"classify q{question.question_no}")
+            progress(f"classify q{q.question_no}")
+        return q.question_no, semantics
+
+    # Concurrent LLM calls — 1 batch for this submission (typically 4 Qs) → ~30s total, not 4×30s
+    # Rule fallback remains strictly last: only on OllamaUnavailable / schema failure
+    results = await asyncio.gather(*(classify_one(q) for q in uncached))
+    for q_no, semantics in results:
+        cache[(normalized.rubric_ref, q_no)] = semantics
+        semantics_by_question[q_no] = semantics
 
     return semantics_by_question
 
