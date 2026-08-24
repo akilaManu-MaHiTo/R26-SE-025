@@ -297,3 +297,17 @@ export async function getExamDraft(draft_id: string): Promise<ExamDraft> {
   if (!res.ok) throw new Error("Failed to fetch draft");
   return res.json();
 }
+
+export interface LlmHealth {
+  online: boolean;
+  ollama_reachable: boolean;
+  model: string;
+  model_available: boolean;
+  detail: string;
+}
+
+export async function fetchLlmHealth(): Promise<LlmHealth> {
+  const res = await fetch(`${API_BASE}/api/lecturers/llm-health`);
+  if (!res.ok) throw new Error("Failed to fetch LLM health");
+  return res.json();
+}
