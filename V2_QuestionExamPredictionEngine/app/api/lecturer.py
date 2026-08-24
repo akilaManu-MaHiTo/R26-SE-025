@@ -238,12 +238,17 @@ async def lecturer_recommendations(
     Uses student analytics (Phase 3 weakness) + curriculum (question_bank, Phase 1)
     + taxonomy (Phase 2) + weighted scoring (Phase 4).
     """
-    document = await find_exam_analytics(db, course_code, session_name, year, month, semester)
-    if document is None:
-        try:
-            document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
-        except ExamNotFound as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
+    try:
+        document = await find_exam_analytics(db, course_code, session_name, year, month, semester)
+        if document is None:
+            try:
+                document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
+            except ExamNotFound as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to compute analytics: {exc}") from exc
     # enrich with canonical if missing
     if not document.get("canonical_topic_performance"):
         try:
@@ -251,7 +256,10 @@ async def lecturer_recommendations(
             document.update(canonical)
         except Exception:
             pass
-    result = recommend_for_weak_areas(document, limit=limit)
+    try:
+        result = recommend_for_weak_areas(document, limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to generate recommendations: {exc}") from exc
     return {
         "exam_id": f"{course_code}@{session_name}",
         "subject_code": course_code,
