@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Plus, Pencil, X, AlertTriangle, BookOpen, BarChart3, ChevronRight, Layers, FileDown, Eye, CloudUpload } from "lucide-react";
 import { useHideSidebar } from "../App";
 import { Card } from "./ui/card";
@@ -96,6 +97,24 @@ const CANONICAL_TOPICS = [
   "Database Utilities",
   "Database Security",
 ];
+
+function PremiumExamLoader({ steps, currentStep }: { steps: LoadStep[]; currentStep: number }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 space-y-6">
+      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }} className="size-10 rounded-full border-2 border-primary/20 border-t-primary" />
+      <div className="space-y-2 text-center">
+        <motion.p key={currentStep} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="text-sm font-medium">
+          {steps[currentStep]?.label || "Loading..."}
+        </motion.p>
+        <div className="flex gap-1.5 justify-center">
+          {steps.map((_, i) => (
+            <motion.div key={i} className={`h-1.5 rounded-full ${i === currentStep ? "bg-primary w-6" : i < currentStep ? "bg-primary/60 w-1.5" : "bg-muted w-1.5"}`} animate={{ scale: i === currentStep ? 1.2 : 1 }} transition={{ duration: 0.3 }} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Helpers ───
 function PriorityBadge({ priority }: { priority: string }) {
@@ -368,32 +387,47 @@ export function ExamCreator() {
           </p>
         </div>
         {loadingExams ? (
-          <ProgressLoader steps={loadSteps} currentStep={currentStep} className="min-h-[300px]" />
+          <PremiumExamLoader steps={loadSteps} currentStep={currentStep} />
         ) : exams.length === 0 ? (
-          <Card className="p-12 text-center border-border">
-            <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-            <p className="text-muted-foreground">No exams found. Ingest submissions first.</p>
-          </Card>
+          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
+            <Card className="p-12 text-center border-border bg-gradient-to-b from-card to-muted/20">
+              <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40" />
+              <p className="text-muted-foreground">No exams found. Ingest submissions first.</p>
+            </Card>
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {exams.map((exam) => (
-              <Card
-                key={`${exam.course_code}-${exam.year}-${exam.session_name}`}
-                className="group p-5 border-border hover:border-primary/40 cursor-pointer transition-colors"
-                onClick={() => handleSelectExam(exam)}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="size-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-                    <Sparkles className="size-5" />
-                  </div>
-                  <Badge variant="secondary">{exam.student_count} students</Badge>
-                </div>
-                <div className="font-semibold">{exam.course_code} — {exam.session_name}</div>
-                <div className="text-sm text-muted-foreground">{exam.subject_name} · {exam.year}</div>
-                <div className="text-xs text-muted-foreground mt-2">Avg {exam.average_percentage.toFixed(1)}% · Pass {exam.pass_rate.toFixed(0)}%</div>
-              </Card>
-            ))}
-          </div>
+          <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <AnimatePresence>
+              {exams.map((exam, idx) => (
+                <motion.div
+                  key={`${exam.course_code}-${exam.year}-${exam.session_name}`}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.35, delay: idx * 0.04 }}
+                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                >
+                  <Card
+                    className="group p-5 border-border bg-card/80 backdrop-blur hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 cursor-pointer h-full"
+                    onClick={() => handleSelectExam(exam)}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="size-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center shadow-md group-hover:shadow-primary/20 transition-shadow">
+                        <Sparkles className="size-5" />
+                      </div>
+                      <Badge variant="secondary" className="backdrop-blur">{exam.student_count} students</Badge>
+                    </div>
+                    <div className="font-semibold">{exam.course_code} — {exam.session_name}</div>
+                    <div className="text-sm text-muted-foreground">{exam.subject_name} · {exam.year}</div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-3">
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(exam.average_percentage, 100)}%` }} transition={{ duration: 0.8, delay: 0.3 + idx * 0.05, ease: "easeOut" }} className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full" />
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2">Avg {exam.average_percentage.toFixed(1)}% · Pass {exam.pass_rate.toFixed(0)}%</div>
+                  </Card>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
         )}
         {/* My Drafts — cloud saved papers, accessible again */}
         <div className="space-y-3">
@@ -428,8 +462,8 @@ export function ExamCreator() {
   // Split layout: left editor (65%) + right recommendations (35%)
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
-      {/* Top bar: exam switcher + total + exit */}
-      <div className="flex items-center gap-3 px-6 py-3 border-b bg-background shrink-0">
+      {/* Top bar: premium exam switcher + total */}
+      <div className="flex items-center gap-3 px-6 py-3 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 shrink-0 sticky top-0 z-10">
         <Layers className="size-4 text-muted-foreground" />
         <Select
           value={`${selectedExam.course_code}-${selectedExam.year}`}
@@ -443,9 +477,9 @@ export function ExamCreator() {
         </Select>
         <Button variant="ghost" size="sm" onClick={handleBackToSelector} className="ml-2">Change exam</Button>
         <div className="ml-auto flex items-center gap-3">
-          <span className={`text-sm font-medium tabular-nums ${total === 100 ? "text-green-600" : total < 100 ? "text-amber-600" : "text-red-600"}`}>
+          <motion.span key={total} initial={{ scale: 0.9 }} animate={{ scale: 1 }} transition={{ duration: 0.2 }} className={`text-sm font-medium tabular-nums ${total === 100 ? "text-green-600" : total < 100 ? "text-amber-600" : "text-red-600"}`}>
             Total: {total}/100 {total !== 100 && "⚠️"}
-          </span>
+          </motion.span>
           <Button variant="outline" size="sm" onClick={handlePreview}><Eye className="size-4 mr-1" />Preview</Button>
           <Button variant="outline" size="sm" onClick={handleUpload} disabled={uploading}><CloudUpload className="size-4 mr-1" />{uploading ? "Uploading..." : currentDraftId ? "Update Cloud" : "Upload to Cloud"}</Button>
           <Button size="sm" onClick={handleDownload}><FileDown className="size-4 mr-1" />Download PDF</Button>
@@ -453,14 +487,19 @@ export function ExamCreator() {
       </div>
 
       <div className="flex flex-1 min-h-0">
-        {/* Left 65%: Full paper editor */}
-        <div className="w-[65%] overflow-y-auto p-6 space-y-4 border-r bg-muted/20">
-          <div>
-            <h2 className="font-semibold">{paper.exam} {paper.year}</h2>
-            <p className="text-xs text-muted-foreground">Draft paper — editable. Total {total}/100</p>
-          </div>
-          {paper.questions.map((q) => (
-            <Card key={q.question_number} id={`question-${q.question_number}`} className="p-4 space-y-3">
+        {/* Left 65%: Full paper editor — premium */}
+        <div className="w-[65%] overflow-y-auto p-6 space-y-4 border-r bg-gradient-to-b from-muted/30 via-muted/10 to-background">
+          <motion.div key={`${paper.exam}-${paper.year}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="rounded-xl border bg-card/60 backdrop-blur p-4">
+            <h2 className="font-semibold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">{paper.exam} {paper.year}</h2>
+            <p className="text-xs text-muted-foreground">Draft paper — editable. Total <span className={total === 100 ? "text-green-600 font-medium" : total < 100 ? "text-amber-600" : "text-red-600"}>{total}/100</span></p>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-2">
+              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min((total / 100) * 100, 100)}%` }} transition={{ duration: 0.6, ease: "easeOut" }} className={`h-full rounded-full ${total === 100 ? "bg-gradient-to-r from-green-500 to-emerald-500" : total < 100 ? "bg-gradient-to-r from-amber-500 to-orange-500" : "bg-gradient-to-r from-red-500 to-red-400"}`} />
+            </div>
+          </motion.div>
+          <AnimatePresence>
+            {paper.questions.map((q, idx) => (
+              <motion.div key={q.question_number} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3, delay: idx * 0.03 }}>
+                <Card id={`question-${q.question_number}`} className="p-4 space-y-3 bg-card/80 backdrop-blur border-border/60 hover:border-primary/20 hover:shadow-md transition-all">
               <div className="flex items-center gap-2">
                 <span className="font-semibold shrink-0">Question {q.question_number}</span>
                 <Select
@@ -512,15 +551,19 @@ export function ExamCreator() {
               >
                 <Plus className="size-4 mr-1" /> Add part
               </Button>
-            </Card>
-          ))}
-          <Button
-            onClick={() => setPaper((prev) => ({ ...prev, questions: renumberQuestions([...prev.questions, { question_number: prev.questions.length + 1, topic: "Structured Query Language (SQL)", parts: [{ part: "a", question: "", max_marks: 10 }] }]) }))}
-            className="w-full"
-            variant="outline"
-          >
-            <Plus className="size-4 mr-1" /> Add Custom Question
-          </Button>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+            <Button
+              onClick={() => setPaper((prev) => ({ ...prev, questions: renumberQuestions([...prev.questions, { question_number: prev.questions.length + 1, topic: "Structured Query Language (SQL)", parts: [{ part: "a", question: "", max_marks: 10 }] }]) }))}
+              className="w-full border-dashed"
+              variant="outline"
+            >
+              <Plus className="size-4 mr-1" /> Add Custom Question
+            </Button>
+          </motion.div>
         </div>
 
         {/* Right 35%: Recommendations + Browse Bank */}
@@ -531,23 +574,35 @@ export function ExamCreator() {
               <TabsTrigger value="browse" className="text-xs">Browse Bank</TabsTrigger>
             </TabsList>
             <TabsContent value="recommended" className="space-y-4 mt-4">
-              {loadingRecs ? (
-                <ProgressLoader steps={loadSteps} currentStep={currentStep} />
-              ) : recommendations ? (
+              <AnimatePresence mode="wait">
+                {loadingRecs ? (
+                  <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                    <PremiumExamLoader steps={loadSteps} currentStep={currentStep} />
+                  </motion.div>
+                ) : recommendations ? (
+                  <motion.div
+                    key={`${selectedExam?.course_code}-${selectedExam?.year}-${selectedExam?.session_name}`}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="space-y-4"
+                  >
                 <>
                   <Card className="p-3 border-border">
                     <div className="font-medium flex items-center gap-2 text-sm">
                       <AlertTriangle className="size-4 text-amber-500" /> Weak Areas to Assess
                     </div>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {recommendations.ranked_weak_topics.map(([topic, weakness]) => (
-                        <Badge
-                          key={topic}
-                          variant="outline"
-                          className={weakness >= 0.4 ? "border-red-300 text-red-600 bg-red-50" : weakness >= 0.3 ? "border-amber-300 text-amber-600 bg-amber-50" : "border-border"}
-                        >
-                          {topic.split(" ").slice(0, 3).join(" ")} {(weakness * 100).toFixed(0)}%
-                        </Badge>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                      {recommendations.ranked_weak_topics.map(([topic, weakness], idx) => (
+                        <motion.div key={topic} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: idx * 0.04 }}>
+                          <Badge
+                            variant="outline"
+                            className={weakness >= 0.4 ? "border-red-300 text-red-600 bg-red-50" : weakness >= 0.3 ? "border-amber-300 text-amber-600 bg-amber-50" : "border-border"}
+                          >
+                            {topic.split(" ").slice(0, 3).join(" ")} {(weakness * 100).toFixed(0)}%
+                          </Badge>
+                        </motion.div>
                       ))}
                     </div>
                   </Card>
@@ -563,8 +618,10 @@ export function ExamCreator() {
                   {items.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No {label.toLowerCase()} recommendations.</p>
                   ) : (
-                    items.map((rec) => (
-                      <Card key={rec.question_id} className="p-3 space-y-2 border-border">
+                    <AnimatePresence>
+                      {items.map((rec, idx) => (
+                        <motion.div key={rec.question_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3, delay: idx * 0.04 }} whileHover={{ y: -2 }}>
+                          <Card className="p-3 space-y-2 border-border/60 bg-card/80 backdrop-blur hover:border-primary/20 hover:shadow-md transition-all">
                         <div className="flex flex-wrap gap-1">
                           <Badge variant="outline" className="text-[10px]">{rec.canonical_topic.slice(0, 30)}</Badge>
                           <Badge variant="secondary" className="text-[10px]">{rec.bloom_level}</Badge>
@@ -593,9 +650,11 @@ export function ExamCreator() {
                         <div className="flex gap-1">
                           <Button size="sm" variant="ghost" className="h-6 text-xs flex-1" onClick={() => setRejectedIds((s) => new Set(s).add(rec.question_id))}><X className="size-3 mr-1" />Reject</Button>
                         </div>
-                      </Card>
-                    ))
-                  )}
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                    )}
                 </div>
               ))}
 
@@ -613,7 +672,9 @@ export function ExamCreator() {
                 </details>
               )}
             </>
-          ) : null}
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </TabsContent>
             <TabsContent value="browse" className="space-y-3 mt-4">
               <div className="flex gap-2">
@@ -675,3 +736,4 @@ export function ExamCreator() {
     </div>
   );
 }
+
