@@ -268,6 +268,46 @@ export function AIBadgePill({ model }: { model: AIModel }) {
 /* ─── Page header card — shown at the top of each AI feature page ────────── */
 export function AIPageBanner({ model }: { model: AIModel }) {
   const id = AI_IDENTITIES[model];
+  const [health, setHealth] = React.useState<{ online: boolean; detail: string } | null>(null);
+  const [healthLoading, setHealthLoading] = React.useState(model === "pulse");
+
+  React.useEffect(() => {
+    if (model !== "pulse") return;
+    let cancelled = false;
+    const API_BASE =
+      (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+    async function check() {
+      try {
+        const res = await fetch(`${API_BASE}/api/lecturers/llm-health`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setHealth({ online: !!data.online, detail: data.detail || "" });
+      } catch (e: unknown) {
+        if (!cancelled) setHealth({ online: false, detail: e instanceof Error ? e.message : "Ollama not reachable" });
+      } finally {
+        if (!cancelled) setHealthLoading(false);
+      }
+    }
+    check();
+    const interval = setInterval(check, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [model]);
+
+  const isPulse = model === "pulse";
+  const showOnline = !isPulse ? true : healthLoading ? null : health?.online === true;
+  const statusColor = showOnline === null ? "bg-gray-400" : showOnline ? "bg-emerald-500" : "bg-red-500";
+  const statusTextColor =
+    showOnline === null
+      ? "text-muted-foreground"
+      : showOnline
+        ? "text-emerald-600 dark:text-emerald-400"
+        : "text-red-600 dark:text-red-400";
+  const statusLabel = !isPulse ? "Model online" : healthLoading ? "Checking..." : showOnline ? "Model online" : "Model unavailable";
+  const statusSub = !isPulse ? "Ready to process" : healthLoading ? "Checking Ollama..." : showOnline ? "Ready to process" : health?.detail || "Ollama not reachable";
+
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 flex items-center gap-5">
       {/* Subtle ambient tint using the model's secondary colour */}
@@ -283,9 +323,9 @@ export function AIPageBanner({ model }: { model: AIModel }) {
         <div className="size-16 rounded-2xl bg-muted flex items-center justify-center">
           <AILogo model={model} size={36} />
         </div>
-        {/* Active pulse ring */}
+        {/* Active pulse ring — red when model unavailable */}
         <span className="absolute -top-1 -right-1 size-4 rounded-full border-2 border-background flex items-center justify-center">
-          <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className={`size-2 rounded-full ${statusColor} ${showOnline ? "animate-pulse" : ""}`} />
         </span>
       </div>
 
@@ -306,13 +346,15 @@ export function AIPageBanner({ model }: { model: AIModel }) {
         <div className="text-xs text-muted-foreground/70 mt-0.5">{id.sub}</div>
       </div>
 
-      {/* Status */}
+      {/* Status — real health for pulse */}
       <div className="relative shrink-0 text-right hidden sm:block">
-        <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
-          <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          Model online
+        <div className={`flex items-center gap-1.5 text-xs font-medium ${statusTextColor}`}>
+          <span className={`size-1.5 rounded-full ${statusColor} ${showOnline ? "animate-pulse" : ""}`} />
+          {statusLabel}
         </div>
-        <div className="text-muted-foreground/70 text-[10px] mt-1">Ready to process</div>
+        <div className="text-muted-foreground/70 text-[10px] mt-1 max-w-[220px] truncate" title={statusSub}>
+          {statusSub}
+        </div>
       </div>
     </div>
   );

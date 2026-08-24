@@ -13,6 +13,7 @@ from app.db.repository import (
     list_all_exams,
 )
 from app.schemas.exam_analytics import ExamAnalyticsDocument
+from app.llm.ollama import check_llm_detailed_health
 from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
 from app.services.recommendation import recommend_for_weak_areas
 from app.services.student_accounts import provision_student_accounts
@@ -20,6 +21,12 @@ from app.services.teaching_actions import get_teaching_actions
 from app.services.topic_canonicalization import canonicalize_topics
 
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
+
+
+@router.get("/llm-health")
+async def llm_health():
+    """Real LLM health: ollama reachable + model pulled. Used by question-exam Model online banner."""
+    return await check_llm_detailed_health()
 
 
 @router.get("/exams")
