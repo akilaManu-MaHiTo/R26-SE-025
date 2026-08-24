@@ -224,6 +224,9 @@ async def find_student_analytics(
     student_id: str,
     course_code: str | None = None,
     session_name: str | None = None,
+    year: int | None = None,
+    month: int | None = None,
+    semester: int | None = None,
 ) -> dict | None:
     filters: dict[str, object] = {"student_id": student_id}
     if course_code is not None and session_name is not None:
@@ -231,6 +234,12 @@ async def find_student_analytics(
         filters["session_name"] = session_name
     elif course_code is not None:
         filters["subject_code"] = course_code
+    if year is not None:
+        filters["year"] = year
+    if month is not None:
+        filters["month"] = month
+    if semester is not None:
+        filters["semester"] = semester
 
     document = await db["student_analytics"].find_one(
         filters, sort=[("_id", -1)]
@@ -253,15 +262,31 @@ async def find_graded_submission(
     student_id: str,
     course_code: str,
     session_name: str,
+    year: int | None = None,
+    month: int | None = None,
+    semester: int | None = None,
 ) -> dict | None:
-    return await db["submissions"].find_one(
-        {
-            "student_id": student_id,
-            "subject_code": course_code,
-            "session_name": session_name,
-            "status": "graded",
-        }
-    )
+    query: dict = {
+        "student_id": student_id,
+        "subject_code": course_code,
+        "session_name": session_name,
+        "status": "graded",
+    }
+    if year is not None:
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+    # Try exact match with year if provided, else fallback to most recent
+    if year is not None or month is not None or semester is not None:
+        doc = await db["submissions"].find_one(query, sort=[("_id", -1)])
+        if doc is not None:
+            return doc
+        # fallback without year for legacy data
+        query_no_year = {k: v for k, v in query.items() if k not in ("year", "month", "semester")}
+        return await db["submissions"].find_one(query_no_year, sort=[("year", -1), ("_id", -1)])
+    return await db["submissions"].find_one(query, sort=[("year", -1), ("_id", -1)])
 
 
 async def find_graded_submissions_for_exam(
@@ -533,16 +558,48 @@ async def list_exams_for_student(
             {"subject_code": sub.get("subject_code"), "session_name": sub.get("session_name")},
             {"subject_name": 1, "year": 1, "month": 1, "semester": 1, "questions": 1},
         )
+        year = sub.get("year") or (rubric or {}).get("year") or 0
+        month = sub.get("month") or (rubric or {}).get("month") or 0
+        semester = sub.get("semester") or (rubric or {}).get("semester") or 0
+        subject_code = sub.get("subject_code")
+        session_name = sub.get("session_name")
+        # Check if lecturer has analyzed this exam (analyzedExams or analytics_snapshots)
+        analyzed = False
+        analyzed_at = None
+        try:
+            status = await db["analyzedExams"].find_one(
+                {"subject_code": subject_code, "session_name": session_name, "year": year, "month": month, "semester": semester},
+                {"analyzed": 1, "analyzed_at": 1},
+            )
+            if status and status.get("analyzed") == "done":
+                analyzed = True
+                analyzed_at = status.get("analyzed_at")
+            else:
+                # fallback to analytics_snapshots
+                snap = await db["analytics_snapshots"].find_one(
+                    {"subject_code": subject_code, "session_name": session_name, "year": year, "month": month, "semester": semester},
+                    {"generated_at": 1},
+                )
+                if snap:
+                    analyzed = True
+                    analyzed_at = snap.get("generated_at")
+        except Exception:
+            pass
         seen[key] = {
-            "subject_code": sub.get("subject_code"),
-            "subject_name": (rubric or {}).get("subject_name") or sub.get("subject_code"),
-            "session_name": sub.get("session_name"),
-            "year": sub.get("year") or (rubric or {}).get("year") or 0,
-            "month": sub.get("month") or (rubric or {}).get("month") or 0,
-            "semester": sub.get("semester") or (rubric or {}).get("semester") or 0,
+            "subject_code": subject_code,
+            "subject_name": (rubric or {}).get("subject_name") or subject_code,
+            "session_name": session_name,
+            "year": year,
+            "month": month,
+            "semester": semester,
             "question_count": len((rubric or {}).get("questions") or []),
+            "analyzed": analyzed,
+            "analyzed_at": analyzed_at,
         }
-    return list(seen.values())
+    # Return sorted by year/month descending (most recent first) — matches frontend expectation
+    result = list(seen.values())
+    result.sort(key=lambda x: (x["year"], x["month"], x["semester"]), reverse=True)
+    return result
 
 
 # ─── Users — student accounts provisioned on exam analysis ───────────────
