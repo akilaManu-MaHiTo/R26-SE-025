@@ -71,22 +71,16 @@ export function VivaPage() {
     ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env?.VITE_GRADEX_API_KEY) ??
     "";
 
+  // Deliberately does NOT reset assessmentMode: the examiner picks it upfront,
+  // before choosing upload/live or selecting a file, via the selector below —
+  // not afterward per recording. It stays sticky across "Remove"/re-record so a
+  // lecturer grading several same-type vivas back to back isn't re-asked each time.
   const resetAssessmentState = () => {
-    setAssessmentMode("WITHOUT_TECHNICAL_ACCURACY");
     setTechnicalAccuracy(null);
     setStudentId("");
     setPublished(false);
     setAutoPublishedWithoutTech(false);
     setPublishing(false);
-  };
-
-  const handleAssessmentModeChange = (mode: AssessmentMode) => {
-    setAssessmentMode(mode);
-    if (mode === "WITHOUT_TECHNICAL_ACCURACY") {
-      setPublished(autoPublishedWithoutTech);
-      return;
-    }
-    setPublished(false);
   };
 
   useEffect(() => {
@@ -259,6 +253,10 @@ export function VivaPage() {
     setAnalysisPhase("uploading");
     const formData = new FormData();
     formData.append("video", file);
+    // Chosen upfront via the selector below, before this file was ever picked —
+    // the server uses this to decide whether the mark may auto-publish (see
+    // main.py::viva_analyze). Technical vivas never auto-publish.
+    formData.append("assessment_mode", assessmentMode);
 
     try {
       const apiUrl = `${backendBaseUrl}/api/viva-analyze`;
@@ -316,7 +314,6 @@ export function VivaPage() {
       const data = JSON.parse(response) as AnalysisResult;
       setAnalysisResult(data);
       setAnalysisPhase("complete");
-      setAssessmentMode("WITHOUT_TECHNICAL_ACCURACY");
       setTechnicalAccuracy(null);
       const wasAutoPublished = Boolean(data.auto_published && data.published);
       setAutoPublishedWithoutTech(wasAutoPublished);
@@ -335,7 +332,9 @@ export function VivaPage() {
           description:
             data.assessment?.status === "INCOMPLETE"
               ? "Recording is incomplete — no official grade saved."
-              : "Draft saved — choose With technical accuracy to publish a fused mark.",
+              : assessmentMode === "WITH_TECHNICAL_ACCURACY"
+                ? "Draft saved — enter a technical accuracy score and publish when ready."
+                : "Draft saved.",
         });
       } else if (data.assessment) {
         toast.success("Analysis complete", {
@@ -413,6 +412,24 @@ export function VivaPage() {
 
       {!videoPreview && (
         <Card className="p-6">
+          <div className="mb-5">
+            <div className="text-sm font-medium text-foreground mb-2">Assessment type</div>
+            <Tabs
+              value={assessmentMode}
+              onValueChange={(value) => setAssessmentMode(value as AssessmentMode)}
+            >
+              <TabsList>
+                <TabsTrigger value="WITHOUT_TECHNICAL_ACCURACY">Non-technical</TabsTrigger>
+                <TabsTrigger value="WITH_TECHNICAL_ACCURACY">Technical</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <p className="text-xs text-muted-foreground mt-2">
+              {assessmentMode === "WITH_TECHNICAL_ACCURACY"
+                ? "Technical modules — the mark stays a draft until an examiner enters a technical accuracy score and publishes. Chosen once, before uploading or recording."
+                : "Communication / presentation vivas — the AI performance score saves automatically once analysis completes. Chosen once, before uploading or recording."}
+            </p>
+          </div>
+
           <Tabs value={sourceTab} onValueChange={(value) => setSourceTab(value as "upload" | "live")}>
             <TabsList>
               <TabsTrigger value="upload">Upload recording</TabsTrigger>
@@ -695,7 +712,6 @@ export function VivaPage() {
                 <EvaluationPanel
                   assessment={analysisResult.assessment}
                   assessmentMode={assessmentMode}
-                  onChangeMode={handleAssessmentModeChange}
                   technicalAccuracy={technicalAccuracy}
                   onChangeTechnicalAccuracy={setTechnicalAccuracy}
                   studentId={studentId}

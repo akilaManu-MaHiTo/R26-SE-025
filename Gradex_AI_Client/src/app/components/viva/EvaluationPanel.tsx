@@ -26,8 +26,8 @@ import {
 
 interface EvaluationPanelProps {
   assessment?: VivaAssessment;
+  /** Chosen upfront (before upload/recording) via the selector on VivaPage; read-only here. */
   assessmentMode: AssessmentMode;
-  onChangeMode: (mode: AssessmentMode) => void;
   technicalAccuracy: number | null;
   onChangeTechnicalAccuracy: (value: number) => void;
   studentId: string;
@@ -49,7 +49,6 @@ interface EvaluationPanelProps {
 export function EvaluationPanel({
   assessment,
   assessmentMode,
-  onChangeMode,
   technicalAccuracy,
   onChangeTechnicalAccuracy,
   studentId,
@@ -155,36 +154,19 @@ export function EvaluationPanel({
         </div>
       ) : null}
 
-      <div className="mt-5 space-y-2">
-        <div className="text-sm text-foreground">Assessment mode</div>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="radio"
-            name="viva-mode"
-            className="mt-1"
-            disabled={lockedAfterTechPublish}
-            checked={!withTech}
-            onChange={() => onChangeMode("WITHOUT_TECHNICAL_ACCURACY")}
-          />
-          <span>
-            Without technical accuracy
-            <span className="block text-xs text-muted-foreground">Communication / presentation vivas</span>
-          </span>
-        </label>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="radio"
-            name="viva-mode"
-            className="mt-1"
-            disabled={lockedAfterTechPublish}
-            checked={withTech}
-            onChange={() => onChangeMode("WITH_TECHNICAL_ACCURACY")}
-          />
-          <span>
-            With technical accuracy
-            <span className="block text-xs text-muted-foreground">Technical modules — examiner enters subject knowledge</span>
-          </span>
-        </label>
+      <div className="mt-5">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-foreground">Assessment type</div>
+          <Badge variant="outline" className="text-xs">
+            {withTech ? "Technical" : "Non-technical"}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          {withTech
+            ? "Technical module — this mark stays a draft until you set a technical accuracy score and publish."
+            : "Communication / presentation viva — the AI performance score saves automatically."}
+          {" "}Chosen before this recording was analyzed; start a new recording to change it.
+        </p>
       </div>
 
       {withTech && (

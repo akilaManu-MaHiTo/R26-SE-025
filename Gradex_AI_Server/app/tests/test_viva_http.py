@@ -232,7 +232,46 @@ class AnalyzeHttpTests(unittest.TestCase):
         self.assertTrue(result["published"])
         self.assertTrue(result["auto_published"])
         self.assertNotIn("persistence_error", result)
-        self.assertFalse(inserted["published"])
+
+    def test_technical_mode_never_auto_publishes(self):
+        """A technical viva must stay a draft — the whole point of the upfront
+        assessment-type choice is that 'reviewed before publishing' becomes true
+        by construction for the vivas that need a human technical score."""
+        fake = {
+            "video_status": "success",
+            "assessment": {"status": "VALID", "final_score": 70, "scoring_version": "v1", "ai_performance": {"score": 70}},
+        }
+        stored: dict = {}
+
+        class FakeCol:
+            async def insert_one(self, doc):
+                oid = ObjectId("507f1f77bcf86cd799439012")
+                stored[oid] = dict(doc)
+                stored[oid]["_id"] = oid
+                stored[oid]["result"] = dict(fake)
+
+                class Result:
+                    inserted_id = oid
+
+                return Result()
+
+            async def create_index(self, *_args, **_kwargs):
+                return None
+
+        previous = db_instance.marks_col
+        db_instance.marks_col = FakeCol()
+        try:
+            with patch("Gradex_AI_Server.app.viva_service.analyze_video_file", return_value=dict(fake)):
+                result = _run(
+                    viva_analyze(_video_upload(), assessment_mode="WITH_TECHNICAL_ACCURACY")
+                )
+        finally:
+            db_instance.marks_col = previous
+        self.assertEqual(result["mark_id"], "507f1f77bcf86cd799439012")
+        self.assertEqual(result["assessment_mode"], "WITH_TECHNICAL_ACCURACY")
+        self.assertFalse(result["published"])
+        self.assertNotIn("auto_published", result)
+        self.assertFalse(stored[ObjectId("507f1f77bcf86cd799439012")]["published"])
 
 
 class PublishHttpTests(unittest.TestCase):
