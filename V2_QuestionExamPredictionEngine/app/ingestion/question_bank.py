@@ -334,93 +334,144 @@ def build_question_bank() -> list[dict[str, Any]]:
                 }
             )
 
-    # --- Exams ---
-    exams_dir = BASE / "Final exam"
-    for pdf in sorted(exams_dir.glob("*.pdf")):
-        txt = extract_text(pdf)
-        # year from filename - avoid IT2040 -> use last 4-digit year
-        ym = re.search(r"(\d{4})\s*Final", pdf.name)
-        if not ym:
-            ym = re.search(r"[^\d](20\d{2})[^\d]", pdf.name)
-        year = int(ym.group(1)) if ym else 2023
-        parsed = parse_exam_marks(txt)
-        # fallback if parsing fails: treat whole doc as one
-        if not parsed:
-            parsed = [{"q_no": "01", "marks": 100, "body": normalize_ws(txt)[:2000]}]
-        for q in parsed:
-            q_no = q["q_no"].zfill(2)
-            body = q["body"]
-            guess = guess_canonical(body) or "sql"
-            # map guess id to canonical name
-            canon_id = guess if guess in canon_names else "sql"
+    # --- Exams: prefer clean JSON (16 structured) if available ---
+    exams_clean_path = BASE / "exams_clean.json"
+    if exams_clean_path.exists():
+        exams_clean = json.loads(exams_clean_path.read_text(encoding="utf-8"))
+        for entry in exams_clean:
+            q_no = entry.get("question_no", "01").zfill(2)
+            year = int(entry.get("year", 2023))
+            body = entry.get("text", "")
+            cid = entry.get("canonical_id") or guess_canonical(body) or "sql"
+            canon_id = cid if cid in canon_names else "sql"
             records.append(
                 {
-                    "question_id": f"IT2040_{year}_Final_Q{q_no}",
+                    "question_id": entry.get("question_id") or f"IT2040_{year}_Final_Q{q_no}",
                     "source_type": "exam",
-                    "source_id": f"IT2040@Final Examination {year}",
+                    "source_id": entry.get("source_id") or f"IT2040@Final Examination {year}",
                     "canonical_topic": canon_names[canon_id],
                     "canonical_id": canon_id,
                     "subtopic": body[:300],
-                    "bloom_level": bloom_from_keywords(body),
-                    "difficulty": difficulty_from_marks(q["marks"]),
-                    "marks": q["marks"],
-                    "question_type": question_type_from_text(body),
+                    "bloom_level": entry.get("bloom_level") or bloom_from_keywords(body),
+                    "difficulty": difficulty_from_marks(int(entry.get("marks", 0))),
+                    "marks": int(entry.get("marks", 0)),
+                    "question_type": entry.get("question_type") or question_type_from_text(body),
                     "text": body,
                     "year": year,
                     "semester": 1,
-                    "original_topic_label": body[:80],
+                    "original_topic_label": entry.get("topic_raw") or body[:80],
                 }
             )
+    else:
+        exams_dir = BASE / "Final exam"
+        for pdf in sorted(exams_dir.glob("*.pdf")):
+            txt = extract_text(pdf)
+            ym = re.search(r"(\d{4})\s*Final", pdf.name)
+            if not ym:
+                ym = re.search(r"[^\d](20\d{2})[^\d]", pdf.name)
+            year = int(ym.group(1)) if ym else 2023
+            parsed = parse_exam_marks(txt)
+            if not parsed:
+                parsed = [{"q_no": "01", "marks": 100, "body": normalize_ws(txt)[:2000]}]
+            for q in parsed:
+                q_no = q["q_no"].zfill(2)
+                body = q["body"]
+                guess = guess_canonical(body) or "sql"
+                canon_id = guess if guess in canon_names else "sql"
+                records.append(
+                    {
+                        "question_id": f"IT2040_{year}_Final_Q{q_no}",
+                        "source_type": "exam",
+                        "source_id": f"IT2040@Final Examination {year}",
+                        "canonical_topic": canon_names[canon_id],
+                        "canonical_id": canon_id,
+                        "subtopic": body[:300],
+                        "bloom_level": bloom_from_keywords(body),
+                        "difficulty": difficulty_from_marks(q["marks"]),
+                        "marks": q["marks"],
+                        "question_type": question_type_from_text(body),
+                        "text": body,
+                        "year": year,
+                        "semester": 1,
+                        "original_topic_label": body[:80],
+                    }
+                )
 
-    # --- Tutorials ---
-    tut_dir = BASE / "tutorial"
-    for pdf in sorted(tut_dir.glob("*.pdf")):
-        txt = extract_text(pdf)
-        ym = re.search(r"Semester\s*\d,\s*(20\d{2})", txt)
-        if not ym:
-            ym = re.search(r"Semester\s*1,\s*(20\d{2})", txt)
-        year = int(ym.group(1)) if ym else 2024
-        m = re.search(r"Tutorial\s*0*(\d+)", pdf.stem, re.IGNORECASE)
-        tut_no = m.group(1) if m else "0"
-        qs = parse_tutorial_questions(txt)
-        if not qs:
-            continue
-        for q in qs:
-            body = q["body"]
-            # Prefer tutorial-number mapping (02->logical, 04->sql) as primary; keyword as fallback
-            tut_canon = TUTORIAL_TOPIC_MAP.get(tut_no.zfill(2))
-            guess = guess_canonical(body)
-            # If guess is intro_dbms but tutorial says sql, trust tutorial (tutorial SQL queries lack SELECT keyword)
-            if tut_canon:
-                # Keep guess if it matches tut_canon's family (e.g., sql vs database_programming distinction via keywords)
-                if guess == tut_canon:
-                    canon_id = guess
-                elif guess in ("intro_dbms",) and tut_canon in ("sql", "database_programming", "schema_refinement", "database_security"):
-                    canon_id = tut_canon
-                elif guess:
-                    canon_id = guess if guess in canon_names else tut_canon
-                else:
-                    canon_id = tut_canon
-            else:
-                canon_id = guess if guess and guess in canon_names else "intro_dbms"
+    # --- Tutorials: prefer clean JSON (55 structured) if available ---
+    tutorials_clean_path = BASE / "tutorials_clean.json"
+    if tutorials_clean_path.exists():
+        tutorials_clean = json.loads(tutorials_clean_path.read_text(encoding="utf-8"))
+        for entry in tutorials_clean:
+            body = entry.get("text", "")
+            q_no = entry.get("question_no", "01").zfill(2)
+            tut_no = entry.get("tutorial_no", "00").zfill(2)
+            year = int(entry.get("year", 2024))
+            cid = entry.get("canonical_id") or guess_canonical(body) or "intro_dbms"
+            canon_id = cid if cid in canon_names else "intro_dbms"
             records.append(
                 {
-                    "question_id": f"IT2040_{year}_Tutorial{tut_no.zfill(2)}_Q{q['q_no'].zfill(2)}",
+                    "question_id": entry.get("question_id") or f"IT2040_{year}_Tutorial{tut_no}_Q{q_no}",
                     "source_type": "tutorial",
-                    "source_id": f"IT2040 Tutorial {tut_no}",
+                    "source_id": entry.get("source_id") or f"IT2040 Tutorial {int(tut_no)}",
                     "canonical_topic": canon_names[canon_id],
                     "canonical_id": canon_id,
                     "subtopic": body[:300],
-                    "bloom_level": bloom_from_keywords(body),
+                    "bloom_level": entry.get("bloom_level") or bloom_from_keywords(body),
                     "difficulty": difficulty_from_marks(0),
                     "marks": 0,
-                    "question_type": question_type_from_text(body),
+                    "question_type": entry.get("question_type") or question_type_from_text(body),
                     "text": body,
                     "year": year,
                     "semester": 1,
                     "original_topic_label": body[:80],
                 }
             )
+    else:
+        tut_dir = BASE / "tutorial"
+        for pdf in sorted(tut_dir.glob("*.pdf")):
+            txt = extract_text(pdf)
+            ym = re.search(r"Semester\s*\d,\s*(20\d{2})", txt)
+            if not ym:
+                ym = re.search(r"Semester\s*1,\s*(20\d{2})", txt)
+            year = int(ym.group(1)) if ym else 2024
+            m = re.search(r"Tutorial\s*0*(\d+)", pdf.stem, re.IGNORECASE)
+            tut_no = m.group(1) if m else "0"
+            qs = parse_tutorial_questions(txt)
+            if not qs:
+                continue
+            for q in qs:
+                body = q["body"]
+                tut_canon = TUTORIAL_TOPIC_MAP.get(tut_no.zfill(2))
+                guess = guess_canonical(body)
+                if tut_canon:
+                    if guess == tut_canon:
+                        canon_id = guess
+                    elif guess in ("intro_dbms",) and tut_canon in ("sql", "database_programming", "schema_refinement", "database_security"):
+                        canon_id = tut_canon
+                    elif guess:
+                        canon_id = guess if guess in canon_names else tut_canon
+                    else:
+                        canon_id = tut_canon
+                else:
+                    canon_id = guess if guess and guess in canon_names else "intro_dbms"
+                    records.append(
+                        {
+                            "question_id": f"IT2040_{year}_Tutorial{tut_no.zfill(2)}_Q{q['q_no'].zfill(2)}",
+                            "source_type": "tutorial",
+                            "source_id": f"IT2040 Tutorial {tut_no}",
+                            "canonical_topic": canon_names[canon_id],
+                            "canonical_id": canon_id,
+                            "subtopic": body[:300],
+                            "bloom_level": bloom_from_keywords(body),
+                            "difficulty": difficulty_from_marks(0),
+                            "marks": 0,
+                            "question_type": question_type_from_text(body),
+                            "text": body,
+                            "year": year,
+                            "semester": 1,
+                            "original_topic_label": body[:80],
+                        }
+                    )
 
     return records
 
