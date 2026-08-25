@@ -16,6 +16,7 @@ import {
 } from "../ui/alert-dialog";
 import {
   AssessmentMode,
+  TechnicalAccuracyAI,
   VivaAssessment,
 } from "./types";
 import {
@@ -23,6 +24,7 @@ import {
   parseFusionWeights,
   resolveOfficialMark,
 } from "./officialMark";
+import { TechnicalAccuracyPanel } from "./TechnicalAccuracyPanel";
 
 interface EvaluationPanelProps {
   assessment?: VivaAssessment;
@@ -30,6 +32,8 @@ interface EvaluationPanelProps {
   assessmentMode: AssessmentMode;
   technicalAccuracy: number | null;
   onChangeTechnicalAccuracy: (value: number) => void;
+  /** AI-suggested score + per-concept evidence; pre-fills the slider above but never publishes on its own. */
+  technicalAccuracyAI?: TechnicalAccuracyAI;
   studentId: string;
   onChangeStudentId: (value: string) => void;
   aiRecommendation: string;
@@ -51,6 +55,7 @@ export function EvaluationPanel({
   assessmentMode,
   technicalAccuracy,
   onChangeTechnicalAccuracy,
+  technicalAccuracyAI,
   studentId,
   onChangeStudentId,
   aiRecommendation,
@@ -169,12 +174,22 @@ export function EvaluationPanel({
         </p>
       </div>
 
+      {withTech && technicalAccuracyAI && (
+        <div className="mt-4 rounded-lg border border-border p-3">
+          <TechnicalAccuracyPanel evaluation={technicalAccuracyAI} />
+        </div>
+      )}
+
       {withTech && (
         <div className="mt-4">
           <div className="flex items-center justify-between text-sm gap-2">
             <div>
               <div className="text-foreground">Technical accuracy</div>
-              <div className="text-xs text-muted-foreground">Examiner only — not inferred from video</div>
+              <div className="text-xs text-muted-foreground">
+                {technicalAccuracyAI?.overall_score != null
+                  ? "Pre-filled from the AI suggestion above — examiner decides the final score"
+                  : "Examiner only — not inferred from video"}
+              </div>
             </div>
             <span className="font-medium shrink-0">
               {technicalAccuracy != null ? `${technicalAccuracy} / 10` : "— / 10"}
