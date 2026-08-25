@@ -8,7 +8,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
   const toggleTheme = () => setTheme(resolvedTheme === "dark" ? "light" : "dark");
 
   return (
-    <header className="bg-background border-b border-border px-8 py-4 flex items-center gap-4 sticky top-0 z-10 backdrop-blur bg-background/80">
+    <header className="print:hidden bg-background border-b border-border px-8 py-4 flex items-center gap-4 sticky top-0 z-10 backdrop-blur bg-background/80">
       <div className="flex-1 min-w-0">
         <h1 className="tracking-tight text-xl">{title}</h1>
         {subtitle && <div className="text-sm text-muted-foreground mt-0.5">{subtitle}</div>}

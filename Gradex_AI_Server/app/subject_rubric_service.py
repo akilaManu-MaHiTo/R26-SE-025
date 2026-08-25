@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
+from pymongo.errors import DuplicateKeyError
 from pypdf import PdfReader
 
 _ENV_LOADED = False
@@ -257,6 +258,17 @@ async def get_subject_rubric(db_instance, subject_code: str) -> Optional[Dict[st
     return doc
 
 
+MAX_UPSERT_RETRIES = 5
+
+
+async def _ensure_subject_rubric_indexes(collection) -> None:
+    try:
+        await collection.create_index("subject_code", unique=True)
+    except Exception:
+        # Best-effort: a transient connectivity blip here shouldn't block a write.
+        pass
+
+
 async def upsert_subject_rubric(
     db_instance,
     subject_code: str,
@@ -269,19 +281,46 @@ async def upsert_subject_rubric(
     Re-uploading the same filename replaces only that file's concepts;
     concepts from other files for the same subject are kept. Concepts are
     deduped by name (case-insensitive) across files, keeping the newest.
+
+    Concurrency: two lecturers uploading different files for the same
+    subject_code at the same moment is a legitimate scenario, not a misuse.
+    A plain find-then-update would let one write silently clobber the other
+    (confirmed by test_subject_rubric_service.py before this fix). This uses
+    optimistic concurrency instead: each document carries a `version`, the
+    write is conditioned on the version we read, and a version mismatch (or
+    a duplicate-key on first insert) means someone else wrote first — so we
+    re-read and re-merge rather than overwrite blindly, up to
+    MAX_UPSERT_RETRIES times.
     """
     collection = _collection(db_instance)
     if collection is None:
         raise RuntimeError("MongoDB is not connected.")
 
-    now = datetime.now(timezone.utc)
-    tagged = [{**concept, "source_file": filename} for concept in new_concepts]
+    await _ensure_subject_rubric_indexes(collection)
 
-    existing = await collection.find_one({"subject_code": subject_code})
-    if existing is None:
-        merged_concepts = tagged
-        source_files = [{"filename": filename, "uploaded_at": now}]
-    else:
+    for _attempt in range(MAX_UPSERT_RETRIES):
+        now = datetime.now(timezone.utc)
+        tagged = [{**concept, "source_file": filename} for concept in new_concepts]
+        existing = await collection.find_one({"subject_code": subject_code})
+
+        if existing is None:
+            doc = {
+                "subject_code": subject_code,
+                "subject_name": subject_name or subject_code,
+                "source_files": [{"filename": filename, "uploaded_at": now}],
+                "concepts": tagged,
+                "generated_at": now,
+                "updated_at": now,
+                "version": 1,
+            }
+            try:
+                await collection.insert_one(doc)
+                return await get_subject_rubric(db_instance, subject_code)
+            except DuplicateKeyError:
+                # Someone else created the document between our find_one and
+                # insert_one — retry as a merge against what they just wrote.
+                continue
+
         kept = [
             c for c in (existing.get("concepts") or []) if c.get("source_file") != filename
         ]
@@ -295,22 +334,28 @@ async def upsert_subject_rubric(
         ]
         source_files.append({"filename": filename, "uploaded_at": now})
 
-    doc = {
-        "subject_code": subject_code,
-        "subject_name": subject_name or (existing or {}).get("subject_name") or subject_code,
-        "source_files": source_files,
-        "concepts": merged_concepts,
-        "updated_at": now,
-    }
+        current_version = existing.get("version", 0)
+        result = await collection.update_one(
+            {"subject_code": subject_code, "version": current_version},
+            {
+                "$set": {
+                    "subject_code": subject_code,
+                    "subject_name": subject_name or existing.get("subject_name") or subject_code,
+                    "source_files": source_files,
+                    "concepts": merged_concepts,
+                    "updated_at": now,
+                    "version": current_version + 1,
+                }
+            },
+        )
+        if result.matched_count == 1:
+            return await get_subject_rubric(db_instance, subject_code)
+        # Version mismatch: someone else updated between our read and write. Retry.
 
-    # Mongo rejects the same field path in both $set and $setOnInsert on one
-    # update, so generated_at must only ever be given to one of them.
-    update: Dict[str, Any] = {"$set": doc}
-    if existing is None:
-        update["$setOnInsert"] = {"generated_at": now}
-
-    await collection.update_one({"subject_code": subject_code}, update, upsert=True)
-    return await get_subject_rubric(db_instance, subject_code)
+    raise RuntimeError(
+        f"Could not save subject rubric for {subject_code!r} after {MAX_UPSERT_RETRIES} "
+        "retries — too many concurrent uploads for the same subject. Try again."
+    )
 
 
 async def replace_subject_rubric(
