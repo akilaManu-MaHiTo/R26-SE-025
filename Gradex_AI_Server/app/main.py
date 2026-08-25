@@ -253,6 +253,87 @@ async def diagram_evaluate_details():
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+class SubjectRubricConceptPayload(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    weight: float = Field(default=3.0, ge=0, le=5)
+
+
+class SubjectRubricUpdatePayload(BaseModel):
+    subject_name: str
+    concepts: list[SubjectRubricConceptPayload]
+
+
+@app.post("/api/subject-content/upload", dependencies=[Depends(require_api_key)])
+async def upload_subject_content(
+    file: UploadFile = File(...),
+    subject_code: str = Form(...),
+    subject_name: str = Form(...),
+):
+    """Upload a subject PDF; extracts its text and asks Groq to distill it into
+    a concept rubric (list of {name, description, weight}) used by
+    /api/viva-analyze's optional technical-accuracy step. Independent of
+    GradingEngine/VivaEvaluationEngine — see subject_rubric_service.py."""
+    from Gradex_AI_Server.app.subject_rubric_service import (
+        RubricGenerationError,
+        extract_pdf_text,
+        generate_concept_rubric,
+        upsert_subject_rubric,
+    )
+
+    filename = file.filename or ""
+    if Path(filename).suffix.lower() != ".pdf":
+        raise HTTPException(status_code=400, detail="Only PDF uploads are supported.")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty upload.")
+
+    code = subject_code.strip()
+    name = subject_name.strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="subject_code is required.")
+
+    tmp_path = UPLOAD_DIR / f"{uuid4().hex}.pdf"
+    tmp_path.write_bytes(contents)
+    try:
+        text = extract_pdf_text(str(tmp_path))
+        concepts = generate_concept_rubric(text, name or code)
+        return await upsert_subject_rubric(db_instance, code, name, filename, concepts)
+    except RubricGenerationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to process subject content: {exc}") from exc
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+@app.get("/api/subject-content/{subject_code}", dependencies=[Depends(require_api_key)])
+async def get_subject_content(subject_code: str):
+    from Gradex_AI_Server.app.subject_rubric_service import get_subject_rubric
+
+    rubric = await get_subject_rubric(db_instance, subject_code)
+    if rubric is None:
+        raise HTTPException(status_code=404, detail="No subject rubric found for this subject_code.")
+    return rubric
+
+
+@app.put("/api/subject-content/{subject_code}", dependencies=[Depends(require_api_key)])
+async def update_subject_content(subject_code: str, payload: SubjectRubricUpdatePayload):
+    """Lets a lecturer review/curate the AI-drafted concept rubric before it's
+    used for grading."""
+    from Gradex_AI_Server.app.subject_rubric_service import replace_subject_rubric
+
+    concepts = [c.model_dump() for c in payload.concepts]
+    try:
+        return await replace_subject_rubric(db_instance, subject_code, payload.subject_name, concepts)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 def _require_marks_collection():
     if db_instance.marks_col is None:
         raise HTTPException(
@@ -367,6 +448,7 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
 async def viva_analyze(
     video: UploadFile = File(...),
     assessment_mode: str = Form(default="WITHOUT_TECHNICAL_ACCURACY"),
+    subject_code: Optional[str] = Form(default=None),
 ):
     """
     Analyze a viva recording for emotion detection and engagement scoring.
@@ -377,6 +459,11 @@ async def viva_analyze(
     modules. Only WITHOUT auto-publishes; WITH always leaves the mark as an
     unpublished draft so a human must enter a technical score and publish before
     it counts as a grade — see PRD "no grade issued purely on AI authority".
+
+    `subject_code` is optional. When set and a concept rubric exists for it
+    (see /api/subject-content), an AI-suggested technical_accuracy_ai score is
+    attached to the result as an advisory panel — never auto-published; the
+    examiner still enters/reviews the technical score themselves.
 
     Returns:
         - timeline: Frame-by-frame emotion and engagement analysis
@@ -439,6 +526,33 @@ async def viva_analyze(
         analysis_complete = time.time()
         analysis_time = analysis_complete - analysis_start
         total_time = analysis_complete - request_start
+
+        # Optional technical-accuracy step. Deliberately NOT part of
+        # analyze_video_file/viva_service.py's internal chain — it's layered
+        # on here as a decoupled post-processing call so that file, and the
+        # rest of VivaEvaluationEngine's existing pipeline, stay untouched.
+        # subject_code may be the raw Form(...) sentinel object (not None) when
+        # this handler is called directly, bypassing FastAPI's request parsing —
+        # as the HTTP-layer tests do (see requested_mode above for the same issue).
+        code = subject_code.strip() if isinstance(subject_code, str) else ""
+        if code:
+            try:
+                from Gradex_AI_Server.app.subject_rubric_service import get_subject_rubric
+                from VivaEvaluationEngine.services.technical_accuracy import (
+                    attach_technical_accuracy,
+                )
+
+                concept_rubric = await get_subject_rubric(db_instance, code)
+                result = attach_technical_accuracy(result, concept_rubric)
+            except Exception as tech_exc:
+                print(f"[VIVA] Warning: technical-accuracy scoring failed ({tech_exc})")
+                result["technical_accuracy_ai"] = {
+                    "status": "unavailable",
+                    "model": None,
+                    "overall_score": None,
+                    "concepts": [],
+                    "error": str(tech_exc),
+                }
 
         print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")
         # Persist the result to MongoDB (vivamark.marks). Best-effort: a

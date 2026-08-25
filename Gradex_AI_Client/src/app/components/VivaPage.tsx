@@ -14,6 +14,7 @@ import {
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { AIPageBanner, AIBadgePill } from "./AIBrand";
@@ -55,6 +56,10 @@ export function VivaPage() {
 
   const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>("WITHOUT_TECHNICAL_ACCURACY");
   const [technicalAccuracy, setTechnicalAccuracy] = useState<number | null>(null);
+  // Optional link to a subject's concept rubric (see /api/subject-content) so
+  // the server can attach an AI-suggested technical_accuracy_ai score. Only
+  // meaningful in WITH_TECHNICAL_ACCURACY mode; never auto-published either way.
+  const [subjectCode, setSubjectCode] = useState("");
   const [studentId, setStudentId] = useState("");
   const [published, setPublished] = useState(false);
   const [autoPublishedWithoutTech, setAutoPublishedWithoutTech] = useState(false);
@@ -257,6 +262,9 @@ export function VivaPage() {
     // the server uses this to decide whether the mark may auto-publish (see
     // main.py::viva_analyze). Technical vivas never auto-publish.
     formData.append("assessment_mode", assessmentMode);
+    if (assessmentMode === "WITH_TECHNICAL_ACCURACY" && subjectCode.trim()) {
+      formData.append("subject_code", subjectCode.trim());
+    }
 
     try {
       const apiUrl = `${backendBaseUrl}/api/viva-analyze`;
@@ -314,7 +322,10 @@ export function VivaPage() {
       const data = JSON.parse(response) as AnalysisResult;
       setAnalysisResult(data);
       setAnalysisPhase("complete");
-      setTechnicalAccuracy(null);
+      // Pre-fill from the AI suggestion when available; the examiner can still
+      // adjust it before publishing — see EvaluationPanel's Technical accuracy slider.
+      const suggested = data.technical_accuracy_ai?.overall_score;
+      setTechnicalAccuracy(suggested != null ? Math.round(suggested) : null);
       const wasAutoPublished = Boolean(data.auto_published && data.published);
       setAutoPublishedWithoutTech(wasAutoPublished);
       setPublished(wasAutoPublished);
@@ -428,6 +439,20 @@ export function VivaPage() {
                 ? "Technical modules — the mark stays a draft until an examiner enters a technical accuracy score and publishes. Chosen once, before uploading or recording."
                 : "Communication / presentation vivas — the AI performance score saves automatically once analysis completes. Chosen once, before uploading or recording."}
             </p>
+            {assessmentMode === "WITH_TECHNICAL_ACCURACY" && (
+              <div className="mt-3">
+                <label className="text-xs text-muted-foreground" htmlFor="viva-subject-code">
+                  Subject code (optional — links to an uploaded concept rubric for an AI-suggested score)
+                </label>
+                <Input
+                  id="viva-subject-code"
+                  className="mt-1 max-w-xs"
+                  value={subjectCode}
+                  onChange={(e) => setSubjectCode(e.target.value)}
+                  placeholder="e.g. CS3021"
+                />
+              </div>
+            )}
           </div>
 
           <Tabs value={sourceTab} onValueChange={(value) => setSourceTab(value as "upload" | "live")}>
@@ -714,6 +739,7 @@ export function VivaPage() {
                   assessmentMode={assessmentMode}
                   technicalAccuracy={technicalAccuracy}
                   onChangeTechnicalAccuracy={setTechnicalAccuracy}
+                  technicalAccuracyAI={analysisResult.technical_accuracy_ai}
                   studentId={studentId}
                   onChangeStudentId={setStudentId}
                   aiRecommendation={aiRecommendation}

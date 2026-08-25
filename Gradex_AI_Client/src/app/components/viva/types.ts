@@ -95,6 +95,30 @@ export interface LlmEvaluation {
   formula_fallback?: Record<string, LlmCriterionScore>;
 }
 
+export interface TechnicalAccuracyConcept {
+  concept_id: string;
+  name: string;
+  covered: boolean;
+  correct: boolean | null;
+  evidence_quote: string | null;
+  score: number;
+  weight?: number;
+}
+
+/**
+ * AI-suggested technical-accuracy score, computed by comparing the transcript
+ * against a lecturer-provided subject concept rubric (see /api/subject-content).
+ * Advisory only — distinct from assessment.technical_accuracy, which stays the
+ * examiner-entered value that actually gets published (see EvaluationPanel.tsx).
+ */
+export interface TechnicalAccuracyAI {
+  status?: "success" | "partial" | "skipped" | "unavailable" | string;
+  model?: string | null;
+  overall_score?: number | null;
+  concepts?: TechnicalAccuracyConcept[];
+  error?: string;
+}
+
 export interface DiarizationSpeaker {
   id?: string;
   role?: string;
@@ -309,6 +333,7 @@ export interface AnalysisResult {
   audio_analysis?: AudioAnalysis;
   llm_evaluation?: LlmEvaluation;
   qa_analysis?: QaAnalysis;
+  technical_accuracy_ai?: TechnicalAccuracyAI;
   assessment?: VivaAssessment;
   mark_id?: string;
   published?: boolean;
