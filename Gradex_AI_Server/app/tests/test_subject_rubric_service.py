@@ -13,6 +13,7 @@ import asyncio
 import unittest
 
 from bson import ObjectId
+from pymongo.errors import DuplicateKeyError
 
 from Gradex_AI_Server.app.subject_rubric_service import (
     get_subject_rubric,
@@ -22,14 +23,34 @@ from Gradex_AI_Server.app.subject_rubric_service import (
 
 
 class FakeSubjectRubricCollection:
-    """In-memory stand-in for db_instance.db["subject_rubrics"]."""
+    """In-memory stand-in for db_instance.db["subject_rubrics"], with enough
+    of Mongo's real semantics (unique-index conflicts, conditional-match
+    update_one, $set/$setOnInsert conflict rejection) to actually catch the
+    class of bug a naive in-memory dict would silently paper over."""
 
     def __init__(self):
         self.docs: dict[str, dict] = {}
+        self._unique_subject_code = False
+
+    async def create_index(self, field, unique=False, **_kwargs):
+        if field == "subject_code" and unique:
+            self._unique_subject_code = True
 
     async def find_one(self, query):
         doc = self.docs.get(query.get("subject_code"))
         return dict(doc) if doc else None
+
+    async def insert_one(self, doc):
+        code = doc.get("subject_code")
+        if self._unique_subject_code and code in self.docs:
+            raise DuplicateKeyError(f"duplicate key: subject_code={code!r}")
+        stored = {"_id": ObjectId(), **doc}
+        self.docs[code] = stored
+
+        class Result:
+            inserted_id = stored["_id"]
+
+        return Result()
 
     async def update_one(self, query, update, upsert=False):
         code = query.get("subject_code")
@@ -47,6 +68,16 @@ class FakeSubjectRubricCollection:
                 f"$set and $setOnInsert both target: {sorted(conflicting)} "
                 "(MongoDB WriteError code 40 in real usage)"
             )
+
+        # Optimistic-concurrency queries (e.g. {"subject_code": ..., "version": N})
+        # must only match a document whose current version equals what the
+        # caller read — otherwise this is a stale write and should report
+        # matched_count=0, exactly like a real conditioned update_one would.
+        if existing is not None and "version" in query and existing.get("version") != query["version"]:
+            class Result:
+                matched_count = 0
+
+            return Result()
 
         if existing is None:
             if not upsert:
@@ -189,25 +220,33 @@ class ReplaceTests(unittest.TestCase):
 
 
 class ConcurrentUpsertRaceTest(unittest.TestCase):
-    """Characterizes a known limitation: upsert_subject_rubric does a
-    find_one then update_one as two separate round trips, not an atomic
-    read-modify-write. Two concurrent uploads for different files on the
-    same subject_code can race and one can silently lose the other's
-    concepts. This test documents that behavior rather than asserting it
-    is safe — see the assertion below and the note in the docstring."""
+    """upsert_subject_rubric uses optimistic concurrency (a version field +
+    retry-on-conflict) specifically so two lecturers uploading different
+    files for the same subject_code at the same moment don't silently
+    clobber each other. These tests force the worst-case interleaving —
+    both readers see the same stale state before either writes — and assert
+    both uploads still survive."""
 
-    def test_interleaved_upserts_can_lose_a_write(self):
-        collection = FakeSubjectRubricCollection()
-        db_instance = FakeDbInstance(collection)
-
+    def _with_interleaved_reads(self, collection):
+        """Forces every find_one to yield control right after reading, so two
+        concurrent callers both observe the same pre-write state — the
+        precise interleaving that would lose a write under plain
+        find-then-update, and that the version-conditioned update_one must
+        detect and retry past."""
         real_find_one = collection.find_one
 
         async def delayed_find_one(query):
             result = await real_find_one(query)
-            await asyncio.sleep(0)  # yield control, allowing interleaving
+            await asyncio.sleep(0)
             return result
 
         collection.find_one = delayed_find_one  # type: ignore[method-assign]
+
+    def test_interleaved_creates_both_survive(self):
+        """Worst case: neither writer has created the subject yet."""
+        collection = FakeSubjectRubricCollection()
+        db_instance = FakeDbInstance(collection)
+        self._with_interleaved_reads(collection)
 
         async def run_both():
             await asyncio.gather(
@@ -218,13 +257,29 @@ class ConcurrentUpsertRaceTest(unittest.TestCase):
         _run(run_both())
         final = _run(get_subject_rubric(db_instance, "CS101"))
         names = {c["name"] for c in final["concepts"]}
-        # Document actual behavior: with interleaved reads, the loser's
-        # write can be silently dropped instead of merged. If this starts
-        # asserting {"A", "B"} on its own, the race was fixed upstream —
-        # until then, upload flows should treat concurrent uploads to the
-        # same subject_code as unsafe and serialize them client-side.
-        self.assertTrue(names.issubset({"A", "B"}))
-        self.assertGreaterEqual(len(names), 1)
+        self.assertEqual(names, {"A", "B"})
+
+    def test_interleaved_updates_both_survive(self):
+        """Worst case: subject already exists, two more files race in."""
+        collection = FakeSubjectRubricCollection()
+        db_instance = FakeDbInstance(collection)
+        _run(
+            upsert_subject_rubric(
+                db_instance, "CS101", "Databases", "zero.pdf", _concepts("Zero")
+            )
+        )
+        self._with_interleaved_reads(collection)
+
+        async def run_both():
+            await asyncio.gather(
+                upsert_subject_rubric(db_instance, "CS101", "Databases", "a.pdf", _concepts("A")),
+                upsert_subject_rubric(db_instance, "CS101", "Databases", "b.pdf", _concepts("B")),
+            )
+
+        _run(run_both())
+        final = _run(get_subject_rubric(db_instance, "CS101"))
+        names = {c["name"] for c in final["concepts"]}
+        self.assertEqual(names, {"Zero", "A", "B"})
 
 
 if __name__ == "__main__":
