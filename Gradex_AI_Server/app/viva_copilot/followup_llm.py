@@ -86,7 +86,7 @@ def _default_chat(
 ) -> str:
     key = api_key()
     if not key:
-        raise RuntimeError("No LLM API key configured (set AI_API_KEY or GROQ_API_KEY)")
+        raise RuntimeError("No LLM API key configured (set GROQ_API_KEY, AI_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY)")
     return groq_chat(system_prompt, payload, api_key_value=key, model=chat_model(), on_delta=on_delta)
 
 

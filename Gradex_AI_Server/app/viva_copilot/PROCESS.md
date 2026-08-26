@@ -91,7 +91,7 @@ Route: `routeConfig.tsx` → path `/viva-evaluation/live-copilot`.
 | `pipeline.py` | STT ingest → pause detect → bulk LLM |
 | `session_store.py` | In-memory `CopilotSession` + `broadcast()` |
 | `stt.py` | Whisper wrapper + hallucination filter |
-| `groq_client.py` | Groq HTTP (isolated; not `llm_judge.py`) |
+| `groq_client.py` | Multi-provider LLM HTTP (Groq/Gemini/OpenRouter chain; not `llm_judge.py`) |
 | `followup_llm.py` | Chat prompt → JSON suggestions (max 3) |
 | `answer_detector.py` | Min words, duplicate hash |
 | `context_builder.py` | Sliding context (last 5 Q/A, 4000-char excerpt) |
@@ -204,9 +204,9 @@ Then:
 
 ```
 followup_llm.generate_followups
-  → groq_client.groq_chat
-     POST https://api.groq.com/openai/v1/chat/completions
-     default model openai/gpt-oss-20b
+  → groq_client.groq_chat (provider chain: Groq -> Gemini -> OpenRouter)
+     POST to whichever provider has a configured key and available model
+     default Groq model openai/gpt-oss-20b
      fallbacks: openai/gpt-oss-120b, qwen/qwen3.6-27b
   → JSON { analysis, main_points, suggestions[≤3] }
   → WS presentation.points.extracted
@@ -324,14 +324,29 @@ Lost on process restart. Not written to Mongo.
 
 ---
 
-## 8. Groq models and keys
+## 8. LLM providers and keys (multi-provider chain)
+
+Chat completions use a **Groq → Gemini → OpenRouter** free-tier fallback chain.
+No local gateway (`localhost:20128`) is required — all providers are remote APIs.
 
 Loaded from `Gradex_AI_Server/app/.env` by `groq_client._load_env()`.
 
+| Provider | Base URL | Key search order | Default models |
+|---|---|---|---|
+| **Groq** | `https://api.groq.com/openai/v1/chat/completions` | `VIVA_COPILOT_API_KEY`, `VIVA_LLM_API_KEY`, `GROQ_API_KEY`, `AI_API_KEY`, `BACKUP_API_KEY` | `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `qwen/qwen3.6-27b` |
+| **Gemini** | `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | `GEMINI_API_KEY`, `GOOGLE_API_KEY` | `gemini-2.0-flash`, `gemini-1.5-flash` |
+| **OpenRouter** | `https://openrouter.ai/api/v1/chat/completions` | `OPENROUTER_API_KEY` | `meta-llama/llama-3.1-8b-instruct:free`, `google/gemma-2-9b-it:free`, `mistralai/mistral-7b-instruct:free` |
+
+- If a provider has **no key configured**, it is skipped entirely.
+- Within each provider, every model candidate is tried; 404/429/5xx triggers the next candidate.
+- When all models of a provider fail, the chain moves to the next provider.
+- Override default models with `VIVA_COPILOT_LLM_MODEL` (Groq preferred), `GEMINI_MODEL`, `OPENROUTER_MODEL`.
+
+**STT** stays on Groq Whisper only:
+
 | Setting | Default |
 |---|---|
-| Key search order | `VIVA_COPILOT_API_KEY`, `VIVA_LLM_API_KEY`, `GROQ_API_KEY`, `AI_API_KEY`, `BACKUP_API_KEY` |
-| Chat model | `VIVA_COPILOT_LLM_MODEL` or `openai/gpt-oss-20b` |
+| STT key search | `VIVA_COPILOT_STT_API_KEY`, `STT_API_KEY`, `GROQ_API_KEY`, `AI_API_KEY`, ... |
 | STT model | `VIVA_COPILOT_STT_MODEL` or `whisper-large-v3-turbo` |
 
 Copilot **ignores** `GROQ_MODEL` used by other Gradex features.

@@ -17,16 +17,14 @@ services:
       - GRADEX_API_KEY=dev-secret-key-12345
       - AI_API_KEY=sk-c87fa06deddc80c1-7qjnxv-f1754cd8
       - GROQ_API_KEY=sk-c87fa06deddc80c1-7qjnxv-f1754cd8
-      - LLM_BASE_URL=http://host.docker.internal:20128/v1
-      - OPENAI_BASE_URL=http://host.docker.internal:20128/v1
-      - VIVA_LLM_MODEL=google
-      - GROQ_MODEL=google
-      - VIVA_COPILOT_LLM_MODEL=google
+      - GEMINI_API_KEY=
+      - OPENROUTER_API_KEY=
+      - VIVA_LLM_MODEL=openai/gpt-oss-20b
+      - GROQ_MODEL=openai/gpt-oss-20b
+      - VIVA_COPILOT_LLM_MODEL=openai/gpt-oss-20b
       - VIVA_COPILOT_STT_MODEL=groq/whisper-large-v3-turbo
       - VIVA_COPILOT_MIN_STT_GAP=0.4
       - PORT=8001
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     networks:
       - gradex-network
     restart: unless-stopped
