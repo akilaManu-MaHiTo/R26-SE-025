@@ -1,6 +1,7 @@
 """FastAPI routes for the isolated live interviewer copilot."""
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
@@ -14,6 +15,7 @@ from Gradex_AI_Server.app.viva_copilot.pipeline import (
     enter_viva_phase,
     finalize_pending,
     ingest_audio_chunk,
+    ingest_text,
     start_presentation,
 )
 from Gradex_AI_Server.app.viva_copilot.session_store import broadcast, store
@@ -140,9 +142,23 @@ async def copilot_ws(websocket: WebSocket, session_id: str) -> None:
             text = message.get("text")
             if not text:
                 continue
-            # Optional JSON control over the same socket.
-            if text.strip() == "ping":
+            stripped = text.strip()
+            if stripped == "ping":
                 await websocket.send_json({"event": "pong", "sessionId": session_id})
+                continue
+            # Client-side Web Speech API result: {"type": "speech", "text": "...", "isFinal": bool}
+            # This is the fast path — see pipeline.ingest_text for why it
+            # bypasses Groq Whisper STT entirely.
+            try:
+                payload = json.loads(stripped)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if isinstance(payload, dict) and payload.get("type") == "speech":
+                await ingest_text(
+                    session,
+                    str(payload.get("text") or ""),
+                    is_final=bool(payload.get("isFinal")),
+                )
     except WebSocketDisconnect:
         pass
     finally:

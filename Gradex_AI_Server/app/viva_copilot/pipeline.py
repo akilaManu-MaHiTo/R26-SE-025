@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import time
 from typing import Any, Callable, Dict, Optional
 from uuid import uuid4
@@ -16,9 +17,10 @@ from Gradex_AI_Server.app.viva_copilot.stt import transcribe_chunk
 GenerateFn = Callable[[Dict[str, Any], Optional[list]], Dict[str, Any]]
 TranscribeFn = Callable[..., str]
 
-# Bulk LLM during presentation: not every STT chunk. Free Groq is ~30k TPM / low RPM.
-PRESENTATION_SUGGEST_MIN_WORDS = 28
-PRESENTATION_SUGGEST_MIN_SECONDS = 40.0
+# Bulk LLM during presentation: tuned for faster live feedback.
+PRESENTATION_SUGGEST_MIN_WORDS = 5
+PRESENTATION_SUGGEST_MIN_SECONDS = 3.0
+
 
 
 def should_refresh_presentation_suggestions(
@@ -38,6 +40,18 @@ def should_refresh_presentation_suggestions(
     if last_at and current_time - last_at < min_seconds:
         return False
     return True
+
+
+def _accepts_on_partial_suggestion(fn: Callable[..., Any]) -> bool:
+    try:
+        signature = inspect.signature(fn)
+    except (TypeError, ValueError):
+        return False
+    params = signature.parameters.values()
+    return any(
+        p.name == "on_partial_suggestion" or p.kind == inspect.Parameter.VAR_KEYWORD
+        for p in params
+    )
 
 
 def _append_utterance(buffer: str, piece: str) -> str:
@@ -143,13 +157,53 @@ async def ingest_audio_chunk(
         )
 
 
+async def ingest_text(
+    session: CopilotSession,
+    text: str,
+    *,
+    is_final: bool,
+    generate: Optional[GenerateFn] = None,
+) -> None:
+    """Ingest a transcript fragment produced client-side (browser Web Speech
+    API) instead of server-side Groq Whisper STT.
+
+    This is the fast path: the browser's on-device/network speech engine
+    returns text with ~0 network latency, so we can display it and — once a
+    final segment arrives — kick off follow-up generation immediately,
+    without waiting for an audio chunk to be uploaded and transcribed by
+    Groq. Groq STT (``ingest_audio_chunk``) keeps running in parallel as an
+    accuracy backstop; whichever path finalizes an utterance first wins
+    because ``detect_final_answer`` de-dupes by content hash.
+    """
+    if session.phase not in {"presentation", "viva"}:
+        return
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return
+
+    if not is_final:
+        # Browser SpeechRecognition interim results already contain the full
+        # accumulated utterance-so-far, so we show it directly rather than
+        # appending (unlike the Groq audio-chunk path, which sees only the
+        # newly-transcribed slice each time).
+        async with session.lock:
+            session.utterance_buffer = cleaned
+        await broadcast(session, events.transcript_partial(session.session_id, cleaned))
+        return
+
+    async with session.lock:
+        session.utterance_buffer = ""
+        session.last_chunk_had_speech = False
+    await _finalize_utterance(session, cleaned, generate=generate)
+
+
 async def _finalize_utterance(
     session: CopilotSession,
     text: str,
     *,
     generate: Optional[GenerateFn] = None,
 ) -> None:
-    min_words = 4 if session.phase == "presentation" else 5
+    min_words = 3
     cleaned = detect_final_answer(text, session.recent_hashes, min_words=min_words)
     if not cleaned:
         return
@@ -168,6 +222,7 @@ async def _finalize_utterance(
     if session.current_question:
         session.recent_qa.append({"question": session.current_question, "answer": cleaned})
     await _run_followups(session, answer_id, candidate_answer=cleaned, generate=generate)
+
 
 
 async def enter_viva_phase(
@@ -317,8 +372,34 @@ async def _run_followups(
         presentation_excerpt=session.presentation_text(),
     )
     generate_fn = generate or generate_followups
+    loop = asyncio.get_event_loop()
+
+    def _on_partial_suggestion(suggestion: Dict[str, Any]) -> None:
+        # Called from the worker thread running generate_fn (via
+        # asyncio.to_thread). Hop back onto the event loop to broadcast so
+        # the interviewer sees the first suggestion the moment Groq streams
+        # it, instead of waiting for the whole follow-up JSON to finish.
+        asyncio.run_coroutine_threadsafe(
+            broadcast(
+                session,
+                events.followup_suggestion_partial(session.session_id, answer_id, suggestion),
+            ),
+            loop,
+        )
+
+    supports_partial = _accepts_on_partial_suggestion(generate_fn)
     try:
-        result = await asyncio.to_thread(generate_fn, context, list(session.asked_questions))
+        if supports_partial:
+            result = await asyncio.to_thread(
+                generate_fn,
+                context,
+                list(session.asked_questions),
+                on_partial_suggestion=_on_partial_suggestion,
+            )
+        else:
+            # Backwards compatible with test doubles / custom generate_fn
+            # implementations that do not accept on_partial_suggestion.
+            result = await asyncio.to_thread(generate_fn, context, list(session.asked_questions))
         analysis = result.get("analysis") or {}
         suggestions = result.get("suggestions") or []
         points = result.get("main_points") or []
