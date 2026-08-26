@@ -2,20 +2,23 @@ export type CopilotPhase = "idle" | "presentation" | "viva" | "ended";
 
 export type SuggestionPriority = "high" | "medium" | "low";
 export type SuggestionDifficulty = "basic" | "intermediate" | "advanced";
+export type BloomLevel = "Understand" | "Apply" | "Analyze" | "Evaluate" | "Remember" | "Create";
 
 export interface CopilotSuggestion {
   question: string;
   reason: string;
   difficulty: SuggestionDifficulty;
   priority: SuggestionPriority;
+  bloom_level?: BloomLevel;
+  category?: string;
 }
 
 export interface CopilotAnalysis {
   topics: string[];
-  concepts: string[];
-  technologies: string[];
-  claims: string[];
-  gaps: string[];
+  concepts?: string[];
+  technologies?: string[];
+  claims?: string[];
+  gaps?: string[];
 }
 
 export interface TranscriptTurn {
@@ -37,6 +40,7 @@ export interface SessionStateData {
   mainPoints?: string[];
   currentQuestion?: string | null;
   suggestions?: CopilotSuggestion[];
+  suggestion?: unknown;
   analysis?: CopilotAnalysis;
   transcript?: TranscriptTurn[];
   askedQuestions?: string[];
@@ -80,6 +84,11 @@ export function normalizeAnalysis(value: unknown): CopilotAnalysis | null {
   };
 }
 
+export function normalizeSuggestion(value: unknown): CopilotSuggestion | null {
+  const [first] = normalizeSuggestions([value]);
+  return first ?? null;
+}
+
 export function normalizeSuggestions(value: unknown): CopilotSuggestion[] {
   if (!Array.isArray(value)) return [];
   const out: CopilotSuggestion[] = [];
@@ -88,6 +97,10 @@ export function normalizeSuggestions(value: unknown): CopilotSuggestion[] {
     const row = item as Record<string, unknown>;
     const question = String(row.question || "").trim();
     if (!question) continue;
+    const rawBloom = String(row.bloom_level || row.bloom || "").trim();
+    const bloom_level = (["Understand", "Apply", "Analyze", "Evaluate", "Remember", "Create"].includes(rawBloom)
+      ? rawBloom
+      : "Analyze") as BloomLevel;
     out.push({
       question,
       reason: String(row.reason || "").trim(),
@@ -97,6 +110,8 @@ export function normalizeSuggestions(value: unknown): CopilotSuggestion[] {
       priority: (["high", "medium", "low"].includes(String(row.priority))
         ? row.priority
         : "medium") as SuggestionPriority,
+      bloom_level,
+      category: row.category ? String(row.category).trim() : undefined,
     });
   }
   return out;

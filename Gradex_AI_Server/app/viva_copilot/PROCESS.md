@@ -42,18 +42,28 @@ Browser (LiveCopilotPage)
   │
   │ WebSocket  (live path — no polling)
   │   WS  /api/viva-copilot/ws/{id}
-  │   → binary audio slices (~12s WebM)
+  │   → binary audio slices (~4s WebM, Groq Whisper accuracy backstop)
+  │   → JSON {"type":"speech", text, isFinal} (Web Speech API, fast path)
   │   ← JSON events (transcript, suggestions, errors)
   │
   ▼
 Gradex_AI_Server  (FastAPI, port 8001)
   router.py  →  pipeline.py  →  session_store.py  (RAM dict, not Mongo)
                      │
-                     ├─ stt.py  → Groq Whisper  POST .../audio/transcriptions
-                     └─ followup_llm.py  → Groq Chat  POST .../chat/completions
+                     ├─ ingest_text()     → bypasses STT entirely (fast path)
+                     ├─ stt.py            → Groq Whisper  POST .../audio/transcriptions (pooled httpx client)
+                     └─ followup_llm.py   → Groq Chat  POST .../chat/completions (streamed, pooled httpx client)
 ```
 
 **Why WebSocket for live work:** the browser never polls. Audio and suggestion delivery stay on one socket. REST is only for explicit lecturer actions (create, phase, ask, end). The “database” for this feature is `SessionStore` in RAM. Mongo used by the rest of Gradex is unused here.
+
+**Latency optimizations (dual-path transcription + streaming):**
+
+- **Browser Web Speech API (`CopilotCamera.tsx`)** produces interim/final transcripts with near-zero network latency and sends them as JSON text frames (`{"type":"speech", ...}`) over the same WebSocket. `pipeline.ingest_text()` consumes these directly — no Groq Whisper round-trip needed for the fast path. Supported in Chromium-based browsers; unsupported browsers silently fall back to Whisper-only.
+- **Groq Whisper (`stt.py` / `groq_client.py`)** keeps running on 4s audio slices in parallel as an accuracy backstop (technical vocabulary, unclear audio, unsupported browsers). Both paths call the same `detect_final_answer()` de-dupe logic, so whichever finalizes an utterance first "wins" and the other is naturally ignored as a duplicate.
+- **Persistent `httpx.Client`** (module-level, connection-pooled) replaces per-request `urllib.urlopen()` calls for both STT and chat completions, removing repeated TCP/TLS handshake overhead.
+- **Streamed chat completions** (`groq_chat(..., on_delta=...)`) let `followup_llm.generate_followups()` detect and emit the *first* valid suggestion object as soon as it appears in the SSE token stream, broadcast via a new `followup.suggestion.partial` event — well before the full 2-3 suggestion JSON response finishes.
+- **Tuned timers:** `SLICE_MS` (client audio slice) 2500→4000ms, `AUTO_FINALIZE_IDLE_MS` 2200→1200ms, `VIVA_COPILOT_MIN_STT_GAP` 1.2→0.4s, presentation refresh threshold 6 words/5s → 5 words/3s.
 
 ---
 
@@ -152,9 +162,10 @@ Used later as LLM context. No Groq call.
 | User | **Start presentation** (enabled only when `phase === "idle"`) |
 | Client | `POST /sessions/{id}/phase` `{ "phase": "presentation" }` |
 | Server | `start_presentation()` → `session.phase = "presentation"` → WS `session.phase` |
-| Client | `streaming` becomes true. Camera records **12s** audio slices (`SLICE_MS = 12000`). |
+| Client | `streaming` becomes true. Camera records **4s** audio slices (`SLICE_MS = 4000`) and, in parallel, runs the browser Web Speech API for instant interim/final text. |
 
-Each slice: `MediaRecorder` → `Blob` → `WebSocket.send(ArrayBuffer)` (binary, not JSON).
+Each audio slice: `MediaRecorder` → `Blob` → `WebSocket.send(ArrayBuffer)` (binary, not JSON).
+Each speech result: `WebSocket.send(JSON.stringify({type:"speech", text, isFinal}))` (text frame, fast path — see §2).
 
 ---
 
@@ -289,6 +300,7 @@ There is **no** `setInterval` poll of `/sessions/{id}` during the live session. 
 | `transcript.partial` | S→C | Grey in-progress line |
 | `transcript.final` | S→C | Append turn |
 | `presentation.points.extracted` | S→C | Main-points list |
+| `followup.suggestion.partial` | S→C | First suggestion, streamed early (before the full LLM turn finishes) |
 | `followup.suggestions.generated` | S→C | Panel + **top-right toasts** |
 | `candidate.answer.final` | S→C | Answer id (viva) |
 | `interviewer.question.asked` | S→C | Current question banner |

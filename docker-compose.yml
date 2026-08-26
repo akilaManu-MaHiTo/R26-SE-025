@@ -1,0 +1,48 @@
+version: '3.8'
+
+networks:
+  gradex-network:
+    name: gradex-network
+    driver: bridge
+
+services:
+  backend:
+    container_name: gradex-backend
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8001:8001"
+    environment:
+      - GRADEX_API_KEY=dev-secret-key-12345
+      - AI_API_KEY=sk-c87fa06deddc80c1-7qjnxv-f1754cd8
+      - GROQ_API_KEY=sk-c87fa06deddc80c1-7qjnxv-f1754cd8
+      - LLM_BASE_URL=http://host.docker.internal:20128/v1
+      - OPENAI_BASE_URL=http://host.docker.internal:20128/v1
+      - VIVA_LLM_MODEL=google
+      - GROQ_MODEL=google
+      - VIVA_COPILOT_LLM_MODEL=google
+      - VIVA_COPILOT_STT_MODEL=groq/whisper-large-v3-turbo
+      - VIVA_COPILOT_MIN_STT_GAP=0.4
+      - PORT=8001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - gradex-network
+    restart: unless-stopped
+
+  frontend:
+    container_name: gradex-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        - VITE_BACKEND_URL=http://localhost:8001
+        - VITE_GRADEX_API_KEY=dev-secret-key-12345
+    ports:
+      - "5173:80"
+    networks:
+      - gradex-network
+    depends_on:
+      - backend
+    restart: unless-stopped
