@@ -430,5 +430,63 @@ class PipelineFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(session.transcript_log, [])
 
 
+class ProviderChainTests(unittest.TestCase):
+    """Tests for the multi-provider chat chain (Groq -> Gemini -> OpenRouter)."""
+
+    def test_providers_returns_three_providers(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import _providers
+        providers = _providers()
+        names = [p.name for p in providers]
+        self.assertEqual(names, ["Groq", "Gemini", "OpenRouter"])
+
+    def test_groq_provider_has_openai_kind(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import _providers
+        groq = _providers()[0]
+        self.assertEqual(groq.kind, "openai")
+        self.assertIn("groq.com", groq.base_url)
+
+    def test_gemini_provider_has_gemini_kind(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import _providers
+        gemini = _providers()[1]
+        self.assertEqual(gemini.kind, "gemini")
+        self.assertIn("generativelanguage.googleapis.com", gemini.base_url)
+
+    def test_openrouter_provider_has_extra_headers(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import _providers
+        openrouter = _providers()[2]
+        self.assertIn("HTTP-Referer", openrouter.extra_headers)
+        self.assertIn("X-Title", openrouter.extra_headers)
+
+    def test_no_keys_raises_descriptive_error(self):
+        import os
+        from unittest.mock import patch
+        from Gradex_AI_Server.app.viva_copilot.groq_client import groq_chat
+
+        # Clear all provider keys so no provider is tried.
+        env_overrides = {
+            k: "" for k in (
+                "VIVA_COPILOT_API_KEY", "VIVA_LLM_API_KEY", "GROQ_API_KEY",
+                "AI_API_KEY", "BACKUP_API_KEY", "GEMINI_API_KEY",
+                "GOOGLE_API_KEY", "OPENROUTER_API_KEY",
+            )
+        }
+        with patch.dict(os.environ, env_overrides, clear=False):
+            with self.assertRaises(RuntimeError) as ctx:
+                groq_chat("system", {"test": True})
+            self.assertIn("No AI provider configured", str(ctx.exception))
+
+    def test_dedupe_removes_empty_and_duplicates(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import _dedupe
+        result = _dedupe(["a", "", "b", "a", "c", ""])
+        self.assertEqual(result, ["a", "b", "c"])
+
+    def test_chat_model_fallbacks_returns_groq_models(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import chat_model_fallbacks
+        fallbacks = chat_model_fallbacks()
+        self.assertIsInstance(fallbacks, list)
+        self.assertGreater(len(fallbacks), 0)
+        self.assertIn("openai/gpt-oss-20b", fallbacks)
+
+
 if __name__ == "__main__":
     unittest.main()
