@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.analytics.student_document import performance_status
 from app.api.deps import get_db
@@ -6,11 +6,21 @@ from app.db.repository import (
     find_exam_analytics,
     find_graded_submissions_for_exam,
     find_student_analytics,
+    list_all_exams,
 )
 from app.schemas.exam_analytics import ExamAnalyticsDocument
 from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
+from app.services.teaching_actions import get_teaching_actions
+from app.services.topic_canonicalization import canonicalize_topics
 
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
+
+
+@router.get("/exams")
+async def list_exams(db=Depends(get_db)):
+    """List all available exams with basic stats."""
+    exams = await list_all_exams(db)
+    return exams
 
 
 @router.get(
@@ -18,14 +28,21 @@ router = APIRouter(prefix="/lecturers", tags=["lecturers"])
     response_model=ExamAnalyticsDocument,
 )
 async def lecturer_exam_analytics(
-    course_code: str, session_name: str, db=Depends(get_db)
+    course_code: str,
+    session_name: str,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    semester: int | None = Query(None),
+    db=Depends(get_db),
 ):
-    document = await find_exam_analytics(db, course_code, session_name)
+    document = await find_exam_analytics(db, course_code, session_name, year, month, semester)
     if document is None:
         try:
-            document = await compute_exam_analytics(db, course_code, session_name)
+            document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
         except ExamNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+    canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
+    document.update(canonical)
     return ExamAnalyticsDocument.model_validate(document)
 
 
@@ -68,3 +85,24 @@ async def lecturer_student_list(
             }
         )
     return rows
+
+
+@router.get("/exams/{course_code}/{session_name}/teaching-actions")
+async def lecturer_teaching_actions(
+    course_code: str,
+    session_name: str,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    semester: int | None = Query(None),
+    db=Depends(get_db),
+):
+    document = await find_exam_analytics(db, course_code, session_name, year, month, semester)
+    if document is None:
+        raise HTTPException(status_code=404, detail="No analytics found")
+    return await get_teaching_actions(
+        db,
+        course_code,
+        session_name,
+        document.get("canonical_topic_performance", []),
+        document.get("question_performance", []),
+    )

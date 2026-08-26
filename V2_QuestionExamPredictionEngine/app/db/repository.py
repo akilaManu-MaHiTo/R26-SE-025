@@ -4,12 +4,18 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 COLLECTIONS = (
     "courses",
+    "exams",
+    "questions",
+    "rubrics",
     "rubricCollection",
     "submissions",
     "student_analytics",
+    "studentExamAnalysis",
+    "studentExamResults",
     "question_catalog",
     "question_attempts",
     "analytics_snapshots",
+    "examAnalytics",
     "exam_recommendations",
     "analysis_runs",
     "generatedQuestions",
@@ -21,10 +27,21 @@ _UNIQUE_INDEXES = {
     "question_attempts": [
         ("analysis_run_id", 1), ("exam_id", 1), ("student_key", 1), ("question_number", 1), ("part", 1),
     ],
-    "analytics_snapshots": [("subject_code", 1), ("session_name", 1), ("analytics_version", 1)],
+    "analytics_snapshots": [("subject_code", 1), ("session_name", 1), ("year", 1), ("month", 1), ("semester", 1), ("analytics_version", 1)],
+    "examAnalytics": [("subject_code", 1), ("session_name", 1), ("year", 1), ("month", 1), ("semester", 1), ("analytics_version", 1)],
     "analysis_runs": [("run_id", 1)],
-    "analyzedExams": [("subject_code", 1), ("session_name", 1)],
+    "analyzedExams": [("subject_code", 1), ("session_name", 1), ("year", 1), ("month", 1), ("semester", 1)],
     "student_analytics": [
+        ("student_id", 1),
+        ("subject_code", 1),
+        ("session_name", 1),
+    ],
+    "studentExamAnalysis": [
+        ("student_id", 1),
+        ("subject_code", 1),
+        ("session_name", 1),
+    ],
+    "studentExamResults": [
         ("student_id", 1),
         ("subject_code", 1),
         ("session_name", 1),
@@ -151,6 +168,22 @@ async def find_rubric_for_submission(
     return None
 
 
+def _with_spec_aliases(document: dict) -> dict:
+    """Return a copy enriched with spec aliases (exam_id, course, exam)."""
+    enriched = deepcopy(document)
+    subject_code = enriched.get("subject_code")
+    subject_name = enriched.get("subject_name")
+    session_name = enriched.get("session_name")
+    if subject_code and "course" not in enriched:
+        enriched["course"] = {"code": subject_code, "name": subject_name or subject_code}
+    if subject_code and session_name and "exam_id" not in enriched:
+        enriched["exam_id"] = f"{subject_code}@{session_name}"
+    # exam field already present for exam analytics; ensure student docs also have exam alias
+    if "exam_id" not in enriched and enriched.get("exam", {}).get("session_name"):
+        enriched["exam_id"] = f"{subject_code}@{enriched['exam']['session_name']}"
+    return enriched
+
+
 async def upsert_student_analytics(
     db: AsyncIOMotorDatabase, document: dict
 ) -> None:
@@ -159,8 +192,13 @@ async def upsert_student_analytics(
         "subject_code": document["subject_code"],
         "session_name": document["session_name"],
     }
+    enriched = _with_spec_aliases(document)
     await db["student_analytics"].replace_one(
-        identity, deepcopy(document), upsert=True
+        identity, deepcopy(enriched), upsert=True
+    )
+    # Spec collection alias: studentExamAnalysis (13. Recommended)
+    await db["studentExamAnalysis"].replace_one(
+        identity, deepcopy(enriched), upsert=True
     )
 
 
@@ -180,12 +218,17 @@ async def find_student_analytics(
     document = await db["student_analytics"].find_one(
         filters, sort=[("_id", -1)]
     )
+    # Fallback to spec collection name if legacy is empty (or vice versa)
+    if document is None:
+        document = await db["studentExamAnalysis"].find_one(
+            filters, sort=[("_id", -1)]
+        )
     if document is None:
         return None
 
     result = deepcopy(document)
     result.pop("_id", None)
-    return result
+    return _with_spec_aliases(result)
 
 
 async def find_graded_submission(
@@ -205,11 +248,17 @@ async def find_graded_submission(
 
 
 async def find_graded_submissions_for_exam(
-    db: AsyncIOMotorDatabase, course_code: str, session_name: str
+    db: AsyncIOMotorDatabase, course_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> list[dict]:
-    cursor = db["submissions"].find(
-        {"subject_code": course_code, "session_name": session_name, "status": "graded"}
-    )
+    query: dict = {"subject_code": course_code, "session_name": session_name, "status": "graded"}
+    if year is not None:
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+    cursor = db["submissions"].find(query)
     return await cursor.to_list(length=None)
 
 
@@ -217,38 +266,62 @@ async def upsert_exam_analytics(db: AsyncIOMotorDatabase, document: dict) -> Non
     identity = {
         "subject_code": document["subject_code"],
         "session_name": document["session_name"],
+        "year": document.get("year", 0),
+        "month": document.get("month", 0),
+        "semester": document.get("semester", 0),
         "analytics_version": document["analytics_version"],
     }
-    await db["analytics_snapshots"].replace_one(identity, deepcopy(document), upsert=True)
+    enriched = _with_spec_aliases(document)
+    await db["analytics_snapshots"].replace_one(identity, deepcopy(enriched), upsert=True)
+    # Spec collection alias: examAnalytics
+    await db["examAnalytics"].replace_one(identity, deepcopy(enriched), upsert=True)
 
 
 async def find_exam_analytics(
-    db: AsyncIOMotorDatabase, course_code: str, session_name: str
+    db: AsyncIOMotorDatabase, course_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> dict | None:
-    document = await db["analytics_snapshots"].find_one(
-        {"subject_code": course_code, "session_name": session_name}, sort=[("_id", -1)]
-    )
+    query: dict = {"subject_code": course_code, "session_name": session_name}
+    if year is not None:
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+
+    document = await db["analytics_snapshots"].find_one(query, sort=[("_id", -1)])
+    if document is None:
+        document = await db["examAnalytics"].find_one(query, sort=[("_id", -1)])
     if document is None:
         return None
     result = deepcopy(document)
     result.pop("_id", None)
-    return result
+    return _with_spec_aliases(result)
 
 
 async def upsert_exam_analysis_status(db: AsyncIOMotorDatabase, document: dict) -> None:
     identity = {
         "subject_code": document["subject_code"],
         "session_name": document["session_name"],
+        "year": document.get("year", 0),
+        "month": document.get("month", 0),
+        "semester": document.get("semester", 0),
     }
     await db["analyzedExams"].replace_one(identity, deepcopy(document), upsert=True)
 
 
 async def find_exam_analysis_status(
-    db: AsyncIOMotorDatabase, subject_code: str, session_name: str
+    db: AsyncIOMotorDatabase, subject_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> dict | None:
-    document = await db["analyzedExams"].find_one(
-        {"subject_code": subject_code, "session_name": session_name}
-    )
+    query: dict = {"subject_code": subject_code, "session_name": session_name}
+    if year is not None:
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+    document = await db["analyzedExams"].find_one(query)
     if document is None:
         return None
     result = deepcopy(document)
@@ -279,4 +352,120 @@ async def find_generated_questions(
         return None
     result = deepcopy(document)
     result.pop("_id", None)
+    return result
+
+
+# ─── Spec §5: studentExamResults — lightweight per-student exam summary ─────
+async def upsert_student_exam_result(
+    db: AsyncIOMotorDatabase, document: dict
+) -> None:
+    identity = {
+        "student_id": document["student_id"],
+        "subject_code": document.get("subject_code") or document.get("course", {}).get("code"),
+        "session_name": document.get("session_name") or document.get("exam", {}).get("session_name"),
+    }
+    # Filter out None keys to avoid collision
+    identity = {k: v for k, v in identity.items() if v}
+    await db["studentExamResults"].replace_one(identity, deepcopy(document), upsert=True)
+
+
+async def find_student_exam_results(
+    db: AsyncIOMotorDatabase, course_code: str, session_name: str
+) -> list[dict]:
+    cursor = db["studentExamResults"].find(
+        {"subject_code": course_code, "session_name": session_name}
+    )
+    docs = await cursor.to_list(length=None)
+    # Fallback to legacy derived path if spec collection empty
+    if docs:
+        cleaned = []
+        for doc in docs:
+            copy = deepcopy(doc)
+            copy.pop("_id", None)
+            cleaned.append(copy)
+        return cleaned
+    return []
+
+
+async def list_exams_with_status(db: AsyncIOMotorDatabase) -> list[dict]:
+    cursor = db["analyzedExams"].find({}, {"_id": 0}).sort(
+        [("year", -1), ("session_name", 1)]
+    )
+    return await cursor.to_list(length=100)
+
+
+async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
+    """Return a list of available exams with basic stats from rubricCollection."""
+    rubrics = await db["rubricCollection"].find(
+        {}, {"_id": 0, "subject_code": 1, "subject_name": 1, "session_name": 1, "year": 1, "month": 1, "semester": 1, "questions": 1}
+    ).to_list(length=100)
+
+    result = []
+    for rubric in rubrics:
+        course_code = rubric.get("subject_code", "")
+        session_name = rubric.get("session_name", "")
+        year = rubric.get("year", 0)
+        subject_name = rubric.get("subject_name", "")
+
+        submissions = await db["submissions"].find(
+            {"subject_code": course_code, "session_name": session_name, "status": "graded",
+             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
+            {"_id": 0, "evaluation.total_score": 1, "evaluation.max_score": 1, "max_marks_paper_total": 1}
+        ).to_list(length=500)
+
+        student_count = len(submissions)
+        avg_score = 0.0
+        avg_percentage = 0.0
+        highest_score = 0.0
+        lowest_score = 0.0
+        pass_count = 0
+        total_marks = 0.0
+
+        if student_count > 0:
+            percentages = []
+            scores = []
+            for sub in submissions:
+                ev = sub.get("evaluation") or {}
+                obtained = ev.get("total_score") or sub.get("max_marks_paper_total") or 0.0
+                maximum = ev.get("max_score") or sub.get("max_marks_paper_total") or 1.0
+                obtained = float(obtained)
+                maximum = float(maximum) if float(maximum) > 0 else 1.0
+                pct = (obtained / maximum) * 100.0
+                percentages.append(pct)
+                scores.append(obtained)
+
+            avg_percentage = round(sum(percentages) / len(percentages), 2)
+            avg_score = round(sum(scores) / len(scores), 2)
+            highest_score = round(max(scores), 2)
+            lowest_score = round(min(scores), 2)
+            pass_count = sum(1 for p in percentages if p >= 50.0)
+
+        questions = rubric.get("questions") or []
+        total_marks = sum(float(q.get("max_marks", 0)) for q in questions)
+
+        analytics = await db["analytics_snapshots"].find_one(
+            {"subject_code": course_code, "session_name": session_name, "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
+            {"_id": 0, "generated_at": 1, "analytics_version": 1}
+        )
+
+        result.append({
+            "course_code": course_code,
+            "subject_name": subject_name,
+            "session_name": session_name,
+            "year": year,
+            "month": rubric.get("month", 0),
+            "semester": rubric.get("semester", 1),
+            "total_marks": total_marks,
+            "question_count": len(questions),
+            "student_count": student_count,
+            "average_score": avg_score,
+            "average_percentage": avg_percentage,
+            "highest_score": highest_score,
+            "lowest_score": lowest_score,
+            "pass_rate": round((pass_count / student_count * 100.0) if student_count > 0 else 0.0, 2),
+            "analyzed": analytics is not None,
+            "analyzed_at": analytics.get("generated_at") if analytics else None,
+        })
+
+    result.sort(key=lambda x: (x["year"], x["session_name"]), reverse=True)
     return result
