@@ -19,8 +19,11 @@ class ExamNotFound(Exception):
     """Raised when no graded submissions exist for the requested exam."""
 
 
-async def compute_exam_analytics(db, course_code: str, session_name: str) -> dict:
-    submissions = await find_graded_submissions_for_exam(db, course_code, session_name)
+async def compute_exam_analytics(
+    db, course_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
+) -> dict:
+    submissions = await find_graded_submissions_for_exam(db, course_code, session_name, year, month, semester)
     if not submissions:
         raise ExamNotFound(f"no graded submissions for {course_code} {session_name}")
 
@@ -59,9 +62,12 @@ async def compute_exam_analytics(db, course_code: str, session_name: str) -> dic
         course_name = "Database Management Systems" if course_code == "IT2040" else course_code
     subject_name = str((rubric or {}).get("subject_name") or course_name or "").strip() or course_code
     try:
-        year = int((rubric or {}).get("year") or 0)
-        month = int((rubric or {}).get("month") or 0)
-        semester = int((rubric or {}).get("semester") or 0)
+        if year is None:
+            year = int((rubric or {}).get("year") or 0)
+        if month is None:
+            month = int((rubric or {}).get("month") or 0)
+        if semester is None:
+            semester = int((rubric or {}).get("semester") or 0)
     except (TypeError, ValueError) as exc:
         raise ExamNotFound(f"invalid rubric session identity for {course_code} {session_name}") from exc
     document = {

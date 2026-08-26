@@ -21,13 +21,19 @@ async def test_compute_exam_analytics_persists_and_returns_document(test_db, mon
         assert result["subject_code"] == "IT2040"
         assert result["subject_name"] == "Database Management Systems"
         assert result["session_name"] == "Final Examination"
-        assert result["statistics"]["total_students"] == 5
+        # File now contains 9 raw rows (5 original + 4 nested duplicates with distinct _id)
+        from run_sample import load_raw_sample_documents as _load_raw
+        assert result["statistics"]["total_students"] == len(_load_raw()[2])
         saved = await test_db["analytics_snapshots"].find_one(
             {"subject_code": "IT2040", "session_name": "Final Examination"}
         )
         assert saved is not None
+        saved_year = saved.get("year")
+        saved_month = saved.get("month")
+        saved_semester = saved.get("semester")
         status = await test_db["analyzedExams"].find_one(
-            {"subject_code": "IT2040", "session_name": "Final Examination"}
+            {"subject_code": "IT2040", "session_name": "Final Examination",
+             "year": saved_year, "month": saved_month, "semester": saved_semester}
         )
         assert status is not None
         assert status["analyzed"] == "done"

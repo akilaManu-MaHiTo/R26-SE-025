@@ -1,0 +1,46 @@
+{
+  "sql_queries_triggers": {
+    "label": "SQL Queries & Triggers",
+    "aliases": [
+      "SQL",
+      "SQL Queries and Triggers",
+      "SQL Queries and Triggers in Database Management Systems",
+      "SQL Queries, Triggers, Role-Based Access Control (RBAC)"
+    ],
+    "subtopics": ["RBAC"]
+  },
+  "indexes_storage": {
+    "label": "Database Indexes & Storage",
+    "aliases": [
+      "Database Utilities",
+      "Database Indexes and Data Structures",
+      "Database Indexes and Storage Structures"
+    ]
+  },
+  "transactions_concurrency": {
+    "label": "Transactions & Concurrency Control",
+    "aliases": [
+      "Database Transaction Management and Concurrency Control",
+      "Database Transactions and Concurrency Control"
+    ]
+  },
+  "database_recovery": {
+    "label": "Database Recovery",
+    "aliases": [
+      "Database Recovery Algorithms",
+      "Database Recovery Algorithms and Log Management"
+    ]
+  },
+  "database_management_systems": {
+    "label": "Database Management Systems",
+    "aliases": ["Database Management Systems"]
+  },
+  "database_design": {
+    "label": "Database Design & Relational Algebra",
+    "aliases": ["Database Design and Relational Algebra"]
+  },
+  "jdbc_sql_injection": {
+    "label": "Database Connectivity & SQL Injection Prevention",
+    "aliases": ["Database Connectivity and SQL Injection Prevention with JDBC"]
+  }
+}
