@@ -8,10 +8,11 @@ from typing import Any, Callable, Dict, Optional
 from uuid import uuid4
 
 from Gradex_AI_Server.app.viva_copilot import events
+from Gradex_AI_Server.app.viva_copilot import events
 from Gradex_AI_Server.app.viva_copilot.answer_detector import detect_final_answer, word_count
 from Gradex_AI_Server.app.viva_copilot.context_builder import build_llm_context
 from Gradex_AI_Server.app.viva_copilot.followup_llm import generate_followups
-from Gradex_AI_Server.app.viva_copilot.session_store import CopilotSession, broadcast
+from Gradex_AI_Server.app.viva_copilot.session_store import CopilotSession, broadcast, session_ttl_seconds, store
 from Gradex_AI_Server.app.viva_copilot.stt import transcribe_chunk
 
 GenerateFn = Callable[[Dict[str, Any], Optional[list]], Dict[str, Any]]
@@ -78,6 +79,12 @@ async def ingest_audio_chunk(
     transcribe: Optional[TranscribeFn] = None,
     generate: Optional[GenerateFn] = None,
 ) -> None:
+    if session.is_expired():
+        ttl = session_ttl_seconds()
+        await broadcast(session, events.session_expired(session.session_id, ttl_seconds=ttl))
+        store.delete(session.session_id)
+        return
+    session.touch()
     if session.phase not in {"presentation", "viva"}:
         return
     overflow = False

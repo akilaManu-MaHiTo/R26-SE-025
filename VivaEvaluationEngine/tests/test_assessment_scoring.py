@@ -87,6 +87,15 @@ def _sample_result(**overrides):
             "confidence": {"score": 9, "justification": "x"},
             "engagement": {"score": 9, "justification": "x"},
         },
+        "face_cues": [
+            {
+                "time": float(i),
+                "valid": True,
+                "mouth_open": 0.42,
+                "talking": True,
+            }
+            for i in range(16)
+        ],
     }
     base.update(overrides)
     return base
@@ -139,6 +148,34 @@ class ModeAndFusionTests(unittest.TestCase):
         expected = 0.5 * done["ai_performance"]["score"] + 0.5 * 30.0
         self.assertAlmostEqual(done["final_score"], round(expected, 2))
         self.assertEqual(done["grade"], resolve_grade(done["final_score"]))
+
+    def test_without_mode_publishes_with_technical_preview_weights(self):
+        """Examiner UI previews a fused mark before publishing.
+
+        Every analysis auto-publishes in WITHOUT mode, whose fusion block reports
+        the weights it applied (1.0 / 0.0). Previewing with those would multiply
+        technical accuracy by zero, so the block must also carry the weights a
+        WITH publish would use. The client reads fusion.with_technical.
+        """
+        assessment = build_assessment(_sample_result(), mode=MODE_WITHOUT)
+        fusion = assessment["fusion"]
+        self.assertEqual(fusion["weight_ai"], 1.0)
+        self.assertEqual(fusion["weight_technical"], 0.0)
+
+        preview = fusion["with_technical"]
+        self.assertGreater(preview["weight_technical"], 0.0)
+
+        # Preview weights must reproduce what a real WITH publish computes.
+        ai_score = assessment["ai_performance"]["score"]
+        published = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=8)
+        expected = preview["weight_ai"] * ai_score + preview["weight_technical"] * 80.0
+        self.assertAlmostEqual(published["final_score"], round(expected, 2))
+
+    def test_with_mode_fusion_reports_applied_weights(self):
+        assessment = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=8)
+        fusion = assessment["fusion"]
+        self.assertEqual(fusion["mode"], MODE_WITH)
+        self.assertGreater(fusion["weight_technical"], 0.0)
 
     def test_llm_scores_do_not_change_performance(self):
         a = build_assessment(_sample_result())

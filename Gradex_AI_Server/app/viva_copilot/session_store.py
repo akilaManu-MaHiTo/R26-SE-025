@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -12,6 +13,19 @@ from fastapi import WebSocket
 
 from Gradex_AI_Server.app.viva_copilot.answer_detector import answer_hash
 from Gradex_AI_Server.app.viva_copilot.context_builder import MAX_QA_PAIRS
+
+_DEFAULT_SESSION_TTL_SECONDS = 14400.0
+
+
+def session_ttl_seconds() -> float:
+    raw = (os.getenv("VIVA_COPILOT_SESSION_TTL_SECONDS") or "14400").strip()
+    try:
+        value = float(raw)
+    except ValueError:
+        return _DEFAULT_SESSION_TTL_SECONDS
+    if value <= 0:
+        return 0.0
+    return max(60.0, value)
 
 
 @dataclass
@@ -33,6 +47,7 @@ class CopilotSession:
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     busy_llm: bool = False
     created_at: float = field(default_factory=time.time)
+    last_activity_at: float = field(default_factory=time.time)
     last_chunk_had_speech: bool = False
     stt_busy: bool = False
     pending_audio: Deque[tuple] = field(default_factory=deque)
@@ -41,6 +56,22 @@ class CopilotSession:
     last_error_at: float = 0.0
     last_suggest_at: float = 0.0
     last_suggest_word_count: int = 0
+
+    def touch(self) -> None:
+        self.last_activity_at = time.time()
+
+    def is_expired(self) -> bool:
+        ttl = session_ttl_seconds()
+        if ttl <= 0:
+            return False
+        return time.time() - self.last_activity_at > ttl
+
+    def seconds_until_expiry(self) -> Optional[float]:
+        ttl = session_ttl_seconds()
+        if ttl <= 0:
+            return None
+        remaining = ttl - (time.time() - self.last_activity_at)
+        return max(0.0, remaining)
 
     def presentation_text(self) -> str:
         return " ".join(self.presentation_parts).strip()
@@ -86,17 +117,56 @@ class SessionStore:
     def __init__(self) -> None:
         self._sessions: Dict[str, CopilotSession] = {}
 
+    def _purge_expired(self) -> None:
+        ttl = session_ttl_seconds()
+        if ttl <= 0:
+            return
+        now = time.time()
+        expired = [
+            session_id
+            for session_id, session in self._sessions.items()
+            if now - session.last_activity_at > ttl
+        ]
+        for session_id in expired:
+            self._sessions.pop(session_id, None)
+
+    def _is_expired(self, session: CopilotSession) -> bool:
+        ttl = session_ttl_seconds()
+        if ttl <= 0:
+            return False
+        return time.time() - session.last_activity_at > ttl
+
     def create(self, project_context: Optional[Dict[str, Any]] = None) -> CopilotSession:
+        self._purge_expired()
         session_id = "session_" + uuid4().hex[:12]
         session = CopilotSession(session_id=session_id, project_context=dict(project_context or {}))
+        session.touch()
         self._sessions[session_id] = session
         return session
 
     def get(self, session_id: str) -> Optional[CopilotSession]:
-        return self._sessions.get(session_id)
+        self._purge_expired()
+        session = self._sessions.get(session_id)
+        if session is None:
+            return None
+        if self._is_expired(session):
+            self._sessions.pop(session_id, None)
+            return None
+        session.touch()
+        return session
 
     def delete(self, session_id: str) -> None:
         self._sessions.pop(session_id, None)
+
+    def expire_if_idle(self, session_id: str) -> bool:
+        """Remove session when idle past TTL. Returns True if it was expired."""
+        session = self._sessions.get(session_id)
+        if session is None:
+            return True
+        if not session.is_expired():
+            return False
+        self._sessions.pop(session_id, None)
+        return True
 
 
 store = SessionStore()

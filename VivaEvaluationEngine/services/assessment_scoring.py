@@ -64,6 +64,15 @@ _NO_SPEECH_MAX_RMS = 0.008
 _MIN_AUDIO_DURATION_S = 1.0
 
 REASON_MESSAGES = {
+    "insufficient_lip_motion": (
+        "Speech was detected but visible lip movement did not match the transcript "
+        "(need about one mouth-motion event per five spoken words). "
+        "Re-record with the student speaking clearly on camera."
+    ),
+    "lip_motion_unavailable": (
+        "Speech was detected but mouth movement could not be measured on the face track. "
+        "Point the webcam at the student and re-record with clear lip visibility."
+    ),
     "no_speech_detected": (
         "The student is on camera but did not speak. Face engagement was measured; "
         "no official mark is given because there is no verbal presentation."
@@ -79,6 +88,10 @@ REASON_MESSAGES = {
     "audio_insufficient": "Recorded audio is too short or empty to score.",
     "no_scorable_families": "No scorable evidence families were available.",
     "duration_below_engine_minimum": "Audio duration is below the engine minimum.",
+    "multiple_faces_detected": (
+        "More than one person was clearly visible on camera. "
+        "Re-record with only the student in frame."
+    ),
 }
 
 GRADE_BANDS: List[Tuple[str, float]] = [
@@ -167,7 +180,12 @@ def classify_speech_evidence(features: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def validate_features(features: Dict[str, Any]) -> Dict[str, Any]:
+def validate_features(
+    features: Dict[str, Any],
+    *,
+    lip_reason: Optional[str] = None,
+    multi_face_reason: Optional[str] = None,
+) -> Dict[str, Any]:
     quality = features.get("quality") or {}
     video_status = str(quality.get("video_status") or "")
     audio_status = str(quality.get("audio_status") or "")
@@ -188,6 +206,10 @@ def validate_features(features: Dict[str, Any]) -> Dict[str, Any]:
     speech_reason = classify_speech_evidence(features)
     if speech_reason:
         reasons.append(speech_reason)
+    if lip_reason:
+        reasons.append(lip_reason)
+    if multi_face_reason:
+        reasons.append(multi_face_reason)
 
     unique = list(dict.fromkeys(reasons))
 
@@ -197,6 +219,20 @@ def validate_features(features: Dict[str, Any]) -> Dict[str, Any]:
             "status": STATUS_INCOMPLETE,
             "reasons": unique,
             "message": REASON_MESSAGES.get("video_insufficient"),
+        }
+
+    if multi_face_reason:
+        return {
+            "status": STATUS_INCOMPLETE,
+            "reasons": unique,
+            "message": REASON_MESSAGES.get(multi_face_reason),
+        }
+
+    if lip_reason:
+        return {
+            "status": STATUS_INCOMPLETE,
+            "reasons": unique,
+            "message": REASON_MESSAGES.get(lip_reason),
         }
 
     if speech_reason:
@@ -392,8 +428,16 @@ def fuse_final_score(
             "technical_accuracy_100": None,
             "fusion": {
                 "mode": mode,
+                # What this assessment actually applied: AI performance only.
                 "weight_ai": 1.0,
                 "weight_technical": 0.0,
+                # What a WITH_TECHNICAL_ACCURACY publish would apply. Exposed so
+                # the examiner UI can preview a fused mark without duplicating
+                # scorer constants on the client.
+                "with_technical": {
+                    "weight_ai": FUSION_WEIGHT_AI,
+                    "weight_technical": FUSION_WEIGHT_TECHNICAL,
+                },
             },
         }
 
@@ -433,8 +477,19 @@ def build_assessment(
     if mode not in {MODE_WITHOUT, MODE_WITH}:
         mode = MODE_WITHOUT
 
+    from services.lip_motion_validation import classify_lip_motion_evidence, summarize_lip_motion
+    from services.multi_face_validation import classify_multi_face_evidence, summarize_multi_face
+
+    lip_motion = summarize_lip_motion(result)
+    lip_reason = classify_lip_motion_evidence(result)
+    multi_face = summarize_multi_face(result)
+    multi_face_reason = classify_multi_face_evidence(result)
     features = extract_canonical_features(result)
-    validation = validate_features(features)
+    validation = validate_features(
+        features,
+        lip_reason=lip_reason,
+        multi_face_reason=multi_face_reason,
+    )
     performance = score_ai_performance(features)
 
     if validation["status"] == STATUS_INCOMPLETE:
@@ -469,6 +524,8 @@ def build_assessment(
         "quality": features["quality"],
         "features": features,
         "validation": validation,
+        "lip_motion": lip_motion,
+        "multi_face": multi_face,
         "ai_performance": {
             "score": performance.get("score"),
             "family_scores": performance.get("family_scores"),
@@ -490,11 +547,16 @@ def attach_assessment(
     technical_accuracy: Optional[float] = None,
 ) -> Dict[str, Any]:
     enriched = dict(result)
-    enriched["assessment"] = build_assessment(
+    assessment = build_assessment(
         enriched,
         mode=mode,
         technical_accuracy=technical_accuracy,
     )
+    enriched["assessment"] = assessment
+    if isinstance(assessment.get("lip_motion"), dict):
+        enriched["lip_motion"] = assessment["lip_motion"]
+    if isinstance(assessment.get("multi_face"), dict):
+        enriched["multi_face"] = assessment["multi_face"]
     from services.feature_complete import attach_feature_complete
 
     return attach_feature_complete(enriched)

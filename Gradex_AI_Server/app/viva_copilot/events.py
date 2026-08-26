@@ -118,3 +118,13 @@ def session_state(session_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         "timestamp": _now(),
         "data": payload,
     }
+
+
+def session_expired(session_id: str, *, ttl_seconds: float) -> Dict[str, Any]:
+    return {
+        "event": "session.expired",
+        "sessionId": session_id,
+        "message": "Copilot session expired after inactivity. Create a new session to continue.",
+        "ttlSeconds": int(ttl_seconds),
+        "timestamp": _now(),
+    }
