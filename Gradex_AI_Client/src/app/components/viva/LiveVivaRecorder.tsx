@@ -29,16 +29,29 @@ function formatElapsed(seconds: number): string {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
+/** Align with server analyze timeout — very long live recordings risk browser RAM and 504 timeouts. */
+const MAX_LIVE_VIVA_RECORDING_SECONDS = 600;
+const WARN_LIVE_VIVA_RECORDING_SECONDS = 480;
+const RECORDER_TIMESLICE_MS = 2000;
+
+function formatMegabytes(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function LiveVivaRecorder({ onRecorded, disabled = false }: LiveVivaRecorderProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recordedBytesRef = useRef(0);
   const timerRef = useRef<number | null>(null);
+  const autoStopRef = useRef(false);
 
   const [phase, setPhase] = useState<"idle" | "starting" | "ready" | "recording" | "stopping">("idle");
   const [elapsed, setElapsed] = useState(0);
+  const [recordedBytes, setRecordedBytes] = useState(0);
   const [error, setError] = useState("");
+  const [recordingNotice, setRecordingNotice] = useState("");
 
   const stopTracks = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -114,12 +127,30 @@ export function LiveVivaRecorder({ onRecorded, disabled = false }: LiveVivaRecor
       return;
     }
     chunksRef.current = [];
+    recordedBytesRef.current = 0;
+    autoStopRef.current = false;
+    setRecordedBytes(0);
+    setRecordingNotice("");
     try {
-      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      const recorderOptions: MediaRecorderOptions = {};
+      if (mime) recorderOptions.mimeType = mime;
+      recorderOptions.videoBitsPerSecond = 1_000_000;
+      recorderOptions.audioBitsPerSecond = 128_000;
+      let recorder: MediaRecorder;
+      try {
+        recorder =
+          mime && MediaRecorder.isTypeSupported(mime)
+            ? new MediaRecorder(stream, recorderOptions)
+            : new MediaRecorder(stream);
+      } catch {
+        recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      }
       recorderRef.current = recorder;
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           chunksRef.current.push(event.data);
+          recordedBytesRef.current += event.data.size;
+          setRecordedBytes(recordedBytesRef.current);
         }
       };
       recorder.onerror = () => {
@@ -127,11 +158,19 @@ export function LiveVivaRecorder({ onRecorded, disabled = false }: LiveVivaRecor
         setPhase("ready");
         clearTimer();
       };
-      recorder.start(1000);
+      recorder.start(RECORDER_TIMESLICE_MS);
       setElapsed(0);
       setPhase("recording");
       clearTimer();
-      timerRef.current = window.setInterval(() => setElapsed((value) => value + 1), 1000);
+      timerRef.current = window.setInterval(() => {
+        setElapsed((value) => {
+          const next = value + 1;
+          if (next === WARN_LIVE_VIVA_RECORDING_SECONDS) {
+            setRecordingNotice("Approaching 10 minute limit — stop soon or recording will auto-save.");
+          }
+          return next;
+        });
+      }, 1000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start recording.");
     }
@@ -146,6 +185,8 @@ export function LiveVivaRecorder({ onRecorded, disabled = false }: LiveVivaRecor
       const mime = recorder.mimeType || "video/webm";
       const blob = new Blob(chunksRef.current, { type: mime.split(";")[0] || "video/webm" });
       chunksRef.current = [];
+      recordedBytesRef.current = 0;
+      setRecordedBytes(0);
       recorderRef.current = null;
       stopTracks();
       const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -162,11 +203,20 @@ export function LiveVivaRecorder({ onRecorded, disabled = false }: LiveVivaRecor
     recorder.stop();
   };
 
+  useEffect(() => {
+    if (phase !== "recording" || elapsed < MAX_LIVE_VIVA_RECORDING_SECONDS) return;
+    if (autoStopRef.current) return;
+    autoStopRef.current = true;
+    setRecordingNotice("Maximum recording length reached (10 minutes). Saving and starting analysis…");
+    stopRecording();
+  }, [elapsed, phase]);
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Point the laptop webcam at the student, record the viva, then the same engine grades the
-        session (transcript, Q&amp;A, official mark). Analysis runs after you stop.
+        Point the laptop webcam at one student only — other people should stay off camera.
+        Record the viva, then the same engine grades the session (transcript, Q&amp;A, official mark).
+        Analysis runs after you stop. Typical vivas are 2–5 minutes; live capture stops automatically at 10 minutes.
       </p>
 
       <div className="relative mx-auto w-full max-w-xl overflow-hidden rounded-xl border border-border bg-black aspect-video">
@@ -183,14 +233,24 @@ export function LiveVivaRecorder({ onRecorded, disabled = false }: LiveVivaRecor
           </div>
         )}
         {phase === "recording" && (
-          <div className="absolute top-3 left-3 inline-flex items-center gap-2 rounded-full bg-rose-600 px-2.5 py-1 text-xs font-medium text-white">
-            <span className="size-2 rounded-full bg-white animate-pulse" />
-            REC {formatElapsed(elapsed)}
-          </div>
+          <>
+            <div className="absolute top-3 left-3 inline-flex items-center gap-2 rounded-full bg-rose-600 px-2.5 py-1 text-xs font-medium text-white">
+              <span className="size-2 rounded-full bg-white animate-pulse" />
+              REC {formatElapsed(elapsed)}
+            </div>
+            {recordedBytes > 0 && (
+              <div className="absolute top-3 right-3 rounded-md bg-black/60 px-2 py-0.5 text-[11px] text-white tabular-nums">
+                {formatMegabytes(recordedBytes)}
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {recordingNotice && !error && (
+        <p className="text-sm text-amber-700 dark:text-amber-400">{recordingNotice}</p>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         {phase === "idle" && (

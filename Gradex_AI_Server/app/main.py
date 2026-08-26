@@ -9,7 +9,7 @@ from uuid import uuid4
 from typing import Any, Optional
 import os
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -255,90 +255,217 @@ async def diagram_evaluate_details():
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
-@app.patch("/api/viva-marks/{mark_id}/publish", dependencies=[Depends(require_api_key)])
-async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
-    """Persist published assessment: canonical X, human technical (or null), server-computed /100 + grade."""
-    object_id = _parse_object_id(mark_id)
+class SubjectRubricConceptPayload(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    weight: float = Field(default=3.0, ge=0, le=5)
+
+
+class SubjectRubricUpdatePayload(BaseModel):
+    subject_name: str
+    concepts: list[SubjectRubricConceptPayload]
+
+
+@app.post("/api/subject-content/upload", dependencies=[Depends(require_api_key)])
+async def upload_subject_content(
+    file: UploadFile = File(...),
+    subject_code: str = Form(...),
+    subject_name: str = Form(...),
+):
+    """Upload a subject PDF; extracts its text and asks Groq to distill it into
+    a concept rubric (list of {name, description, weight}) used by
+    /api/viva-analyze's optional technical-accuracy step. Independent of
+    GradingEngine/VivaEvaluationEngine — see subject_rubric_service.py."""
+    from Gradex_AI_Server.app.subject_rubric_service import (
+        RubricGenerationError,
+        extract_pdf_text,
+        generate_concept_rubric,
+        upsert_subject_rubric,
+    )
+
+    filename = file.filename or ""
+    if Path(filename).suffix.lower() != ".pdf":
+        raise HTTPException(status_code=400, detail="Only PDF uploads are supported.")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty upload.")
+
+    code = subject_code.strip()
+    name = subject_name.strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="subject_code is required.")
+
+    tmp_path = UPLOAD_DIR / f"{uuid4().hex}.pdf"
+    tmp_path.write_bytes(contents)
+    try:
+        text = extract_pdf_text(str(tmp_path))
+        concepts = generate_concept_rubric(text, name or code)
+        return await upsert_subject_rubric(db_instance, code, name, filename, concepts)
+    except RubricGenerationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to process subject content: {exc}") from exc
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+@app.get("/api/subject-content/{subject_code}", dependencies=[Depends(require_api_key)])
+async def get_subject_content(subject_code: str):
+    from Gradex_AI_Server.app.subject_rubric_service import get_subject_rubric
+
+    rubric = await get_subject_rubric(db_instance, subject_code)
+    if rubric is None:
+        raise HTTPException(status_code=404, detail="No subject rubric found for this subject_code.")
+    return rubric
+
+
+@app.put("/api/subject-content/{subject_code}", dependencies=[Depends(require_api_key)])
+async def update_subject_content(subject_code: str, payload: SubjectRubricUpdatePayload):
+    """Lets a lecturer review/curate the AI-drafted concept rubric before it's
+    used for grading."""
+    from Gradex_AI_Server.app.subject_rubric_service import replace_subject_rubric
+
+    concepts = [c.model_dump() for c in payload.concepts]
+    try:
+        return await replace_subject_rubric(db_instance, subject_code, payload.subject_name, concepts)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+def _require_marks_collection():
     if db_instance.marks_col is None:
         raise HTTPException(
             status_code=503,
             detail="MongoDB is not connected. Check MONGODB_URL / DATABASE_NAME and Atlas credentials.",
         )
+    return db_instance.marks_col
 
-    from VivaEvaluationEngine.services.assessment_scoring import (
-        MODE_WITH,
-        MODE_WITHOUT,
-        build_assessment,
-    )
+
+def _summarize_mark_document(document: dict[str, Any]) -> dict[str, Any]:
+    assessment = document.get("assessment") or {}
+    return {
+        "mark_id": str(document.get("_id")),
+        "video_filename": document.get("video_filename"),
+        "student_id": document.get("student_id"),
+        "processed_at": document.get("processed_at"),
+        "published": bool(document.get("published")),
+        "published_at": document.get("published_at"),
+        "assessment_mode": document.get("assessment_mode"),
+        "video_status": document.get("video_status"),
+        "confidence_score": document.get("confidence_score"),
+        "engagement_score": document.get("engagement_score"),
+        "ai_performance_score": document.get("ai_performance_score"),
+        "technical_accuracy": document.get("technical_accuracy"),
+        "final_score": document.get("final_score"),
+        "final_grade": document.get("final_grade"),
+        "status": assessment.get("status"),
+        "scoring_version": document.get("scoring_version"),
+    }
+
+
+@app.get("/api/viva-marks", dependencies=[Depends(require_api_key)])
+async def list_viva_marks(
+    limit: int = 20,
+    student_id: Optional[str] = None,
+    published: Optional[bool] = None,
+):
+    """List recent viva marks saved after POST /api/viva-analyze."""
+    marks_col = _require_marks_collection()
+    safe_limit = max(1, min(limit, 100))
+    query: dict[str, Any] = {}
+    if student_id and student_id.strip():
+        query["student_id"] = student_id.strip()
+    if published is not None:
+        query["published"] = published
+
+    try:
+        cursor = marks_col.find(query).sort("processed_at", -1).limit(safe_limit)
+        documents = await cursor.to_list(length=safe_limit)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"MongoDB query failed: {exc}") from exc
+
+    return {
+        "items": [_summarize_mark_document(doc) for doc in documents],
+        "count": len(documents),
+    }
+
+
+@app.get("/api/viva-marks/{mark_id}", dependencies=[Depends(require_api_key)])
+async def get_viva_mark(mark_id: str):
+    """Fetch one saved viva mark by Mongo ObjectId."""
+    marks_col = _require_marks_collection()
+    object_id = _parse_object_id(mark_id)
+    try:
+        document = await marks_col.find_one({"_id": object_id})
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"MongoDB query failed: {exc}") from exc
+    if not document:
+        raise HTTPException(status_code=404, detail="Mark not found.")
+    return _json_safe(document)
+
+
+@app.patch("/api/viva-marks/{mark_id}/publish", dependencies=[Depends(require_api_key)])
+async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
+    """Persist published assessment: canonical X, human technical (or null), server-computed /100 + grade."""
+    from Gradex_AI_Server.app.viva_marks import apply_publish_to_mark
+    from VivaEvaluationEngine.services.assessment_scoring import MODE_WITH, MODE_WITHOUT
+
+    object_id = _parse_object_id(mark_id)
+    marks_col = _require_marks_collection()
 
     mode = payload.assessment_mode.strip()
     if mode not in {MODE_WITHOUT, MODE_WITH}:
         raise HTTPException(status_code=400, detail="assessment_mode must be WITHOUT_TECHNICAL_ACCURACY or WITH_TECHNICAL_ACCURACY.")
     if mode == MODE_WITH and payload.technical_accuracy is None:
         raise HTTPException(status_code=400, detail="technical_accuracy is required for WITH_TECHNICAL_ACCURACY.")
-    if mode == MODE_WITHOUT:
-        technical = None
-    else:
-        technical = payload.technical_accuracy
+
+    student_id = (payload.student_id or "").strip() or None
+    technical = None if mode == MODE_WITHOUT else payload.technical_accuracy
 
     try:
-        existing = await db_instance.marks_col.find_one({"_id": object_id})
+        return await apply_publish_to_mark(
+            marks_col,
+            object_id,
+            mode=mode,
+            technical_accuracy=technical,
+            student_id=student_id,
+            human_published=True,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Mark not found.") from None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception:
         raise HTTPException(
             status_code=503,
             detail="MongoDB is not reachable. Marks cannot be published until Atlas auth succeeds.",
         ) from None
-    if not existing:
-        raise HTTPException(status_code=404, detail="Mark not found.")
-
-    engine_result = existing.get("result") or {}
-    assessment = build_assessment(
-        engine_result,
-        mode=mode,
-        technical_accuracy=technical,
-    )
-    published_at = datetime.now(timezone.utc)
-    student_id = (payload.student_id or "").strip() or None
-    update = {
-        "published": bool(payload.published),
-        "human_published": True,
-        "published_at": published_at,
-        "student_id": student_id,
-        "assessment_mode": mode,
-        "features": assessment.get("training_features"),
-        "feature_schema_version": assessment.get("feature_schema_version"),
-        "scoring_version": assessment.get("scoring_version"),
-        "ai_performance_score": (assessment.get("ai_performance") or {}).get("score"),
-        "technical_accuracy": assessment.get("technical_accuracy"),
-        "final_score": assessment.get("final_score"),
-        "final_grade": assessment.get("grade"),
-        "assessment": assessment,
-    }
-
-    result = await db_instance.marks_col.update_one({"_id": object_id}, {"$set": update})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Mark not found.")
-
-    return {
-        "mark_id": mark_id,
-        "published": update["published"],
-        "published_at": published_at.isoformat(),
-        "student_id": student_id,
-        "assessment_mode": mode,
-        "ai_performance_score": update["ai_performance_score"],
-        "technical_accuracy": update["technical_accuracy"],
-        "final_score": update["final_score"],
-        "final_grade": update["final_grade"],
-        "status": assessment.get("status"),
-        "scoring_version": update["scoring_version"],
-        "feature_schema_version": update["feature_schema_version"],
-    }
 
 
 @app.post("/api/viva-analyze", dependencies=[Depends(require_api_key)])
-async def viva_analyze(video: UploadFile = File(...)):
+async def viva_analyze(
+    video: UploadFile = File(...),
+    assessment_mode: str = Form(default="WITHOUT_TECHNICAL_ACCURACY"),
+    subject_code: Optional[str] = Form(default=None),
+):
     """
     Analyze a viva recording for emotion detection and engagement scoring.
+
+    `assessment_mode` is the examiner's upfront choice (before upload/recording,
+    not changeable afterward — see VivaPage.tsx): WITHOUT_TECHNICAL_ACCURACY for
+    communication/presentation vivas, WITH_TECHNICAL_ACCURACY for technical
+    modules. Only WITHOUT auto-publishes; WITH always leaves the mark as an
+    unpublished draft so a human must enter a technical score and publish before
+    it counts as a grade — see PRD "no grade issued purely on AI authority".
+
+    `subject_code` is optional. When set and a concept rubric exists for it
+    (see /api/subject-content), an AI-suggested technical_accuracy_ai score is
+    attached to the result as an advisory panel — never auto-published; the
+    examiner still enters/reviews the technical score themselves.
 
     Returns:
         - timeline: Frame-by-frame emotion and engagement analysis
@@ -351,7 +478,13 @@ async def viva_analyze(video: UploadFile = File(...)):
     """
     import asyncio
     import time
+    from VivaEvaluationEngine.services.assessment_scoring import MODE_WITH, MODE_WITHOUT
+
     request_start = time.time()
+    # A stray/unexpected value (or the Form(...) sentinel object seen when this
+    # function is called directly, bypassing FastAPI's request parsing — as the
+    # HTTP-layer tests do) falls back to the safe default rather than raising.
+    requested_mode = assessment_mode if assessment_mode in {MODE_WITH, MODE_WITHOUT} else MODE_WITHOUT
 
     filename = video.filename or ""
     suffix = Path(filename).suffix.lower()
@@ -396,10 +529,39 @@ async def viva_analyze(video: UploadFile = File(...)):
         analysis_time = analysis_complete - analysis_start
         total_time = analysis_complete - request_start
 
+        # Optional technical-accuracy step. Deliberately NOT part of
+        # analyze_video_file/viva_service.py's internal chain — it's layered
+        # on here as a decoupled post-processing call so that file, and the
+        # rest of VivaEvaluationEngine's existing pipeline, stay untouched.
+        # subject_code may be the raw Form(...) sentinel object (not None) when
+        # this handler is called directly, bypassing FastAPI's request parsing —
+        # as the HTTP-layer tests do (see requested_mode above for the same issue).
+        code = subject_code.strip() if isinstance(subject_code, str) else ""
+        if code:
+            try:
+                from Gradex_AI_Server.app.subject_rubric_service import get_subject_rubric
+                from VivaEvaluationEngine.services.technical_accuracy import (
+                    attach_technical_accuracy,
+                )
+
+                concept_rubric = await get_subject_rubric(db_instance, code)
+                result = attach_technical_accuracy(result, concept_rubric)
+            except Exception as tech_exc:
+                print(f"[VIVA] Warning: technical-accuracy scoring failed ({tech_exc})")
+                result["technical_accuracy_ai"] = {
+                    "status": "unavailable",
+                    "model": None,
+                    "overall_score": None,
+                    "concepts": [],
+                    "error": str(tech_exc),
+                }
+
         print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")
         # Persist the result to MongoDB (vivamark.marks). Best-effort: a
         # storage failure should not fail an otherwise-successful analysis.
-        if db_instance.marks_col is None:
+        from Gradex_AI_Server.app.core.database import ensure_marks_collection
+
+        if not await ensure_marks_collection():
             result["persistence_error"] = (
                 "MongoDB is not connected — mark was not saved. Publish is unavailable."
             )
@@ -409,6 +571,9 @@ async def viva_analyze(video: UploadFile = File(...)):
                 mark_doc = {
                     "video_filename": video.filename,
                     "processed_at": datetime.now(timezone.utc),
+                    "published": False,
+                    "human_published": False,
+                    "student_id": None,
                     "confidence_score": result.get("confidence_score"),
                     "engagement_score": result.get("engagement_score"),
                     "video_status": result.get("video_status"),
@@ -418,12 +583,40 @@ async def viva_analyze(video: UploadFile = File(...)):
                     "result": result,
                 }
                 insert_result = await db_instance.marks_col.insert_one(mark_doc)
-                result["mark_id"] = str(insert_result.inserted_id)
-            except Exception:
+                mark_object_id = insert_result.inserted_id
+                result["mark_id"] = str(mark_object_id)
+                result["published"] = False
+                result["assessment_mode"] = requested_mode
+
+                if requested_mode == MODE_WITH:
+                    # Technical viva: never auto-publish. The mark stays a draft
+                    # until an examiner enters a technical score and publishes —
+                    # this is what makes "reviewed before publishing" true rather
+                    # than aspirational for the assessments that need it.
+                    print(f"[VIVA] Technical viva — mark {result['mark_id']} saved as draft, awaiting examiner review.")
+                else:
+                    from Gradex_AI_Server.app.viva_marks import (
+                        auto_publish_without_technical,
+                        merge_auto_publish_into_analyze_result,
+                    )
+
+                    try:
+                        auto_payload = await auto_publish_without_technical(
+                            db_instance.marks_col,
+                            mark_object_id,
+                            result,
+                        )
+                        if auto_payload:
+                            merge_auto_publish_into_analyze_result(result, auto_payload)
+                            print(f"[VIVA] Auto-published mark {result['mark_id']} (non-technical viva)")
+                    except Exception as auto_exc:
+                        print(f"[VIVA] Warning: auto-publish failed; mark remains draft. ({auto_exc})")
+            except Exception as exc:
                 result["persistence_error"] = (
                     "Could not save mark (Mongo authentication or network failed)."
                 )
-                print("[VIVA] Warning: failed to persist result to MongoDB.")
+                print(f"[VIVA] Warning: failed to persist result to MongoDB ({type(exc).__name__}: {exc})")
+                await ensure_marks_collection()
         return result
     except ModuleNotFoundError as exc:
         raise HTTPException(status_code=503, detail=f"Viva analysis unavailable: {exc}") from exc
