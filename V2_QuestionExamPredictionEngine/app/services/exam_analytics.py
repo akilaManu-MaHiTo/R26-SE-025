@@ -2,6 +2,8 @@
 
 from datetime import datetime, timezone
 
+from collections.abc import Callable
+
 from app.analytics.exam_analytics import compute_exam_analytics_stats
 from app.analytics.student_document import build_numeric_analysis
 from app.analytics.weakness import compute_weakness_scores
@@ -23,20 +25,42 @@ class ExamNotFound(Exception):
 async def compute_exam_analytics(
     db, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> dict:
+    def _progress(msg: str):
+        if progress_callback:
+            try:
+                progress_callback(msg)
+            except Exception:
+                pass
     submissions = await find_graded_submissions_for_exam(db, course_code, session_name, year, month, semester)
     if not submissions:
         raise ExamNotFound(f"no graded submissions for {course_code} {session_name}")
 
+    _progress(f"PULSE·AI — Ingesting {len(submissions)} submissions for {course_code} {session_name}...")
     course = None
     rubric = None
     students: list[dict] = []
     classification_cache: dict = {}
-    for submission in submissions:
+    total_q = 0
+    for idx, submission in enumerate(submissions):
+        _progress(f"Analyzing student {submission.get('student_id', 'unknown')} ({idx+1}/{len(submissions)}) — normalizing...")
         course = await find_course_for_submission(db, submission)
         rubric = await find_rubric_for_submission(db, submission)
         normalized = normalize_student_submission(course or {}, rubric or {}, submission)
-        semantics = await _classify_questions(normalized, classification_cache)
+        total_q = len(normalized.questions)
+
+        def _q_progress(msg: str):
+            # msg is like "classify q01" or "classify q01 (cached)"
+            # enrich to Bloom/topic after classification
+            _progress(f"PULSE·AI — {msg} — checking Bloom level...")
+
+        semantics = await _classify_questions(normalized, classification_cache, progress=_q_progress)
+        # After classify, emit per-question Bloom/topic details
+        for q_no in sorted(semantics.keys()):
+            sem = semantics[q_no]
+            _progress(f"PULSE·AI — Q{q_no} Bloom: {sem.level} · Topic: {sem.topic} · Confidence: {sem.confidence:.2f}")
+        numeric = build_numeric_analysis(normalized, semantics)
         numeric = build_numeric_analysis(normalized, semantics)
         students.append(
             {
@@ -56,7 +80,9 @@ async def compute_exam_analytics(
             }
         )
 
+    _progress(f"PULSE·AI — Computing class statistics for {len(students)} students (avg, pass rate, Bloom)...")
     stats = compute_exam_analytics_stats(students, pass_threshold=0.5)
+    _progress("PULSE·AI — Detecting weak topics and attention areas...")
     # Phase 3: attach weakness scores for recommendation engine (canonical first, raw fallback)
     # weakness computed here is persisted with the document; topic_canonicalization later
     # enriches with canonical_topic_performance -> recalculate if available
@@ -72,8 +98,11 @@ async def compute_exam_analytics(
                 reverse=True,
             )
         ]
+        if stats.get("weakest_topics"):
+            _progress(f"PULSE·AI — Weakest topics: {', '.join(stats['weakest_topics'][:3])}")
     except Exception:
         pass
+    _progress("PULSE·AI — Finalizing analytics document...")
     total_marks = sum(float(q["max_marks"]) for q in (rubric or {}).get("questions", []))
     question_count = len((rubric or {}).get("questions", []))
     course_name = str((course or {}).get("name") or (course or {}).get("course_name") or "").strip()
@@ -101,6 +130,7 @@ async def compute_exam_analytics(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "analytics_version": "1.0",
     }
+    _progress("PULSE·AI — Saving analytics to database...")
     await upsert_exam_analytics(db, document)
     await upsert_exam_analysis_status(
         db,
