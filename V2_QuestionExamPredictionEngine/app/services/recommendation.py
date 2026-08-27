@@ -55,9 +55,9 @@ def _compute_signals(question_bank: list[dict[str, Any]]) -> dict[str, Any]:
     lecture_topics = {
         r["canonical_topic"] for r in question_bank if r["source_type"] == "lecture"
     }
-    # tutorial counts per topic
+    # tutorial counts per topic (include generated as teachable evidence)
     tut_counts: Counter = Counter(
-        r["canonical_topic"] for r in question_bank if r["source_type"] == "tutorial"
+        r["canonical_topic"] for r in question_bank if r["source_type"] in ("tutorial", "generated")
     )
     max_tut = max(tut_counts.values()) if tut_counts else 1
 
@@ -135,9 +135,9 @@ def recommend_questions(
             weakness_bloom = 1.0 - pct / 100.0
             analytics_bloom_gap_cache[lvl] = round(max(0.0, weakness_bloom), 4)
 
-    # Candidates: tutorial questions only (lecture rows are coverage signals, not exam candidates)
-    # Fallback to lecture if no tutorial for a weak topic (rare)
-    candidates = [r for r in question_bank if r["source_type"] == "tutorial"]
+    # Candidates: tutorial + generated questions (lecture rows are coverage signals, not exam candidates)
+    # Generated fills 0-coverage gaps (JDBC/Indexes/Transaction etc. via qwen3:8b)
+    candidates = [r for r in question_bank if r["source_type"] in ("tutorial", "generated")]
     if not candidates:
         candidates = [r for r in question_bank if r["source_type"] == "lecture"]
 
@@ -174,11 +174,11 @@ def recommend_questions(
                 "source_type": cand["source_type"],
                 "source_id": cand["source_id"],
                 "canonical_topic": topic,
-                "subtopic": cand.get("subtopic", "")[:300],
+                "subtopic": cand.get("subtopic", "")[:500],
                 "bloom_level": cand.get("bloom_level"),
                 "difficulty": cand.get("difficulty"),
                 "marks": cand.get("marks", 0),
-                "text": cand.get("text", "")[:500],
+                "text": cand.get("text", "")[:2000],
                 "weakness": weakness,
                 "lecture_coverage": lecture_cov,
                 "tutorial_evidence": tut_ev,
