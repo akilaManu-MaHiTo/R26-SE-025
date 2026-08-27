@@ -1,7 +1,10 @@
+import asyncio
+import json
 from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.analytics.student_document import performance_status
@@ -74,6 +77,94 @@ async def lecturer_exam_analytics(
         return ExamAnalyticsDocument.model_validate(document)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Analytics document validation failed: {exc}") from exc
+
+
+@router.get("/exams/{course_code}/{session_name}/analytics/stream")
+async def lecturer_exam_analytics_stream(
+    course_code: str,
+    session_name: str,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    semester: int | None = Query(None),
+    db=Depends(get_db),
+):
+    """SSE stream for real-time analyze — PULSE·AI says what it's doing (Bloom, topic)."""
+    async def event_generator():
+        def sse(event: str, data: dict) -> str:
+            return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+        # Fast path: cached
+        cached = await find_exam_analytics(db, course_code, session_name, year, month, semester)
+        if cached is not None:
+            yield sse("progress", {"phase": "cached", "message": "PULSE·AI — Using cached analytics"})
+            try:
+                await provision_student_accounts(db, course_code, session_name, year, month, semester)
+            except Exception:
+                pass
+            try:
+                canonical = await canonicalize_topics(db, cached, course_code, session_name, year, month, semester)
+                cached.update(canonical)
+            except Exception:
+                pass
+            yield sse("result", cached)
+            return
+
+        queue: asyncio.Queue[str] = asyncio.Queue()
+
+        def progress_cb(msg: str):
+            try:
+                queue.put_nowait(msg)
+            except Exception:
+                pass
+
+        # Run compute in background task
+        compute_task = asyncio.create_task(
+            compute_exam_analytics(db, course_code, session_name, year, month, semester, progress_callback=progress_cb)
+        )
+
+        # Stream progress while compute runs
+        while not compute_task.done():
+            try:
+                msg = await asyncio.wait_for(queue.get(), timeout=0.3)
+                yield sse("progress", {"phase": "analyzing", "message": msg})
+            except asyncio.TimeoutError:
+                # keep connection alive
+                yield sse("ping", {"message": "alive"})
+            except Exception:
+                break
+
+        # Drain remaining queue
+        while not queue.empty():
+            try:
+                msg = queue.get_nowait()
+                yield sse("progress", {"phase": "analyzing", "message": msg})
+            except Exception:
+                break
+
+        try:
+            document = await compute_task
+        except ExamNotFound as exc:
+            yield sse("error", {"detail": str(exc)})
+            return
+        except Exception as exc:
+            yield sse("error", {"detail": f"Failed to compute analytics: {exc}"})
+            return
+
+        # Post-processing
+        yield sse("progress", {"phase": "finalizing", "message": "PULSE·AI — Provisioning student accounts & canonicalizing topics..."})
+        try:
+            await provision_student_accounts(db, course_code, session_name, year, month, semester)
+        except Exception:
+            pass
+        try:
+            canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
+            document.update(canonical)
+        except Exception:
+            pass
+
+        yield sse("result", document)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @router.get("/exams/{course_code}/{session_name}/students")

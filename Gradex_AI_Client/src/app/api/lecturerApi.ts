@@ -190,6 +190,57 @@ export async function fetchExamAnalytics(
   return res.json();
 }
 
+export async function fetchExamAnalyticsStream(
+  courseCode: string,
+  sessionName: string,
+  year: number,
+  month: number,
+  semester: number,
+  onProgress: (msg: string) => void,
+): Promise<ExamAnalytics> {
+  const encoded = encodeURIComponent(sessionName);
+  const params = new URLSearchParams({ year: String(year), month: String(month), semester: String(semester) });
+  const url = `${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/analytics/stream?${params}`;
+  const res = await fetch(url, { headers: { Accept: "text/event-stream" } });
+  if (!res.ok || !res.body) throw new Error("Failed to stream exam analytics");
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: ExamAnalytics | null = null;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() || "";
+    for (const part of parts) {
+      const lines = part.split("\n");
+      let event = "message";
+      let dataStr = "";
+      for (const line of lines) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) dataStr += line.slice(5).trim();
+      }
+      if (!dataStr) continue;
+      try {
+        const data = JSON.parse(dataStr);
+        if (event === "progress" || event === "ping") {
+          if (data.message) onProgress(data.message);
+        } else if (event === "result") {
+          result = data as ExamAnalytics;
+        } else if (event === "error") {
+          throw new Error(data.detail || "Stream error");
+        }
+      } catch {
+        // ignore parse errors for ping
+      }
+    }
+    if (result) break;
+  }
+  if (!result) throw new Error("No analytics result from stream");
+  return result;
+}
+
 export async function fetchExamStudents(
   courseCode: string,
   sessionName: string,

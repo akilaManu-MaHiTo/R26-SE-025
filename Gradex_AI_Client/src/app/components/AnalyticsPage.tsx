@@ -9,6 +9,7 @@ import { AIPageBanner } from "./AIBrand";
 import {
   fetchExams,
   fetchExamAnalytics,
+  fetchExamAnalyticsStream,
   fetchTeachingActions,
   type ExamListItem,
   type ExamAnalytics,
@@ -25,7 +26,15 @@ import { TeachingActions } from "./analytics/TeachingActions";
 import { TopicDetailModal } from "./analytics/TopicDetailModal";
 import { QuestionDetailModal } from "./analytics/QuestionDetailModal";
 
-function PremiumLoader({ steps, currentStep }: { steps: LoadStep[]; currentStep: number }) {
+function PremiumLoader({
+  steps,
+  currentStep,
+  liveMessage,
+}: {
+  steps: LoadStep[];
+  currentStep: number;
+  liveMessage?: string;
+}) {
   return (
     <div className="flex flex-col items-center justify-center py-16 space-y-6">
       <motion.div
@@ -33,7 +42,7 @@ function PremiumLoader({ steps, currentStep }: { steps: LoadStep[]; currentStep:
         transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
         className="size-10 rounded-full border-2 border-primary/20 border-t-primary"
       />
-      <div className="space-y-2 text-center">
+      <div className="space-y-2 text-center max-w-xl">
         <motion.p
           key={currentStep}
           initial={{ opacity: 0, y: 6 }}
@@ -42,6 +51,16 @@ function PremiumLoader({ steps, currentStep }: { steps: LoadStep[]; currentStep:
         >
           {steps[currentStep]?.label || "Loading..."}
         </motion.p>
+        {liveMessage && (
+          <motion.p
+            key={liveMessage}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-xs text-muted-foreground font-mono bg-muted/50 rounded-lg px-3 py-2 border"
+          >
+            {liveMessage}
+          </motion.p>
+        )}
         <div className="flex gap-1.5 justify-center">
           {steps.map((_, i) => (
             <motion.div
@@ -67,6 +86,7 @@ export default function AnalyticsPage() {
   const [loadingActions, setLoadingActions] = useState(false);
   const [loadSteps, setLoadSteps] = useState<LoadStep[]>([]);
   const [currentLoadStep, setCurrentLoadStep] = useState(0);
+  const [liveModelMessage, setLiveModelMessage] = useState<string>("PULSE·AI — Initializing...");
   const [selectedTopic, setSelectedTopic] = useState<CanonicalTopic | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
 
@@ -80,29 +100,52 @@ export default function AnalyticsPage() {
     setSelectedExam(exam);
     setLoadingAnalytics(true);
     setAnalytics(null);
+    setLiveModelMessage("PULSE·AI — Starting analysis...");
 
     const steps: LoadStep[] = [
-      { label: "Loading exam analytics..." },
-      { label: "Analyzing topic performance..." },
-      { label: "Generating teaching recommendations..." },
+      { label: "PULSE·AI — Ingesting submissions..." },
+      { label: "PULSE·AI — Checking Bloom levels & classifying topics..." },
+      { label: "PULSE·AI — Computing statistics & insights..." },
     ];
     setLoadSteps(steps);
     setCurrentLoadStep(0);
 
     try {
       setCurrentLoadStep(0);
-      const data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
+      setLiveModelMessage("PULSE·AI — Connecting to model...");
+      // Try streaming for real-time Bloom/topic messages, fallback to plain fetch
+      let data: ExamAnalytics;
+      try {
+        data = await fetchExamAnalyticsStream(
+          exam.course_code,
+          exam.session_name,
+          exam.year,
+          exam.month,
+          exam.semester,
+          (msg) => {
+            setLiveModelMessage(msg);
+            // Advance loader step based on message content
+            if (msg.includes("Ingesting") || msg.includes("Analyzing student")) setCurrentLoadStep(0);
+            else if (msg.includes("Bloom") || msg.includes("Topic") || msg.includes("Q")) setCurrentLoadStep(1);
+            else if (msg.includes("Computing") || msg.includes("weak") || msg.includes("Finalizing") || msg.includes("Saving")) setCurrentLoadStep(2);
+          },
+        );
+      } catch {
+        setLiveModelMessage("PULSE·AI — Streaming unavailable, loading...");
+        data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
+      }
       setAnalytics(data);
-      setCurrentLoadStep(1);
+      setLiveModelMessage("PULSE·AI — Analysis complete");
+      setCurrentLoadStep(2);
 
       setLoadingActions(true);
-      setCurrentLoadStep(2);
       fetchTeachingActions(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
         .then(setTeachingActions)
         .catch(() => setTeachingActions([]))
         .finally(() => setLoadingActions(false));
     } catch (err) {
       console.error(err);
+      setLiveModelMessage("PULSE·AI — Analysis failed");
     } finally {
       setLoadingAnalytics(false);
     }
@@ -216,7 +259,7 @@ export default function AnalyticsPage() {
       </motion.div>
 
       {loadingAnalytics ? (
-        <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} />
+        <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} liveMessage={liveModelMessage} />
       ) : analytics ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
