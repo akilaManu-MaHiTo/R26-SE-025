@@ -628,7 +628,7 @@ export function ExamCreator() {
                           <Badge variant="outline" className="text-[10px]">{rec.marks || 10} m</Badge>
                           <PriorityBadge priority={rec.priority} />
                         </div>
-                        <p className="text-xs line-clamp-3 leading-relaxed">{rec.text}</p>
+                        <p className="text-xs leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto pr-1 border rounded bg-muted/20 p-1.5">{rec.text}</p>
                         <div className="text-[11px] text-muted-foreground bg-muted/50 rounded p-1.5">
                           Weak {rec.reason.weakness_pct}% · Tut {rec.reason.tutorial_count} · Exam {rec.reason.exam_recent_count} · Bloom {(rec.bloom_gap * 100).toFixed(0)}%
                         </div>
@@ -664,7 +664,7 @@ export function ExamCreator() {
                   <div className="space-y-2 mt-2">
                     {low.map((rec) => (
                       <Card key={rec.question_id} className="p-2 text-xs border-border">
-                        <p className="line-clamp-2">{rec.text}</p>
+                        <p className="whitespace-pre-wrap break-words max-h-24 overflow-y-auto pr-1">{rec.text}</p>
                         <Button size="sm" variant="ghost" className="h-6 mt-1" onClick={() => handleInsert(rec)}><Plus className="size-3 mr-1" />Add</Button>
                       </Card>
                     ))}
@@ -712,8 +712,8 @@ export function ExamCreator() {
                         <Badge variant="outline" className="text-[10px]">{item.source_type} {item.year}</Badge>
                         {item.marks > 0 && <Badge variant="outline" className="text-[10px]">{item.marks} m</Badge>}
                       </div>
-                      <p className="text-xs line-clamp-3 leading-relaxed">{item.text}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{item.subtopic}</p>
+                      <p className="text-xs leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto pr-1 border rounded bg-muted/20 p-1.5">{item.text}</p>
+                      <p className="text-[11px] text-muted-foreground whitespace-pre-wrap break-words">{item.subtopic}</p>
                       <div className="flex gap-1">
                         <Select value={insertTargets[item.question_id] || "end"} onValueChange={(v) => setInsertTargets((s) => ({ ...s, [item.question_id]: v }))}>
                           <SelectTrigger className="flex-1 h-7 text-xs"><SelectValue /></SelectTrigger>
