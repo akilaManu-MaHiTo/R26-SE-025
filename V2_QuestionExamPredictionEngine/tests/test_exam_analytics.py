@@ -125,3 +125,17 @@ def test_topic_bloom_matrix_computed():
     stats = compute_exam_analytics_stats(_student_docs(), pass_threshold=0.5)
     assert "topic_bloom_matrix" in stats
     assert any(c["topic"]=="JDBC" and c["bloom_level"]=="Remember" for c in stats["topic_bloom_matrix"])
+
+
+def test_question_discrimination_and_p_value():
+    # 4 students: high scorers get Q01 right, low scorers wrong => positive discrimination
+    docs = [
+        {"overall": {"score":90,"maximum":100,"percentage":90},"topic_performance":[],"bloom_performance":[],"question_performance":[{"question_no":"01","topic":"SQL","bloom_level":"Apply","score":10,"max_score":10}]},
+        {"overall": {"score":85,"maximum":100,"percentage":85},"topic_performance":[],"bloom_performance":[],"question_performance":[{"question_no":"01","topic":"SQL","bloom_level":"Apply","score":10,"max_score":10}]},
+        {"overall": {"score":30,"maximum":100,"percentage":30},"topic_performance":[],"bloom_performance":[],"question_performance":[{"question_no":"01","topic":"SQL","bloom_level":"Apply","score":0,"max_score":10}]},
+        {"overall": {"score":20,"maximum":100,"percentage":20},"topic_performance":[],"bloom_performance":[],"question_performance":[{"question_no":"01","topic":"SQL","bloom_level":"Apply","score":0,"max_score":10}]},
+    ]
+    stats = compute_exam_analytics_stats(docs, pass_threshold=0.5)
+    qp = stats["question_performance"][0]
+    assert "discrimination" in qp
+    assert qp["discrimination"] > 0.5

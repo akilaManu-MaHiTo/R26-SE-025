@@ -52,6 +52,9 @@ class QuestionPerformanceSummary(BaseModel):
     evidence_status: str = Field(default="insufficient_evidence")
     student_count: int = Field(ge=0, default=0)
     attempt_count: int = Field(ge=0, default=0)
+    p_value: float = Field(ge=0, le=100, default=0.0)
+    discrimination: float = Field(ge=-1, le=1, default=0.0)
+    missed_criterion_rate: float | None = Field(default=None, ge=0, le=1)
 
 
 class TopicBloomCell(BaseModel):
