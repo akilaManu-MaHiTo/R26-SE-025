@@ -1,0 +1,322 @@
+[
+  {
+    "_id": { "$oid": "6c1000000000000000000001" },
+    "student_id": "IT22262551",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ERD-001",
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "evaluation_result": {
+      "total_score": 18,
+      "max_score": 20,
+      "criteria_results": [
+        { "criterion_id": 1, "criterion": "Student entity", "awarded_marks": 2, "status": "pass", "remarks": "Student entity correctly represented as rectangle" },
+        { "criterion_id": 2, "criterion": "Student attributes", "awarded_marks": 2, "status": "pass", "remarks": "Name, Gender, DOB, Age all present" },
+        { "criterion_id": 3, "criterion": "Derived attribute", "awarded_marks": 1, "status": "pass", "remarks": "Age correctly shown as dashed ellipse" },
+        { "criterion_id": 4, "criterion": "College entity", "awarded_marks": 2, "status": "pass", "remarks": "College entity correctly represented as rectangle" },
+        { "criterion_id": 5, "criterion": "College attributes", "awarded_marks": 2, "status": "pass", "remarks": "Name, Affiliation, Address all present" },
+        { "criterion_id": 6, "criterion": "Enrolls in relationship", "awarded_marks": 3, "status": "pass", "remarks": "Enrolls in correctly connects Student and College" },
+        { "criterion_id": 7, "criterion": "Specialized in relationship", "awarded_marks": 2, "status": "pass", "remarks": "Specialized in correctly connects College to departments" },
+        { "criterion_id": 8, "criterion": "Specialization entities", "awarded_marks": 3, "status": "pass", "remarks": "Computer Science, Mechanical, Electronics all present" },
+        { "criterion_id": 9, "criterion": "Correct ER notation", "awarded_marks": 1, "status": "partial", "remarks": "Most notation correct, minor clarity issues" },
+        { "criterion_id": 10, "criterion": "Correct connections", "awarded_marks": 0, "status": "fail", "remarks": "Some attribute connections unclear" }
+      ],
+      "overall_feedback": "Excellent ER diagram covering all required entities, attributes, and relationships. All notation is correct.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-25T12:00:00.000+00:00",
+    "updated_at": "2026-08-25T12:00:00.000+00:00"
+  },
+  {
+    "_id": { "$oid": "6c1000000000000000000002" },
+    "student_id": "IT22262552",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ERD-001",
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "evaluation_result": {
+      "total_score": 16,
+      "max_score": 20,
+      "criteria_results": [
+        { "criterion_id": 1, "criterion": "Student entity", "awarded_marks": 2, "status": "pass", "remarks": "Student entity correctly represented" },
+        { "criterion_id": 2, "criterion": "Student attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 3, "criterion": "Derived attribute", "awarded_marks": 1, "status": "pass", "remarks": "Age shown as derived attribute" },
+        { "criterion_id": 4, "criterion": "College entity", "awarded_marks": 2, "status": "pass", "remarks": "College entity present" },
+        { "criterion_id": 5, "criterion": "College attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 6, "criterion": "Enrolls in relationship", "awarded_marks": 3, "status": "pass", "remarks": "Relationship correctly drawn" },
+        { "criterion_id": 7, "criterion": "Specialized in relationship", "awarded_marks": 2, "status": "pass", "remarks": "Relationship present" },
+        { "criterion_id": 8, "criterion": "Specialization entities", "awarded_marks": 0, "status": "fail", "remarks": "Electronics entity missing" },
+        { "criterion_id": 9, "criterion": "Correct ER notation", "awarded_marks": 1, "status": "partial", "remarks": "Mostly correct notation" },
+        { "criterion_id": 10, "criterion": "Correct connections", "awarded_marks": 1, "status": "pass", "remarks": "Connections properly drawn" }
+      ],
+      "overall_feedback": "Good understanding of ER diagram concepts. Missing Electronics entity.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-25T12:05:00.000+00:00",
+    "updated_at": "2026-08-25T12:05:00.000+00:00"
+  },
+  {
+    "_id": { "$oid": "6c1000000000000000000003" },
+    "student_id": "IT22262553",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ERD-001",
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "evaluation_result": {
+      "total_score": 15,
+      "max_score": 20,
+      "criteria_results": [
+        { "criterion_id": 1, "criterion": "Student entity", "awarded_marks": 2, "status": "pass", "remarks": "Student entity present" },
+        { "criterion_id": 2, "criterion": "Student attributes", "awarded_marks": 0, "status": "fail", "remarks": "Missing DOB and Age attributes" },
+        { "criterion_id": 3, "criterion": "Derived attribute", "awarded_marks": 0, "status": "fail", "remarks": "Age not shown as derived" },
+        { "criterion_id": 4, "criterion": "College entity", "awarded_marks": 2, "status": "pass", "remarks": "College entity present" },
+        { "criterion_id": 5, "criterion": "College attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 6, "criterion": "Enrolls in relationship", "awarded_marks": 3, "status": "pass", "remarks": "Relationship correctly drawn" },
+        { "criterion_id": 7, "criterion": "Specialized in relationship", "awarded_marks": 2, "status": "pass", "remarks": "Relationship present" },
+        { "criterion_id": 8, "criterion": "Specialization entities", "awarded_marks": 0, "status": "fail", "remarks": "Missing Mechanical and Electronics" },
+        { "criterion_id": 9, "criterion": "Correct ER notation", "awarded_marks": 2, "status": "pass", "remarks": "Notation correct" },
+        { "criterion_id": 10, "criterion": "Correct connections", "awarded_marks": 1, "status": "pass", "remarks": "Connections correct" }
+      ],
+      "overall_feedback": "Basic ER diagram with required components. Missing some attributes and entities.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-25T12:10:00.000+00:00",
+    "updated_at": "2026-08-25T12:10:00.000+00:00"
+  },
+  {
+    "_id": { "$oid": "6c1000000000000000000004" },
+    "student_id": "IT22262554",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ERD-001",
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "evaluation_result": {
+      "total_score": 14,
+      "max_score": 20,
+      "criteria_results": [
+        { "criterion_id": 1, "criterion": "Student entity", "awarded_marks": 2, "status": "pass", "remarks": "Student entity present" },
+        { "criterion_id": 2, "criterion": "Student attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 3, "criterion": "Derived attribute", "awarded_marks": 0, "status": "fail", "remarks": "Age not shown as dashed ellipse" },
+        { "criterion_id": 4, "criterion": "College entity", "awarded_marks": 2, "status": "pass", "remarks": "College entity present" },
+        { "criterion_id": 5, "criterion": "College attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 6, "criterion": "Enrolls in relationship", "awarded_marks": 3, "status": "pass", "remarks": "Relationship correctly drawn" },
+        { "criterion_id": 7, "criterion": "Specialized in relationship", "awarded_marks": 2, "status": "pass", "remarks": "Relationship present" },
+        { "criterion_id": 8, "criterion": "Specialization entities", "awarded_marks": 0, "status": "fail", "remarks": "Missing Mechanical and Electronics" },
+        { "criterion_id": 9, "criterion": "Correct ER notation", "awarded_marks": 0, "status": "fail", "remarks": "Notation inconsistencies" },
+        { "criterion_id": 10, "criterion": "Correct connections", "awarded_marks": 1, "status": "pass", "remarks": "Connections present" }
+      ],
+      "overall_feedback": "Complete ER diagram but missing some entities and notation issues.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-25T12:15:00.000+00:00",
+    "updated_at": "2026-08-25T12:15:00.000+00:00"
+  },
+  {
+    "_id": { "$oid": "6c1000000000000000000005" },
+    "student_id": "IT22262555",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ERD-001",
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "evaluation_result": {
+      "total_score": 17,
+      "max_score": 20,
+      "criteria_results": [
+        { "criterion_id": 1, "criterion": "Student entity", "awarded_marks": 2, "status": "pass", "remarks": "Student entity correctly represented" },
+        { "criterion_id": 2, "criterion": "Student attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 3, "criterion": "Derived attribute", "awarded_marks": 1, "status": "pass", "remarks": "Age correctly shown as dashed ellipse" },
+        { "criterion_id": 4, "criterion": "College entity", "awarded_marks": 2, "status": "pass", "remarks": "College entity present" },
+        { "criterion_id": 5, "criterion": "College attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 6, "criterion": "Enrolls in relationship", "awarded_marks": 3, "status": "pass", "remarks": "Relationship correctly drawn" },
+        { "criterion_id": 7, "criterion": "Specialized in relationship", "awarded_marks": 2, "status": "pass", "remarks": "Relationship correctly drawn" },
+        { "criterion_id": 8, "criterion": "Specialization entities", "awarded_marks": 3, "status": "pass", "remarks": "All department entities present" },
+        { "criterion_id": 9, "criterion": "Correct ER notation", "awarded_marks": 0, "status": "partial", "remarks": "Minor visual clarity issues" },
+        { "criterion_id": 10, "criterion": "Correct connections", "awarded_marks": 0, "status": "partial", "remarks": "Connections present but could be clearer" }
+      ],
+      "overall_feedback": "Well-structured ER diagram with correct notation throughout.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-25T12:20:00.000+00:00",
+    "updated_at": "2026-08-25T12:20:00.000+00:00"
+  },
+  {
+    "_id": { "$oid": "6c1000000000000000000006" },
+    "student_id": "IT22262556",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ERD-001",
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "evaluation_result": {
+      "total_score": 12,
+      "max_score": 20,
+      "criteria_results": [
+        { "criterion_id": 1, "criterion": "Student entity", "awarded_marks": 2, "status": "pass", "remarks": "Student entity present" },
+        { "criterion_id": 2, "criterion": "Student attributes", "awarded_marks": 0, "status": "fail", "remarks": "Missing DOB and Age attributes" },
+        { "criterion_id": 3, "criterion": "Derived attribute", "awarded_marks": 0, "status": "fail", "remarks": "Age not shown as derived" },
+        { "criterion_id": 4, "criterion": "College entity", "awarded_marks": 2, "status": "pass", "remarks": "College entity present" },
+        { "criterion_id": 5, "criterion": "College attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 6, "criterion": "Enrolls in relationship", "awarded_marks": 3, "status": "pass", "remarks": "Relationship present" },
+        { "criterion_id": 7, "criterion": "Specialized in relationship", "awarded_marks": 2, "status": "pass", "remarks": "Relationship present" },
+        { "criterion_id": 8, "criterion": "Specialization entities", "awarded_marks": 0, "status": "fail", "remarks": "No department entities" },
+        { "criterion_id": 9, "criterion": "Correct ER notation", "awarded_marks": 1, "status": "partial", "remarks": "Basic notation only" },
+        { "criterion_id": 10, "criterion": "Correct connections", "awarded_marks": 0, "status": "fail", "remarks": "Connections unclear" }
+      ],
+      "overall_feedback": "Minimal ER diagram with required components. Missing many elements.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-25T12:25:00.000+00:00",
+    "updated_at": "2026-08-25T12:25:00.000+00:00"
+  },
+  {
+    "_id": { "$oid": "6c1000000000000000000007" },
+    "student_id": "IT22262557",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ERD-001",
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        { "criterion_id": 1, "criterion": "Student entity", "awarded_marks": 2, "status": "pass", "remarks": "Student entity perfectly represented" },
+        { "criterion_id": 2, "criterion": "Student attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present and clear" },
+        { "criterion_id": 3, "criterion": "Derived attribute", "awarded_marks": 1, "status": "pass", "remarks": "Age correctly shown as dashed ellipse" },
+        { "criterion_id": 4, "criterion": "College entity", "awarded_marks": 2, "status": "pass", "remarks": "College entity perfectly represented" },
+        { "criterion_id": 5, "criterion": "College attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present and clear" },
+        { "criterion_id": 6, "criterion": "Enrolls in relationship", "awarded_marks": 3, "status": "pass", "remarks": "Relationship perfectly drawn" },
+        { "criterion_id": 7, "criterion": "Specialized in relationship", "awarded_marks": 2, "status": "pass", "remarks": "Relationship perfectly drawn" },
+        { "criterion_id": 8, "criterion": "Specialization entities", "awarded_marks": 3, "status": "pass", "remarks": "All department entities present" },
+        { "criterion_id": 9, "criterion": "Correct ER notation", "awarded_marks": 1, "status": "partial", "remarks": "Minor improvement possible" },
+        { "criterion_id": 10, "criterion": "Correct connections", "awarded_marks": 1, "status": "pass", "remarks": "All connections clear" }
+      ],
+      "overall_feedback": "Outstanding ER diagram with perfect notation and clear connections.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-25T12:30:00.000+00:00",
+    "updated_at": "2026-08-25T12:30:00.000+00:00"
+  },
+  {
+    "_id": { "$oid": "6c1000000000000000000008" },
+    "student_id": "IT22262558",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ERD-001",
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "evaluation_result": {
+      "total_score": 13,
+      "max_score": 20,
+      "criteria_results": [
+        { "criterion_id": 1, "criterion": "Student entity", "awarded_marks": 2, "status": "pass", "remarks": "Student entity present" },
+        { "criterion_id": 2, "criterion": "Student attributes", "awarded_marks": 0, "status": "fail", "remarks": "Missing DOB and Age" },
+        { "criterion_id": 3, "criterion": "Derived attribute", "awarded_marks": 0, "status": "fail", "remarks": "Age not shown" },
+        { "criterion_id": 4, "criterion": "College entity", "awarded_marks": 2, "status": "pass", "remarks": "College entity present" },
+        { "criterion_id": 5, "criterion": "College attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 6, "criterion": "Enrolls in relationship", "awarded_marks": 3, "status": "pass", "remarks": "Relationship present" },
+        { "criterion_id": 7, "criterion": "Specialized in relationship", "awarded_marks": 2, "status": "pass", "remarks": "Relationship present" },
+        { "criterion_id": 8, "criterion": "Specialization entities", "awarded_marks": 0, "status": "fail", "remarks": "Only Computer Science present" },
+        { "criterion_id": 9, "criterion": "Correct ER notation", "awarded_marks": 1, "status": "partial", "remarks": "Basic notation" },
+        { "criterion_id": 10, "criterion": "Correct connections", "awarded_marks": 1, "status": "pass", "remarks": "Connections present" }
+      ],
+      "overall_feedback": "Minimal ER diagram. Missing several required components.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-25T12:35:00.000+00:00",
+    "updated_at": "2026-08-25T12:35:00.000+00:00"
+  },
+  {
+    "_id": { "$oid": "6c1000000000000000000009" },
+    "student_id": "IT22262559",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ERD-001",
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "evaluation_result": {
+      "total_score": 16,
+      "max_score": 20,
+      "criteria_results": [
+        { "criterion_id": 1, "criterion": "Student entity", "awarded_marks": 2, "status": "pass", "remarks": "Student entity correctly represented" },
+        { "criterion_id": 2, "criterion": "Student attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 3, "criterion": "Derived attribute", "awarded_marks": 1, "status": "pass", "remarks": "Age shown as derived" },
+        { "criterion_id": 4, "criterion": "College entity", "awarded_marks": 2, "status": "pass", "remarks": "College entity present" },
+        { "criterion_id": 5, "criterion": "College attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 6, "criterion": "Enrolls in relationship", "awarded_marks": 3, "status": "pass", "remarks": "Relationship correctly drawn" },
+        { "criterion_id": 7, "criterion": "Specialized in relationship", "awarded_marks": 2, "status": "pass", "remarks": "Relationship present" },
+        { "criterion_id": 8, "criterion": "Specialization entities", "awarded_marks": 3, "status": "pass", "remarks": "All department entities present" },
+        { "criterion_id": 9, "criterion": "Correct ER notation", "awarded_marks": 0, "status": "partial", "remarks": "Minor visual issues" },
+        { "criterion_id": 10, "criterion": "Correct connections", "awarded_marks": 0, "status": "partial", "remarks": "Connections present" }
+      ],
+      "overall_feedback": "Good ER diagram with all required components properly represented.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-25T12:40:00.000+00:00",
+    "updated_at": "2026-08-25T12:40:00.000+00:00"
+  },
+  {
+    "_id": { "$oid": "6c1000000000000000000010" },
+    "student_id": "IT22262560",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ERD-001",
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "evaluation_result": {
+      "total_score": 15,
+      "max_score": 20,
+      "criteria_results": [
+        { "criterion_id": 1, "criterion": "Student entity", "awarded_marks": 2, "status": "pass", "remarks": "Student entity present" },
+        { "criterion_id": 2, "criterion": "Student attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 3, "criterion": "Derived attribute", "awarded_marks": 1, "status": "pass", "remarks": "Age shown as derived" },
+        { "criterion_id": 4, "criterion": "College entity", "awarded_marks": 2, "status": "pass", "remarks": "College entity present" },
+        { "criterion_id": 5, "criterion": "College attributes", "awarded_marks": 2, "status": "pass", "remarks": "All attributes present" },
+        { "criterion_id": 6, "criterion": "Enrolls in relationship", "awarded_marks": 3, "status": "pass", "remarks": "Relationship correctly drawn" },
+        { "criterion_id": 7, "criterion": "Specialized in relationship", "awarded_marks": 2, "status": "pass", "remarks": "Relationship present" },
+        { "criterion_id": 8, "criterion": "Specialization entities", "awarded_marks": 0, "status": "fail", "remarks": "Electronics entity missing" },
+        { "criterion_id": 9, "criterion": "Correct ER notation", "awarded_marks": 0, "status": "partial", "remarks": "Some notation issues" },
+        { "criterion_id": 10, "criterion": "Correct connections", "awarded_marks": 1, "status": "pass", "remarks": "Connections present" }
+      ],
+      "overall_feedback": "Complete ER diagram covering all required elements.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-25T12:45:00.000+00:00",
+    "updated_at": "2026-08-25T12:45:00.000+00:00"
+  }
+]
