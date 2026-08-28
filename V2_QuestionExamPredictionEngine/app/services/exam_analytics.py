@@ -102,7 +102,19 @@ async def compute_exam_analytics(
     except Exception:
         pass
     _progress("PULSE·AI — Finalizing analytics document...")
-    total_marks = sum(float(q["max_marks"]) for q in (rubric or {}).get("questions", []))
+    # Fetch max_marks from rubricCollection with criterion fallback (wire criterion evidence)
+    def _question_max(q: dict) -> float:
+        if q.get("max_marks") is not None:
+            try:
+                return float(q["max_marks"])
+            except Exception:
+                pass
+        criteria = q.get("criteria") or []
+        try:
+            return float(sum(float(c.get("marks", 0)) for c in criteria))
+        except Exception:
+            return 0.0
+    total_marks = sum(_question_max(q) for q in (rubric or {}).get("questions", []))
     question_count = len((rubric or {}).get("questions", []))
     course_name = str((course or {}).get("name") or (course or {}).get("course_name") or "").strip()
     if not course_name:
