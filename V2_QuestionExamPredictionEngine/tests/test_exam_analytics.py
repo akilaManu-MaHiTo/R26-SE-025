@@ -29,7 +29,7 @@ def test_exam_analytics_serializes_exact_top_level_contract():
     assert set(document.model_dump(mode="json")) == {
         "subject_code", "subject_name", "year", "month", "semester",
         "session_name", "exam", "statistics", "topic_performance",
-        "bloom_performance", "question_performance", "attention_areas",
+        "bloom_performance", "question_performance", "topic_bloom_matrix", "attention_areas",
         "insights", "canonical_topic_performance", "canonical_attention_areas",
         "canonical_insights", "unmapped_topics", "generated_at", "analytics_version",
     }
@@ -119,3 +119,9 @@ def test_topic_evidence_status_insufficient_vs_confirmed():
     many = [docs[1]]*12
     stats2 = compute_exam_analytics_stats(many, pass_threshold=0.5)
     assert stats2["topic_performance"][0]["evidence_status"] in ("possible_weakness","confirmed_weakness")
+
+
+def test_topic_bloom_matrix_computed():
+    stats = compute_exam_analytics_stats(_student_docs(), pass_threshold=0.5)
+    assert "topic_bloom_matrix" in stats
+    assert any(c["topic"]=="JDBC" and c["bloom_level"]=="Remember" for c in stats["topic_bloom_matrix"])
