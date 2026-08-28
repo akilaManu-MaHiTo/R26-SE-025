@@ -169,10 +169,15 @@ async def lecturer_exam_analytics_stream(
 
 @router.get("/exams/{course_code}/{session_name}/students")
 async def lecturer_student_list(
-    course_code: str, session_name: str, db=Depends(get_db)
+    course_code: str,
+    session_name: str,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    semester: int | None = Query(None),
+    db=Depends(get_db),
 ):
     submissions = await find_graded_submissions_for_exam(
-        db, course_code, session_name
+        db, course_code, session_name, year, month, semester
     )
     if not submissions:
         raise HTTPException(status_code=404, detail="no graded submissions for exam")
@@ -190,7 +195,7 @@ async def lecturer_student_list(
         maximum = float(maximum or 0.0)
         percentage = (obtained / maximum * 100.0) if maximum else 0.0
         cached = await find_student_analytics(
-            db, student_id, course_code, session_name
+            db, student_id, course_code, session_name, year, month, semester
         )
         rows.append(
             {
@@ -206,6 +211,49 @@ async def lecturer_student_list(
             }
         )
     return rows
+
+
+@router.get("/exams/{course_code}/{session_name}/student/{student_id}")
+async def lecturer_student_detail(
+    course_code: str,
+    session_name: str,
+    student_id: str,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    semester: int | None = Query(None),
+    include_ai_tips: bool = Query(False, description="When false, strip AI improvement tips (recommendations, next_question_strategy, learning_gaps)"),
+    db=Depends(get_db),
+):
+    """Lecturer view of a single student's performance — excludes AI improvement tips by default.
+
+    Returns the StudentAnalyticsDocument minus `recommendations`, `next_question_strategy`,
+    and `learning_analysis.learning_gaps` so lecturers see raw performance only.
+    Pass `include_ai_tips=true` to get the full document (student-equivalent).
+    """
+    doc = await find_student_analytics(db, student_id, course_code, session_name, year, month, semester)
+    if doc is None:
+        # No cached analytics — try to explain why (no submission vs not yet analyzed)
+        from app.db.repository import find_graded_submission
+
+        sub = await find_graded_submission(db, student_id, course_code, session_name, year, month, semester)
+        if sub is None:
+            raise HTTPException(status_code=404, detail=f"no graded submission for student {student_id} in {course_code} {session_name}")
+        raise HTTPException(status_code=423, detail=f"analytics not yet generated for student {student_id} — ensure exam is analyzed")
+    if not include_ai_tips:
+        # Strip AI improvement tips — keep only raw performance
+        filtered = dict(doc)
+        filtered.pop("recommendations", None)
+        filtered.pop("next_question_strategy", None)
+        # Also strip AI-generated learning_gaps but keep weak/strong categorization
+        la = filtered.get("learning_analysis")
+        if isinstance(la, dict):
+            la_copy = dict(la)
+            la_copy.pop("learning_gaps", None)
+            # Ensure at least an empty list so frontend doesn't break
+            la_copy["learning_gaps"] = []
+            filtered["learning_analysis"] = la_copy
+        return filtered
+    return doc
 
 
 @router.get("/exams/{course_code}/{session_name}/teaching-actions")
