@@ -16,11 +16,19 @@ const COLORS = [
   "hsl(var(--primary)/0.2)",
 ];
 
-export function BloomChart({ bloomPerformance }: Props) {
-  if (!bloomPerformance.length) return null;
+const BLOOM_ORDER = ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"] as const;
 
-  const hasInsufficient = bloomPerformance.some((b) => b.evidence_status === "insufficient_evidence");
-  const hasWeak = bloomPerformance.some((b) => b.evidence_status === "confirmed_weakness" || b.evidence_status === "possible_weakness");
+export function BloomChart({ bloomPerformance }: Props) {
+  // Show all 6 levels; missing ones as 0% (insufficient_evidence) per request
+  const bloomMap = new Map(bloomPerformance.map((b) => [b.level, b]));
+  const data = BLOOM_ORDER.map((level) => {
+    const found = bloomMap.get(level);
+    if (found) return found;
+    return { level, average_percentage: 0, evidence_status: "insufficient_evidence", student_count: 0 } as Props["bloomPerformance"][number];
+  });
+
+  const hasInsufficient = data.some((b) => b.evidence_status === "insufficient_evidence");
+  const hasWeak = data.some((b) => b.evidence_status === "confirmed_weakness" || b.evidence_status === "possible_weakness");
 
   return (
     <Card className="p-5">
@@ -40,13 +48,13 @@ export function BloomChart({ bloomPerformance }: Props) {
         </div>
       </div>
       <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={bloomPerformance} layout="vertical" margin={{ left: 20, right: 20 }}>
+        <BarChart data={data} layout="vertical" margin={{ left: 20, right: 20 }}>
           <CartesianGrid strokeDasharray="3 3" horizontal={false} />
           <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
           <YAxis type="category" dataKey="level" width={80} />
           <Tooltip formatter={(v: number) => `${v.toFixed(2)}%`} />
           <Bar dataKey="average_percentage" radius={[0, 4, 4, 0]}>
-            {bloomPerformance.map((_, i) => (
+            {data.map((_, i) => (
               <Cell key={i} fill={COLORS[i % COLORS.length]} />
             ))}
           </Bar>
