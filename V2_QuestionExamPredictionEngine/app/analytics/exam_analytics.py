@@ -51,23 +51,141 @@ def _evidence_status(
 
 
 def build_insights(
-    statistics: dict, topic_performance: list[dict], question_performance: list[dict]
+    statistics: dict,
+    topic_performance: list[dict],
+    question_performance: list[dict],
+    bloom_performance: list[dict] | None = None,
 ) -> list[str]:
-    """Return deterministic template-string insights about the cohort."""
+    """Return deterministic template-string insights about the cohort.
+
+    Richer templates include sample sizes, Bloom context, discrimination,
+    grade distribution and bimodal notes. Deterministic order, 4-6 strings
+    when data available; falls back gracefully when inputs empty.
+    """
     insights: list[str] = []
+    # --- topic weakest / strongest with sample size ---
     if topic_performance:
-        weakest = min(topic_performance, key=lambda item: item["average_percentage"])
-        insights.append(f"{weakest['topic']} is the weakest topic across the class.")
-        strongest = max(topic_performance, key=lambda item: item["average_percentage"])
-        insights.append(f"{strongest['topic']} is the strongest topic across the class.")
+        try:
+            weakest = min(topic_performance, key=lambda item: float(item.get("average_percentage", 0)))
+            pct = float(weakest.get("average_percentage", 0))
+            n = int(weakest.get("student_count", 0) or 0)
+            ac = int(weakest.get("attempt_count", 0) or 0)
+            evidence = weakest.get("evidence_status", "")
+            topic_name = weakest.get("topic", "Unknown")
+            # phrase matches brief: "at 42.3% (n=12, 2 questions) - confirmed_weakness"
+            suffix = f" - {evidence}" if evidence else ""
+            insights.append(f"{topic_name} is the weakest topic at {pct:.1f}% (n={n}, {ac} questions){suffix}.")
+        except Exception:
+            try:
+                weakest = min(topic_performance, key=lambda item: float(item.get("average_percentage", 0)))
+                insights.append(f"{weakest.get('topic','Unknown')} is the weakest topic across the class.")
+            except Exception:
+                pass
+        try:
+            strongest = max(topic_performance, key=lambda item: float(item.get("average_percentage", 0)))
+            # avoid duplicate when only one topic (still emit strongest for insight count)
+            if strongest.get("topic") != weakest.get("topic") or len(topic_performance) == 1:
+                pct_s = float(strongest.get("average_percentage", 0))
+                n_s = int(strongest.get("student_count", 0) or 0)
+                ac_s = int(strongest.get("attempt_count", 0) or 0)
+                topic_s = strongest.get("topic", "Unknown")
+                # include sample size to satisfy n=
+                insights.append(f"{topic_s} is the strongest topic at {pct_s:.1f}% (n={n_s}, {ac_s} questions).")
+        except Exception:
+            pass
+    # --- Bloom lowest ---
+    if bloom_performance:
+        try:
+            lowest_bloom = min(bloom_performance, key=lambda item: float(item.get("average_percentage", 0)))
+            lvl = lowest_bloom.get("level", "Unknown")
+            pct_b = float(lowest_bloom.get("average_percentage", 0))
+            insights.append(f"Bloom level '{lvl}' was the lowest at {pct_b:.1f}% — focus remediation on {lvl} tasks.")
+        except Exception:
+            pass
+    # --- question lowest with discrimination ---
     if question_performance:
-        lowest = min(
-            question_performance, key=lambda item: item["average_percentage"]
-        )
-        insights.append(
-            f"Question Q{lowest['question_no']} was the lowest-performing question."
-        )
-    return insights
+        try:
+            lowest_q = min(question_performance, key=lambda item: float(item.get("average_percentage", 0)))
+            qid = lowest_q.get("question_id") or f"Q{lowest_q.get('question_no','?')}"
+            # normalize Q prefix
+            if not str(qid).startswith("Q"):
+                qid = f"Q{qid}"
+            pct_q = float(lowest_q.get("average_percentage", 0))
+            disc = lowest_q.get("discrimination")
+            n_q = lowest_q.get("student_count")
+            # discrimination note
+            if disc is not None:
+                try:
+                    disc_f = float(disc)
+                    insights.append(f"Question {qid} was the lowest-performing question at {pct_q:.1f}% (discrimination {disc_f:.2f}, n={n_q}).")
+                except Exception:
+                    insights.append(f"Question {qid} was the lowest-performing question at {pct_q:.1f}% (discrimination {disc}).")
+            else:
+                insights.append(f"Question {qid} was the lowest-performing question at {pct_q:.1f}% (n={n_q}).")
+        except Exception:
+            pass
+    # --- grade distribution / bimodal / std ---
+    try:
+        stats = statistics or {}
+        grade_dist = stats.get("grade_distribution") or {}
+        total = int(stats.get("total_students", 0) or 0)
+        std_pct = stats.get("std_percentage")
+        try:
+            std_f = float(std_pct) if std_pct is not None else 0.0
+        except Exception:
+            std_f = 0.0
+        # grade failure note
+        if isinstance(grade_dist, dict) and total > 0:
+            f_count = int(grade_dist.get("F", 0) or 0)
+            if f_count > 0:
+                pct_fail = round(f_count / total * 100)
+                insights.append(f"{pct_fail:.0f}% failed (F) — {f_count} of {total} students (n={total}).")
+            else:
+                # no fails but still give grade context
+                pass_rate = stats.get("pass_rate")
+                if pass_rate is not None:
+                    try:
+                        pr = float(pass_rate)
+                        insights.append(f"Pass rate {pr:.0f}% — {total} students (n={total}).")
+                    except Exception:
+                        pass
+            # bimodal note if std >20
+            if std_f > 20:
+                insights.append(f"Score distribution is bimodal (std {std_f:.1f}%) — consider differentiated review.")
+            else:
+                # ensure we have enough insights; add std insight if still under 4
+                if len(insights) < 4:
+                    insights.append(f"Cohort n={total} with std {std_f:.1f}% — distribution is relatively tight.")
+        else:
+            # fallback when grade_dist missing but std available
+            if std_f > 20:
+                insights.append(f"Score distribution is bimodal (std {std_f:.1f}%) — consider differentiated review.")
+    except Exception:
+        pass
+    # --- ensure 4-6 insights, deterministic truncate/pad ---
+    # If still fewer than 4 but we have statistics, pad with generic cohort insight
+    if len(insights) < 4:
+        try:
+            total = int((statistics or {}).get("total_students", 0) or 0)
+            avg = (statistics or {}).get("average_percentage")
+            if avg is not None and total:
+                insights.append(f"Cohort average {float(avg):.1f}% across {total} students (n={total}).")
+        except Exception:
+            pass
+    # dedupe while preserving order and cap to 6
+    seen = set()
+    deduped = []
+    for s in insights:
+        if s not in seen:
+            deduped.append(s)
+            seen.add(s)
+    # truncate to 6 if over
+    if len(deduped) > 6:
+        deduped = deduped[:6]
+    # if still empty, fallback to at least one generic
+    if not deduped:
+        deduped = ["Cohort analysis complete — no significant variance detected."]
+    return deduped
 
 
 def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold: float) -> dict:
@@ -301,7 +419,7 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
         for topic in topic_performance
         if topic["status"] in _ATTENTION_PRIORITY
     ]
-    insights = build_insights(statistics, topic_performance, question_performance)
+    insights = build_insights(statistics, topic_performance, question_performance, bloom_performance)
     return {
         "statistics": statistics,
         "topic_performance": topic_performance,

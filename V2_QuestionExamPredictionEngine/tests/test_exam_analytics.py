@@ -139,3 +139,9 @@ def test_question_discrimination_and_p_value():
     qp = stats["question_performance"][0]
     assert "discrimination" in qp
     assert qp["discrimination"] > 0.5
+
+
+def test_insights_include_sample_size_and_bloom_context():
+    stats = compute_exam_analytics_stats(_student_docs(), pass_threshold=0.5)
+    assert any("n=" in s or "students" in s for s in stats["insights"])
+    assert any("Bloom" in s or "Apply" in s for s in stats["insights"])
