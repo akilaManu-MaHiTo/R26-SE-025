@@ -168,7 +168,11 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
     question_score: dict[str, dict] = {}
     question_students: dict[str, set[int]] = {}
     question_attempts: dict[str, int] = {}
+    question_pairs: dict[str, list[tuple[float, float]]] = {}
+    question_criteria_missed: dict[str, int] = {}
+    question_criteria_total: dict[str, int] = {}
     for idx, student in enumerate(normalized_students):
+        overall_pct = float(student.get("overall", {}).get("percentage", 0.0) or 0.0)
         for question in student.get("question_performance", []):
             qno = question["question_no"]
             entry = question_score.setdefault(
@@ -181,11 +185,71 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
             entry["max_score"] += question["max_score"]
             question_students.setdefault(qno, set()).add(idx)
             question_attempts[qno] = question_attempts.get(qno, 0) + 1
+            # collect pair for discrimination/p_value: (overall_pct, question_pct)
+            max_s = float(question.get("max_score", 0) or 0)
+            score_s = float(question.get("score", 0) or 0)
+            q_pct = (score_s / max_s * 100.0) if max_s > 0 else 0.0
+            question_pairs.setdefault(qno, []).append((overall_pct, q_pct))
+            # criteria missed rate if available
+            crit = question.get("criteria_performance")
+            if isinstance(crit, list) and crit:
+                total = len(crit)
+                missed = 0
+                for c in crit:
+                    if isinstance(c, dict):
+                        achieved = c.get("achieved")
+                        if achieved is False:
+                            missed += 1
+                        elif "awarded_marks" in c and "max_marks" in c:
+                            try:
+                                if float(c["awarded_marks"]) < float(c["max_marks"]):
+                                    missed += 1
+                            except Exception:
+                                if not c.get("achieved"):
+                                    missed += 1
+                        elif not achieved:
+                            missed += 1
+                    else:
+                        # unknown shape
+                        missed += 0
+                question_criteria_total[qno] = question_criteria_total.get(qno, 0) + total
+                question_criteria_missed[qno] = question_criteria_missed.get(qno, 0) + missed
     question_performance = []
     for entry in sorted(question_score.values(), key=lambda item: item["question_no"]):
         avg_q = round(entry["score"] / entry["max_score"] * 100 if entry["max_score"] > 0 else 0.0, 2)
         sc_q = len(question_students.get(entry["question_no"], set()))
         ac_q = question_attempts.get(entry["question_no"], 0)
+        qno = entry["question_no"]
+        # p_value is avg_pct (difficulty index)
+        p_value = float(avg_q)
+        # discrimination: top vs bottom groups
+        pairs = question_pairs.get(qno, [])
+        n = len(pairs)
+        discrimination = 0.0
+        if n > 0:
+            # determine k: 27% for n>=10 else half
+            if n >= 10:
+                k = max(1, int(round(n * 0.27)))
+            else:
+                k = max(1, n // 2)
+            # guard k not exceeding n
+            k = min(k, n)
+            sorted_pairs = sorted(pairs, key=lambda x: x[0], reverse=True)
+            top = sorted_pairs[:k]
+            bottom = sorted_pairs[-k:] if k <= n else sorted_pairs
+            # avoid overlap when n small? slicing already gives distinct when k*2 <= n, else overlap is okay for very small n (e.g., n=2 -> top 1 bottom 1 distinct, n=3 k=1 distinct)
+            avg_top = sum(p[1] for p in top) / len(top) if top else 0.0
+            avg_bottom = sum(p[1] for p in bottom) / len(bottom) if bottom else 0.0
+            discrimination = round((avg_top - avg_bottom) / 100.0, 4)
+            # clamp to -1..1
+            if discrimination > 1.0:
+                discrimination = 1.0
+            elif discrimination < -1.0:
+                discrimination = -1.0
+        # missed_criterion_rate
+        total_c = question_criteria_total.get(qno, 0)
+        missed_c = question_criteria_missed.get(qno, 0)
+        missed_criterion_rate = round(missed_c / total_c, 4) if total_c > 0 else None
         question_performance.append(
             {
                 "question_id": entry["question_id"],
@@ -196,6 +260,9 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
                 "evidence_status": _evidence_status(avg_q, sc_q, ac_q, min_students, min_attempts),
                 "student_count": sc_q,
                 "attempt_count": ac_q,
+                "p_value": float(p_value),
+                "discrimination": float(discrimination),
+                "missed_criterion_rate": missed_criterion_rate,
             }
         )
 
