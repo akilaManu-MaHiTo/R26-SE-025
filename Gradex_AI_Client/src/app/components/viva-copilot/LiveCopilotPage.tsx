@@ -6,7 +6,9 @@ import { Card } from "../ui/card";
 import { ScrollArea } from "../ui/scroll-area";
 import { CopilotCamera, CopilotCameraHandle, SpeechResult } from "./CopilotCamera";
 import {
+  analyzeCopilotSession,
   askCopilotQuestion,
+  CopilotAssessmentMode,
   CopilotEvent,
   CopilotPhase,
   copilotWsUrl,
@@ -18,6 +20,22 @@ import {
   setCopilotPhase,
   TranscriptTurn,
 } from "./copilotApi";
+import {
+  AnalysisResult,
+  AssessmentMode,
+  buildAIInterpretation,
+  buildKeyMoments,
+} from "../viva/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { EmotionDistribution } from "../viva/EmotionDistribution";
+import { EngagementTimeline } from "../viva/EngagementTimeline";
+import { KeyMoments } from "../viva/KeyMoments";
+import { TranscriptPanel } from "../viva/TranscriptPanel";
+import { LlmJudgePanel } from "../viva/LlmJudgePanel";
+import { QaRelevancePanel } from "../viva/QaRelevancePanel";
+import { ScoreOverview } from "../viva/ScoreOverview";
+import { AudioAnalysisPanel } from "../viva/AudioAnalysisPanel";
+import { AISummary } from "../viva/AISummary";
 import { CopilotErrorBoundary } from "./CopilotErrorBoundary";
 
 export function LiveCopilotPage() {
@@ -47,6 +65,15 @@ function LiveCopilotScreen() {
   const [partial, setPartial] = useState("");
   const [wsReady, setWsReady] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
+  // Chosen before the session starts and locked for its duration — same rule
+  // as an uploaded viva (see VivaPage.tsx): the examiner cannot switch mode
+  // after the fact and re-roll the grade.
+  const [assessmentMode, setAssessmentMode] = useState<CopilotAssessmentMode>(
+    "WITHOUT_TECHNICAL_ACCURACY",
+  );
+  const [studentId, setStudentId] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
 
   const cameraRef = useRef<CopilotCameraHandle>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -173,11 +200,11 @@ function LiveCopilotScreen() {
           break;
         }
         case "copilot.error": {
-          const message = event.message || "Copilot error";
+          const message = event.message || "Live viva error";
           setError(message);
           if (lastErrorToastRef.current !== message) {
             lastErrorToastRef.current = message;
-            toast.error("Copilot issue", { description: message });
+            toast.error("Live viva issue", { description: message });
           }
           break;
         }
@@ -248,6 +275,7 @@ function LiveCopilotScreen() {
 
   const startLiveViva = async () => {
     setError("");
+    setResult(null);
     setBusy(true);
     try {
       await cameraRef.current?.start();
@@ -264,11 +292,11 @@ function LiveCopilotScreen() {
       await setCopilotPhase(created.sessionId, "viva");
       setPhase("viva");
 
-      toast.success("Live Copilot started", {
+      toast.success("Live viva started", {
         description: "Listening to the candidate — AI questions will pop up as they speak.",
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to start Viva Copilot session.";
+      const message = err instanceof Error ? err.message : "Failed to start live viva session.";
       setError(message);
       toast.error("Could not start session", { description: message });
     } finally {
@@ -280,7 +308,38 @@ function LiveCopilotScreen() {
     const id = sessionId;
     disconnectWs();
     clearIdleTimer();
+
+    // Close the recorder BEFORE tearing down the tracks, otherwise the final
+    // blob is truncated. The session is deleted only after analysis, since the
+    // backend reads the live transcript off it.
+    let recording: Blob | null = null;
+    try {
+      recording = (await cameraRef.current?.stopAndCollectRecording()) ?? null;
+    } catch {
+      recording = null;
+    }
     cameraRef.current?.stop();
+
+    if (id && recording && recording.size > 0) {
+      setAnalyzing(true);
+      try {
+        const analysis = await analyzeCopilotSession(id, recording, {
+          assessmentMode,
+          studentId: studentId.trim() || undefined,
+        });
+        setResult(analysis as unknown as AnalysisResult);
+        toast.success("Session analyzed and scored");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Analysis failed";
+        setError(message);
+        toast.error(message);
+      } finally {
+        setAnalyzing(false);
+      }
+    } else if (id) {
+      toast.warning("No recording was captured, so no score could be produced.");
+    }
+
     if (id) {
       try {
         await endCopilotSession(id);
@@ -294,8 +353,7 @@ function LiveCopilotScreen() {
     setTurns([]);
     setPartial("");
     setSuggestions([]);
-    setError("");
-    toast.info("Viva Copilot session ended");
+    toast.info("Live viva session ended");
   };
 
   const handleAsk = async (item: SuggestionItem) => {
@@ -315,24 +373,76 @@ function LiveCopilotScreen() {
 
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] p-4 gap-4">
+    <div
+      className={
+        result
+          ? "flex flex-col min-h-[calc(100vh-4rem)] p-4 gap-4 overflow-y-auto"
+          : "flex flex-col h-[calc(100vh-4rem)] p-4 gap-4"
+      }
+    >
       <div className="flex items-center justify-between gap-3 shrink-0">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">Live Viva Copilot</h1>
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">Live Viva</h1>
           <p className="text-xs text-muted-foreground">
             Record the candidate, follow the live transcript, and use AI-suggested questions.
           </p>
         </div>
 
         {!sessionId ? (
-          <Button type="button" onClick={startLiveViva} disabled={busy} className="gap-2">
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
-            Start Session
-          </Button>
+          <div className="flex items-end gap-2">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="copilot-mode" className="text-[11px] text-muted-foreground">
+                Assessment type (locked once the session starts)
+              </label>
+              <select
+                id="copilot-mode"
+                value={assessmentMode}
+                onChange={(event) =>
+                  setAssessmentMode(event.target.value as CopilotAssessmentMode)
+                }
+                disabled={busy}
+                className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+              >
+                <option value="WITHOUT_TECHNICAL_ACCURACY">
+                  Non-technical — auto-publishes
+                </option>
+                <option value="WITH_TECHNICAL_ACCURACY">
+                  Technical — saved as draft for review
+                </option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="copilot-student" className="text-[11px] text-muted-foreground">
+                Student ID (optional)
+              </label>
+              <input
+                id="copilot-student"
+                value={studentId}
+                onChange={(event) => setStudentId(event.target.value)}
+                placeholder="e.g. STU-001"
+                disabled={busy}
+                className="h-9 w-32 rounded-md border border-input bg-background px-2 text-xs"
+              />
+            </div>
+            <Button type="button" onClick={startLiveViva} disabled={busy} className="gap-2">
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
+              Start Session
+            </Button>
+          </div>
         ) : (
-          <Button type="button" variant="destructive" onClick={endViva} className="gap-2">
-            <Square className="size-3.5 fill-current" />
-            End Session
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={endViva}
+            disabled={analyzing}
+            className="gap-2"
+          >
+            {analyzing ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Square className="size-3.5 fill-current" />
+            )}
+            {analyzing ? "Analyzing…" : "End Session"}
           </Button>
         )}
       </div>
@@ -346,17 +456,23 @@ function LiveCopilotScreen() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 flex-1 min-h-0">
-        <div className="min-h-0">
-          <CopilotCamera
-            ref={cameraRef}
-            streaming={streaming && wsReady}
-            onChunk={handleChunk}
-            onSpeechResult={handleSpeechResult}
-          />
-        </div>
-
+      <div
+        className={
+          result
+            ? "grid grid-cols-1 lg:grid-cols-2 gap-4 shrink-0 h-[60vh]"
+            : "grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0"
+        }
+      >
         <div className="flex flex-col gap-4 min-h-0">
+          <div className="min-h-0 flex-1">
+            <CopilotCamera
+              ref={cameraRef}
+              streaming={streaming && wsReady}
+              onChunk={handleChunk}
+              onSpeechResult={handleSpeechResult}
+            />
+          </div>
+
           <Card className="flex flex-col flex-1 min-h-0 p-3">
             <h2 className="text-sm font-semibold text-foreground mb-2 shrink-0">Live Transcript</h2>
             <ScrollArea className="flex-1 min-h-0 pr-2">
@@ -386,7 +502,9 @@ function LiveCopilotScreen() {
               </div>
             </ScrollArea>
           </Card>
+        </div>
 
+        <div className="flex flex-col min-h-0">
           <Card className="flex flex-col flex-1 min-h-0 p-3">
             <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5 shrink-0">
               <Sparkles className="size-4 text-amber-500" />
@@ -430,6 +548,99 @@ function LiveCopilotScreen() {
           </Card>
         </div>
       </div>
+
+      {analyzing && (
+        <Card className="p-4 flex items-center gap-3 shrink-0">
+          <Loader2 className="size-4 animate-spin text-muted-foreground" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Analyzing the session recording…</p>
+            <p className="text-xs text-muted-foreground">
+              Running emotion, engagement, audio and transcript scoring. This can take a
+              few minutes for a long viva.
+            </p>
+          </div>
+        </Card>
+      )}
+
+      {result && (
+        <div className="flex flex-col gap-4 shrink-0 pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Session Assessment</h2>
+              <p className="text-xs text-muted-foreground">
+                Scored with the same engine and rubric as an uploaded viva recording.
+              </p>
+            </div>
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setResult(null)}>
+              Dismiss
+            </Button>
+          </div>
+
+          <ScoreOverview
+            assessment={result.assessment}
+            analysisResult={result}
+            assessmentMode={assessmentMode as AssessmentMode}
+            technicalAccuracy={null}
+            published={Boolean((result as { published?: boolean }).published)}
+            videoStatus={result.video_status}
+            faceCoverageRatio={result.coverage?.face_coverage_ratio}
+            confidenceScore={result.confidence_score}
+            engagementScore={result.engagement_score}
+          />
+
+          <AudioAnalysisPanel audioAnalysis={result.audio_analysis} />
+          <AISummary notes={buildAIInterpretation(result)} />
+
+          <Card className="p-4">
+            <Tabs defaultValue="overview">
+              <TabsList>
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="transcript">Transcript</TabsTrigger>
+                <TabsTrigger value="engagement">Engagement</TabsTrigger>
+                <TabsTrigger value="qa">Q&amp;A relevance</TabsTrigger>
+                <TabsTrigger value="judge">AI judge</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="mt-4 space-y-4">
+                {result.summary && <EmotionDistribution summary={result.summary} />}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-foreground">Key moments</div>
+                    <span className="text-xs text-muted-foreground">AI-detected</span>
+                  </div>
+                  <KeyMoments moments={buildKeyMoments(result.timeline)} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="transcript" className="mt-4">
+                <TranscriptPanel audioAnalysis={result.audio_analysis} />
+              </TabsContent>
+
+              <TabsContent value="engagement" className="mt-4 space-y-4">
+                <EngagementTimeline timeline={result.timeline} />
+                <p className="text-xs text-muted-foreground">
+                  {result.timeline.filter((frame) => frame.valid).length} frames analyzed.
+                </p>
+              </TabsContent>
+
+              <TabsContent value="qa" className="mt-4">
+                <QaRelevancePanel
+                  qaAnalysis={result.qa_analysis}
+                  turns={result.audio_analysis?.conversation?.turns}
+                  structure={result.audio_analysis?.conversation?.structure}
+                />
+              </TabsContent>
+
+              <TabsContent value="judge" className="mt-4">
+                <LlmJudgePanel
+                  evaluation={result.llm_evaluation}
+                  transcriptFeatures={result.audio_analysis?.transcript_features}
+                />
+              </TabsContent>
+            </Tabs>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

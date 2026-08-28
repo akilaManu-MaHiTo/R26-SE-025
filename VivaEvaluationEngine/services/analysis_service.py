@@ -4,6 +4,7 @@ from config import (
     AppConfig,
     BLINK_SAMPLE_FPS,
     ENGAGEMENT_LEVEL_SCORES,
+    MAX_FRONTAL_YAW_DEGREES,
     MIN_CONSECUTIVE_MULTI_FACE_FRAMES,
     MIN_FACE_COVERAGE_RATIO,
     MIN_FACE_FRAMES,
@@ -19,7 +20,7 @@ from config import (
 from services.engagement_detector import EngagementDetector
 from services.emotion_detector import EmotionDetector
 from services.face_detector import FaceDetector
-from services.face_landmarker import iter_landmark_samples, nearest_landmarks, video_duration_seconds
+from services.face_landmarker import iter_landmark_samples, nearest_sample, video_duration_seconds
 from services.face_quality import prepare_face_for_emotion
 from services.gaze_head_analyser import GazeHeadAnalyser
 from services.blink_sampler import blinks_from_samples, unavailable_blinks
@@ -191,9 +192,8 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
                 gaze_analyser.from_landmarks(sample.landmarks) for sample in landmark_samples
             ]
             for frame_data in video_processor.iter_frames(config.video_path):
-                gaze = gaze_analyser.from_landmarks(
-                    nearest_landmarks(landmark_samples, frame_data.time_sec)
-                )
+                nearby = nearest_sample(landmark_samples, frame_data.time_sec)
+                gaze = gaze_analyser.from_landmarks(nearby.landmarks if nearby else None)
                 gaze_signals.append(gaze)
                 mouth_open = None
                 talking = False
@@ -201,9 +201,14 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
                     mouth_open = float(gaze["mouth_open"])
                     talking = bool(gaze.get("talking"))
 
+                yaw_degrees = nearby.yaw_degrees if nearby else None
+                is_frontal = yaw_degrees is None or abs(yaw_degrees) <= MAX_FRONTAL_YAW_DEGREES
+
                 faces = face_detector.detect_faces(frame_data.frame)
                 face_crop = (
-                    face_detector.crop_face(frame_data.frame, faces[0]) if faces else None
+                    face_detector.crop_face(frame_data.frame, faces[0])
+                    if faces and is_frontal
+                    else None
                 )
                 if _has_significant_second_face(faces):
                     multi_face_frames += 1
@@ -223,15 +228,17 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
                     }
                 )
                 if face_crop is None:
+                    non_frontal = bool(faces) and not is_frontal
                     timeline.append(
                         {
                             "time": frame_data.time_sec,
-                            "emotion": "NoFace",
+                            "emotion": "NonFrontal" if non_frontal else "NoFace",
                             "emotion_confidence": 0.0,
-                            "engagement_label": "NoFace",
+                            "engagement_label": "NonFrontal" if non_frontal else "NoFace",
                             "engagement_confidence": 0.0,
                             "engagement_model_score": 0.0,
                             "valid": False,
+                            "yaw_degrees": yaw_degrees,
                             "mouth_open": mouth_open,
                             "talking": talking,
                         }
@@ -280,6 +287,7 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
                             "contrast": after.get("contrast"),
                             "steps": prepared.get("steps") or [],
                         },
+                        "yaw_degrees": yaw_degrees,
                         "mouth_open": mouth_open,
                         "talking": talking,
                     }
@@ -289,6 +297,9 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
     frames_with_face = sum(1 for item in timeline if item.get("valid", True) is True)
     frames_rejected_quality = sum(
         1 for item in timeline if str(item.get("emotion", "")).lower() in {"lowquality", "low_quality"}
+    )
+    frames_rejected_non_frontal = sum(
+        1 for item in timeline if str(item.get("emotion", "")).lower() == "nonfrontal"
     )
     frames_enhanced = sum(1 for item in timeline if item.get("face_enhanced"))
     frames_quality_warning = sum(1 for item in timeline if item.get("valid") and item.get("quality_warning"))
@@ -332,6 +343,7 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
         "face_coverage_ratio": face_coverage_ratio,
         "min_face_frames": MIN_FACE_FRAMES,
         "min_face_coverage_ratio": MIN_FACE_COVERAGE_RATIO,
+        "max_frontal_yaw_degrees": MAX_FRONTAL_YAW_DEGREES,
         "blinks_measured": blink_report.get("status") == "available",
         "blinks_per_minute": blinks_per_minute,
         "blink_count": blink_report.get("blink_count"),
@@ -341,6 +353,7 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
         "blink_measurement_quality": blink_report.get("measurement_quality"),
         "scores_emitted": scores_emitted,
         "frames_rejected_quality": frames_rejected_quality,
+        "frames_rejected_non_frontal": frames_rejected_non_frontal,
         "frames_enhanced": frames_enhanced,
         "frames_quality_warning": frames_quality_warning,
         "quality_reject_reasons": reject_reasons,

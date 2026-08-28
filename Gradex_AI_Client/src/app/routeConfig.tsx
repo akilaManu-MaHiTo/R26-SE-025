@@ -113,8 +113,8 @@ export const AGENT_CONFIG: AgentConfig[] = [
       },
       {
         path: "/viva-evaluation/live-copilot",
-        label: "Live Interviewer Copilot",
-        title: "Live Interviewer Copilot",
+        label: "Live Viva",
+        title: "Live Viva",
         subtitle: "Follow-up questions from the live student presentation and viva",
         element: <LiveCopilotPage />,
       },
