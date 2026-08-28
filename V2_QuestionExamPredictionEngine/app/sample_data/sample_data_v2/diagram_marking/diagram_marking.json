@@ -1,0 +1,1045 @@
+[
+  {
+    "_id": { "$oid": "6a7320c67a28786b9977e026" },
+    "student_id": "IT22262551",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 18,
+    "diagram_details": {
+      "label_count": 15,
+      "entity_count": 5,
+      "relationship_count": 2,
+      "detections": [
+        { "id": "0", "label": "Entities", "bbox": [50, 50, 200, 150], "confidence": 0.95, "text": "Student" },
+        { "id": "1", "label": "Attributes", "bbox": [220, 30, 350, 80], "confidence": 0.94, "text": "Name" },
+        { "id": "2", "label": "Attributes", "bbox": [220, 90, 350, 140], "confidence": 0.93, "text": "Gender" },
+        { "id": "3", "label": "Attributes", "bbox": [220, 150, 350, 200], "confidence": 0.92, "text": "DOB" },
+        { "id": "4", "label": "Derived Attribute", "bbox": [220, 210, 350, 260], "confidence": 0.91, "text": "Age" },
+        { "id": "5", "label": "Entities", "bbox": [50, 300, 200, 400], "confidence": 0.94, "text": "College" },
+        { "id": "6", "label": "Attributes", "bbox": [220, 280, 380, 330], "confidence": 0.93, "text": "Affiliation" },
+        { "id": "7", "label": "Attributes", "bbox": [220, 340, 380, 390], "confidence": 0.92, "text": "Address" },
+        { "id": "8", "label": "Relationships", "bbox": [400, 150, 550, 250], "confidence": 0.90, "text": "Enrolls in" },
+        { "id": "9", "label": "Relationships", "bbox": [400, 350, 550, 450], "confidence": 0.89, "text": "Specialized in" },
+        { "id": "10", "label": "Entities", "bbox": [600, 300, 750, 380], "confidence": 0.93, "text": "Computer Science" },
+        { "id": "11", "label": "Entities", "bbox": [600, 400, 750, 480], "confidence": 0.92, "text": "Mechanical" },
+        { "id": "12", "label": "Entities", "bbox": [600, 500, 750, 580], "confidence": 0.91, "text": "Electronics" }
+      ],
+      "entities": [
+        { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+        { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+        { "entity_name": "Computer Science", "attributes": [] },
+        { "entity_name": "Mechanical", "attributes": [] },
+        { "entity_name": "Electronics", "attributes": [] }
+      ],
+      "relationships": [
+        { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+        { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] },
+          "Electronics": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+      { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+      { "entity_name": "Computer Science", "attributes": [] },
+      { "entity_name": "Mechanical", "attributes": [] },
+      { "entity_name": "Electronics", "attributes": [] }
+    ],
+    "diagram_relations": [
+      { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+      { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        { "id": 0, "label": "Entities", "bbox": [50, 50, 200, 150], "confidence": 0.95, "crop_path": "", "text": "Student", "ocr_status": "ok" },
+        { "id": 1, "label": "Attributes", "bbox": [220, 30, 350, 80], "confidence": 0.94, "crop_path": "", "text": "Name", "ocr_status": "ok" },
+        { "id": 2, "label": "Attributes", "bbox": [220, 90, 350, 140], "confidence": 0.93, "crop_path": "", "text": "Gender", "ocr_status": "ok" },
+        { "id": 3, "label": "Attributes", "bbox": [220, 150, 350, 200], "confidence": 0.92, "crop_path": "", "text": "DOB", "ocr_status": "ok" },
+        { "id": 4, "label": "Derived Attribute", "bbox": [220, 210, 350, 260], "confidence": 0.91, "crop_path": "", "text": "Age", "ocr_status": "ok" },
+        { "id": 5, "label": "Entities", "bbox": [50, 300, 200, 400], "confidence": 0.94, "crop_path": "", "text": "College", "ocr_status": "ok" },
+        { "id": 6, "label": "Attributes", "bbox": [220, 280, 380, 330], "confidence": 0.93, "crop_path": "", "text": "Affiliation", "ocr_status": "ok" },
+        { "id": 7, "label": "Attributes", "bbox": [220, 340, 380, 390], "confidence": 0.92, "crop_path": "", "text": "Address", "ocr_status": "ok" },
+        { "id": 8, "label": "Relationships", "bbox": [400, 150, 550, 250], "confidence": 0.90, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" },
+        { "id": 9, "label": "Relationships", "bbox": [400, 350, 550, 450], "confidence": 0.89, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" },
+        { "id": 10, "label": "Entities", "bbox": [600, 300, 750, 380], "confidence": 0.93, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" },
+        { "id": 11, "label": "Entities", "bbox": [600, 400, 750, 480], "confidence": 0.92, "crop_path": "", "text": "Mechanical", "ocr_status": "ok" },
+        { "id": 12, "label": "Entities", "bbox": [600, 500, 750, 580], "confidence": 0.91, "crop_path": "", "text": "Electronics", "ocr_status": "ok" }
+      ],
+      "connections": [
+        { "from_id": 0, "to_id": 8, "from": { "id": 0, "label": "Entities", "bbox": [50, 50, 200, 150], "confidence": 0.95, "crop_path": "", "text": "Student", "ocr_status": "ok" }, "to": { "id": 8, "label": "Relationships", "bbox": [400, 150, 550, 250], "confidence": 0.90, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "line": [200, 100, 400, 200] },
+        { "from_id": 8, "to_id": 5, "from": { "id": 8, "label": "Relationships", "bbox": [400, 150, 550, 250], "confidence": 0.90, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "to": { "id": 5, "label": "Entities", "bbox": [50, 300, 200, 400], "confidence": 0.94, "crop_path": "", "text": "College", "ocr_status": "ok" }, "line": [400, 250, 200, 350] },
+        { "from_id": 5, "to_id": 9, "from": { "id": 5, "label": "Entities", "bbox": [50, 300, 200, 400], "confidence": 0.94, "crop_path": "", "text": "College", "ocr_status": "ok" }, "to": { "id": 9, "label": "Relationships", "bbox": [400, 350, 550, 450], "confidence": 0.89, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "line": [200, 350, 400, 400] },
+        { "from_id": 9, "to_id": 10, "from": { "id": 9, "label": "Relationships", "bbox": [400, 350, 550, 450], "confidence": 0.89, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 10, "label": "Entities", "bbox": [600, 300, 750, 380], "confidence": 0.93, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" }, "line": [550, 380, 600, 340] },
+        { "from_id": 9, "to_id": 11, "from": { "id": 9, "label": "Relationships", "bbox": [400, 350, 550, 450], "confidence": 0.89, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 11, "label": "Entities", "bbox": [600, 400, 750, 480], "confidence": 0.92, "crop_path": "", "text": "Mechanical", "ocr_status": "ok" }, "line": [550, 420, 600, 440] },
+        { "from_id": 9, "to_id": 12, "from": { "id": 9, "label": "Relationships", "bbox": [400, 350, 550, 450], "confidence": 0.89, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 12, "label": "Entities", "bbox": [600, 500, 750, 580], "confidence": 0.91, "crop_path": "", "text": "Electronics", "ocr_status": "ok" }, "line": [550, 440, 600, 540] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] },
+          "Electronics": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-25T11:38:46.507360+00:00",
+    "updated_at": "2026-08-25T11:38:46.507360+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": { "$oid": "6a7320c67a28786b9977e027" },
+    "student_id": "IT22262552",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 16,
+    "diagram_details": {
+      "label_count": 12,
+      "entity_count": 5,
+      "relationship_count": 2,
+      "detections": [
+        { "id": "0", "label": "Entities", "bbox": [60, 60, 210, 160], "confidence": 0.94, "text": "Student" },
+        { "id": "1", "label": "Attributes", "bbox": [230, 40, 360, 90], "confidence": 0.93, "text": "Name" },
+        { "id": "2", "label": "Attributes", "bbox": [230, 100, 360, 150], "confidence": 0.92, "text": "Gender" },
+        { "id": "3", "label": "Attributes", "bbox": [230, 160, 360, 210], "confidence": 0.91, "text": "DOB" },
+        { "id": "4", "label": "Attributes", "bbox": [230, 220, 360, 270], "confidence": 0.90, "text": "Age" },
+        { "id": "5", "label": "Entities", "bbox": [60, 310, 210, 410], "confidence": 0.93, "text": "College" },
+        { "id": "6", "label": "Attributes", "bbox": [230, 290, 390, 340], "confidence": 0.92, "text": "Affiliation" },
+        { "id": "7", "label": "Attributes", "bbox": [230, 350, 390, 400], "confidence": 0.91, "text": "Address" },
+        { "id": "8", "label": "Relationships", "bbox": [410, 160, 560, 260], "confidence": 0.89, "text": "Enrolls in" },
+        { "id": "9", "label": "Relationships", "bbox": [410, 360, 560, 460], "confidence": 0.88, "text": "Specialized in" },
+        { "id": "10", "label": "Entities", "bbox": [610, 310, 760, 390], "confidence": 0.92, "text": "Computer Science" },
+        { "id": "11", "label": "Entities", "bbox": [610, 410, 760, 490], "confidence": 0.91, "text": "Mechanical" }
+      ],
+      "entities": [
+        { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+        { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+        { "entity_name": "Computer Science", "attributes": [] },
+        { "entity_name": "Mechanical", "attributes": [] }
+      ],
+      "relationships": [
+        { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+        { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical"], "attributes": [] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical"], "attributes": [] }
+        ],
+        "unmatched_connections": [
+          { "from": "Mechanical", "to": "Specialized in", "line": [610, 450, 560, 420] }
+        ]
+      }
+    },
+    "diagram_entity_relations": [
+      { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+      { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+      { "entity_name": "Computer Science", "attributes": [] },
+      { "entity_name": "Mechanical", "attributes": [] }
+    ],
+    "diagram_relations": [
+      { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+      { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical"], "attributes": [] }
+    ],
+    "remarks": "Electronics entity missing",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        { "id": 0, "label": "Entities", "bbox": [60, 60, 210, 160], "confidence": 0.94, "crop_path": "", "text": "Student", "ocr_status": "ok" },
+        { "id": 1, "label": "Attributes", "bbox": [230, 40, 360, 90], "confidence": 0.93, "crop_path": "", "text": "Name", "ocr_status": "ok" },
+        { "id": 2, "label": "Attributes", "bbox": [230, 100, 360, 150], "confidence": 0.92, "crop_path": "", "text": "Gender", "ocr_status": "ok" },
+        { "id": 3, "label": "Attributes", "bbox": [230, 160, 360, 210], "confidence": 0.91, "crop_path": "", "text": "DOB", "ocr_status": "ok" },
+        { "id": 4, "label": "Attributes", "bbox": [230, 220, 360, 270], "confidence": 0.90, "crop_path": "", "text": "Age", "ocr_status": "ok" },
+        { "id": 5, "label": "Entities", "bbox": [60, 310, 210, 410], "confidence": 0.93, "crop_path": "", "text": "College", "ocr_status": "ok" },
+        { "id": 6, "label": "Attributes", "bbox": [230, 290, 390, 340], "confidence": 0.92, "crop_path": "", "text": "Affiliation", "ocr_status": "ok" },
+        { "id": 7, "label": "Attributes", "bbox": [230, 350, 390, 400], "confidence": 0.91, "crop_path": "", "text": "Address", "ocr_status": "ok" },
+        { "id": 8, "label": "Relationships", "bbox": [410, 160, 560, 260], "confidence": 0.89, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" },
+        { "id": 9, "label": "Relationships", "bbox": [410, 360, 560, 460], "confidence": 0.88, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" },
+        { "id": 10, "label": "Entities", "bbox": [610, 310, 760, 390], "confidence": 0.92, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" },
+        { "id": 11, "label": "Entities", "bbox": [610, 410, 760, 490], "confidence": 0.91, "crop_path": "", "text": "Mechanical", "ocr_status": "ok" }
+      ],
+      "connections": [
+        { "from_id": 0, "to_id": 8, "from": { "id": 0, "label": "Entities", "bbox": [60, 60, 210, 160], "confidence": 0.94, "crop_path": "", "text": "Student", "ocr_status": "ok" }, "to": { "id": 8, "label": "Relationships", "bbox": [410, 160, 560, 260], "confidence": 0.89, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "line": [210, 110, 410, 210] },
+        { "from_id": 8, "to_id": 5, "from": { "id": 8, "label": "Relationships", "bbox": [410, 160, 560, 260], "confidence": 0.89, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "to": { "id": 5, "label": "Entities", "bbox": [60, 310, 210, 410], "confidence": 0.93, "crop_path": "", "text": "College", "ocr_status": "ok" }, "line": [410, 260, 210, 360] },
+        { "from_id": 5, "to_id": 9, "from": { "id": 5, "label": "Entities", "bbox": [60, 310, 210, 410], "confidence": 0.93, "crop_path": "", "text": "College", "ocr_status": "ok" }, "to": { "id": 9, "label": "Relationships", "bbox": [410, 360, 560, 460], "confidence": 0.88, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "line": [210, 360, 410, 410] },
+        { "from_id": 9, "to_id": 10, "from": { "id": 9, "label": "Relationships", "bbox": [410, 360, 560, 460], "confidence": 0.88, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 10, "label": "Entities", "bbox": [610, 310, 760, 390], "confidence": 0.92, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" }, "line": [560, 390, 610, 350] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical"], "attributes": [] }
+        ],
+        "unmatched_connections": [
+          { "from": "Mechanical", "to": "Specialized in", "line": [610, 450, 560, 420] }
+        ]
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-25T11:39:46.507360+00:00",
+    "updated_at": "2026-08-25T11:39:46.507360+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": { "$oid": "6a7320c67a28786b9977e028" },
+    "student_id": "IT22262553",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 15,
+    "diagram_details": {
+      "label_count": 10,
+      "entity_count": 4,
+      "relationship_count": 2,
+      "detections": [
+        { "id": "0", "label": "Entities", "bbox": [70, 70, 220, 170], "confidence": 0.93, "text": "Student" },
+        { "id": "1", "label": "Attributes", "bbox": [240, 50, 370, 100], "confidence": 0.92, "text": "Name" },
+        { "id": "2", "label": "Attributes", "bbox": [240, 110, 370, 160], "confidence": 0.91, "text": "Gender" },
+        { "id": "3", "label": "Attributes", "bbox": [240, 170, 370, 220], "confidence": 0.90, "text": "DOB" },
+        { "id": "4", "label": "Entities", "bbox": [70, 320, 220, 420], "confidence": 0.92, "text": "College" },
+        { "id": "5", "label": "Attributes", "bbox": [240, 300, 400, 350], "confidence": 0.91, "text": "Affiliation" },
+        { "id": "6", "label": "Attributes", "bbox": [240, 360, 400, 410], "confidence": 0.90, "text": "Address" },
+        { "id": "7", "label": "Relationships", "bbox": [420, 170, 570, 270], "confidence": 0.89, "text": "Enrolls in" },
+        { "id": "8", "label": "Relationships", "bbox": [420, 370, 570, 470], "confidence": 0.88, "text": "Specialized in" },
+        { "id": "9", "label": "Entities", "bbox": [620, 320, 770, 400], "confidence": 0.91, "text": "Computer Science" }
+      ],
+      "entities": [
+        { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB"] },
+        { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+        { "entity_name": "Computer Science", "attributes": [] }
+      ],
+      "relationships": [
+        { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+        { "relation_name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB"] },
+      { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+      { "entity_name": "Computer Science", "attributes": [] }
+    ],
+    "diagram_relations": [
+      { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+      { "relation_name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+    ],
+    "remarks": "Missing Mechanical and Electronics entities",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        { "id": 0, "label": "Entities", "bbox": [70, 70, 220, 170], "confidence": 0.93, "crop_path": "", "text": "Student", "ocr_status": "ok" },
+        { "id": 1, "label": "Attributes", "bbox": [240, 50, 370, 100], "confidence": 0.92, "crop_path": "", "text": "Name", "ocr_status": "ok" },
+        { "id": 2, "label": "Attributes", "bbox": [240, 110, 370, 160], "confidence": 0.91, "crop_path": "", "text": "Gender", "ocr_status": "ok" },
+        { "id": 3, "label": "Attributes", "bbox": [240, 170, 370, 220], "confidence": 0.90, "crop_path": "", "text": "DOB", "ocr_status": "ok" },
+        { "id": 4, "label": "Entities", "bbox": [70, 320, 220, 420], "confidence": 0.92, "crop_path": "", "text": "College", "ocr_status": "ok" },
+        { "id": 5, "label": "Attributes", "bbox": [240, 300, 400, 350], "confidence": 0.91, "crop_path": "", "text": "Affiliation", "ocr_status": "ok" },
+        { "id": 6, "label": "Attributes", "bbox": [240, 360, 400, 410], "confidence": 0.90, "crop_path": "", "text": "Address", "ocr_status": "ok" },
+        { "id": 7, "label": "Relationships", "bbox": [420, 170, 570, 270], "confidence": 0.89, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" },
+        { "id": 8, "label": "Relationships", "bbox": [420, 370, 570, 470], "confidence": 0.88, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" },
+        { "id": 9, "label": "Entities", "bbox": [620, 320, 770, 400], "confidence": 0.91, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" }
+      ],
+      "connections": [
+        { "from_id": 0, "to_id": 7, "from": { "id": 0, "label": "Entities", "bbox": [70, 70, 220, 170], "confidence": 0.93, "crop_path": "", "text": "Student", "ocr_status": "ok" }, "to": { "id": 7, "label": "Relationships", "bbox": [420, 170, 570, 270], "confidence": 0.89, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "line": [220, 120, 420, 220] },
+        { "from_id": 7, "to_id": 4, "from": { "id": 7, "label": "Relationships", "bbox": [420, 170, 570, 270], "confidence": 0.89, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "to": { "id": 4, "label": "Entities", "bbox": [70, 320, 220, 420], "confidence": 0.92, "crop_path": "", "text": "College", "ocr_status": "ok" }, "line": [420, 270, 220, 370] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-25T11:40:46.507360+00:00",
+    "updated_at": "2026-08-25T11:40:46.507360+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": { "$oid": "6a7320c67a28786b9977e029" },
+    "student_id": "IT22262554",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 14,
+    "diagram_details": {
+      "label_count": 11,
+      "entity_count": 5,
+      "relationship_count": 2,
+      "detections": [
+        { "id": "0", "label": "Entities", "bbox": [80, 80, 230, 180], "confidence": 0.92, "text": "Student" },
+        { "id": "1", "label": "Attributes", "bbox": [250, 60, 380, 110], "confidence": 0.91, "text": "Name" },
+        { "id": "2", "label": "Attributes", "bbox": [250, 120, 380, 170], "confidence": 0.90, "text": "Gender" },
+        { "id": "3", "label": "Attributes", "bbox": [250, 180, 380, 230], "confidence": 0.89, "text": "DOB" },
+        { "id": "4", "label": "Attributes", "bbox": [250, 240, 380, 290], "confidence": 0.88, "text": "Age" },
+        { "id": "5", "label": "Entities", "bbox": [80, 330, 230, 430], "confidence": 0.91, "text": "College" },
+        { "id": "6", "label": "Attributes", "bbox": [250, 310, 410, 360], "confidence": 0.90, "text": "Affiliation" },
+        { "id": "7", "label": "Attributes", "bbox": [250, 370, 410, 420], "confidence": 0.89, "text": "Address" },
+        { "id": "8", "label": "Relationships", "bbox": [430, 180, 580, 280], "confidence": 0.88, "text": "Enrolls in" },
+        { "id": "9", "label": "Relationships", "bbox": [430, 380, 580, 480], "confidence": 0.87, "text": "Specialized in" },
+        { "id": "10", "label": "Entities", "bbox": [630, 330, 780, 410], "confidence": 0.90, "text": "Computer Science" }
+      ],
+      "entities": [
+        { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+        { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+        { "entity_name": "Computer Science", "attributes": [] }
+      ],
+      "relationships": [
+        { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+        { "relation_name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+      { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+      { "entity_name": "Computer Science", "attributes": [] }
+    ],
+    "diagram_relations": [
+      { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+      { "relation_name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+    ],
+    "remarks": "Missing Mechanical and Electronics entities",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        { "id": 0, "label": "Entities", "bbox": [80, 80, 230, 180], "confidence": 0.92, "crop_path": "", "text": "Student", "ocr_status": "ok" },
+        { "id": 1, "label": "Attributes", "bbox": [250, 60, 380, 110], "confidence": 0.91, "crop_path": "", "text": "Name", "ocr_status": "ok" },
+        { "id": 2, "label": "Attributes", "bbox": [250, 120, 380, 170], "confidence": 0.90, "crop_path": "", "text": "Gender", "ocr_status": "ok" },
+        { "id": 3, "label": "Attributes", "bbox": [250, 180, 380, 230], "confidence": 0.89, "crop_path": "", "text": "DOB", "ocr_status": "ok" },
+        { "id": 4, "label": "Attributes", "bbox": [250, 240, 380, 290], "confidence": 0.88, "crop_path": "", "text": "Age", "ocr_status": "ok" },
+        { "id": 5, "label": "Entities", "bbox": [80, 330, 230, 430], "confidence": 0.91, "crop_path": "", "text": "College", "ocr_status": "ok" },
+        { "id": 6, "label": "Attributes", "bbox": [250, 310, 410, 360], "confidence": 0.90, "crop_path": "", "text": "Affiliation", "ocr_status": "ok" },
+        { "id": 7, "label": "Attributes", "bbox": [250, 370, 410, 420], "confidence": 0.89, "crop_path": "", "text": "Address", "ocr_status": "ok" },
+        { "id": 8, "label": "Relationships", "bbox": [430, 180, 580, 280], "confidence": 0.88, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" },
+        { "id": 9, "label": "Relationships", "bbox": [430, 380, 580, 480], "confidence": 0.87, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" },
+        { "id": 10, "label": "Entities", "bbox": [630, 330, 780, 410], "confidence": 0.90, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" }
+      ],
+      "connections": [
+        { "from_id": 0, "to_id": 8, "from": { "id": 0, "label": "Entities", "bbox": [80, 80, 230, 180], "confidence": 0.92, "crop_path": "", "text": "Student", "ocr_status": "ok" }, "to": { "id": 8, "label": "Relationships", "bbox": [430, 180, 580, 280], "confidence": 0.88, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "line": [230, 130, 430, 230] },
+        { "from_id": 8, "to_id": 5, "from": { "id": 8, "label": "Relationships", "bbox": [430, 180, 580, 280], "confidence": 0.88, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "to": { "id": 5, "label": "Entities", "bbox": [80, 330, 230, 430], "confidence": 0.91, "crop_path": "", "text": "College", "ocr_status": "ok" }, "line": [430, 280, 230, 380] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-25T11:41:46.507360+00:00",
+    "updated_at": "2026-08-25T11:41:46.507360+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": { "$oid": "6a7320c67a28786b9977e030" },
+    "student_id": "IT22262555",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 17,
+    "diagram_details": {
+      "label_count": 14,
+      "entity_count": 5,
+      "relationship_count": 2,
+      "detections": [
+        { "id": "0", "label": "Entities", "bbox": [90, 90, 240, 190], "confidence": 0.96, "text": "Student" },
+        { "id": "1", "label": "Attributes", "bbox": [260, 70, 390, 120], "confidence": 0.95, "text": "Name" },
+        { "id": "2", "label": "Attributes", "bbox": [260, 130, 390, 180], "confidence": 0.94, "text": "Gender" },
+        { "id": "3", "label": "Attributes", "bbox": [260, 190, 390, 240], "confidence": 0.93, "text": "DOB" },
+        { "id": "4", "label": "Derived Attribute", "bbox": [260, 250, 390, 300], "confidence": 0.92, "text": "Age" },
+        { "id": "5", "label": "Entities", "bbox": [90, 340, 240, 440], "confidence": 0.95, "text": "College" },
+        { "id": "6", "label": "Attributes", "bbox": [260, 320, 420, 370], "confidence": 0.94, "text": "Affiliation" },
+        { "id": "7", "label": "Attributes", "bbox": [260, 380, 420, 430], "confidence": 0.93, "text": "Address" },
+        { "id": "8", "label": "Relationships", "bbox": [440, 190, 590, 290], "confidence": 0.91, "text": "Enrolls in" },
+        { "id": "9", "label": "Relationships", "bbox": [440, 390, 590, 490], "confidence": 0.90, "text": "Specialized in" },
+        { "id": "10", "label": "Entities", "bbox": [640, 340, 790, 420], "confidence": 0.94, "text": "Computer Science" },
+        { "id": "11", "label": "Entities", "bbox": [640, 440, 790, 520], "confidence": 0.93, "text": "Mechanical" },
+        { "id": "12", "label": "Entities", "bbox": [640, 540, 790, 620], "confidence": 0.92, "text": "Electronics" }
+      ],
+      "entities": [
+        { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+        { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+        { "entity_name": "Computer Science", "attributes": [] },
+        { "entity_name": "Mechanical", "attributes": [] },
+        { "entity_name": "Electronics", "attributes": [] }
+      ],
+      "relationships": [
+        { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+        { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] },
+          "Electronics": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+      { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+      { "entity_name": "Computer Science", "attributes": [] },
+      { "entity_name": "Mechanical", "attributes": [] },
+      { "entity_name": "Electronics", "attributes": [] }
+    ],
+    "diagram_relations": [
+      { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+      { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        { "id": 0, "label": "Entities", "bbox": [90, 90, 240, 190], "confidence": 0.96, "crop_path": "", "text": "Student", "ocr_status": "ok" },
+        { "id": 1, "label": "Attributes", "bbox": [260, 70, 390, 120], "confidence": 0.95, "crop_path": "", "text": "Name", "ocr_status": "ok" },
+        { "id": 2, "label": "Attributes", "bbox": [260, 130, 390, 180], "confidence": 0.94, "crop_path": "", "text": "Gender", "ocr_status": "ok" },
+        { "id": 3, "label": "Attributes", "bbox": [260, 190, 390, 240], "confidence": 0.93, "crop_path": "", "text": "DOB", "ocr_status": "ok" },
+        { "id": 4, "label": "Derived Attribute", "bbox": [260, 250, 390, 300], "confidence": 0.92, "crop_path": "", "text": "Age", "ocr_status": "ok" },
+        { "id": 5, "label": "Entities", "bbox": [90, 340, 240, 440], "confidence": 0.95, "crop_path": "", "text": "College", "ocr_status": "ok" },
+        { "id": 6, "label": "Attributes", "bbox": [260, 320, 420, 370], "confidence": 0.94, "crop_path": "", "text": "Affiliation", "ocr_status": "ok" },
+        { "id": 7, "label": "Attributes", "bbox": [260, 380, 420, 430], "confidence": 0.93, "crop_path": "", "text": "Address", "ocr_status": "ok" },
+        { "id": 8, "label": "Relationships", "bbox": [440, 190, 590, 290], "confidence": 0.91, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" },
+        { "id": 9, "label": "Relationships", "bbox": [440, 390, 590, 490], "confidence": 0.90, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" },
+        { "id": 10, "label": "Entities", "bbox": [640, 340, 790, 420], "confidence": 0.94, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" },
+        { "id": 11, "label": "Entities", "bbox": [640, 440, 790, 520], "confidence": 0.93, "crop_path": "", "text": "Mechanical", "ocr_status": "ok" },
+        { "id": 12, "label": "Entities", "bbox": [640, 540, 790, 620], "confidence": 0.92, "crop_path": "", "text": "Electronics", "ocr_status": "ok" }
+      ],
+      "connections": [
+        { "from_id": 0, "to_id": 8, "from": { "id": 0, "label": "Entities", "bbox": [90, 90, 240, 190], "confidence": 0.96, "crop_path": "", "text": "Student", "ocr_status": "ok" }, "to": { "id": 8, "label": "Relationships", "bbox": [440, 190, 590, 290], "confidence": 0.91, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "line": [240, 140, 440, 240] },
+        { "from_id": 8, "to_id": 5, "from": { "id": 8, "label": "Relationships", "bbox": [440, 190, 590, 290], "confidence": 0.91, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "to": { "id": 5, "label": "Entities", "bbox": [90, 340, 240, 440], "confidence": 0.95, "crop_path": "", "text": "College", "ocr_status": "ok" }, "line": [440, 290, 240, 390] },
+        { "from_id": 5, "to_id": 9, "from": { "id": 5, "label": "Entities", "bbox": [90, 340, 240, 440], "confidence": 0.95, "crop_path": "", "text": "College", "ocr_status": "ok" }, "to": { "id": 9, "label": "Relationships", "bbox": [440, 390, 590, 490], "confidence": 0.90, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "line": [240, 390, 440, 440] },
+        { "from_id": 9, "to_id": 10, "from": { "id": 9, "label": "Relationships", "bbox": [440, 390, 590, 490], "confidence": 0.90, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 10, "label": "Entities", "bbox": [640, 340, 790, 420], "confidence": 0.94, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" }, "line": [590, 420, 640, 380] },
+        { "from_id": 9, "to_id": 11, "from": { "id": 9, "label": "Relationships", "bbox": [440, 390, 590, 490], "confidence": 0.90, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 11, "label": "Entities", "bbox": [640, 440, 790, 520], "confidence": 0.93, "crop_path": "", "text": "Mechanical", "ocr_status": "ok" }, "line": [590, 440, 640, 480] },
+        { "from_id": 9, "to_id": 12, "from": { "id": 9, "label": "Relationships", "bbox": [440, 390, 590, 490], "confidence": 0.90, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 12, "label": "Entities", "bbox": [640, 540, 790, 620], "confidence": 0.92, "crop_path": "", "text": "Electronics", "ocr_status": "ok" }, "line": [590, 460, 640, 580] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] },
+          "Electronics": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-25T11:42:46.507360+00:00",
+    "updated_at": "2026-08-25T11:42:46.507360+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": { "$oid": "6a7320c67a28786b9977e031" },
+    "student_id": "IT22262556",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 12,
+    "diagram_details": {
+      "label_count": 8,
+      "entity_count": 3,
+      "relationship_count": 2,
+      "detections": [
+        { "id": "0", "label": "Entities", "bbox": [100, 100, 250, 200], "confidence": 0.91, "text": "Student" },
+        { "id": "1", "label": "Attributes", "bbox": [270, 80, 400, 130], "confidence": 0.90, "text": "Name" },
+        { "id": "2", "label": "Attributes", "bbox": [270, 140, 400, 190], "confidence": 0.89, "text": "Gender" },
+        { "id": "3", "label": "Entities", "bbox": [100, 350, 250, 450], "confidence": 0.90, "text": "College" },
+        { "id": "4", "label": "Attributes", "bbox": [270, 330, 430, 380], "confidence": 0.89, "text": "Affiliation" },
+        { "id": "5", "label": "Attributes", "bbox": [270, 390, 430, 440], "confidence": 0.88, "text": "Address" },
+        { "id": "6", "label": "Relationships", "bbox": [450, 200, 600, 300], "confidence": 0.87, "text": "Enrolls in" },
+        { "id": "7", "label": "Relationships", "bbox": [450, 400, 600, 500], "confidence": 0.86, "text": "Specialized in" }
+      ],
+      "entities": [
+        { "entity_name": "Student", "attributes": ["Name", "Gender"] },
+        { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] }
+      ],
+      "relationships": [
+        { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+        { "relation_name": "Specialized in", "entities": ["College"], "attributes": [] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      { "entity_name": "Student", "attributes": ["Name", "Gender"] },
+      { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] }
+    ],
+    "diagram_relations": [
+      { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+      { "relation_name": "Specialized in", "entities": ["College"], "attributes": [] }
+    ],
+    "remarks": "Missing DOB, Age attributes and department entities",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        { "id": 0, "label": "Entities", "bbox": [100, 100, 250, 200], "confidence": 0.91, "crop_path": "", "text": "Student", "ocr_status": "ok" },
+        { "id": 1, "label": "Attributes", "bbox": [270, 80, 400, 130], "confidence": 0.90, "crop_path": "", "text": "Name", "ocr_status": "ok" },
+        { "id": 2, "label": "Attributes", "bbox": [270, 140, 400, 190], "confidence": 0.89, "crop_path": "", "text": "Gender", "ocr_status": "ok" },
+        { "id": 3, "label": "Entities", "bbox": [100, 350, 250, 450], "confidence": 0.90, "crop_path": "", "text": "College", "ocr_status": "ok" },
+        { "id": 4, "label": "Attributes", "bbox": [270, 330, 430, 380], "confidence": 0.89, "crop_path": "", "text": "Affiliation", "ocr_status": "ok" },
+        { "id": 5, "label": "Attributes", "bbox": [270, 390, 430, 440], "confidence": 0.88, "crop_path": "", "text": "Address", "ocr_status": "ok" },
+        { "id": 6, "label": "Relationships", "bbox": [450, 200, 600, 300], "confidence": 0.87, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" },
+        { "id": 7, "label": "Relationships", "bbox": [450, 400, 600, 500], "confidence": 0.86, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }
+      ],
+      "connections": [
+        { "from_id": 0, "to_id": 6, "from": { "id": 0, "label": "Entities", "bbox": [100, 100, 250, 200], "confidence": 0.91, "crop_path": "", "text": "Student", "ocr_status": "ok" }, "to": { "id": 6, "label": "Relationships", "bbox": [450, 200, 600, 300], "confidence": 0.87, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "line": [250, 150, 450, 250] },
+        { "from_id": 6, "to_id": 3, "from": { "id": 6, "label": "Relationships", "bbox": [450, 200, 600, 300], "confidence": 0.87, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "to": { "id": 3, "label": "Entities", "bbox": [100, 350, 250, 450], "confidence": 0.90, "crop_path": "", "text": "College", "ocr_status": "ok" }, "line": [450, 300, 250, 400] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-25T11:43:46.507360+00:00",
+    "updated_at": "2026-08-25T11:43:46.507360+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": { "$oid": "6a7320c67a28786b9977e032" },
+    "student_id": "IT22262557",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 19,
+    "diagram_details": {
+      "label_count": 16,
+      "entity_count": 5,
+      "relationship_count": 2,
+      "detections": [
+        { "id": "0", "label": "Entities", "bbox": [110, 110, 260, 210], "confidence": 0.97, "text": "Student" },
+        { "id": "1", "label": "Attributes", "bbox": [280, 90, 410, 140], "confidence": 0.96, "text": "Name" },
+        { "id": "2", "label": "Attributes", "bbox": [280, 150, 410, 200], "confidence": 0.95, "text": "Gender" },
+        { "id": "3", "label": "Attributes", "bbox": [280, 210, 410, 260], "confidence": 0.94, "text": "DOB" },
+        { "id": "4", "label": "Derived Attribute", "bbox": [280, 270, 410, 320], "confidence": 0.93, "text": "Age" },
+        { "id": "5", "label": "Entities", "bbox": [110, 360, 260, 460], "confidence": 0.96, "text": "College" },
+        { "id": "6", "label": "Attributes", "bbox": [280, 340, 440, 390], "confidence": 0.95, "text": "Affiliation" },
+        { "id": "7", "label": "Attributes", "bbox": [280, 400, 440, 450], "confidence": 0.94, "text": "Address" },
+        { "id": "8", "label": "Relationships", "bbox": [460, 210, 610, 310], "confidence": 0.92, "text": "Enrolls in" },
+        { "id": "9", "label": "Relationships", "bbox": [460, 410, 610, 510], "confidence": 0.91, "text": "Specialized in" },
+        { "id": "10", "label": "Entities", "bbox": [660, 360, 810, 440], "confidence": 0.95, "text": "Computer Science" },
+        { "id": "11", "label": "Entities", "bbox": [660, 460, 810, 540], "confidence": 0.94, "text": "Mechanical" },
+        { "id": "12", "label": "Entities", "bbox": [660, 560, 810, 640], "confidence": 0.93, "text": "Electronics" }
+      ],
+      "entities": [
+        { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+        { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+        { "entity_name": "Computer Science", "attributes": [] },
+        { "entity_name": "Mechanical", "attributes": [] },
+        { "entity_name": "Electronics", "attributes": [] }
+      ],
+      "relationships": [
+        { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+        { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] },
+          "Electronics": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+      { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+      { "entity_name": "Computer Science", "attributes": [] },
+      { "entity_name": "Mechanical", "attributes": [] },
+      { "entity_name": "Electronics", "attributes": [] }
+    ],
+    "diagram_relations": [
+      { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+      { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        { "id": 0, "label": "Entities", "bbox": [110, 110, 260, 210], "confidence": 0.97, "crop_path": "", "text": "Student", "ocr_status": "ok" },
+        { "id": 1, "label": "Attributes", "bbox": [280, 90, 410, 140], "confidence": 0.96, "crop_path": "", "text": "Name", "ocr_status": "ok" },
+        { "id": 2, "label": "Attributes", "bbox": [280, 150, 410, 200], "confidence": 0.95, "crop_path": "", "text": "Gender", "ocr_status": "ok" },
+        { "id": 3, "label": "Attributes", "bbox": [280, 210, 410, 260], "confidence": 0.94, "crop_path": "", "text": "DOB", "ocr_status": "ok" },
+        { "id": 4, "label": "Derived Attribute", "bbox": [280, 270, 410, 320], "confidence": 0.93, "crop_path": "", "text": "Age", "ocr_status": "ok" },
+        { "id": 5, "label": "Entities", "bbox": [110, 360, 260, 460], "confidence": 0.96, "crop_path": "", "text": "College", "ocr_status": "ok" },
+        { "id": 6, "label": "Attributes", "bbox": [280, 340, 440, 390], "confidence": 0.95, "crop_path": "", "text": "Affiliation", "ocr_status": "ok" },
+        { "id": 7, "label": "Attributes", "bbox": [280, 400, 440, 450], "confidence": 0.94, "crop_path": "", "text": "Address", "ocr_status": "ok" },
+        { "id": 8, "label": "Relationships", "bbox": [460, 210, 610, 310], "confidence": 0.92, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" },
+        { "id": 9, "label": "Relationships", "bbox": [460, 410, 610, 510], "confidence": 0.91, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" },
+        { "id": 10, "label": "Entities", "bbox": [660, 360, 810, 440], "confidence": 0.95, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" },
+        { "id": 11, "label": "Entities", "bbox": [660, 460, 810, 540], "confidence": 0.94, "crop_path": "", "text": "Mechanical", "ocr_status": "ok" },
+        { "id": 12, "label": "Entities", "bbox": [660, 560, 810, 640], "confidence": 0.93, "crop_path": "", "text": "Electronics", "ocr_status": "ok" }
+      ],
+      "connections": [
+        { "from_id": 0, "to_id": 8, "from": { "id": 0, "label": "Entities", "bbox": [110, 110, 260, 210], "confidence": 0.97, "crop_path": "", "text": "Student", "ocr_status": "ok" }, "to": { "id": 8, "label": "Relationships", "bbox": [460, 210, 610, 310], "confidence": 0.92, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "line": [260, 160, 460, 260] },
+        { "from_id": 8, "to_id": 5, "from": { "id": 8, "label": "Relationships", "bbox": [460, 210, 610, 310], "confidence": 0.92, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "to": { "id": 5, "label": "Entities", "bbox": [110, 360, 260, 460], "confidence": 0.96, "crop_path": "", "text": "College", "ocr_status": "ok" }, "line": [460, 310, 260, 410] },
+        { "from_id": 5, "to_id": 9, "from": { "id": 5, "label": "Entities", "bbox": [110, 360, 260, 460], "confidence": 0.96, "crop_path": "", "text": "College", "ocr_status": "ok" }, "to": { "id": 9, "label": "Relationships", "bbox": [460, 410, 610, 510], "confidence": 0.91, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "line": [260, 410, 460, 460] },
+        { "from_id": 9, "to_id": 10, "from": { "id": 9, "label": "Relationships", "bbox": [460, 410, 610, 510], "confidence": 0.91, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 10, "label": "Entities", "bbox": [660, 360, 810, 440], "confidence": 0.95, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" }, "line": [610, 440, 660, 400] },
+        { "from_id": 9, "to_id": 11, "from": { "id": 9, "label": "Relationships", "bbox": [460, 410, 610, 510], "confidence": 0.91, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 11, "label": "Entities", "bbox": [660, 460, 810, 540], "confidence": 0.94, "crop_path": "", "text": "Mechanical", "ocr_status": "ok" }, "line": [610, 460, 660, 500] },
+        { "from_id": 9, "to_id": 12, "from": { "id": 9, "label": "Relationships", "bbox": [460, 410, 610, 510], "confidence": 0.91, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 12, "label": "Entities", "bbox": [660, 560, 810, 640], "confidence": 0.93, "crop_path": "", "text": "Electronics", "ocr_status": "ok" }, "line": [610, 480, 660, 600] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] },
+          "Electronics": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-25T11:44:46.507360+00:00",
+    "updated_at": "2026-08-25T11:44:46.507360+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": { "$oid": "6a7320c67a28786b9977e033" },
+    "student_id": "IT22262558",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 13,
+    "diagram_details": {
+      "label_count": 9,
+      "entity_count": 4,
+      "relationship_count": 2,
+      "detections": [
+        { "id": "0", "label": "Entities", "bbox": [120, 120, 270, 220], "confidence": 0.90, "text": "Student" },
+        { "id": "1", "label": "Attributes", "bbox": [290, 100, 420, 150], "confidence": 0.89, "text": "Name" },
+        { "id": "2", "label": "Attributes", "bbox": [290, 160, 420, 210], "confidence": 0.88, "text": "Gender" },
+        { "id": "3", "label": "Entities", "bbox": [120, 370, 270, 470], "confidence": 0.89, "text": "College" },
+        { "id": "4", "label": "Attributes", "bbox": [290, 350, 450, 400], "confidence": 0.88, "text": "Affiliation" },
+        { "id": "5", "label": "Attributes", "bbox": [290, 410, 450, 460], "confidence": 0.87, "text": "Address" },
+        { "id": "6", "label": "Relationships", "bbox": [470, 220, 620, 320], "confidence": 0.86, "text": "Enrolls in" },
+        { "id": "7", "label": "Relationships", "bbox": [470, 420, 620, 520], "confidence": 0.85, "text": "Specialized in" },
+        { "id": "8", "label": "Entities", "bbox": [670, 370, 820, 450], "confidence": 0.88, "text": "Computer Science" }
+      ],
+      "entities": [
+        { "entity_name": "Student", "attributes": ["Name", "Gender"] },
+        { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+        { "entity_name": "Computer Science", "attributes": [] }
+      ],
+      "relationships": [
+        { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+        { "relation_name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      { "entity_name": "Student", "attributes": ["Name", "Gender"] },
+      { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+      { "entity_name": "Computer Science", "attributes": [] }
+    ],
+    "diagram_relations": [
+      { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+      { "relation_name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+    ],
+    "remarks": "Missing DOB, Age attributes and Mechanical, Electronics entities",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        { "id": 0, "label": "Entities", "bbox": [120, 120, 270, 220], "confidence": 0.90, "crop_path": "", "text": "Student", "ocr_status": "ok" },
+        { "id": 1, "label": "Attributes", "bbox": [290, 100, 420, 150], "confidence": 0.89, "crop_path": "", "text": "Name", "ocr_status": "ok" },
+        { "id": 2, "label": "Attributes", "bbox": [290, 160, 420, 210], "confidence": 0.88, "crop_path": "", "text": "Gender", "ocr_status": "ok" },
+        { "id": 3, "label": "Entities", "bbox": [120, 370, 270, 470], "confidence": 0.89, "crop_path": "", "text": "College", "ocr_status": "ok" },
+        { "id": 4, "label": "Attributes", "bbox": [290, 350, 450, 400], "confidence": 0.88, "crop_path": "", "text": "Affiliation", "ocr_status": "ok" },
+        { "id": 5, "label": "Attributes", "bbox": [290, 410, 450, 460], "confidence": 0.87, "crop_path": "", "text": "Address", "ocr_status": "ok" },
+        { "id": 6, "label": "Relationships", "bbox": [470, 220, 620, 320], "confidence": 0.86, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" },
+        { "id": 7, "label": "Relationships", "bbox": [470, 420, 620, 520], "confidence": 0.85, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" },
+        { "id": 8, "label": "Entities", "bbox": [670, 370, 820, 450], "confidence": 0.88, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" }
+      ],
+      "connections": [
+        { "from_id": 0, "to_id": 6, "from": { "id": 0, "label": "Entities", "bbox": [120, 120, 270, 220], "confidence": 0.90, "crop_path": "", "text": "Student", "ocr_status": "ok" }, "to": { "id": 6, "label": "Relationships", "bbox": [470, 220, 620, 320], "confidence": 0.86, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "line": [270, 170, 470, 270] },
+        { "from_id": 6, "to_id": 3, "from": { "id": 6, "label": "Relationships", "bbox": [470, 220, 620, 320], "confidence": 0.86, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "to": { "id": 3, "label": "Entities", "bbox": [120, 370, 270, 470], "confidence": 0.89, "crop_path": "", "text": "College", "ocr_status": "ok" }, "line": [470, 320, 270, 420] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-25T11:45:46.507360+00:00",
+    "updated_at": "2026-08-25T11:45:46.507360+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": { "$oid": "6a7320c67a28786b9977e034" },
+    "student_id": "IT22262559",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 16,
+    "diagram_details": {
+      "label_count": 13,
+      "entity_count": 5,
+      "relationship_count": 2,
+      "detections": [
+        { "id": "0", "label": "Entities", "bbox": [130, 130, 280, 230], "confidence": 0.94, "text": "Student" },
+        { "id": "1", "label": "Attributes", "bbox": [300, 110, 430, 160], "confidence": 0.93, "text": "Name" },
+        { "id": "2", "label": "Attributes", "bbox": [300, 170, 430, 220], "confidence": 0.92, "text": "Gender" },
+        { "id": "3", "label": "Attributes", "bbox": [300, 230, 430, 280], "confidence": 0.91, "text": "DOB" },
+        { "id": "4", "label": "Attributes", "bbox": [300, 290, 430, 340], "confidence": 0.90, "text": "Age" },
+        { "id": "5", "label": "Entities", "bbox": [130, 380, 280, 480], "confidence": 0.93, "text": "College" },
+        { "id": "6", "label": "Attributes", "bbox": [300, 360, 460, 410], "confidence": 0.92, "text": "Affiliation" },
+        { "id": "7", "label": "Attributes", "bbox": [300, 420, 460, 470], "confidence": 0.91, "text": "Address" },
+        { "id": "8", "label": "Relationships", "bbox": [480, 230, 630, 330], "confidence": 0.90, "text": "Enrolls in" },
+        { "id": "9", "label": "Relationships", "bbox": [480, 430, 630, 530], "confidence": 0.89, "text": "Specialized in" },
+        { "id": "10", "label": "Entities", "bbox": [680, 380, 830, 460], "confidence": 0.92, "text": "Computer Science" },
+        { "id": "11", "label": "Entities", "bbox": [680, 480, 830, 560], "confidence": 0.91, "text": "Mechanical" },
+        { "id": "12", "label": "Entities", "bbox": [680, 580, 830, 660], "confidence": 0.90, "text": "Electronics" }
+      ],
+      "entities": [
+        { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+        { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+        { "entity_name": "Computer Science", "attributes": [] },
+        { "entity_name": "Mechanical", "attributes": [] },
+        { "entity_name": "Electronics", "attributes": [] }
+      ],
+      "relationships": [
+        { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+        { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] },
+          "Electronics": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+      { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+      { "entity_name": "Computer Science", "attributes": [] },
+      { "entity_name": "Mechanical", "attributes": [] },
+      { "entity_name": "Electronics", "attributes": [] }
+    ],
+    "diagram_relations": [
+      { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+      { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        { "id": 0, "label": "Entities", "bbox": [130, 130, 280, 230], "confidence": 0.94, "crop_path": "", "text": "Student", "ocr_status": "ok" },
+        { "id": 1, "label": "Attributes", "bbox": [300, 110, 430, 160], "confidence": 0.93, "crop_path": "", "text": "Name", "ocr_status": "ok" },
+        { "id": 2, "label": "Attributes", "bbox": [300, 170, 430, 220], "confidence": 0.92, "crop_path": "", "text": "Gender", "ocr_status": "ok" },
+        { "id": 3, "label": "Attributes", "bbox": [300, 230, 430, 280], "confidence": 0.91, "crop_path": "", "text": "DOB", "ocr_status": "ok" },
+        { "id": 4, "label": "Attributes", "bbox": [300, 290, 430, 340], "confidence": 0.90, "crop_path": "", "text": "Age", "ocr_status": "ok" },
+        { "id": 5, "label": "Entities", "bbox": [130, 380, 280, 480], "confidence": 0.93, "crop_path": "", "text": "College", "ocr_status": "ok" },
+        { "id": 6, "label": "Attributes", "bbox": [300, 360, 460, 410], "confidence": 0.92, "crop_path": "", "text": "Affiliation", "ocr_status": "ok" },
+        { "id": 7, "label": "Attributes", "bbox": [300, 420, 460, 470], "confidence": 0.91, "crop_path": "", "text": "Address", "ocr_status": "ok" },
+        { "id": 8, "label": "Relationships", "bbox": [480, 230, 630, 330], "confidence": 0.90, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" },
+        { "id": 9, "label": "Relationships", "bbox": [480, 430, 630, 530], "confidence": 0.89, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" },
+        { "id": 10, "label": "Entities", "bbox": [680, 380, 830, 460], "confidence": 0.92, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" },
+        { "id": 11, "label": "Entities", "bbox": [680, 480, 830, 560], "confidence": 0.91, "crop_path": "", "text": "Mechanical", "ocr_status": "ok" },
+        { "id": 12, "label": "Entities", "bbox": [680, 580, 830, 660], "confidence": 0.90, "crop_path": "", "text": "Electronics", "ocr_status": "ok" }
+      ],
+      "connections": [
+        { "from_id": 0, "to_id": 8, "from": { "id": 0, "label": "Entities", "bbox": [130, 130, 280, 230], "confidence": 0.94, "crop_path": "", "text": "Student", "ocr_status": "ok" }, "to": { "id": 8, "label": "Relationships", "bbox": [480, 230, 630, 330], "confidence": 0.90, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "line": [280, 180, 480, 280] },
+        { "from_id": 8, "to_id": 5, "from": { "id": 8, "label": "Relationships", "bbox": [480, 230, 630, 330], "confidence": 0.90, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "to": { "id": 5, "label": "Entities", "bbox": [130, 380, 280, 480], "confidence": 0.93, "crop_path": "", "text": "College", "ocr_status": "ok" }, "line": [480, 330, 280, 430] },
+        { "from_id": 5, "to_id": 9, "from": { "id": 5, "label": "Entities", "bbox": [130, 380, 280, 480], "confidence": 0.93, "crop_path": "", "text": "College", "ocr_status": "ok" }, "to": { "id": 9, "label": "Relationships", "bbox": [480, 430, 630, 530], "confidence": 0.89, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "line": [280, 430, 480, 480] },
+        { "from_id": 9, "to_id": 10, "from": { "id": 9, "label": "Relationships", "bbox": [480, 430, 630, 530], "confidence": 0.89, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 10, "label": "Entities", "bbox": [680, 380, 830, 460], "confidence": 0.92, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" }, "line": [630, 460, 680, 420] },
+        { "from_id": 9, "to_id": 11, "from": { "id": 9, "label": "Relationships", "bbox": [480, 430, 630, 530], "confidence": 0.89, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 11, "label": "Entities", "bbox": [680, 480, 830, 560], "confidence": 0.91, "crop_path": "", "text": "Mechanical", "ocr_status": "ok" }, "line": [630, 480, 680, 520] },
+        { "from_id": 9, "to_id": 12, "from": { "id": 9, "label": "Relationships", "bbox": [480, 430, 630, 530], "confidence": 0.89, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 12, "label": "Entities", "bbox": [680, 580, 830, 660], "confidence": 0.90, "crop_path": "", "text": "Electronics", "ocr_status": "ok" }, "line": [630, 500, 680, 620] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] },
+          "Electronics": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical", "Electronics"], "attributes": [] }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-25T11:46:46.507360+00:00",
+    "updated_at": "2026-08-25T11:46:46.507360+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": { "$oid": "6a7320c67a28786b9977e035" },
+    "student_id": "IT22262560",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 15,
+    "diagram_details": {
+      "label_count": 12,
+      "entity_count": 5,
+      "relationship_count": 2,
+      "detections": [
+        { "id": "0", "label": "Entities", "bbox": [140, 140, 290, 240], "confidence": 0.93, "text": "Student" },
+        { "id": "1", "label": "Attributes", "bbox": [310, 120, 440, 170], "confidence": 0.92, "text": "Name" },
+        { "id": "2", "label": "Attributes", "bbox": [310, 180, 440, 230], "confidence": 0.91, "text": "Gender" },
+        { "id": "3", "label": "Attributes", "bbox": [310, 240, 440, 290], "confidence": 0.90, "text": "DOB" },
+        { "id": "4", "label": "Attributes", "bbox": [310, 300, 440, 350], "confidence": 0.89, "text": "Age" },
+        { "id": "5", "label": "Entities", "bbox": [140, 390, 290, 490], "confidence": 0.92, "text": "College" },
+        { "id": "6", "label": "Attributes", "bbox": [310, 370, 470, 420], "confidence": 0.91, "text": "Affiliation" },
+        { "id": "7", "label": "Attributes", "bbox": [310, 430, 470, 480], "confidence": 0.90, "text": "Address" },
+        { "id": "8", "label": "Relationships", "bbox": [490, 240, 640, 340], "confidence": 0.89, "text": "Enrolls in" },
+        { "id": "9", "label": "Relationships", "bbox": [490, 440, 640, 540], "confidence": 0.88, "text": "Specialized in" },
+        { "id": "10", "label": "Entities", "bbox": [690, 390, 840, 470], "confidence": 0.91, "text": "Computer Science" },
+        { "id": "11", "label": "Entities", "bbox": [690, 490, 840, 570], "confidence": 0.90, "text": "Mechanical" }
+      ],
+      "entities": [
+        { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+        { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+        { "entity_name": "Computer Science", "attributes": [] },
+        { "entity_name": "Mechanical", "attributes": [] }
+      ],
+      "relationships": [
+        { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+        { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical"], "attributes": [] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical"], "attributes": [] }
+        ],
+        "unmatched_connections": [
+          { "from": "Mechanical", "to": "Specialized in", "line": [690, 530, 640, 500] }
+        ]
+      }
+    },
+    "diagram_entity_relations": [
+      { "entity_name": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
+      { "entity_name": "College", "attributes": ["Name", "Affiliation", "Address"] },
+      { "entity_name": "Computer Science", "attributes": [] },
+      { "entity_name": "Mechanical", "attributes": [] }
+    ],
+    "diagram_relations": [
+      { "relation_name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+      { "relation_name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical"], "attributes": [] }
+    ],
+    "remarks": "Electronics entity missing",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        { "id": 0, "label": "Entities", "bbox": [140, 140, 290, 240], "confidence": 0.93, "crop_path": "", "text": "Student", "ocr_status": "ok" },
+        { "id": 1, "label": "Attributes", "bbox": [310, 120, 440, 170], "confidence": 0.92, "crop_path": "", "text": "Name", "ocr_status": "ok" },
+        { "id": 2, "label": "Attributes", "bbox": [310, 180, 440, 230], "confidence": 0.91, "crop_path": "", "text": "Gender", "ocr_status": "ok" },
+        { "id": 3, "label": "Attributes", "bbox": [310, 240, 440, 290], "confidence": 0.90, "crop_path": "", "text": "DOB", "ocr_status": "ok" },
+        { "id": 4, "label": "Attributes", "bbox": [310, 300, 440, 350], "confidence": 0.89, "crop_path": "", "text": "Age", "ocr_status": "ok" },
+        { "id": 5, "label": "Entities", "bbox": [140, 390, 290, 490], "confidence": 0.92, "crop_path": "", "text": "College", "ocr_status": "ok" },
+        { "id": 6, "label": "Attributes", "bbox": [310, 370, 470, 420], "confidence": 0.91, "crop_path": "", "text": "Affiliation", "ocr_status": "ok" },
+        { "id": 7, "label": "Attributes", "bbox": [310, 430, 470, 480], "confidence": 0.90, "crop_path": "", "text": "Address", "ocr_status": "ok" },
+        { "id": 8, "label": "Relationships", "bbox": [490, 240, 640, 340], "confidence": 0.89, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" },
+        { "id": 9, "label": "Relationships", "bbox": [490, 440, 640, 540], "confidence": 0.88, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" },
+        { "id": 10, "label": "Entities", "bbox": [690, 390, 840, 470], "confidence": 0.91, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" },
+        { "id": 11, "label": "Entities", "bbox": [690, 490, 840, 570], "confidence": 0.90, "crop_path": "", "text": "Mechanical", "ocr_status": "ok" }
+      ],
+      "connections": [
+        { "from_id": 0, "to_id": 8, "from": { "id": 0, "label": "Entities", "bbox": [140, 140, 290, 240], "confidence": 0.93, "crop_path": "", "text": "Student", "ocr_status": "ok" }, "to": { "id": 8, "label": "Relationships", "bbox": [490, 240, 640, 340], "confidence": 0.89, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "line": [290, 190, 490, 290] },
+        { "from_id": 8, "to_id": 5, "from": { "id": 8, "label": "Relationships", "bbox": [490, 240, 640, 340], "confidence": 0.89, "crop_path": "", "text": "Enrolls in", "ocr_status": "ok" }, "to": { "id": 5, "label": "Entities", "bbox": [140, 390, 290, 490], "confidence": 0.92, "crop_path": "", "text": "College", "ocr_status": "ok" }, "line": [490, 340, 290, 440] },
+        { "from_id": 5, "to_id": 9, "from": { "id": 5, "label": "Entities", "bbox": [140, 390, 290, 490], "confidence": 0.92, "crop_path": "", "text": "College", "ocr_status": "ok" }, "to": { "id": 9, "label": "Relationships", "bbox": [490, 440, 640, 540], "confidence": 0.88, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "line": [290, 440, 490, 490] },
+        { "from_id": 9, "to_id": 10, "from": { "id": 9, "label": "Relationships", "bbox": [490, 440, 640, 540], "confidence": 0.88, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 10, "label": "Entities", "bbox": [690, 390, 840, 470], "confidence": 0.91, "crop_path": "", "text": "Computer Science", "ocr_status": "ok" }, "line": [640, 470, 690, 430] },
+        { "from_id": 9, "to_id": 11, "from": { "id": 9, "label": "Relationships", "bbox": [490, 440, 640, 540], "confidence": 0.88, "crop_path": "", "text": "Specialized in", "ocr_status": "ok" }, "to": { "id": 11, "label": "Entities", "bbox": [690, 490, 840, 570], "confidence": 0.90, "crop_path": "", "text": "Mechanical", "ocr_status": "ok" }, "line": [640, 490, 690, 530] }
+      ],
+      "structure": {
+        "entities": {
+          "Student": { "attributes": ["Name", "Gender", "DOB", "Age"] },
+          "College": { "attributes": ["Name", "Affiliation", "Address"] },
+          "Computer Science": { "attributes": [] },
+          "Mechanical": { "attributes": [] }
+        },
+        "relationships": [
+          { "name": "Enrolls in", "entities": ["Student", "College"], "attributes": [] },
+          { "name": "Specialized in", "entities": ["College", "Computer Science", "Mechanical"], "attributes": [] }
+        ],
+        "unmatched_connections": [
+          { "from": "Mechanical", "to": "Specialized in", "line": [690, 530, 640, 500] }
+        ]
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-25T11:47:46.507360+00:00",
+    "updated_at": "2026-08-25T11:47:46.507360+00:00",
+    "source": "diagram-evaluation"
+  }
+]
