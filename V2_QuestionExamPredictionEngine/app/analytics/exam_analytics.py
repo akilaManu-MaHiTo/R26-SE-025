@@ -80,7 +80,7 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
             bloom_max[lvl] = bloom_max.get(lvl, 0.0) + q["max_score"]
     if bloom_score:
         bloom_performance = [
-            {"level": level, "average_percentage": round(bloom_score[level] / bloom_max[level] * 100.0, 2)}
+            {"level": level, "average_percentage": round(bloom_score[level] / bloom_max[level] * 100 if bloom_max[level] > 0 else 0.0, 2)}
             for level in sorted(bloom_score)
         ]
     else:
@@ -98,7 +98,7 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
 
     question_score: dict[str, dict] = {}
     for student in normalized_students:
-        for question in student["question_performance"]:
+        for question in student.get("question_performance", []):
             entry = question_score.setdefault(
                 question["question_no"],
                 {"question_id": f"Q{question['question_no']}", "question_no": question["question_no"],
@@ -113,7 +113,7 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
             "question_no": entry["question_no"],
             "topic": entry["topic"],
             "bloom_level": entry["bloom_level"],
-            "average_percentage": round(entry["score"] / entry["max_score"] * 100.0, 2),
+            "average_percentage": round(entry["score"] / entry["max_score"] * 100 if entry["max_score"] > 0 else 0.0, 2),
         }
         for entry in sorted(question_score.values(), key=lambda item: item["question_no"])
     ]
