@@ -33,6 +33,9 @@ class TopicPerformanceSummary(BaseModel):
     topic: str = Field(min_length=1)
     average_percentage: float = Field(ge=0, le=100)
     status: PerformanceStatus
+    evidence_status: str = Field(default="insufficient_evidence")
+    student_count: int = Field(ge=0, default=0)
+    attempt_count: int = Field(ge=0, default=0)
 
 
 class BloomPerformanceSummary(BaseModel):
@@ -46,6 +49,9 @@ class QuestionPerformanceSummary(BaseModel):
     topic: str = Field(min_length=1)
     bloom_level: BloomLevel
     average_percentage: float = Field(ge=0, le=100)
+    evidence_status: str = Field(default="insufficient_evidence")
+    student_count: int = Field(ge=0, default=0)
+    attempt_count: int = Field(ge=0, default=0)
 
 
 class AttentionArea(BaseModel):

@@ -14,6 +14,42 @@ _ATTENTION_PRIORITY = {
 }
 
 
+def _load_evidence_thresholds() -> tuple[int, int]:
+    """Load evidence thresholds from config/thresholds.json with safe defaults."""
+    try:
+        import json
+        from pathlib import Path
+
+        cfg = Path(__file__).resolve().parents[2] / "config" / "thresholds.json"
+        if cfg.exists():
+            data = json.loads(cfg.read_text(encoding="utf-8"))
+            min_students = int(data.get("low_sample_threshold", data.get("min_students", 10)))
+            if "min_attempts" in data:
+                min_attempts = int(data["min_attempts"])
+            elif isinstance(data.get("evidence"), dict) and "min_attempts" in data["evidence"]:
+                min_attempts = int(data["evidence"]["min_attempts"])
+            else:
+                min_attempts = 2
+            return min_students, min_attempts
+    except Exception:
+        pass
+    return 10, 2
+
+
+def _evidence_status(
+    avg_pct: float, student_count: int, attempt_count: int, min_students: int, min_attempts: int
+) -> str:
+    if attempt_count < min_attempts or student_count < min_students:
+        return "insufficient_evidence"
+    if avg_pct >= 60:
+        return "strength" if student_count >= min_students else "possible_weakness"
+    return (
+        "confirmed_weakness"
+        if student_count >= min_students and attempt_count >= min_attempts
+        else "possible_weakness"
+    )
+
+
 def build_insights(
     statistics: dict, topic_performance: list[dict], question_performance: list[dict]
 ) -> list[str]:
@@ -73,22 +109,35 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
     }
 
     # Marks-weighted topic aggregation across all students
+    min_students, min_attempts = _load_evidence_thresholds()
     topic_score: dict[str, float] = {}
     topic_max: dict[str, float] = {}
-    for student in normalized_students:
+    topic_students: dict[str, set[int]] = {}
+    topic_attempts: dict[str, int] = {}
+    for idx, student in enumerate(normalized_students):
         for topic in student["topic_performance"]:
-            topic_score[topic["topic"]] = topic_score.get(topic["topic"], 0.0) + topic["score"]
-            topic_max[topic["topic"]] = topic_max.get(topic["topic"], 0.0) + topic["max_score"]
-    topic_performance = [
-        {
-            "topic": name,
-            "average_percentage": round(score / topic_max[name] * 100.0, 2),
-            "status": performance_status(score / topic_max[name] * 100.0),
-        }
-        for name, score in sorted(
-            topic_score.items(), key=lambda item: item[1] / topic_max[item[0]]
+            name = topic["topic"]
+            topic_score[name] = topic_score.get(name, 0.0) + topic["score"]
+            topic_max[name] = topic_max.get(name, 0.0) + topic["max_score"]
+            topic_students.setdefault(name, set()).add(idx)
+            topic_attempts[name] = topic_attempts.get(name, 0) + 1
+    topic_performance = []
+    for name, score in sorted(
+        topic_score.items(), key=lambda item: item[1] / topic_max[item[0]]
+    ):
+        avg_pct = round(score / topic_max[name] * 100.0, 2) if topic_max[name] else 0.0
+        sc = len(topic_students.get(name, set()))
+        ac = topic_attempts.get(name, 0)
+        topic_performance.append(
+            {
+                "topic": name,
+                "average_percentage": avg_pct,
+                "status": performance_status(score / topic_max[name] * 100.0 if topic_max[name] else 0.0),
+                "evidence_status": _evidence_status(avg_pct, sc, ac, min_students, min_attempts),
+                "student_count": sc,
+                "attempt_count": ac,
+            }
         )
-    ]
 
     # Marks-weighted bloom aggregation via question_performance (single source of truth)
     bloom_score: dict[str, float] = {}
@@ -117,26 +166,38 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
         ]
 
     question_score: dict[str, dict] = {}
-    for student in normalized_students:
+    question_students: dict[str, set[int]] = {}
+    question_attempts: dict[str, int] = {}
+    for idx, student in enumerate(normalized_students):
         for question in student.get("question_performance", []):
+            qno = question["question_no"]
             entry = question_score.setdefault(
-                question["question_no"],
+                qno,
                 {"question_id": f"Q{question['question_no']}", "question_no": question["question_no"],
                  "topic": question["topic"], "bloom_level": question["bloom_level"],
                  "score": 0.0, "max_score": 0.0},
             )
             entry["score"] += question["score"]
             entry["max_score"] += question["max_score"]
-    question_performance = [
-        {
-            "question_id": entry["question_id"],
-            "question_no": entry["question_no"],
-            "topic": entry["topic"],
-            "bloom_level": entry["bloom_level"],
-            "average_percentage": round(entry["score"] / entry["max_score"] * 100 if entry["max_score"] > 0 else 0.0, 2),
-        }
-        for entry in sorted(question_score.values(), key=lambda item: item["question_no"])
-    ]
+            question_students.setdefault(qno, set()).add(idx)
+            question_attempts[qno] = question_attempts.get(qno, 0) + 1
+    question_performance = []
+    for entry in sorted(question_score.values(), key=lambda item: item["question_no"]):
+        avg_q = round(entry["score"] / entry["max_score"] * 100 if entry["max_score"] > 0 else 0.0, 2)
+        sc_q = len(question_students.get(entry["question_no"], set()))
+        ac_q = question_attempts.get(entry["question_no"], 0)
+        question_performance.append(
+            {
+                "question_id": entry["question_id"],
+                "question_no": entry["question_no"],
+                "topic": entry["topic"],
+                "bloom_level": entry["bloom_level"],
+                "average_percentage": avg_q,
+                "evidence_status": _evidence_status(avg_q, sc_q, ac_q, min_students, min_attempts),
+                "student_count": sc_q,
+                "attempt_count": ac_q,
+            }
+        )
 
     attention_areas = [
         {"type": "topic", "name": topic["topic"], "average_percentage": topic["average_percentage"],
