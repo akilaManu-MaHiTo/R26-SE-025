@@ -72,3 +72,29 @@ def test_attention_areas_derive_from_bottom_topics():
 def test_insights_are_deterministic():
     stats = compute_exam_analytics_stats(_student_docs(), pass_threshold=0.5)
     assert any("weakest topic" in insight for insight in stats["insights"])
+
+
+def test_bloom_performance_is_marks_weighted_not_count_averaged():
+    # Two students, same Bloom "Apply" but different max_score
+    docs = [
+        {"overall": {"score": 9, "maximum": 10, "percentage": 90.0},
+         "topic_performance": [],
+         "bloom_performance": [],
+         "question_performance": [
+             {"question_no": "01", "topic": "SQL", "bloom_level": "Apply", "score": 9.0, "max_score": 10.0},
+         ]},
+        {"overall": {"score": 0, "maximum": 10, "percentage": 0.0},
+         "topic_performance": [],
+         "bloom_performance": [],
+         "question_performance": [
+             {"question_no": "01", "topic": "SQL", "bloom_level": "Apply", "score": 0.0, "max_score": 10.0},
+             {"question_no": "02", "topic": "SQL", "bloom_level": "Apply", "score": 0.0, "max_score": 90.0},
+         ]},
+    ]
+    # Current bug: averages student Bloom averages (90+0)/2=45%
+    # Correct marks-weighted: total score 9 / total max 110 = 8.18%
+    # We test via question_performance aggregation path which should be used
+    from app.analytics.exam_analytics import compute_exam_analytics_stats
+    stats = compute_exam_analytics_stats(docs, pass_threshold=0.5)
+    bloom = next(b for b in stats["bloom_performance"] if b["level"]=="Apply")
+    assert bloom["average_percentage"] < 20, f"bug: count-averaged {bloom['average_percentage']} should be marks-weighted ~8.18"

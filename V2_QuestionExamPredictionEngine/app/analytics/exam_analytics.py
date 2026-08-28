@@ -70,16 +70,31 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
         )
     ]
 
+    # Marks-weighted bloom aggregation via question_performance (single source of truth)
     bloom_score: dict[str, float] = {}
-    bloom_count: dict[str, int] = {}
+    bloom_max: dict[str, float] = {}
     for student in normalized_students:
-        for bloom in student["bloom_performance"]:
-            bloom_score[bloom["level"]] = bloom_score.get(bloom["level"], 0.0) + bloom["average_score"]
-            bloom_count[bloom["level"]] = bloom_count.get(bloom["level"], 0) + 1
-    bloom_performance = [
-        {"level": level, "average_percentage": round(total / bloom_count[level], 2)}
-        for level, total in sorted(bloom_score.items())
-    ]
+        for q in student.get("question_performance", []):
+            lvl = q["bloom_level"]
+            bloom_score[lvl] = bloom_score.get(lvl, 0.0) + q["score"]
+            bloom_max[lvl] = bloom_max.get(lvl, 0.0) + q["max_score"]
+    if bloom_score:
+        bloom_performance = [
+            {"level": level, "average_percentage": round(bloom_score[level] / bloom_max[level] * 100.0, 2)}
+            for level in sorted(bloom_score)
+        ]
+    else:
+        # Fallback: if question_performance empty, keep old path to avoid break
+        bloom_score = {}
+        bloom_count: dict[str, int] = {}
+        for student in normalized_students:
+            for bloom in student.get("bloom_performance", []):
+                bloom_score[bloom["level"]] = bloom_score.get(bloom["level"], 0.0) + bloom["average_score"]
+                bloom_count[bloom["level"]] = bloom_count.get(bloom["level"], 0) + 1
+        bloom_performance = [
+            {"level": level, "average_percentage": round(total / bloom_count[level], 2)}
+            for level, total in sorted(bloom_score.items())
+        ]
 
     question_score: dict[str, dict] = {}
     for student in normalized_students:
