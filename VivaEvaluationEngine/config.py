@@ -62,6 +62,14 @@ HEURISTIC_EMOTION_CONFIDENCE_CAP: float = 0.4
 MIN_FACE_FRAMES: int = 3
 MIN_FACE_COVERAGE_RATIO: float = 0.15
 
+# A frame only counts toward face coverage if the head is roughly frontal —
+# MediaPipe's face detector fires on side profiles too, so coverage alone
+# can't tell a profile shot from a genuine on-camera face. Threshold is the
+# real Euler yaw (degrees) from FaceLandmarker's facial transformation matrix,
+# calibrated against sample footage: frontal/talking clips stayed under ~18°,
+# a deliberate "looking away" clip sat at 35-57°. 30° sits in the gap.
+MAX_FRONTAL_YAW_DEGREES: float = 30.0
+
 # Multi-face gate: viva expects one student on camera. Ignore tiny partial faces
 # (second face area < this fraction of the largest). Fail when a significant
 # second face appears often enough or for several consecutive sampled frames.

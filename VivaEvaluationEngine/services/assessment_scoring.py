@@ -63,6 +63,11 @@ _NO_SPEECH_MAX_WORDS = 2
 _NO_SPEECH_MAX_RMS = 0.008
 _MIN_AUDIO_DURATION_S = 1.0
 
+# Same coverage floor as config.MIN_FACE_COVERAGE_RATIO. Kept local (no config
+# import elsewhere in this module) — only used to tell "no face" apart from
+# "face present but mostly non-frontal" when picking the INCOMPLETE message.
+_MIN_FACE_COVERAGE_RATIO = 0.15
+
 REASON_MESSAGES = {
     "insufficient_lip_motion": (
         "Speech was detected but visible lip movement did not match the transcript "
@@ -84,6 +89,11 @@ REASON_MESSAGES = {
     "video_insufficient": (
         "No usable face on camera. Emotion and engagement cannot be measured, "
         "so this recording is incomplete — point the webcam at the student and re-record."
+    ),
+    "video_non_frontal": (
+        "A face was visible but mostly turned away from the camera, so emotion and "
+        "engagement cannot be measured reliably. Ask the student to face the camera "
+        "directly and re-record."
     ),
     "audio_insufficient": "Recorded audio is too short or empty to score.",
     "no_scorable_families": "No scorable evidence families were available.",
@@ -198,8 +208,19 @@ def validate_features(
         audio_ok = False
         reasons.append("duration_below_engine_minimum")
 
+    frames_sampled = quality.get("frames_sampled") or 0
+    frames_with_face = quality.get("frames_with_face") or 0
+    frames_non_frontal = quality.get("frames_rejected_non_frontal") or 0
+    mostly_non_frontal = (
+        not video_ok
+        and frames_sampled > 0
+        and frames_with_face == 0
+        and frames_non_frontal > 0
+        and frames_non_frontal >= frames_sampled * _MIN_FACE_COVERAGE_RATIO
+    )
+
     if not video_ok:
-        reasons.append("video_insufficient")
+        reasons.append("video_non_frontal" if mostly_non_frontal else "video_insufficient")
     if not audio_ok:
         reasons.append("audio_insufficient")
 
@@ -215,10 +236,11 @@ def validate_features(
 
     # Face is required: emotion/engagement cannot be inferred from audio alone.
     if not video_ok:
+        video_reason = "video_non_frontal" if mostly_non_frontal else "video_insufficient"
         return {
             "status": STATUS_INCOMPLETE,
             "reasons": unique,
-            "message": REASON_MESSAGES.get("video_insufficient"),
+            "message": REASON_MESSAGES.get(video_reason),
         }
 
     if multi_face_reason:

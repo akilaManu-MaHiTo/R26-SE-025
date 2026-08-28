@@ -48,6 +48,7 @@ def extract_canonical_features(result: Dict[str, Any]) -> Dict[str, Any]:
             "face_coverage_ratio": _f(coverage.get("face_coverage_ratio")),
             "frames_with_face": _i(coverage.get("frames_with_face")),
             "frames_sampled": _i(coverage.get("frames_sampled")),
+            "frames_rejected_non_frontal": _i(coverage.get("frames_rejected_non_frontal")),
             "video_status": result.get("video_status"),
             "audio_status": audio.get("status"),
             "transcript_word_count": _i(
@@ -128,6 +129,7 @@ def flatten_canonical_features(features: Dict[str, Any]) -> Dict[str, Any]:
         "face_coverage_ratio": quality.get("face_coverage_ratio"),
         "frames_with_face": quality.get("frames_with_face"),
         "frames_sampled": quality.get("frames_sampled"),
+        "frames_rejected_non_frontal": quality.get("frames_rejected_non_frontal"),
         "video_status": quality.get("video_status"),
         "audio_status": quality.get("audio_status"),
         "transcript_word_count": quality.get("transcript_word_count"),

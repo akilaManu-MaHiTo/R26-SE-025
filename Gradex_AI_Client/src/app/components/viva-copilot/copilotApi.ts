@@ -160,7 +160,7 @@ async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     if (response.status === 404) {
       throw new Error(
-        "Copilot API not found (404). Restart the FastAPI server so /api/viva-copilot is loaded.",
+        "Live viva API not found (404). Restart the FastAPI server so /api/viva-copilot is loaded.",
       );
     }
     throw new Error(await parseError(response));
@@ -200,6 +200,53 @@ export function updateCopilotContext(sessionId: string, projectContext: ProjectC
     method: "POST",
     body: JSON.stringify({ projectContext }),
   });
+}
+
+export type CopilotAssessmentMode = "WITH_TECHNICAL_ACCURACY" | "WITHOUT_TECHNICAL_ACCURACY";
+
+export interface AnalyzeSessionOptions {
+  assessmentMode: CopilotAssessmentMode;
+  subjectCode?: string;
+  studentId?: string;
+}
+
+/** Upload the full session recording and run the same analysis+scoring chain
+ * as an uploaded viva video. Returns the engine result (assessment, grade,
+ * audio_analysis, timeline, ...) exactly as /api/viva-analyze does. */
+export async function analyzeCopilotSession(
+  sessionId: string,
+  recording: Blob,
+  options: AnalyzeSessionOptions,
+): Promise<Record<string, unknown>> {
+  const form = new FormData();
+  const ext = recording.type.includes("mp4") ? "mp4" : "webm";
+  form.append("video", recording, `live-viva-${sessionId}.${ext}`);
+  form.append("assessment_mode", options.assessmentMode);
+  if (options.subjectCode) form.append("subject_code", options.subjectCode);
+  if (options.studentId) form.append("student_id", options.studentId);
+
+  const url = `${copilotHttpBase()}/api/viva-copilot/sessions/${sessionId}/analyze`;
+  let response: Response;
+  try {
+    // No Content-Type header: the browser sets the multipart boundary itself.
+    response = await fetch(url, {
+      method: "POST",
+      headers: { Accept: "application/json", ...authHeaders() },
+      body: form,
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach ${copilotHttpBase()}. Start Gradex_AI_Server on that port, or set VITE_BACKEND_URL.`,
+    );
+  }
+  if (!response.ok) throw new Error(await parseError(response));
+  return response.json() as Promise<Record<string, unknown>>;
+}
+
+export function getCopilotTranscript(sessionId: string) {
+  return jsonFetch<Record<string, unknown>>(
+    `/api/viva-copilot/sessions/${sessionId}/transcript`,
+  );
 }
 
 export function endCopilotSession(sessionId: string) {

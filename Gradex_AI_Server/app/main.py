@@ -478,13 +478,16 @@ async def viva_analyze(
     """
     import asyncio
     import time
-    from VivaEvaluationEngine.services.assessment_scoring import MODE_WITH, MODE_WITHOUT
+
+    from Gradex_AI_Server.app.viva_analysis_runner import (
+        attach_subject_technical_accuracy,
+        normalize_mode,
+        persist_and_autopublish,
+        run_analysis,
+    )
 
     request_start = time.time()
-    # A stray/unexpected value (or the Form(...) sentinel object seen when this
-    # function is called directly, bypassing FastAPI's request parsing — as the
-    # HTTP-layer tests do) falls back to the safe default rather than raising.
-    requested_mode = assessment_mode if assessment_mode in {MODE_WITH, MODE_WITHOUT} else MODE_WITHOUT
+    requested_mode = normalize_mode(assessment_mode)
 
     filename = video.filename or ""
     suffix = Path(filename).suffix.lower()
@@ -510,20 +513,14 @@ async def viva_analyze(
     print(f"[VIVA] File saved: {file_path.name} in {file_saved - upload_complete:.2f}s")
 
     try:
-        from Gradex_AI_Server.app.viva_service import analyze_video_file
-
         analysis_start = time.time()
-        timeout_s = _analyze_timeout_seconds()
         # ML pipeline is CPU/GPU-bound; keep the event loop free for other requests.
         try:
-            result = await asyncio.wait_for(
-                asyncio.to_thread(analyze_video_file, str(file_path), False),
-                timeout=timeout_s,
-            )
+            result = await run_analysis(str(file_path))
         except asyncio.TimeoutError as exc:
             raise HTTPException(
                 status_code=504,
-                detail=f"Analysis exceeded {int(timeout_s)}s. Try a shorter recording.",
+                detail=f"Analysis exceeded {int(_analyze_timeout_seconds())}s. Try a shorter recording.",
             ) from exc
         analysis_complete = time.time()
         analysis_time = analysis_complete - analysis_start
@@ -533,90 +530,18 @@ async def viva_analyze(
         # analyze_video_file/viva_service.py's internal chain — it's layered
         # on here as a decoupled post-processing call so that file, and the
         # rest of VivaEvaluationEngine's existing pipeline, stay untouched.
-        # subject_code may be the raw Form(...) sentinel object (not None) when
-        # this handler is called directly, bypassing FastAPI's request parsing —
-        # as the HTTP-layer tests do (see requested_mode above for the same issue).
-        code = subject_code.strip() if isinstance(subject_code, str) else ""
-        if code:
-            try:
-                from Gradex_AI_Server.app.subject_rubric_service import get_subject_rubric
-                from VivaEvaluationEngine.services.technical_accuracy import (
-                    attach_technical_accuracy,
-                )
-
-                concept_rubric = await get_subject_rubric(db_instance, code)
-                result = attach_technical_accuracy(result, concept_rubric)
-            except Exception as tech_exc:
-                print(f"[VIVA] Warning: technical-accuracy scoring failed ({tech_exc})")
-                result["technical_accuracy_ai"] = {
-                    "status": "unavailable",
-                    "model": None,
-                    "overall_score": None,
-                    "concepts": [],
-                    "error": str(tech_exc),
-                }
+        result = await attach_subject_technical_accuracy(result, subject_code, db_instance)
 
         print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")
-        # Persist the result to MongoDB (vivamark.marks). Best-effort: a
-        # storage failure should not fail an otherwise-successful analysis.
-        from Gradex_AI_Server.app.core.database import ensure_marks_collection
-
-        if not await ensure_marks_collection():
-            result["persistence_error"] = (
-                "MongoDB is not connected — mark was not saved. Publish is unavailable."
-            )
-            print(f"[VIVA] Warning: {result['persistence_error']}")
-        else:
-            try:
-                mark_doc = {
-                    "video_filename": video.filename,
-                    "processed_at": datetime.now(timezone.utc),
-                    "published": False,
-                    "human_published": False,
-                    "student_id": None,
-                    "confidence_score": result.get("confidence_score"),
-                    "engagement_score": result.get("engagement_score"),
-                    "video_status": result.get("video_status"),
-                    "assessment": result.get("assessment"),
-                    "scoring_version": (result.get("assessment") or {}).get("scoring_version"),
-                    "feature_schema_version": (result.get("assessment") or {}).get("feature_schema_version"),
-                    "result": result,
-                }
-                insert_result = await db_instance.marks_col.insert_one(mark_doc)
-                mark_object_id = insert_result.inserted_id
-                result["mark_id"] = str(mark_object_id)
-                result["published"] = False
-                result["assessment_mode"] = requested_mode
-
-                if requested_mode == MODE_WITH:
-                    # Technical viva: never auto-publish. The mark stays a draft
-                    # until an examiner enters a technical score and publishes —
-                    # this is what makes "reviewed before publishing" true rather
-                    # than aspirational for the assessments that need it.
-                    print(f"[VIVA] Technical viva — mark {result['mark_id']} saved as draft, awaiting examiner review.")
-                else:
-                    from Gradex_AI_Server.app.viva_marks import (
-                        auto_publish_without_technical,
-                        merge_auto_publish_into_analyze_result,
-                    )
-
-                    try:
-                        auto_payload = await auto_publish_without_technical(
-                            db_instance.marks_col,
-                            mark_object_id,
-                            result,
-                        )
-                        if auto_payload:
-                            merge_auto_publish_into_analyze_result(result, auto_payload)
-                            print(f"[VIVA] Auto-published mark {result['mark_id']} (non-technical viva)")
-                    except Exception as auto_exc:
-                        print(f"[VIVA] Warning: auto-publish failed; mark remains draft. ({auto_exc})")
-            except Exception as exc:
-                result["persistence_error"] = (
-                    "Could not save mark (Mongo authentication or network failed)."
-                )
-                print(f"[VIVA] Warning: failed to persist result to MongoDB ({type(exc).__name__}: {exc})")
-                await ensure_marks_collection()
+        # Persist to MongoDB (vivamark.marks) and auto-publish non-technical
+        # vivas. Shared with the live-copilot path so both grade identically.
+        result = await persist_and_autopublish(
+            result,
+            db_instance,
+            mode=requested_mode,
+            video_filename=video.filename,
+            source="upload",
+        )
         return result
     except ModuleNotFoundError as exc:
         raise HTTPException(status_code=503, detail=f"Viva analysis unavailable: {exc}") from exc

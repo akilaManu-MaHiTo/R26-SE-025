@@ -4,6 +4,9 @@ import { Camera, Loader2 } from "lucide-react";
 export interface CopilotCameraHandle {
   start: () => Promise<void>;
   stop: () => void;
+  /** Stop the full-session recorder and hand back the complete recording.
+   * Resolves null when nothing usable was captured. */
+  stopAndCollectRecording: () => Promise<Blob | null>;
 }
 
 export interface SpeechResult {
@@ -73,6 +76,25 @@ function pickMime(): string | undefined {
   return candidates.find((type) => MediaRecorder.isTypeSupported(type));
 }
 
+// The live STT loop above only ever needs audio. The *session* recorder below
+// is separate and deliberately keeps video: the official Stage-1 mark depends
+// on face coverage, the engagement CNN and lip-motion checks, none of which can
+// be derived from a transcript. See viva_copilot/analysis.py.
+function pickSessionMime(): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
+  const candidates = [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/mp4",
+  ];
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type));
+}
+
+// Flush a blob every 5s so a crash/disconnect still leaves a usable partial
+// recording instead of losing the whole session.
+const SESSION_TIMESLICE_MS = 5000;
+
 // Larger slices reduce STT queueing/rate-limit overhead per chunk while the
 // Web Speech API (see LiveCopilotPage) delivers instant partial transcripts.
 const SLICE_MS = 4000;
@@ -88,6 +110,9 @@ export const CopilotCamera = forwardRef<CopilotCameraHandle, CopilotCameraProps>
   const onChunkRef = useRef(onChunk);
   const onSpeechResultRef = useRef(onSpeechResult);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const sessionRecorderRef = useRef<MediaRecorder | null>(null);
+  const sessionChunksRef = useRef<Blob[]>([]);
+  const sessionMimeRef = useRef<string>("video/webm");
   const recognitionStoppingRef = useRef(false);
   const [previewOn, setPreviewOn] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -120,6 +145,13 @@ export const CopilotCamera = forwardRef<CopilotCameraHandle, CopilotCameraProps>
       }
     }
     recorderRef.current = null;
+    if (sessionRecorderRef.current && sessionRecorderRef.current.state !== "inactive") {
+      try {
+        sessionRecorderRef.current.stop();
+      } catch {
+        // already stopped
+      }
+    }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
@@ -129,6 +161,55 @@ export const CopilotCamera = forwardRef<CopilotCameraHandle, CopilotCameraProps>
   useEffect(() => {
     return () => stopTracks();
   }, []);
+
+  /** Records the whole session (video+audio) in one continuous file.
+   * Independent of the 4s STT slice loop above — stopping or restarting that
+   * loop must never interrupt this one. */
+  const startSessionRecorder = (stream: MediaStream) => {
+    if (typeof MediaRecorder === "undefined") return;
+    sessionChunksRef.current = [];
+    const mime = pickSessionMime();
+    try {
+      const recorder = mime
+        ? new MediaRecorder(stream, { mimeType: mime })
+        : new MediaRecorder(stream);
+      sessionMimeRef.current = recorder.mimeType || mime || "video/webm";
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) sessionChunksRef.current.push(event.data);
+      };
+      recorder.start(SESSION_TIMESLICE_MS);
+      sessionRecorderRef.current = recorder;
+    } catch {
+      // Session recording unavailable — the live copilot still works, but the
+      // end-of-session score cannot be produced. Surfaced on stop.
+      sessionRecorderRef.current = null;
+    }
+  };
+
+  const stopAndCollectRecording = (): Promise<Blob | null> =>
+    new Promise((resolve) => {
+      const recorder = sessionRecorderRef.current;
+      const finish = () => {
+        const chunks = sessionChunksRef.current;
+        sessionChunksRef.current = [];
+        sessionRecorderRef.current = null;
+        if (!chunks.length) {
+          resolve(null);
+          return;
+        }
+        resolve(new Blob(chunks, { type: sessionMimeRef.current }));
+      };
+      if (!recorder || recorder.state === "inactive") {
+        finish();
+        return;
+      }
+      recorder.onstop = finish;
+      try {
+        recorder.stop();
+      } catch {
+        finish();
+      }
+    });
 
   const enableCamera = async () => {
     setError("");
@@ -149,6 +230,7 @@ export const CopilotCamera = forwardRef<CopilotCameraHandle, CopilotCameraProps>
         video.playsInline = true;
         await video.play().catch(() => undefined);
       }
+      startSessionRecorder(stream);
       setPreviewOn(true);
     } catch (err) {
       stopTracks();
@@ -168,6 +250,7 @@ export const CopilotCamera = forwardRef<CopilotCameraHandle, CopilotCameraProps>
   useImperativeHandle(ref, () => ({
     start: enableCamera,
     stop: stopTracks,
+    stopAndCollectRecording,
   }));
 
 
