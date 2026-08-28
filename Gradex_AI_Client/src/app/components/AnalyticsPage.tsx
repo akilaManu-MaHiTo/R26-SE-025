@@ -184,7 +184,7 @@ export default function AnalyticsPage() {
             <AnimatePresence>
               {exams.map((exam, idx) => (
                 <motion.div
-                  key={`${exam.course_code}-${exam.session_name}`}
+                  key={`${exam.course_code}-${exam.session_name}-${exam.year}-${exam.month}-${exam.semester}-${idx}`}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
