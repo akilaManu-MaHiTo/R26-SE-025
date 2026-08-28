@@ -11,6 +11,7 @@ from app.analytics.student_document import performance_status
 from app.api.deps import get_db
 from app.db.repository import (
     find_exam_analytics,
+    find_graded_submission,
     find_graded_submissions_for_exam,
     find_student_analytics,
     list_all_exams,
@@ -20,6 +21,7 @@ from app.llm.ollama import check_llm_detailed_health
 from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
 from app.services.recommendation import recommend_for_weak_areas
 from app.services.student_accounts import provision_student_accounts
+from app.services.student_dashboard import StudentNotFound, ensure_student_analytics
 from app.services.teaching_actions import get_teaching_actions
 from app.services.topic_canonicalization import canonicalize_topics
 
@@ -222,23 +224,35 @@ async def lecturer_student_detail(
     month: int | None = Query(None),
     semester: int | None = Query(None),
     include_ai_tips: bool = Query(False, description="When false, strip AI improvement tips (recommendations, next_question_strategy, learning_gaps)"),
+    auto_analyze: bool = Query(True, description="When true (default), lecturer click triggers analysis generation if not cached"),
     db=Depends(get_db),
 ):
     """Lecturer view of a single student's performance — excludes AI improvement tips by default.
 
+    When `auto_analyze=true` (default), clicking a student triggers `ensure_student_analytics`
+    generation (PULSE·AI) so lecturer sees spinner + progress until ready. Set `auto_analyze=false`
+    to get the old 423 behaviour.
     Returns the StudentAnalyticsDocument minus `recommendations`, `next_question_strategy`,
     and `learning_analysis.learning_gaps` so lecturers see raw performance only.
     Pass `include_ai_tips=true` to get the full document (student-equivalent).
     """
     doc = await find_student_analytics(db, student_id, course_code, session_name, year, month, semester)
     if doc is None:
-        # No cached analytics — try to explain why (no submission vs not yet analyzed)
-        from app.db.repository import find_graded_submission
+        if not auto_analyze:
+            from app.db.repository import find_graded_submission
 
-        sub = await find_graded_submission(db, student_id, course_code, session_name, year, month, semester)
-        if sub is None:
-            raise HTTPException(status_code=404, detail=f"no graded submission for student {student_id} in {course_code} {session_name}")
-        raise HTTPException(status_code=423, detail=f"analytics not yet generated for student {student_id} — ensure exam is analyzed")
+            sub = await find_graded_submission(db, student_id, course_code, session_name, year, month, semester)
+            if sub is None:
+                raise HTTPException(status_code=404, detail=f"no graded submission for student {student_id} in {course_code} {session_name}")
+            raise HTTPException(status_code=423, detail=f"analytics not yet generated for student {student_id} — ensure exam is analyzed")
+        # Auto-analyze for lecturer dashboard (start analysis on click)
+        try:
+            doc_model = await ensure_student_analytics(db, student_id, course_code, session_name, year, month, semester)
+            doc = doc_model.model_dump(mode="json") if hasattr(doc_model, "model_dump") else dict(doc_model)
+        except StudentNotFound as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
     if not include_ai_tips:
         # Strip AI improvement tips — keep only raw performance
         filtered = dict(doc)
@@ -254,6 +268,133 @@ async def lecturer_student_detail(
             filtered["learning_analysis"] = la_copy
         return filtered
     return doc
+
+
+@router.get("/exams/{course_code}/{session_name}/student/{student_id}/stream")
+async def lecturer_student_detail_stream(
+    course_code: str,
+    session_name: str,
+    student_id: str,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    semester: int | None = Query(None),
+    include_ai_tips: bool = Query(False),
+    db=Depends(get_db),
+):
+    """SSE stream for lecturer student analyze — real progress (0-100) + result. Progress bar in topbar notification uses this."""
+    async def event_generator():
+        def sse(event: str, data: dict) -> str:
+            return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+        # Fast path: cached — real 100% immediately
+        cached = await find_student_analytics(db, student_id, course_code, session_name, year, month, semester)
+        if cached is not None:
+            yield sse("progress", {"phase": "cached", "message": "PULSE·AI — Using cached student analysis", "progress": 100, "studentId": student_id})
+            if not include_ai_tips:
+                filtered = dict(cached)
+                filtered.pop("recommendations", None)
+                filtered.pop("next_question_strategy", None)
+                la = filtered.get("learning_analysis")
+                if isinstance(la, dict):
+                    la_copy = dict(la)
+                    la_copy.pop("learning_gaps", None)
+                    la_copy["learning_gaps"] = []
+                    filtered["learning_analysis"] = la_copy
+                yield sse("result", filtered)
+            else:
+                yield sse("result", cached)
+            return
+
+        # Estimate total steps for real progress: questions + insights + save
+        total_steps = 5
+        try:
+            sub = await find_graded_submission(db, student_id, course_code, session_name, year, month, semester)
+            if sub and isinstance(sub.get("evaluation"), dict) and isinstance(sub["evaluation"].get("results"), list):
+                q_cnt = len(sub["evaluation"]["results"])
+                if q_cnt > 0:
+                    total_steps = q_cnt + 2  # N questions + insights + final
+            else:
+                rubric = await db["rubricCollection"].find_one({"subject_code": course_code, "session_name": session_name}, {"questions": 1})
+                if rubric and rubric.get("questions"):
+                    total_steps = len(rubric["questions"]) + 2
+        except Exception:
+            total_steps = 5
+
+        steps_done = 0
+        queue: asyncio.Queue[str] = asyncio.Queue()
+
+        def progress_cb(msg: str):
+            try:
+                queue.put_nowait(msg)
+            except Exception:
+                pass
+
+        compute_task = asyncio.create_task(
+            ensure_student_analytics(db, student_id, course_code, session_name, year, month, semester, progress_callback=progress_cb)
+        )
+
+        # Emit initial 0%
+        yield sse("progress", {"phase": "analyzing", "message": f"PULSE·AI — Starting analysis for {student_id}…", "progress": 0, "studentId": student_id})
+
+        while not compute_task.done():
+            try:
+                msg = await asyncio.wait_for(queue.get(), timeout=0.35)
+                steps_done += 1
+                # progress 5%..90% during classifying/insights; reserve 100 for final
+                prog = min(90, max(5, round((steps_done / total_steps) * 90)))
+                # bump a bit for insight phase
+                if "insights" in msg.lower() or "insight" in msg.lower():
+                    prog = max(prog, 85)
+                yield sse("progress", {"phase": "analyzing", "message": msg, "progress": prog, "studentId": student_id, "stepsDone": steps_done, "totalSteps": total_steps})
+            except asyncio.TimeoutError:
+                yield sse("ping", {"message": "alive", "progress": min(90, round((steps_done / total_steps) * 90)) if total_steps else 0, "studentId": student_id})
+            except Exception:
+                break
+
+        while not queue.empty():
+            try:
+                msg = queue.get_nowait()
+                steps_done += 1
+                prog = min(95, round((steps_done / total_steps) * 90)) if total_steps else 90
+                yield sse("progress", {"phase": "analyzing", "message": msg, "progress": prog, "studentId": student_id})
+            except Exception:
+                break
+
+        if not compute_task.done():
+            # still running, wait briefly
+            try:
+                await asyncio.wait_for(compute_task, timeout=5)
+            except Exception:
+                pass
+
+        try:
+            doc_model = await compute_task
+            doc = doc_model.model_dump(mode="json") if hasattr(doc_model, "model_dump") else dict(doc_model)
+        except StudentNotFound as exc:
+            yield sse("error", {"detail": str(exc)})
+            return
+        except Exception as exc:
+            yield sse("error", {"detail": f"Failed to analyze student {student_id}: {exc}"})
+            return
+
+        # Final 100%
+        yield sse("progress", {"phase": "finalizing", "message": f"PULSE·AI — {student_id} analysis complete", "progress": 100, "studentId": student_id})
+
+        if not include_ai_tips:
+            filtered = dict(doc)
+            filtered.pop("recommendations", None)
+            filtered.pop("next_question_strategy", None)
+            la = filtered.get("learning_analysis")
+            if isinstance(la, dict):
+                la_copy = dict(la)
+                la_copy.pop("learning_gaps", None)
+                la_copy["learning_gaps"] = []
+                filtered["learning_analysis"] = la_copy
+            yield sse("result", filtered)
+        else:
+            yield sse("result", doc)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @router.get("/exams/{course_code}/{session_name}/teaching-actions")

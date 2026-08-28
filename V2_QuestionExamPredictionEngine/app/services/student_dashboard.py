@@ -19,6 +19,7 @@ async def ensure_student_analytics(
     year: int | None = None,
     month: int | None = None,
     semester: int | None = None,
+    progress_callback=None,
 ) -> StudentAnalyticsDocument:
     cached = await find_student_analytics(
         db, student_id, course_code, session_name, year, month, semester
@@ -32,6 +33,6 @@ async def ensure_student_analytics(
     if submission is None:
         raise StudentNotFound("no graded submission found for student")
 
-    document = await build_student_analytics(db, submission)
+    document = await build_student_analytics(db, submission, progress_callback=progress_callback)
     await upsert_student_analytics(db, document.model_dump(mode="json"))
     return document

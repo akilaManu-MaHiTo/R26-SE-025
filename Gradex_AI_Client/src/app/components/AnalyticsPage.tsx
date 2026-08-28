@@ -17,6 +17,7 @@ import {
   fetchTeachingActions,
   fetchExamStudents,
   fetchLecturerStudentDetail,
+  fetchLecturerStudentDetailStream,
   type ExamListItem,
   type ExamAnalytics,
   type CanonicalTopic,
@@ -193,19 +194,47 @@ export default function AnalyticsPage() {
     setLoadingStudentDetail(true);
     setStudentDetail(null);
     setStudentDetailError(null);
+    const dispatchTopbar = (active: boolean, message?: string, progress?: number) => {
+      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active, studentId, message: message || "", progress } }));
+    };
+    dispatchTopbar(true, `PULSE·AI — Starting analysis for ${studentId}…`, 0);
     try {
-      const detail = await fetchLecturerStudentDetail(
-        selectedExam.course_code,
-        selectedExam.session_name,
-        studentId,
-        selectedExam.year,
-        selectedExam.month,
-        selectedExam.semester,
-        false
-      );
+      // Try streaming for live progress (topbar + row spinner), fallback to plain fetch
+      let detail: LecturerStudentDetail;
+      try {
+        detail = await fetchLecturerStudentDetailStream(
+          selectedExam.course_code,
+          selectedExam.session_name,
+          studentId,
+          selectedExam.year,
+          selectedExam.month,
+          selectedExam.semester,
+          (msg, prog) => {
+            dispatchTopbar(true, msg, prog);
+          },
+          false
+        );
+      } catch {
+        dispatchTopbar(true, `PULSE·AI — Analyzing ${studentId}…`, 45);
+        detail = await fetchLecturerStudentDetail(
+          selectedExam.course_code,
+          selectedExam.session_name,
+          studentId,
+          selectedExam.year,
+          selectedExam.month,
+          selectedExam.semester,
+          false
+        );
+      }
       setStudentDetail(detail);
+      dispatchTopbar(true, `PULSE·AI — ${studentId} analysis complete`, 100);
+      // Update row status optimistically
+      setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: "generated" } : r));
+      setTimeout(() => dispatchTopbar(false), 2500);
     } catch (e) {
       setStudentDetailError(e instanceof Error ? e.message : "Failed to load student detail");
+      dispatchTopbar(true, `Analysis failed for ${studentId}`, 0);
+      setTimeout(() => dispatchTopbar(false), 3000);
     } finally {
       setLoadingStudentDetail(false);
     }
@@ -605,9 +634,16 @@ export default function AnalyticsPage() {
                           )}
                         </TableCell>
                         <TableCell className="py-2 text-right pr-4">
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">
-                            <Eye className="size-3" /> View <ChevronRight className="size-3" />
-                          </span>
+                          {loadingStudentDetail && selectedStudentId === s.student_id ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
+                              <Loader2 className="size-3 animate-spin" />
+                              <span className="animate-pulse">Analyzing…</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">
+                              <Eye className="size-3" /> View <ChevronRight className="size-3" />
+                            </span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

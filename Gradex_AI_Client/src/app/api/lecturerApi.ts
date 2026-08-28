@@ -349,6 +349,66 @@ export async function fetchLecturerStudentDetail(
   return res.json();
 }
 
+export async function fetchLecturerStudentDetailStream(
+  courseCode: string,
+  sessionName: string,
+  studentId: string,
+  year: number | undefined,
+  month: number | undefined,
+  semester: number | undefined,
+  onProgress: (msg: string, progress?: number) => void,
+  includeAiTips = false,
+): Promise<LecturerStudentDetail> {
+  const encodedCourse = encodeURIComponent(courseCode);
+  const encodedSession = encodeURIComponent(sessionName);
+  const encodedStudent = encodeURIComponent(studentId);
+  const params = new URLSearchParams();
+  if (year !== undefined) params.set("year", String(year));
+  if (month !== undefined) params.set("month", String(month));
+  if (semester !== undefined) params.set("semester", String(semester));
+  if (includeAiTips) params.set("include_ai_tips", "true");
+  const qs = params.toString();
+  const finalUrl = `${API_BASE}/api/lecturers/exams/${encodedCourse}/${encodedSession}/student/${encodedStudent}/stream${qs ? `?${qs}` : ""}`;
+  const res = await fetch(finalUrl, { headers: { Accept: "text/event-stream" } });
+  if (!res.ok || !res.body) throw new Error("Failed to stream student detail");
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: LecturerStudentDetail | null = null;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() || "";
+    for (const part of parts) {
+      const lines = part.split("\n");
+      let event = "message";
+      let dataStr = "";
+      for (const line of lines) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) dataStr += line.slice(5).trim();
+      }
+      if (!dataStr) continue;
+      try {
+        const data = JSON.parse(dataStr);
+        if (event === "progress" || event === "ping") {
+          if (data.message) onProgress(data.message, typeof data.progress === "number" ? data.progress : undefined);
+        } else if (event === "result") {
+          result = data as LecturerStudentDetail;
+        } else if (event === "error") {
+          throw new Error(data.detail || "Stream error");
+        }
+      } catch {
+        // ignore ping parse
+      }
+    }
+    if (result) break;
+  }
+  if (!result) throw new Error("No student result from stream");
+  return result;
+}
+
 export async function fetchTeachingActions(
   courseCode: string,
   sessionName: string,
