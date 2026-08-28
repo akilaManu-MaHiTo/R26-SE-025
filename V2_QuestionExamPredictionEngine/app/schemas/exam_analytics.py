@@ -54,6 +54,15 @@ class QuestionPerformanceSummary(BaseModel):
     attempt_count: int = Field(ge=0, default=0)
 
 
+class TopicBloomCell(BaseModel):
+    topic: str = Field(min_length=1)
+    bloom_level: BloomLevel
+    average_percentage: float = Field(ge=0, le=100)
+    student_count: int = Field(ge=0, default=0)
+    attempt_count: int = Field(ge=0, default=0)
+    evidence_status: str = Field(default="insufficient_evidence")
+
+
 class AttentionArea(BaseModel):
     type: str = Field(min_length=1)
     name: str = Field(min_length=1)
@@ -101,6 +110,7 @@ class ExamAnalyticsDocument(BaseModel):
     topic_performance: list[TopicPerformanceSummary] = Field(default_factory=list)
     bloom_performance: list[BloomPerformanceSummary] = Field(default_factory=list)
     question_performance: list[QuestionPerformanceSummary] = Field(default_factory=list)
+    topic_bloom_matrix: list[TopicBloomCell] = Field(default_factory=list)
     attention_areas: list[AttentionArea] = Field(default_factory=list)
     insights: list[str] = Field(default_factory=list)
     canonical_topic_performance: list[CanonicalTopicSummary] = Field(default_factory=list)

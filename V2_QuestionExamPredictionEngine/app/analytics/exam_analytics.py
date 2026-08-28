@@ -199,6 +199,35 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
             }
         )
 
+    # Topic x Bloom matrix: group by (topic, bloom_level) sum score/max, count students
+    matrix_score: dict[tuple[str, str], float] = {}
+    matrix_max: dict[tuple[str, str], float] = {}
+    matrix_students: dict[tuple[str, str], set[int]] = {}
+    matrix_attempts: dict[tuple[str, str], int] = {}
+    for idx, student in enumerate(normalized_students):
+        for q in student.get("question_performance", []):
+            key = (q["topic"], q["bloom_level"])
+            matrix_score[key] = matrix_score.get(key, 0.0) + q["score"]
+            matrix_max[key] = matrix_max.get(key, 0.0) + q["max_score"]
+            matrix_students.setdefault(key, set()).add(idx)
+            matrix_attempts[key] = matrix_attempts.get(key, 0) + 1
+    topic_bloom_matrix = []
+    for (topic, bloom_level), score in sorted(matrix_score.items()):
+        max_s = matrix_max[(topic, bloom_level)]
+        avg_pct = round(score / max_s * 100 if max_s else 0.0, 2)
+        sc = len(matrix_students.get((topic, bloom_level), set()))
+        ac = matrix_attempts.get((topic, bloom_level), 0)
+        topic_bloom_matrix.append(
+            {
+                "topic": topic,
+                "bloom_level": bloom_level,
+                "average_percentage": avg_pct,
+                "student_count": sc,
+                "attempt_count": ac,
+                "evidence_status": _evidence_status(avg_pct, sc, ac, min_students, min_attempts),
+            }
+        )
+
     attention_areas = [
         {"type": "topic", "name": topic["topic"], "average_percentage": topic["average_percentage"],
          "priority": _ATTENTION_PRIORITY[topic["status"]]}
@@ -211,6 +240,7 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
         "topic_performance": topic_performance,
         "bloom_performance": bloom_performance,
         "question_performance": question_performance,
+        "topic_bloom_matrix": topic_bloom_matrix,
         "attention_areas": attention_areas,
         "insights": insights,
     }
