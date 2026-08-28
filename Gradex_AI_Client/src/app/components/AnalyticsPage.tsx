@@ -17,6 +17,8 @@ import {
   type TeachingAction,
 } from "../api/lecturerApi";
 import { KpiCards } from "./analytics/KpiCards";
+import { DistributionHistogram } from "./analytics/DistributionHistogram";
+import { TopicBloomHeatmap } from "./analytics/TopicBloomHeatmap";
 import { CanonicalTopicTable } from "./analytics/CanonicalTopicTable";
 import { AttentionAreasPanel } from "./analytics/AttentionAreasPanel";
 import { BloomChart } from "./analytics/BloomChart";
@@ -266,6 +268,10 @@ export default function AnalyticsPage() {
             <KpiCards statistics={analytics.statistics} />
           </motion.div>
 
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+            <div className="rounded-xl border bg-card/50 backdrop-blur p-1"><DistributionHistogram statistics={analytics.statistics} /></div>
+          </motion.div>
+
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="rounded-xl border bg-card/50 backdrop-blur p-1"><CanonicalTopicTable topics={analytics.canonical_topic_performance} onSelectTopic={setSelectedTopic} /></div>
             <div className="rounded-xl border bg-card/50 backdrop-blur p-1"><AttentionAreasPanel areas={analytics.canonical_attention_areas} /></div>
@@ -275,6 +281,12 @@ export default function AnalyticsPage() {
             <div className="rounded-xl border bg-card/50 backdrop-blur p-1"><BloomChart bloomPerformance={analytics.bloom_performance} /></div>
             <div className="rounded-xl border bg-card/50 backdrop-blur p-1"><QuestionPerformanceTable questions={analytics.question_performance} onSelectQuestion={setSelectedQuestion} /></div>
           </motion.div>
+
+          {analytics.topic_bloom_matrix && analytics.topic_bloom_matrix.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.20 }}>
+              <div className="rounded-xl border bg-card/50 backdrop-blur p-1"><TopicBloomHeatmap topic_bloom_matrix={analytics.topic_bloom_matrix} /></div>
+            </motion.div>
+          )}
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}>
             <InsightsPanel insights={analytics.canonical_insights} />

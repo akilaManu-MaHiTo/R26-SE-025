@@ -31,6 +31,12 @@ export interface ExamStatistics {
   pass_rate: number;
   highest_score: number;
   lowest_score: number;
+  median_score?: number;
+  median_percentage?: number;
+  std_score?: number;
+  std_percentage?: number;
+  iqr_percentage?: number;
+  grade_distribution?: Record<string, number>;
 }
 
 export interface TopicPerformance {
@@ -42,6 +48,18 @@ export interface TopicPerformance {
 export interface BloomPerformance {
   level: string;
   average_percentage: number;
+  evidence_status?: string;
+  student_count?: number;
+  attempt_count?: number;
+}
+
+export interface TopicBloomCell {
+  topic: string;
+  bloom_level: string;
+  average_percentage: number;
+  student_count: number;
+  attempt_count: number;
+  evidence_status: string;
 }
 
 export interface QuestionPerformance {
@@ -50,6 +68,12 @@ export interface QuestionPerformance {
   topic: string;
   bloom_level: string;
   average_percentage: number;
+  evidence_status?: string;
+  student_count?: number;
+  attempt_count?: number;
+  p_value?: number;
+  discrimination?: number;
+  missed_criterion_rate?: number | null;
 }
 
 export interface AttentionArea {
@@ -75,6 +99,7 @@ export interface ExamAnalytics {
   topic_performance: TopicPerformance[];
   bloom_performance: BloomPerformance[];
   question_performance: QuestionPerformance[];
+  topic_bloom_matrix?: TopicBloomCell[];
   attention_areas: AttentionArea[];
   insights: string[];
   canonical_topic_performance: CanonicalTopic[];
