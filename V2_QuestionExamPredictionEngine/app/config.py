@@ -1,4 +1,8 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_ENV_FILE = str(Path(__file__).resolve().parents[1] / ".env")
 
 
 class Settings(BaseSettings):
@@ -23,7 +27,7 @@ class Settings(BaseSettings):
     embedding_available: bool = True
     candidate_similarity_threshold: float = 0.85
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     @property
     def effective_mongodb_uri(self) -> str:

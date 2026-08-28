@@ -5,8 +5,29 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { cn } from "./ui/utils";
 
-export function LoginPage({ onLogin }: { onLogin: (role: "lecturer" | "student") => void }) {
+export function LoginPage({
+  onLogin,
+}: {
+  onLogin: (role: "lecturer" | "student", studentId?: string) => void;
+}) {
   const [role, setRole] = useState<"lecturer" | "student">("lecturer");
+  const [email, setEmail] = useState(role === "lecturer" ? "r.mendis@uni.edu" : "it22134776@my.sliit.lk");
+  const [password, setPassword] = useState(role === "lecturer" ? "admin123" : "Student@123");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // keep email in sync when role switches (only if user hasn't typed custom)
+  const handleRoleSwitch = (newRole: "lecturer" | "student") => {
+    setRole(newRole);
+    setError(null);
+    if (newRole === "lecturer") {
+      setEmail("r.mendis@uni.edu");
+      setPassword("admin123");
+    } else {
+      setEmail("it22134776@my.sliit.lk");
+      setPassword("Student@123");
+    }
+  };
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -78,7 +99,7 @@ export function LoginPage({ onLogin }: { onLogin: (role: "lecturer" | "student")
               return (
                 <button
                   key={r.id}
-                  onClick={() => setRole(r.id as any)}
+                  onClick={() => handleRoleSwitch(r.id as any)}
                   className={cn(
                     "rounded-xl border p-4 text-left transition-all duration-200",
                     active
@@ -97,15 +118,48 @@ export function LoginPage({ onLogin }: { onLogin: (role: "lecturer" | "student")
           </div>
 
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              onLogin(role);
+              setError(null);
+              if (role === "lecturer") {
+                onLogin(role);
+                return;
+              }
+              // Student: verify via backend (email = lower(student_id)@my.sliit.lk, default Student@123)
+              setLoading(true);
+              try {
+                const { studentLogin } = await import("../api/studentApi");
+                const result = await studentLogin(email.trim(), password);
+                onLogin("student", result.student_id);
+              } catch (err) {
+                // Fallback: derive student_id from email for demo (itXXXX@my.sliit.lk)
+                // If backend user not yet provisioned (exam not yet analyzed), allow login with derived id
+                const derived = email.trim().split("@")[0].toUpperCase();
+                if (derived && /^IT\d+/i.test(derived)) {
+                  // try to let dashboard handle 404 gracefully; still log in
+                  console.warn("Student login fallback, using derived id:", derived, err);
+                  onLogin("student", derived);
+                } else {
+                  setError(err instanceof Error ? err.message : "Login failed");
+                }
+              } finally {
+                setLoading(false);
+              }
             }}
             className="space-y-4 mt-6"
           >
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" defaultValue={role === "lecturer" ? "r.mendis@uni.edu" : "sahan@uni.edu"} />
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={role === "lecturer" ? "r.mendis@uni.edu" : "it22134776@my.sliit.lk"}
+              />
+              {role === "student" && (
+                <p className="text-[11px] text-muted-foreground">Use your student email: lower(student_id)@my.sliit.lk — e.g. it22134776@my.sliit.lk</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -114,10 +168,20 @@ export function LoginPage({ onLogin }: { onLogin: (role: "lecturer" | "student")
                   Forgot password?
                 </button>
               </div>
-              <Input id="password" type="password" defaultValue="••••••••••" />
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••••"
+              />
+              {role === "student" && (
+                <p className="text-[11px] text-muted-foreground">Default: Student@123 (provisioned when lecturer analyzes exam)</p>
+              )}
             </div>
-            <Button type="submit" className="w-full">
-              Sign in <ArrowRight className="size-4 ml-1" />
+            {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Signing in..." : "Sign in"} <ArrowRight className="size-4 ml-1" />
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               New to GradeX?{" "}

@@ -20,6 +20,8 @@ COLLECTIONS = (
     "analysis_runs",
     "generatedQuestions",
     "analyzedExams",
+    "exam_drafts",
+    "users",
 )
 
 _UNIQUE_INDEXES = {
@@ -46,6 +48,8 @@ _UNIQUE_INDEXES = {
         ("subject_code", 1),
         ("session_name", 1),
     ],
+    "exam_drafts": [("draft_id", 1)],
+    "users": [("email", 1)],
 }
 
 
@@ -60,6 +64,19 @@ async def create_indexes(db: AsyncIOMotorDatabase) -> None:
                 continue
             await db[collection].drop_index(name)
         await db[collection].create_index(keys, unique=True, name=name)
+    # Extra unique index for users.student_id (separate from email)
+    try:
+        users_indexes = await db["users"].index_information()
+        if "uniq_users_student_id" not in users_indexes:
+            await db["users"].create_index([("student_id", 1)], unique=True, name="uniq_users_student_id")
+        else:
+            # ensure correct key
+            if tuple(users_indexes["uniq_users_student_id"]["key"]) != (("student_id", 1),):
+                await db["users"].drop_index("uniq_users_student_id")
+                await db["users"].create_index([("student_id", 1)], unique=True, name="uniq_users_student_id")
+    except Exception:
+        # collection may not exist yet; ignore
+        pass
 
 
 async def upsert_catalog(db: AsyncIOMotorDatabase, doc: dict) -> None:
@@ -207,6 +224,9 @@ async def find_student_analytics(
     student_id: str,
     course_code: str | None = None,
     session_name: str | None = None,
+    year: int | None = None,
+    month: int | None = None,
+    semester: int | None = None,
 ) -> dict | None:
     filters: dict[str, object] = {"student_id": student_id}
     if course_code is not None and session_name is not None:
@@ -214,6 +234,12 @@ async def find_student_analytics(
         filters["session_name"] = session_name
     elif course_code is not None:
         filters["subject_code"] = course_code
+    if year is not None:
+        filters["year"] = year
+    if month is not None:
+        filters["month"] = month
+    if semester is not None:
+        filters["semester"] = semester
 
     document = await db["student_analytics"].find_one(
         filters, sort=[("_id", -1)]
@@ -236,15 +262,31 @@ async def find_graded_submission(
     student_id: str,
     course_code: str,
     session_name: str,
+    year: int | None = None,
+    month: int | None = None,
+    semester: int | None = None,
 ) -> dict | None:
-    return await db["submissions"].find_one(
-        {
-            "student_id": student_id,
-            "subject_code": course_code,
-            "session_name": session_name,
-            "status": "graded",
-        }
-    )
+    query: dict = {
+        "student_id": student_id,
+        "subject_code": course_code,
+        "session_name": session_name,
+        "status": "graded",
+    }
+    if year is not None:
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+    # Try exact match with year if provided, else fallback to most recent
+    if year is not None or month is not None or semester is not None:
+        doc = await db["submissions"].find_one(query, sort=[("_id", -1)])
+        if doc is not None:
+            return doc
+        # fallback without year for legacy data
+        query_no_year = {k: v for k, v in query.items() if k not in ("year", "month", "semester")}
+        return await db["submissions"].find_one(query_no_year, sort=[("year", -1), ("_id", -1)])
+    return await db["submissions"].find_one(query, sort=[("year", -1), ("_id", -1)])
 
 
 async def find_graded_submissions_for_exam(
@@ -443,10 +485,56 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
         questions = rubric.get("questions") or []
         total_marks = sum(float(q.get("max_marks", 0)) for q in questions)
 
+        # Check analyzed status across all analytics collections (analytics_snapshots, examAnalytics, analyzedExams)
+        analyzed = False
+        analyzed_at = None
+        # 1) analytics_snapshots (primary)
         analytics = await db["analytics_snapshots"].find_one(
             {"subject_code": course_code, "session_name": session_name, "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
-            {"_id": 0, "generated_at": 1, "analytics_version": 1}
+            {"_id": 0, "generated_at": 1, "analytics_version": 1},
+            sort=[("_id", -1)],
         )
+        if analytics is not None:
+            analyzed = True
+            analyzed_at = analytics.get("generated_at")
+        else:
+            # 2) examAnalytics (spec alias)
+            ea = await db["examAnalytics"].find_one(
+                {"subject_code": course_code, "session_name": session_name, "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
+                {"_id": 0, "generated_at": 1},
+                sort=[("_id", -1)],
+            )
+            if ea is not None:
+                analyzed = True
+                analyzed_at = ea.get("generated_at")
+            else:
+                # 3) analyzedExams
+                ae = await db["analyzedExams"].find_one(
+                    {"subject_code": course_code, "session_name": session_name, "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
+                    {"_id": 0, "analyzed_at": 1, "generated_at": 1, "analyzed": 1},
+                )
+                if ae is not None and (ae.get("analyzed") == "done" or ae.get("analyzed") is True or ae.get("generated_at") or ae.get("analyzed_at")):
+                    analyzed = True
+                    analyzed_at = ae.get("analyzed_at") or ae.get("generated_at")
+                else:
+                    # fallback without year/month/semester (legacy docs)
+                    snap_any = await db["analytics_snapshots"].find_one(
+                        {"subject_code": course_code, "session_name": session_name},
+                        {"_id": 0, "generated_at": 1},
+                        sort=[("_id", -1)],
+                    )
+                    if snap_any:
+                        analyzed = True
+                        analyzed_at = snap_any.get("generated_at")
+                    else:
+                        ea_any = await db["examAnalytics"].find_one(
+                            {"subject_code": course_code, "session_name": session_name},
+                            {"_id": 0, "generated_at": 1},
+                            sort=[("_id", -1)],
+                        )
+                        if ea_any:
+                            analyzed = True
+                            analyzed_at = ea_any.get("generated_at")
 
         result.append({
             "course_code": course_code,
@@ -463,9 +551,121 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
             "highest_score": highest_score,
             "lowest_score": lowest_score,
             "pass_rate": round((pass_count / student_count * 100.0) if student_count > 0 else 0.0, 2),
-            "analyzed": analytics is not None,
-            "analyzed_at": analytics.get("generated_at") if analytics else None,
+            "analyzed": analyzed,
+            "analyzed_at": analyzed_at,
         })
 
     result.sort(key=lambda x: (x["year"], x["session_name"]), reverse=True)
     return result
+
+
+# ─── Exam Drafts (ExamCreator cloud save) ─────────────────────────────
+async def upsert_exam_draft(db, draft: dict) -> None:
+    await db["exam_drafts"].replace_one({"draft_id": draft["draft_id"]}, deepcopy(draft), upsert=True)
+
+
+async def list_exam_drafts(db, course_code: str | None = None) -> list[dict]:
+    query: dict = {}
+    if course_code:
+        query["subject_code"] = course_code
+    cursor = db["exam_drafts"].find(query, {"_id": 0}).sort("updated_at", -1)
+    return await cursor.to_list(length=100)
+
+
+async def find_exam_draft(db, draft_id: str) -> dict | None:
+    doc = await db["exam_drafts"].find_one({"draft_id": draft_id}, {"_id": 0})
+    if doc is None:
+        return None
+    return deepcopy(doc)
+
+
+async def delete_exam_draft(db, draft_id: str) -> bool:
+    res = await db["exam_drafts"].delete_one({"draft_id": draft_id})
+    return res.deleted_count > 0
+
+
+async def find_graded_submissions_for_student(
+    db: AsyncIOMotorDatabase, student_id: str
+) -> list[dict]:
+    cursor = db["submissions"].find({"student_id": student_id, "status": "graded"})
+    return await cursor.to_list(length=None)
+
+
+async def list_exams_for_student(
+    db: AsyncIOMotorDatabase, student_id: str
+) -> list[dict]:
+    submissions = await find_graded_submissions_for_student(db, student_id)
+    seen: dict[tuple, dict] = {}
+    for sub in submissions:
+        key = (sub.get("subject_code"), sub.get("session_name"), sub.get("year"), sub.get("month"), sub.get("semester"))
+        if key in seen:
+            continue
+        rubric = await db["rubricCollection"].find_one(
+            {"subject_code": sub.get("subject_code"), "session_name": sub.get("session_name")},
+            {"subject_name": 1, "year": 1, "month": 1, "semester": 1, "questions": 1},
+        )
+        year = sub.get("year") or (rubric or {}).get("year") or 0
+        month = sub.get("month") or (rubric or {}).get("month") or 0
+        semester = sub.get("semester") or (rubric or {}).get("semester") or 0
+        subject_code = sub.get("subject_code")
+        session_name = sub.get("session_name")
+        # Check if lecturer has analyzed this exam (analyzedExams or analytics_snapshots)
+        analyzed = False
+        analyzed_at = None
+        try:
+            status = await db["analyzedExams"].find_one(
+                {"subject_code": subject_code, "session_name": session_name, "year": year, "month": month, "semester": semester},
+                {"analyzed": 1, "analyzed_at": 1},
+            )
+            if status and status.get("analyzed") == "done":
+                analyzed = True
+                analyzed_at = status.get("analyzed_at")
+            else:
+                # fallback to analytics_snapshots
+                snap = await db["analytics_snapshots"].find_one(
+                    {"subject_code": subject_code, "session_name": session_name, "year": year, "month": month, "semester": semester},
+                    {"generated_at": 1},
+                )
+                if snap:
+                    analyzed = True
+                    analyzed_at = snap.get("generated_at")
+        except Exception:
+            pass
+        seen[key] = {
+            "subject_code": subject_code,
+            "subject_name": (rubric or {}).get("subject_name") or subject_code,
+            "session_name": session_name,
+            "year": year,
+            "month": month,
+            "semester": semester,
+            "question_count": len((rubric or {}).get("questions") or []),
+            "analyzed": analyzed,
+            "analyzed_at": analyzed_at,
+        }
+    # Return sorted by year/month descending (most recent first) — matches frontend expectation
+    result = list(seen.values())
+    result.sort(key=lambda x: (x["year"], x["month"], x["semester"]), reverse=True)
+    return result
+
+
+# ─── Users — student accounts provisioned on exam analysis ───────────────
+async def find_user_by_email(db, email: str) -> dict | None:
+    doc = await db["users"].find_one({"email": email})
+    if doc is None:
+        return None
+    result = deepcopy(doc)
+    result.pop("_id", None)
+    return result
+
+
+async def find_user_by_student_id(db, student_id: str) -> dict | None:
+    doc = await db["users"].find_one({"student_id": student_id})
+    if doc is None:
+        return None
+    result = deepcopy(doc)
+    result.pop("_id", None)
+    return result
+
+
+async def upsert_user(db, doc: dict) -> None:
+    await db["users"].replace_one({"email": doc["email"]}, deepcopy(doc), upsert=True)
