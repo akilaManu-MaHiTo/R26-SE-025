@@ -1,6 +1,7 @@
 import React from "react";
-import { Users, TrendingUp, Target, Award, BarChart3 } from "lucide-react";
+import { Users, TrendingUp, Target, Award, BarChart3, Sigma, Activity, Scale } from "lucide-react";
 import { Card } from "../ui/card";
+import { Badge } from "../ui/badge";
 
 interface KpiCardsProps {
   statistics: {
@@ -11,6 +12,12 @@ interface KpiCardsProps {
     pass_rate: number;
     highest_score: number;
     lowest_score: number;
+    median_score?: number;
+    median_percentage?: number;
+    std_score?: number;
+    std_percentage?: number;
+    iqr_percentage?: number;
+    grade_distribution?: Record<string, number>;
   };
 }
 
@@ -21,6 +28,9 @@ const kpis = [
   { key: "pass_rate", label: "Pass Rate", icon: Target, suffix: "%" },
   { key: "highest_score", label: "Highest", icon: Award, suffix: "" },
   { key: "lowest_score", label: "Lowest", icon: TrendingUp, suffix: "" },
+  { key: "median_percentage", label: "Median", icon: Scale, suffix: "%" },
+  { key: "std_percentage", label: "Std Dev", icon: Activity, suffix: "%" },
+  { key: "iqr_percentage", label: "IQR", icon: Sigma, suffix: "%" },
 ] as const;
 
 export function KpiCards({ statistics }: KpiCardsProps) {
@@ -39,10 +49,10 @@ export function KpiCards({ statistics }: KpiCardsProps) {
           </div>
         )}
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
         {kpis.map(({ key, label, icon: Icon, suffix }) => {
-          const value = statistics[key];
-          const isRate = key === "pass_rate" || key === "average_percentage";
+          const value = (statistics as Record<string, unknown>)[key] as number | undefined;
+          const isRate = key === "pass_rate" || key === "average_percentage" || key === "median_percentage" || key === "std_percentage" || key === "iqr_percentage";
           return (
             <Card key={key} className="p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -52,8 +62,8 @@ export function KpiCards({ statistics }: KpiCardsProps) {
                 {label}
               </div>
               <div className="text-2xl font-bold">
-                {typeof value === "number" ? value.toFixed(isRate ? 2 : 0) : value}
-                {suffix}
+                {typeof value === "number" ? value.toFixed(isRate ? 2 : 0) : value ?? "—"}
+                {typeof value === "number" ? suffix : ""}
               </div>
               {key === "total_students" && (
                 <div className="text-xs text-muted-foreground mt-1">
@@ -64,6 +74,16 @@ export function KpiCards({ statistics }: KpiCardsProps) {
           );
         })}
       </div>
+      {statistics.grade_distribution && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-muted-foreground">Grade distribution:</span>
+          {Object.entries(statistics.grade_distribution).map(([grade, count]) => (
+            <Badge key={grade} variant="outline" className="text-xs">
+              {grade}: {count}
+            </Badge>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
