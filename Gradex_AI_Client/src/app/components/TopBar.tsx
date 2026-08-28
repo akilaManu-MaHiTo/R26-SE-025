@@ -13,13 +13,13 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
         <h1 className="tracking-tight text-xl">{title}</h1>
         {subtitle && <div className="text-sm text-muted-foreground mt-0.5">{subtitle}</div>}
       </div>
-      <div className="relative w-72 max-w-[40vw]">
+      {/* <div className="relative w-72 max-w-[40vw]">
         <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
         <Input
           placeholder="Search students, exams, questions…"
           className="pl-9 bg-input-background"
         />
-      </div>
+      </div> */}
       <Button variant="ghost" size="icon" className="relative">
         <Bell className="size-5 text-muted-foreground" />
         <span className="absolute top-2 right-2 size-2 rounded-full bg-destructive" />

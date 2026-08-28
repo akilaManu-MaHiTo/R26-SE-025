@@ -485,10 +485,56 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
         questions = rubric.get("questions") or []
         total_marks = sum(float(q.get("max_marks", 0)) for q in questions)
 
+        # Check analyzed status across all analytics collections (analytics_snapshots, examAnalytics, analyzedExams)
+        analyzed = False
+        analyzed_at = None
+        # 1) analytics_snapshots (primary)
         analytics = await db["analytics_snapshots"].find_one(
             {"subject_code": course_code, "session_name": session_name, "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
-            {"_id": 0, "generated_at": 1, "analytics_version": 1}
+            {"_id": 0, "generated_at": 1, "analytics_version": 1},
+            sort=[("_id", -1)],
         )
+        if analytics is not None:
+            analyzed = True
+            analyzed_at = analytics.get("generated_at")
+        else:
+            # 2) examAnalytics (spec alias)
+            ea = await db["examAnalytics"].find_one(
+                {"subject_code": course_code, "session_name": session_name, "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
+                {"_id": 0, "generated_at": 1},
+                sort=[("_id", -1)],
+            )
+            if ea is not None:
+                analyzed = True
+                analyzed_at = ea.get("generated_at")
+            else:
+                # 3) analyzedExams
+                ae = await db["analyzedExams"].find_one(
+                    {"subject_code": course_code, "session_name": session_name, "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
+                    {"_id": 0, "analyzed_at": 1, "generated_at": 1, "analyzed": 1},
+                )
+                if ae is not None and (ae.get("analyzed") == "done" or ae.get("analyzed") is True or ae.get("generated_at") or ae.get("analyzed_at")):
+                    analyzed = True
+                    analyzed_at = ae.get("analyzed_at") or ae.get("generated_at")
+                else:
+                    # fallback without year/month/semester (legacy docs)
+                    snap_any = await db["analytics_snapshots"].find_one(
+                        {"subject_code": course_code, "session_name": session_name},
+                        {"_id": 0, "generated_at": 1},
+                        sort=[("_id", -1)],
+                    )
+                    if snap_any:
+                        analyzed = True
+                        analyzed_at = snap_any.get("generated_at")
+                    else:
+                        ea_any = await db["examAnalytics"].find_one(
+                            {"subject_code": course_code, "session_name": session_name},
+                            {"_id": 0, "generated_at": 1},
+                            sort=[("_id", -1)],
+                        )
+                        if ea_any:
+                            analyzed = True
+                            analyzed_at = ea_any.get("generated_at")
 
         result.append({
             "course_code": course_code,
@@ -505,8 +551,8 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
             "highest_score": highest_score,
             "lowest_score": lowest_score,
             "pass_rate": round((pass_count / student_count * 100.0) if student_count > 0 else 0.0, 2),
-            "analyzed": analytics is not None,
-            "analyzed_at": analytics.get("generated_at") if analytics else None,
+            "analyzed": analyzed,
+            "analyzed_at": analyzed_at,
         })
 
     result.sort(key=lambda x: (x["year"], x["session_name"]), reverse=True)
