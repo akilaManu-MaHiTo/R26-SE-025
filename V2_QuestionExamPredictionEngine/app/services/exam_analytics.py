@@ -61,7 +61,6 @@ async def compute_exam_analytics(
             sem = semantics[q_no]
             _progress(f"PULSE·AI — Q{q_no} Bloom: {sem.level} · Topic: {sem.topic} · Confidence: {sem.confidence:.2f}")
         numeric = build_numeric_analysis(normalized, semantics)
-        numeric = build_numeric_analysis(normalized, semantics)
         students.append(
             {
                 "overall": numeric.overall_performance.model_dump(),
