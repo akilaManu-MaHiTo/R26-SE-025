@@ -1,4 +1,7 @@
 import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import pulseSomnolentSvg from "./animations/bloub-galet-somnolent-turquoise-anime.svg";
+import pulseSurprisSvg from "./animations/bloub-galet-surpris-turquoise-anime.svg";
 
 /* ════════════════════════════════════════════════════════════════════════════
    AI Brand System — GradeX AI
@@ -320,8 +323,27 @@ export function AIPageBanner({ model }: { model: AIModel }) {
 
       {/* Logo mark */}
       <div className="relative shrink-0">
-        <div className="size-16 rounded-2xl bg-muted flex items-center justify-center">
-          <AILogo model={model} size={36} />
+        <div className="size-16 rounded-2xl bg-muted flex items-center justify-center overflow-hidden">
+          {isPulse ? (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={showOnline ? "awake" : "sleepy"}
+                initial={{ scale: 0.8, opacity: 0, rotate: showOnline ? -5 : 5 }}
+                animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                exit={{ scale: 0.8, opacity: 0, rotate: showOnline ? 5 : -5 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="size-full"
+              >
+                <img
+                  src={showOnline ? pulseSurprisSvg : pulseSomnolentSvg}
+                  alt={showOnline ? "PULSE·AI avatar (available)" : "PULSE·AI avatar (unavailable)"}
+                  className="size-full object-contain"
+                />
+              </motion.div>
+            </AnimatePresence>
+          ) : (
+            <AILogo model={model} size={36} />
+          )}
         </div>
         {/* Active pulse ring — red when model unavailable */}
         <span className="absolute -top-1 -right-1 size-4 rounded-full border-2 border-background flex items-center justify-center">
