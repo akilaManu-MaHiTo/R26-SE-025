@@ -108,3 +108,14 @@ def test_statistics_include_dispersion_and_grade_distribution():
     assert "grade_distribution" in s
     assert s["median_percentage"] == 60.0  # (80+40)/2 median avg 60
     assert s["grade_distribution"]["A"] == 1  # 80% -> A/B threshold per config
+
+
+def test_topic_evidence_status_insufficient_vs_confirmed():
+    # 2 students, 1 question part -> insufficient (needs 10 students / 2 parts per spec default)
+    docs = _student_docs()  # 2 students
+    stats = compute_exam_analytics_stats(docs, pass_threshold=0.5)
+    assert stats["topic_performance"][0]["evidence_status"] == "insufficient_evidence"
+    # Confirmed weakness: create 12 students all failing topic
+    many = [docs[1]]*12
+    stats2 = compute_exam_analytics_stats(many, pass_threshold=0.5)
+    assert stats2["topic_performance"][0]["evidence_status"] in ("possible_weakness","confirmed_weakness")
