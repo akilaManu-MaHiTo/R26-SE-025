@@ -265,10 +265,10 @@ async def _build_student_analytics(
 
 
 async def build_student_analytics(
-    db, submission: dict
+    db, submission: dict, progress_callback=None
 ) -> StudentAnalyticsDocument:
     """Build and persist-ready analytics for a single graded submission."""
-    return await _build_student_analytics(db, submission, {})
+    return await _build_student_analytics(db, submission, {}, progress=progress_callback)
 
 
 async def materialize_student_analytics(
