@@ -21,6 +21,12 @@ class ExamStatistics(BaseModel):
     pass_rate: float = Field(ge=0, le=100)
     highest_score: float = Field(ge=0)
     lowest_score: float = Field(ge=0)
+    median_score: float = Field(ge=0, default=0.0)
+    median_percentage: float = Field(ge=0, le=100, default=0.0)
+    std_score: float = Field(ge=0, default=0.0)
+    std_percentage: float = Field(ge=0, default=0.0)
+    iqr_percentage: float = Field(ge=0, default=0.0)
+    grade_distribution: dict[str, int] = Field(default_factory=lambda: {"A":0,"B":0,"C":0,"D":0,"F":0})
 
 
 class TopicPerformanceSummary(BaseModel):

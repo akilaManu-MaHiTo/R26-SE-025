@@ -42,6 +42,20 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
         sum(1 for p in percentages if p >= pass_threshold * 100.0) / len(percentages) * 100.0
         if percentages else 0.0
     )
+    import statistics as _stats
+    median_pct = _stats.median(percentages) if percentages else 0.0
+    median_score_val = _stats.median([t["score"] for t in totals]) if totals else 0.0
+    std_pct = round(_stats.pstdev(percentages), 2) if len(percentages) > 1 else 0.0
+    std_score = round(_stats.pstdev([t["score"] for t in totals]), 2) if len(totals) > 1 else 0.0
+    try:
+        qs = _stats.quantiles(sorted(percentages), n=4) if len(percentages) >= 4 else [0, 0, 0]
+        iqr = round(qs[2] - qs[0], 2) if len(qs) >= 3 else 0.0
+    except Exception:
+        iqr = 0.0
+    def grade_for(p): return "A" if p >= 80 else "B" if p >= 65 else "C" if p >= 50 else "D" if p >= 40 else "F"
+    grade_dist = {"A": 0, "B": 0, "C": 0, "D": 0, "F": 0}
+    for p in percentages:
+        grade_dist[grade_for(p)] += 1
     statistics = {
         "total_students": len(totals),
         "attempted_students": len([t for t in totals if t["maximum"] > 0]),
@@ -50,6 +64,12 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
         "pass_rate": round(pass_rate, 2),
         "highest_score": max(t["score"] for t in totals) if totals else 0.0,
         "lowest_score": min(t["score"] for t in totals) if totals else 0.0,
+        "median_score": float(median_score_val),
+        "median_percentage": float(median_pct),
+        "std_score": float(std_score),
+        "std_percentage": float(std_pct),
+        "iqr_percentage": float(iqr),
+        "grade_distribution": grade_dist,
     }
 
     # Marks-weighted topic aggregation across all students

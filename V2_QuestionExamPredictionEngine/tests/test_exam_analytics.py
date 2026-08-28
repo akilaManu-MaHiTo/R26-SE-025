@@ -98,3 +98,13 @@ def test_bloom_performance_is_marks_weighted_not_count_averaged():
     stats = compute_exam_analytics_stats(docs, pass_threshold=0.5)
     bloom = next(b for b in stats["bloom_performance"] if b["level"]=="Apply")
     assert bloom["average_percentage"] < 20, f"bug: count-averaged {bloom['average_percentage']} should be marks-weighted ~8.18"
+
+
+def test_statistics_include_dispersion_and_grade_distribution():
+    stats = compute_exam_analytics_stats(_student_docs(), pass_threshold=0.5)
+    s = stats["statistics"]
+    assert "median_percentage" in s
+    assert "std_percentage" in s
+    assert "grade_distribution" in s
+    assert s["median_percentage"] == 60.0  # (80+40)/2 median avg 60
+    assert s["grade_distribution"]["A"] == 1  # 80% -> A/B threshold per config
