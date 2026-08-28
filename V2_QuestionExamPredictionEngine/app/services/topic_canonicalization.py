@@ -120,6 +120,64 @@ async def canonicalize_topics(
             canonical_qids.setdefault(cid, set()).add(q_id)
             student_set.setdefault(cid, set()).add(sid)
 
+    # Fetch rubric to build question_max_map {qid: max_marks}
+    # Wire criterion evidence: use authoritative rubric max not reverse pct estimation
+    question_max_map: dict[str, float] = {}
+    rubric_available = False
+    rubric_doc = None
+    # Try find_rubric_for_submission via repository helper for first submission
+    if submissions:
+        try:
+            from app.db.repository import find_rubric_for_submission as _find_rubric
+            rubric_doc = await _find_rubric(db, submissions[0])
+        except Exception:
+            rubric_doc = None
+    if rubric_doc is None:
+        # Fallback direct query on rubricCollection
+        try:
+            query: dict = {"subject_code": course_code, "session_name": session_name}
+            if year is not None:
+                query["year"] = year
+            if month is not None:
+                query["month"] = month
+            if semester is not None:
+                query["semester"] = semester
+            rubric_doc = await db["rubricCollection"].find_one(query)
+            if rubric_doc is None and (year is not None or month is not None or semester is not None):
+                rubric_doc = await db["rubricCollection"].find_one(
+                    {"subject_code": course_code, "session_name": session_name}
+                )
+        except Exception:
+            rubric_doc = None
+    if rubric_doc is not None:
+        for rq in rubric_doc.get("questions") or []:
+            raw_qno = rq.get("question_no") or rq.get("q_no") or ""
+            norm = str(raw_qno).strip()
+            norm = norm.zfill(2) if norm.isdigit() else norm
+            qid = f"Q{norm}"
+            # max_marks from rubric, fallback sum of criteria marks
+            max_marks_val: float | None = None
+            if rq.get("max_marks") is not None:
+                try:
+                    max_marks_val = float(rq.get("max_marks"))
+                except Exception:
+                    max_marks_val = None
+            if max_marks_val is None or max_marks_val <= 0:
+                criteria = rq.get("criteria") or []
+                try:
+                    summed = sum(float(c.get("marks", 0)) for c in criteria)
+                except Exception:
+                    summed = 0.0
+                if summed > 0:
+                    max_marks_val = float(summed)
+            if max_marks_val is not None and max_marks_val > 0:
+                question_max_map[qid] = float(max_marks_val)
+                # also store without zero-pad variant for robustness
+                alt = f"Q{str(raw_qno).strip()}"
+                if alt != qid:
+                    question_max_map[alt] = float(max_marks_val)
+        rubric_available = bool(question_max_map)
+
     # Build canonical_topic_performance
     canonical_topic_perf = []
     for cid, entry in taxonomy.items():
@@ -127,19 +185,30 @@ async def canonicalize_topics(
         if not frags:
             continue
         total_score = canonical_score.get(cid, 0.0)
-        # Estimate max: sum of (score / percentage * 100) for each question
+        is_estimated = True
         est_max = 0.0
-        for qp in question_perf:
-            if question_canonical.get(qp["question_id"]) == cid:
-                pct = qp.get("average_percentage", 0)
-                q_score = 0.0
-                for sub in submissions:
-                    results = (sub.get("evaluation") or {}).get("results") or []
-                    for r in results:
-                        if f"Q{r.get('q_no', '')}" == qp["question_id"]:
-                            q_score += float(r.get("score", 0))
-                if pct > 0 and q_score > 0:
-                    est_max += q_score / (pct / 100.0)
+        qids = canonical_qids.get(cid, set())
+        s_count_for_cid = len(student_set.get(cid, set()))
+        # Prefer rubric-based max: est_max = sum(question_max_map[qid] * num_students)
+        if rubric_available and qids and s_count_for_cid > 0:
+            sum_per_student = sum(question_max_map.get(qid, 0) for qid in qids)
+            if sum_per_student > 0:
+                est_max = sum_per_student * s_count_for_cid
+                is_estimated = False
+        if is_estimated:
+            # Fallback reverse pct math (old method)
+            est_max = 0.0
+            for qp in question_perf:
+                if question_canonical.get(qp["question_id"]) == cid:
+                    pct = qp.get("average_percentage", 0)
+                    q_score = 0.0
+                    for sub in submissions:
+                        results = (sub.get("evaluation") or {}).get("results") or []
+                        for r in results:
+                            if f"Q{r.get('q_no', '')}" == qp["question_id"]:
+                                q_score += float(r.get("score", 0))
+                    if pct > 0 and q_score > 0:
+                        est_max += q_score / (pct / 100.0)
 
         avg_pct = round(total_score / est_max * 100.0, 2) if est_max > 0 else 0.0
         status = performance_status(avg_pct)
@@ -155,7 +224,7 @@ async def canonicalize_topics(
             "question_count": q_count,
             "student_count": s_count,
             "contributing_fragments": frags,
-            "is_estimated": False,
+            "is_estimated": is_estimated,
         })
 
     canonical_topic_perf.sort(key=lambda x: x["average_percentage"])
