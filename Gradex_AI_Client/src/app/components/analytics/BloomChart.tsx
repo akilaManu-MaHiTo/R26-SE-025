@@ -47,13 +47,13 @@ export function BloomChart({ bloomPerformance }: Props) {
           )}
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={data} layout="vertical" margin={{ left: 20, right: 20 }}>
+      <ResponsiveContainer width="100%" height={280}>
+        <BarChart data={data} layout="vertical" margin={{ left: 20, right: 20, top: 5, bottom: 5 }} barCategoryGap="20%">
           <CartesianGrid strokeDasharray="3 3" horizontal={false} />
           <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-          <YAxis type="category" dataKey="level" width={80} />
-          <Tooltip formatter={(v: number) => `${v.toFixed(2)}%`} />
-          <Bar dataKey="average_percentage" radius={[0, 4, 4, 0]}>
+          <YAxis type="category" dataKey="level" width={85} tick={{ fontSize: 12 }} interval={0} />
+          <Tooltip formatter={(v: number) => `${v.toFixed(2)}%`} cursor={{ fill: "hsl(var(--muted)/0.4)" }} />
+          <Bar dataKey="average_percentage" radius={[0, 4, 4, 0]} barSize={22}>
             {data.map((_, i) => (
               <Cell key={i} fill={COLORS[i % COLORS.length]} />
             ))}
