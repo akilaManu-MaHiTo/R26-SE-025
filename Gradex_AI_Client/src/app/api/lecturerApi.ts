@@ -269,12 +269,83 @@ export async function fetchExamAnalyticsStream(
 export async function fetchExamStudents(
   courseCode: string,
   sessionName: string,
+  year?: number,
+  month?: number,
+  semester?: number,
 ): Promise<StudentRow[]> {
   const encoded = encodeURIComponent(sessionName);
+  const params = new URLSearchParams();
+  if (year !== undefined) params.set("year", String(year));
+  if (month !== undefined) params.set("month", String(month));
+  if (semester !== undefined) params.set("semester", String(semester));
+  const qs = params.toString() ? `?${params}` : "";
   const res = await fetch(
-    `${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/students`,
+    `${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/students${qs}`,
   );
   if (!res.ok) throw new Error("Failed to fetch students");
+  return res.json();
+}
+
+export interface LecturerStudentDetail {
+  student_id: string;
+  subject_code: string;
+  subject_name: string;
+  year: number;
+  month: number;
+  semester: number;
+  session_name: string;
+  overall_performance: { score: number; maximum: number; percentage: number; status: string };
+  question_performance: Array<{
+    question_id: string;
+    question_no: string;
+    question_text: string;
+    topic: string;
+    subtopic: string;
+    bloom_analysis: { level: string; confidence: number; reason: string };
+    performance: { score: number; max_score: number; percentage: number };
+    criteria_performance: Array<{ criterion: string; max_marks: number; awarded_marks: number; achieved: boolean }>;
+  }>;
+  topic_performance: Array<{ topic: string; questions_attempted: number; score: number; max_score: number; percentage: number; status: string }>;
+  bloom_performance: Array<{ level: string; questions_attempted: number; average_score: number; status: string }>;
+  learning_analysis: {
+    overall_performance: string;
+    strong_topics: string[];
+    developing_topics: string[];
+    weak_topics: string[];
+    critical_topics: string[];
+    learning_gaps: Array<{ topic: string; subtopic: string; priority: string }>;
+  };
+  // recommendations & next_question_strategy are omitted when include_ai_tips=false (lecturer view)
+  recommendations?: Array<{ topic: string; priority: string; action: string }>;
+  next_question_strategy?: { recommended_topics: string[]; recommended_bloom_levels: string[]; recommended_difficulty: string; number_of_questions: number };
+  model_metadata: { bloom_model: string; bloom_model_type: string; grading_source: string; rag_context_used: boolean };
+  generated_at: string;
+  analysis_version: string;
+}
+
+export async function fetchLecturerStudentDetail(
+  courseCode: string,
+  sessionName: string,
+  studentId: string,
+  year?: number,
+  month?: number,
+  semester?: number,
+  includeAiTips = false,
+): Promise<LecturerStudentDetail> {
+  const encodedCourse = encodeURIComponent(courseCode);
+  const encodedSession = encodeURIComponent(sessionName);
+  const encodedStudent = encodeURIComponent(studentId);
+  const params = new URLSearchParams();
+  if (year !== undefined) params.set("year", String(year));
+  if (month !== undefined) params.set("month", String(month));
+  if (semester !== undefined) params.set("semester", String(semester));
+  if (includeAiTips) params.set("include_ai_tips", "true");
+  const qs = params.toString() ? `?${params}` : "";
+  const res = await fetch(`${API_BASE}/api/lecturers/exams/${encodedCourse}/${encodedSession}/student/${encodedStudent}${qs}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Failed to fetch student detail (${res.status})`);
+  }
   return res.json();
 }
 

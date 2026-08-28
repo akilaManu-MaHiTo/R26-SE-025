@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, Award, BookOpen, Target, Brain, ChevronRight, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { TrendingUp, Award, BookOpen, Target, Brain, ChevronRight, AlertCircle, CheckCircle2, Clock, User } from "lucide-react";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -20,11 +20,6 @@ const priorityTone: Record<string, string> = {
   Medium: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
   Low: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
 };
-
-function initialsFor(studentId: string) {
-  const clean = studentId.replace(/[^A-Za-z0-9]/g, "");
-  return clean.slice(0, 2).toUpperCase() || "ST";
-}
 
 export function StudentDashboard({ studentId }: { studentId: string }) {
   const [profile, setProfile] = useState<{ email: string; examCount: number } | null>(null);
@@ -141,7 +136,6 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
   }, [studentId, selectedExam]);
 
   const overall = analytics?.overall_performance;
-  const initials = initialsFor(studentId);
 
   return (
     <div className="p-6 md:p-8 space-y-6">
@@ -149,8 +143,8 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
       <Card className="p-6 md:p-8 border-border relative overflow-hidden">
         <div className="absolute -right-12 -top-12 size-56 rounded-full bg-primary/[0.04] blur-2xl" />
         <div className="relative flex items-center gap-5 flex-wrap">
-          <div className="size-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center text-xl tracking-tight font-medium shrink-0">
-            {initials}
+          <div className="size-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+            <User className="size-8" />
           </div>
           <div className="flex-1 min-w-[220px]">
             <div className="text-muted-foreground text-sm">Welcome back,</div>

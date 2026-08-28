@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Download, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, Download, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight, UserSearch, Eye, AlertCircle, Loader2, GraduationCap, BookOpen, Brain, Award, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { ProgressLoader, type LoadStep } from "./ProgressLoader";
 import { AIPageBanner } from "./AIBrand";
 import {
@@ -14,10 +15,14 @@ import {
   fetchExamAnalytics,
   fetchExamAnalyticsStream,
   fetchTeachingActions,
+  fetchExamStudents,
+  fetchLecturerStudentDetail,
   type ExamListItem,
   type ExamAnalytics,
   type CanonicalTopic,
   type TeachingAction,
+  type StudentRow,
+  type LecturerStudentDetail,
 } from "../api/lecturerApi";
 import { KpiCards } from "./analytics/KpiCards";
 import { DistributionHistogram } from "./analytics/DistributionHistogram";
@@ -99,6 +104,14 @@ export default function AnalyticsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "analyzed" | "pending">("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [semesterFilter, setSemesterFilter] = useState<string>("all");
+  // lecturer student finder (inside analyzed exam)
+  const [students, setStudents] = useState<StudentRow[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [studentSearch, setStudentSearch] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [studentDetail, setStudentDetail] = useState<LecturerStudentDetail | null>(null);
+  const [loadingStudentDetail, setLoadingStudentDetail] = useState(false);
+  const [studentDetailError, setStudentDetailError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoadSteps([{ label: "Fetching exams..." }]);
@@ -111,6 +124,12 @@ export default function AnalyticsPage() {
     setLoadingAnalytics(true);
     setAnalytics(null);
     setLiveModelMessage("PULSE·AI — Starting analysis...");
+    // reset student finder
+    setStudents([]);
+    setStudentSearch("");
+    setSelectedStudentId(null);
+    setStudentDetail(null);
+    setStudentDetailError(null);
 
     const steps: LoadStep[] = [
       { label: "PULSE·AI — Ingesting submissions..." },
@@ -153,6 +172,13 @@ export default function AnalyticsPage() {
         .then(setTeachingActions)
         .catch(() => setTeachingActions([]))
         .finally(() => setLoadingActions(false));
+
+      // Also fetch students for this exam (for lecturer student finder)
+      setLoadingStudents(true);
+      fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
+        .then(setStudents)
+        .catch(() => setStudents([]))
+        .finally(() => setLoadingStudents(false));
     } catch (err) {
       console.error(err);
       setLiveModelMessage("PULSE·AI — Analysis failed");
@@ -160,6 +186,30 @@ export default function AnalyticsPage() {
       setLoadingAnalytics(false);
     }
   }, []);
+
+  const handleSelectStudent = useCallback(async (studentId: string) => {
+    if (!selectedExam) return;
+    setSelectedStudentId(studentId);
+    setLoadingStudentDetail(true);
+    setStudentDetail(null);
+    setStudentDetailError(null);
+    try {
+      const detail = await fetchLecturerStudentDetail(
+        selectedExam.course_code,
+        selectedExam.session_name,
+        studentId,
+        selectedExam.year,
+        selectedExam.month,
+        selectedExam.semester,
+        false
+      );
+      setStudentDetail(detail);
+    } catch (e) {
+      setStudentDetailError(e instanceof Error ? e.message : "Failed to load student detail");
+    } finally {
+      setLoadingStudentDetail(false);
+    }
+  }, [selectedExam]);
 
   // Exam Selection — dense, scannable table with filters
   if (!selectedExam) {
@@ -471,6 +521,237 @@ export default function AnalyticsPage() {
           </motion.div>
         </motion.div>
       ) : null}
+
+      {/* ——— Lecturer Individual Student Finder (search + detail, no AI tips) ——— */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}>
+        <Card className="overflow-hidden border-border bg-card/80 backdrop-blur">
+          <div className="p-4 border-b flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <UserSearch className="size-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold leading-none">Individual Students</h3>
+                <p className="text-xs text-muted-foreground mt-1">Search by student ID, view raw performance — AI improvement tips are hidden for lecturer view.</p>
+              </div>
+              <Badge variant="secondary" className="shrink-0 tabular-nums">
+                <Users className="size-3 mr-1" /> {students.length} students
+              </Badge>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search student ID… e.g. S001"
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="pl-9 h-9 bg-background"
+                disabled={loadingStudents || !analytics}
+              />
+            </div>
+          </div>
+
+          {loadingStudents ? (
+            <div className="p-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> Loading students…
+            </div>
+          ) : students.length === 0 ? (
+            <div className="p-8 text-center">
+              <GraduationCap className="size-8 mx-auto text-muted-foreground/30" />
+              <p className="text-sm font-medium mt-2">No students found for this exam</p>
+              <p className="text-xs text-muted-foreground mt-1">Students appear after submissions are graded.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Student</TableHead>
+                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Score</TableHead>
+                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">%</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Analyzed</TableHead>
+                    <TableHead className="w-[88px] text-right pr-4 text-xs uppercase tracking-wider font-semibold text-muted-foreground">View</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {students
+                    .filter((s) => !studentSearch.trim() || s.student_id.toLowerCase().includes(studentSearch.trim().toLowerCase()))
+                    .map((s) => (
+                      <TableRow key={s.student_id} onClick={() => handleSelectStudent(s.student_id)} className="group cursor-pointer h-12 hover:bg-muted/50">
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="size-7 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                              <User className="size-4" />
+                            </div>
+                            <span className="text-sm font-medium font-mono">{s.student_id}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 text-center text-sm tabular-nums">
+                          {s.score.obtained.toFixed(1)} / {s.score.maximum.toFixed(1)}
+                        </TableCell>
+                        <TableCell className="py-2 text-center">
+                          <Badge variant="outline" className={`text-xs tabular-nums ${s.score.percentage >= 50 ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-amber-500/10 text-amber-700 border-amber-500/20"}`}>
+                            {s.score.percentage.toFixed(1)}%
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <Badge variant="outline" className="text-xs">{s.status}</Badge>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          {s.analysis_status === "generated" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><CheckCircle2 className="size-3" /> Ready</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-700"><Clock className="size-3" /> Pending</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-2 text-right pr-4">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">
+                            <Eye className="size-3" /> View <ChevronRight className="size-3" />
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+              {students.filter((s) => !studentSearch.trim() || s.student_id.toLowerCase().includes(studentSearch.trim().toLowerCase())).length === 0 && (
+                <div className="p-6 text-center text-sm text-muted-foreground border-t">
+                  No students match “{studentSearch}”
+                </div>
+              )}
+            </div>
+          )}
+          <div className="px-4 py-2 bg-muted/20 border-t text-xs text-muted-foreground flex items-center justify-between">
+            <span>Click a row to see question, topic and Bloom breakdown (no AI tips)</span>
+            <span className="hidden sm:inline">{students.filter((s) => !studentSearch.trim() || s.student_id.toLowerCase().includes(studentSearch.trim().toLowerCase())).length} shown</span>
+          </div>
+        </Card>
+      </motion.div>
+
+      {/* Student detail dialog — excludes AI tips */}
+      <Dialog open={!!selectedStudentId} onOpenChange={(open) => { if (!open) { setSelectedStudentId(null); setStudentDetail(null); setStudentDetailError(null); }}}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GraduationCap className="size-5 text-primary" />
+              {selectedStudentId ?? "Student"} — Performance
+              <Badge variant="outline" className="ml-1 text-xs font-normal">Lecturer view · no AI tips</Badge>
+            </DialogTitle>
+            <DialogDescription>
+              {selectedExam?.course_code} · {selectedExam?.session_name} · {selectedExam?.year} — raw scores, topics and Bloom levels only.
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingStudentDetail ? (
+            <div className="py-10 flex flex-col items-center gap-3">
+              <Loader2 className="size-6 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading performance…</p>
+            </div>
+          ) : studentDetailError ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4 flex gap-3">
+              <AlertCircle className="size-5 text-amber-600 shrink-0" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{studentDetailError.includes("423") || studentDetailError.toLowerCase().includes("not yet generated") ? "Not yet analyzed" : "Could not load"}</p>
+                <p className="text-sm text-amber-700 dark:text-amber-400">{studentDetailError}</p>
+              </div>
+            </div>
+          ) : studentDetail ? (
+            <div className="space-y-5">
+              {/* Overall */}
+              <Card className="p-4 bg-muted/30">
+                <div className="flex items-center gap-2 text-sm font-medium"><Award className="size-4 text-primary" /> Overall Performance</div>
+                <div className="mt-3 flex flex-wrap items-end gap-4">
+                  <div>
+                    <div className="text-2xl font-semibold tabular-nums">{studentDetail.overall_performance.score.toFixed(1)} <span className="text-base text-muted-foreground">/ {studentDetail.overall_performance.maximum.toFixed(1)}</span></div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{studentDetail.overall_performance.status} · {studentDetail.overall_performance.percentage.toFixed(1)}%</div>
+                  </div>
+                  <Badge className="ml-auto border text-xs">{studentDetail.overall_performance.status}</Badge>
+                </div>
+                <div className="h-2 bg-background rounded-full overflow-hidden mt-3">
+                  <div className="h-full bg-primary rounded-full" style={{ width: `${studentDetail.overall_performance.percentage}%` }} />
+                </div>
+              </Card>
+
+              {/* Question performance */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2"><FileText className="size-4 text-primary" /> Question Breakdown</h4>
+                <div className="rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40">
+                        <TableHead className="text-xs">Q</TableHead>
+                        <TableHead className="text-xs">Topic</TableHead>
+                        <TableHead className="text-xs">Bloom</TableHead>
+                        <TableHead className="text-xs text-right">Score</TableHead>
+                        <TableHead className="text-xs text-right">%</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {studentDetail.question_performance.map((q) => (
+                        <TableRow key={q.question_id} className="h-10">
+                          <TableCell className="font-medium text-xs">{q.question_no}</TableCell>
+                          <TableCell className="text-xs max-w-[160px] truncate" title={q.topic}>{q.topic}<span className="text-muted-foreground"> · {q.subtopic}</span></TableCell>
+                          <TableCell className="text-xs"><Badge variant="outline" className="text-xs">{q.bloom_analysis.level}</Badge></TableCell>
+                          <TableCell className="text-xs text-right tabular-nums">{q.performance.score.toFixed(1)} / {q.performance.max_score.toFixed(1)}</TableCell>
+                          <TableCell className="text-xs text-right tabular-nums">{q.performance.percentage.toFixed(1)}%</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Topic performance */}
+              <div className="grid md:grid-cols-2 gap-4">
+                <Card className="p-4">
+                  <div className="text-sm font-medium flex items-center gap-2"><BookOpen className="size-4 text-primary" /> Topic Performance</div>
+                  <div className="mt-3 space-y-2.5">
+                    {studentDetail.topic_performance.length === 0 ? <p className="text-xs text-muted-foreground">No topic data</p> : studentDetail.topic_performance.map((t) => (
+                      <div key={t.topic} className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs truncate">{t.topic}</div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1"><div className="h-full bg-primary rounded-full" style={{ width: `${t.percentage}%` }} /></div>
+                        </div>
+                        <div className="text-xs tabular-nums font-medium shrink-0">{t.percentage.toFixed(1)}%</div>
+                        <Badge variant="outline" className="text-[10px] shrink-0">{t.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-4">
+                  <div className="text-sm font-medium flex items-center gap-2"><Brain className="size-4 text-primary" /> Bloom Performance</div>
+                  <div className="mt-3 space-y-2.5">
+                    {studentDetail.bloom_performance.length === 0 ? <p className="text-xs text-muted-foreground">No Bloom data</p> : studentDetail.bloom_performance.map((b) => (
+                      <div key={b.level} className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs">{b.level}</div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1"><div className="h-full bg-primary rounded-full" style={{ width: `${b.average_score}%` }} /></div>
+                        </div>
+                        <div className="text-xs tabular-nums font-medium shrink-0">{b.average_score.toFixed(1)}%</div>
+                        <Badge variant="outline" className="text-[10px] shrink-0">{b.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Learning analysis (no AI gaps/tips) */}
+              <Card className="p-4">
+                <div className="text-sm font-medium flex items-center gap-2"><GraduationCap className="size-4 text-primary" /> Learning Summary</div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                  <div><span className="text-muted-foreground">Overall:</span> <span className="font-medium">{studentDetail.learning_analysis.overall_performance}</span></div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Strong:</span> {studentDetail.learning_analysis.strong_topics.join(", ") || "—"}</div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Developing:</span> {studentDetail.learning_analysis.developing_topics.join(", ") || "—"}</div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Weak:</span> {studentDetail.learning_analysis.weak_topics.join(", ") || "—"}</div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Critical:</span> {studentDetail.learning_analysis.critical_topics.join(", ") || "—"}</div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 border-t pt-2">AI improvement tips (recommendations, next-question strategy) are intentionally hidden in lecturer view.</p>
+              </Card>
+
+              <div className="text-xs text-muted-foreground text-center">Generated {new Date(studentDetail.generated_at).toLocaleString()} · {studentDetail.model_metadata.bloom_model} ({studentDetail.model_metadata.grading_source})</div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <TopicDetailModal topic={selectedTopic} open={!!selectedTopic} onClose={() => setSelectedTopic(null)} />
       <QuestionDetailModal question={selectedQuestion} open={!!selectedQuestion} onClose={() => setSelectedQuestion(null)} />
