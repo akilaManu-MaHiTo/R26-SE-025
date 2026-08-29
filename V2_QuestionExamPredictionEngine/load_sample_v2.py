@@ -11,7 +11,7 @@ from pathlib import Path
 from pymongo import MongoClient
 
 SAMPLE_DIR = Path(__file__).resolve().parent / "app" / "sample_data" / "sample_data_v2"
-DB_NAME = "gradingv2"
+DB_NAME = "gradev2"
 URI = "mongodb://127.0.0.1:27017"
 
 # Map folder names -> collection names
