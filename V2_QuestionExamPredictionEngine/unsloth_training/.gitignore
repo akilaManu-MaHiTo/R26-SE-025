@@ -1,0 +1,5 @@
+__pycache__/
+outputs/
+!data/
+!data/example_train.jsonl
+!data/example_validation.jsonl
