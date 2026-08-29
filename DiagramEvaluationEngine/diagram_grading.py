@@ -64,20 +64,7 @@ def _normalize_diagram_structure(structure: Any) -> dict[str, Any]:
             relationships.append(relationship)
     relationships.sort(key=lambda relationship: relationship["name"].casefold())
 
-    normalized = {"entities": entities, "relationships": relationships}
-    unmatched = structure.get("unmatched_connections", [])
-    if isinstance(unmatched, list):
-        connections = []
-        for connection in unmatched:
-            if not isinstance(connection, dict):
-                continue
-            source = _normalized_text(connection.get("from"))
-            target = _normalized_text(connection.get("to"))
-            if source and target:
-                connections.append({"from": source, "to": target})
-        if connections:
-            normalized["unmatched_connections"] = connections
-    return normalized
+    return {"entities": entities, "relationships": relationships}
 
 
 def _diagram_structure_data(result: dict[str, Any]) -> dict[str, Any]:
