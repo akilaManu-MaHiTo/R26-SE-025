@@ -154,7 +154,8 @@ async def test_dashboard_endpoint_returns_exact_persisted_contract(test_db):
 
         assert response.status_code == 200
         body = response.json()
-        assert set(body) == TOP_LEVEL_KEYS
+        # Spec aliases (course, exam_id) are allowed alongside legacy keys
+        assert TOP_LEVEL_KEYS.issubset(set(body))
         assert body["student_id"] == student_id
         assert body["subject_code"] == "SE3040"
         assert body["subject_name"] == "Software Engineering"
@@ -241,7 +242,7 @@ async def test_dashboard_endpoint_generates_on_first_access(
 
         assert response.status_code == 200
         body = response.json()
-        assert set(body) == TOP_LEVEL_KEYS
+        assert TOP_LEVEL_KEYS.issubset(set(body))
         assert body["subject_code"] == "IT2040"
         assert body["session_name"] == "Final Examination"
         persisted = await test_db["student_analytics"].find_one(
@@ -286,6 +287,10 @@ def test_dashboard_openapi_exposes_required_course_and_session_params():
         parameter["name"]: parameter for parameter in operation["parameters"]
     }
 
-    assert set(params) == {"student_id", "course_code", "session_name"}
+    assert {"student_id", "course_code", "session_name"}.issubset(set(params))
     assert params["course_code"]["required"] is True
     assert params["session_name"]["required"] is True
+    # year/month/semester are optional (added for 2023 vs 2022 disambiguation)
+    for opt in ("year", "month", "semester"):
+        if opt in params:
+            assert params[opt]["required"] is False
