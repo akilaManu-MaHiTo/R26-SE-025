@@ -472,8 +472,23 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
         total_marks = 0.0
 
         if submissions:
-            # Text submissions — use existing logic
-            pass
+            percentages = []
+            scores = []
+            for sub in submissions:
+                ev = sub.get("evaluation") or {}
+                obtained = ev.get("total_score") or sub.get("max_marks_paper_total") or 0.0
+                maximum = ev.get("max_score") or sub.get("max_marks_paper_total") or 1.0
+                obtained = float(obtained)
+                maximum = float(maximum) if float(maximum) > 0 else 1.0
+                pct = (obtained / maximum) * 100.0
+                percentages.append(pct)
+                scores.append(obtained)
+            if percentages:
+                avg_percentage = round(sum(percentages) / len(percentages), 2)
+                avg_score = round(sum(scores) / len(scores), 2)
+                highest_score = round(max(scores), 2)
+                lowest_score = round(min(scores), 2)
+                pass_count = sum(1 for p in percentages if p >= 50.0)
         elif diagram_evals:
             # Diagram-only exam: compute stats from diagram evaluations
             percentages = []
@@ -491,24 +506,6 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
                 highest_score = round(max(scores), 2)
                 lowest_score = round(min(scores), 2)
                 pass_count = sum(1 for p in percentages if p >= 50.0)
-        elif student_count > 0:
-            percentages = []
-            scores = []
-            for sub in submissions:
-                ev = sub.get("evaluation") or {}
-                obtained = ev.get("total_score") or sub.get("max_marks_paper_total") or 0.0
-                maximum = ev.get("max_score") or sub.get("max_marks_paper_total") or 1.0
-                obtained = float(obtained)
-                maximum = float(maximum) if float(maximum) > 0 else 1.0
-                pct = (obtained / maximum) * 100.0
-                percentages.append(pct)
-                scores.append(obtained)
-
-            avg_percentage = round(sum(percentages) / len(percentages), 2)
-            avg_score = round(sum(scores) / len(scores), 2)
-            highest_score = round(max(scores), 2)
-            lowest_score = round(min(scores), 2)
-            pass_count = sum(1 for p in percentages if p >= 50.0)
 
         questions = rubric.get("questions") or []
         total_marks = sum(float(q.get("max_marks", 0)) for q in questions)
