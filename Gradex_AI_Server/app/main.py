@@ -4,12 +4,13 @@ from pathlib import Path
 from queue import Queue
 import sys
 import json
+import logging
 from threading import Thread
 from uuid import uuid4
 from typing import Any, Optional
 import os
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -25,7 +26,13 @@ for path in (PROJECT_ROOT, ENGINE_ROOT, V2_ROOT):
         sys.path.append(path_str)
 
 from DiagramEvaluationEngine.predict import run_er_pipeline
-from Gradex_AI_Server.app.mongodb import insert_diagram_evaluation, list_diagram_evaluations
+from Gradex_AI_Server.app.mongodb import (
+    get_diagram_evaluation_guideline,
+    insert_diagram_evaluation,
+    list_diagram_evaluation_guidelines,
+    list_diagram_evaluations,
+)
+from DiagramEvaluationEngine.diagram_grading import grade_diagram_with_ollama
 from Gradex_AI_Server.app.analytics_api import router as analytics_router
 from Gradex_AI_Server.app.auth import configured_api_key, ensure_dev_api_key, require_api_key
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
@@ -34,6 +41,7 @@ from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_rout
 
 MAX_VIVA_UPLOAD_BYTES = 1024 * 1024 * 1024
 VIDEO_SUFFIXES = {".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v"}
+logger = logging.getLogger(__name__)
 
 
 def _analyze_timeout_seconds() -> float:
@@ -71,6 +79,7 @@ UPLOAD_DIR = PROJECT_ROOT / "Gradex_AI_Server" / "app" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ENGINE_DATA_EXAM = PROJECT_ROOT / "QuestionExamPredictionEngine" / "data" / "exams" / "exam2022.json"
 ENGINE_DATA_ANSWERS = PROJECT_ROOT / "QuestionExamPredictionEngine" / "data" / "answers" / "student_answers2022.json"
+DEFAULT_DIAGRAM_GUIDELINE_ID = "6a89887f8c33278a18482b47"
 
 
 class RubricCriterionPayload(BaseModel):
@@ -120,6 +129,8 @@ class DiagramEvaluationSaveRequest(BaseModel):
     diagram_entity_relations: list[dict[str, Any]] = Field(default_factory=list)
     diagram_relations: list[dict[str, Any]] = Field(default_factory=list)
     remarks: str = ""
+    guideline_object_id: str = ""
+    agent_marks: Optional[float] = None
     evaluation_result: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -166,6 +177,8 @@ def _normalize_record(payload: DiagramEvaluationSaveRequest) -> dict[str, Any]:
         "diagram_entity_relations": entity_relations,
         "diagram_relations": relations,
         "remarks": _normalize_text(payload.remarks),
+        "guideline_object_id": _normalize_text(payload.guideline_object_id),
+        "agent_marks": payload.agent_marks,
         "evaluation_result": evaluation_result,
         "created_at": now,
         "updated_at": now,
@@ -184,7 +197,17 @@ def _json_safe(value: Any) -> Any:
 
 @app.post("/api/digaram-evaluate")
 @app.post("/api/diagram-evaluate")
-async def diagram_evaluate(image: UploadFile = File(...), stream: bool = False):
+async def diagram_evaluate(
+    image: UploadFile = File(...),
+    guideline_object_id: Optional[str] = Form(None),
+    stream: bool = False,
+):
+    logger.info(
+        "Diagram evaluation request received filename=%s guideline_object_id=%s stream=%s",
+        image.filename,
+        guideline_object_id or DEFAULT_DIAGRAM_GUIDELINE_ID,
+        stream,
+    )
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Only image uploads are supported.")
 
@@ -192,14 +215,38 @@ async def diagram_evaluate(image: UploadFile = File(...), stream: bool = False):
     if not contents:
         raise HTTPException(status_code=400, detail="Empty upload.")
 
+    resolved_guideline_id = (guideline_object_id or DEFAULT_DIAGRAM_GUIDELINE_ID).strip()
+    try:
+        guideline = get_diagram_evaluation_guideline(resolved_guideline_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if guideline is None:
+        raise HTTPException(status_code=404, detail="Guideline not found.")
+    logger.info(
+        "Diagram guideline loaded guideline_id=%s exam_code=%s criteria=%s",
+        resolved_guideline_id,
+        guideline.get("examCode", "unknown"),
+        len(guideline.get("guideLines", [])),
+    )
+
     ext = Path(image.filename or "").suffix or ".jpg"
     file_path = UPLOAD_DIR / f"{uuid4().hex}{ext}"
     file_path.write_bytes(contents)
 
     if not stream:
         try:
-            return run_er_pipeline(file_path)
+            result = run_er_pipeline(file_path)
+            logger.info("Diagram extraction completed guideline_id=%s detections=%s ocr_rows=%s", resolved_guideline_id, len(result.get("detections", [])), len(result.get("ocr", [])))
+            result["guideline_object_id"] = resolved_guideline_id
+            try:
+                result["agent_grading"] = grade_diagram_with_ollama(result, guideline)
+                result["agent_marks"] = result["agent_grading"]["agent_marks"]
+            except Exception as exc:
+                logger.exception("Ollama grading failed guideline_id=%s", resolved_guideline_id)
+                result["agent_grading_error"] = str(exc)
+            return result
         except Exception as exc:
+            logger.exception("Diagram evaluation failed guideline_id=%s", resolved_guideline_id)
             raise HTTPException(status_code=500, detail=f"Evaluation failed: {exc}") from exc
 
     event_queue: Queue = Queue()
@@ -207,7 +254,27 @@ async def diagram_evaluate(image: UploadFile = File(...), stream: bool = False):
 
     def worker() -> None:
         try:
-            result = run_er_pipeline(file_path, progress_callback=event_queue.put)
+            def pipeline_progress(payload):
+                if isinstance(payload, dict) and payload.get("progress", 0) >= 100:
+                    payload = {
+                        **payload,
+                        "stage": "extraction_completed",
+                        "message": "Diagram extracted. Preparing Llama 3 grading...",
+                        "progress": 82,
+                    }
+                event_queue.put(payload)
+
+            result = run_er_pipeline(file_path, progress_callback=pipeline_progress)
+            logger.info("Diagram extraction completed guideline_id=%s detections=%s ocr_rows=%s", resolved_guideline_id, len(result.get("detections", [])), len(result.get("ocr", [])))
+            result["guideline_object_id"] = resolved_guideline_id
+            try:
+                result["agent_grading"] = grade_diagram_with_ollama(
+                    result, guideline, progress_callback=pipeline_progress
+                )
+                result["agent_marks"] = result["agent_grading"]["agent_marks"]
+            except Exception as exc:
+                logger.exception("Ollama grading failed guideline_id=%s", resolved_guideline_id)
+                result["agent_grading_error"] = str(exc)
             event_queue.put({"type": "result", "payload": result})
         except Exception as exc:
             event_queue.put({"type": "error", "payload": str(exc)})
@@ -234,15 +301,23 @@ async def diagram_evaluate(image: UploadFile = File(...), stream: bool = False):
 
 @app.post("/api/diagram-evaluate-save")
 async def diagram_evaluate_save(payload: DiagramEvaluationSaveRequest):
+    logger.info(
+        "Saving diagram evaluation guideline_id=%s student_id=%s agent_marks=%s",
+        payload.guideline_object_id or "unknown",
+        payload.student_id or "UNKNOWN",
+        payload.agent_marks,
+    )
     try:
         record = _normalize_record(payload)
         inserted_id = insert_diagram_evaluation(record)
+        logger.info("Diagram evaluation saved inserted_id=%s", inserted_id)
         return _json_safe({
             "status": "saved",
             "inserted_id": str(inserted_id),
             "record": record,
         })
     except Exception as exc:
+        logger.exception("Failed to save diagram evaluation")
         raise HTTPException(status_code=500, detail=f"Failed to save diagram evaluation: {exc}") from exc
 
 @app.get("/api/diagram-evaluate-details")
@@ -251,7 +326,13 @@ async def diagram_evaluate_details():
         return _json_safe(list_diagram_evaluations())
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    
+
+@app.get("/api/diagram-evaluate-guidelines")
+async def diagram_evaluate_guideline():
+    try:
+        return _json_safe(list_diagram_evaluation_guidelines())
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 if __name__ == "__main__":
