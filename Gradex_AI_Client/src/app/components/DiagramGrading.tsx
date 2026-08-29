@@ -241,6 +241,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
   const [progressState, setProgressState] =
     useState<DiagramProgressState | null>(null);
   const [saveState, setSaveState] = useState<string | null>(null);
+  const [extractionCompleted, setExtractionCompleted] = useState(false);
   const [activeDetailTab, setActiveDetailTab] = useState<
     "labels" | "structure"
   >("labels");
@@ -361,6 +362,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     setImageSize(null);
     setError(null);
     setResult(null);
+    setExtractionCompleted(false);
     setProgressState(null);
     setSaveState(null);
   };
@@ -427,6 +429,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     setLoading(true);
     setError(null);
     setSaveState(null);
+    setExtractionCompleted(false);
     setProgressState({
       stage: "starting",
       message: "Preparing diagram evaluation...",
@@ -441,6 +444,10 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
         typeof payload.stage === "string" ? payload.stage : "working";
       const progressValue =
         typeof payload.progress === "number" ? payload.progress : 0;
+
+      if (stage.includes("extraction_completed")) {
+        setExtractionCompleted(true);
+      }
 
       setProgressState({
         stage,
@@ -512,11 +519,35 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
 
             if (parsed.event === "result") {
               finalResult = payload as DiagramApiResponse;
+              setResult(finalResult);
               applyProgress({
-                stage: "completed",
-                message: "Diagram evaluation complete.",
+                stage: "extraction_completed",
+                message: "Extraction complete. Grading with AI...",
+                progress: 85,
+              });
+              continue;
+            }
+
+            if (parsed.event === "grading_result") {
+              const gradingPayload = payload as Record<string, unknown>;
+              finalResult = {
+                ...(finalResult ?? {}),
+                agent_marks: gradingPayload.agent_marks as number | undefined,
+                agent_grading: gradingPayload.agent_grading as DiagramApiResponse["agent_grading"] | undefined,
+              };
+              setResult(finalResult);
+              applyProgress({
+                stage: "grading_completed",
+                message: "Grading complete.",
                 progress: 100,
               });
+              continue;
+            }
+
+            if (parsed.event === "grading_error") {
+              if (finalResult) {
+                finalResult.agent_grading_error = typeof payload.detail === "string" ? payload.detail : "Grading failed.";
+              }
               continue;
             }
 
@@ -562,6 +593,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     setImageSize(null);
     setError(null);
     setResult(null);
+    setExtractionCompleted(false);
     setSaveState(null);
   };
 
@@ -1170,8 +1202,15 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
 
           <Separator className="my-4" />
 
+          
+
           {result ? (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-4 text-sm">
+              
+
+              {/* Extracted Objects Section */}
+              
+
               <div className="flex items-center gap-2 text-emerald-700">
                 <CheckCircle2 className="size-4" />
                 Evaluation completed successfully.
