@@ -1,51 +1,29 @@
 [
   {
-    "_id": { "$oid": "6a89887f8c33278a18482b47" },
-    "session_name": "Final Examination",
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad5b"
+    },
     "subject_code": "IT2040",
     "subject_name": "Database Management Systems",
     "year": 2024,
     "month": 7,
     "semester": 1,
+    "session_name": "Final Examination",
     "filename": "IT2040_2024_final_exam.pdf",
     "parsed_at": 1720000000.124,
     "exam_roster": [
-      "IT22262551", "IT22262552", "IT22262553", "IT22262554", "IT22262555",
-      "IT22262556", "IT22262557", "IT22262558", "IT22262559", "IT22262560"
+      "IT22262551",
+      "IT22262552",
+      "IT22262553",
+      "IT22262554",
+      "IT22262555",
+      "IT22262556",
+      "IT22262557",
+      "IT22262558",
+      "IT22262559",
+      "IT22262560"
     ],
     "questions": [
-      {
-        "question_no": "01",
-        "question_text": "Convert the following EER model into the relational model. Indicate the primary keys and the foreign keys of the resulted relations clearly.",
-        "max_marks": 20,
-        "criteria": [
-          {
-            "point": "Correctly identifies all entities from the EER diagram and creates corresponding relations",
-            "marks": 4
-          },
-          {
-            "point": "Correctly handles the superclass/subclass relationship (Instructor, Researcher) with appropriate mapping strategy (single relation, multiple relations, or shared PK)",
-            "marks": 5
-          },
-          {
-            "point": "Correctly maps all attributes including multi-valued and derived attributes",
-            "marks": 3
-          },
-          {
-            "point": "Correctly identifies and names all primary keys",
-            "marks": 3
-          },
-          {
-            "point": "Correctly identifies and names all foreign keys with proper references",
-            "marks": 3
-          },
-          {
-            "point": "Handles cardinality constraints (N:M, 1:N relationships) correctly in the relational schema",
-            "marks": 2
-          }
-        ],
-        "model_answer": "Person(SSN, Name, Address), Instructor(SSN, Rank, Salary), Researcher(SSN, GrantAmount, Publications). SSN is PK for all; Instructor.SSN and Researcher.SSN are FKs referencing Person.SSN."
-      },
       {
         "question_no": "02",
         "question_text": "Consider a relation R(A,B,C,D,E), with the following set of functional dependencies over R: F={A→BC, BC→E, E→DA}.\na) Find all the keys that follow from the given FDs using Armstrong's axioms, showing how you found them. (9 marks)\nb) Is R in 3NF? Give reasons for your conclusion. (3 marks)\nc) Is R in BCNF? Give reasons for your conclusion. If R is not in BCNF, convert it to a set of BCNF relations. (3 marks)",
@@ -60,161 +38,119 @@
             "marks": 3
           },
           {
-            "point": "Shows step-by-step application of Armstrong's axioms",
+            "point": "Shows step-by-step closure computation",
             "marks": 3
           },
           {
-            "point": "Correctly determines 3NF status with justification",
+            "point": "Correctly determines 3NF with reasoning",
             "marks": 3
           },
           {
-            "point": "Correctly determines BCNF status and decomposes if needed",
+            "point": "Correctly determines BCNF violation and decomposes",
             "marks": 3
           }
         ],
-        "model_answer": "Keys: A, BC, BE. R is in 3NF but not in BCNF because E→DA where E is not a superkey. BCNF decomposition: R1(A,B,C), R2(B,C,E), R3(E,D,A)."
+        "model_answer": "Candidate keys: A, BC, BE. R is in 3NF (E→DA has prime RHS). R is not in BCNF (E→DA violates). BCNF decomposition: R1(E,D,A), R2(A,B,C), R3(B,C,E)."
       },
       {
         "question_no": "03",
-        "question_text": "Consider the database of a department store that includes the following tables:\nITEM(itemNo, itemName, dept, price, availableQty, cost)\nEMP(eNo, eName, salary, comm, dept)\nDEPT(dNo, dName, mgrEno)\nSALES(idNo, eNo, soldTime, soldQty, soldPrice)\nWrite relational algebra statements to answer the following queries:\na) Display the name and salary of all managers. (2 marks)\nb) Display the names, prices and quantities available of items that are not sold. (4 marks)\nc) Display the names of employees who had sold both computers and cameras. (5 marks)\nd) Display the names of items which has more than 1000 pieces sold. (6 marks)\ne) Display the name of the items which are sold the most. (8 marks)",
+        "question_text": "Consider the database of a department store that includes the following tables:\nITEM(ino, iname, dept, price, availableQty, cost)\nEMP(eno, ename, salary, comm, dept)\nDEPT(dno, dname, mgrEno)\nSALES(ido, eNo, soldTime, soldQty, soldPrice)\n\nWrite relational algebra statements to answer the following queries:\na) Display the name and salary of all managers. (2 marks)\nb) Display the names, prices and quantities available of items that are not sold. (4 marks)\nc) Display the names of employees who had sold both computers and cameras. (5 marks)\nd) Display the names of items which has more than 1000 pieces sold. (6 marks)\ne) Display the name of the items which are sold the most. (8 marks)",
         "max_marks": 25,
         "criteria": [
           {
-            "point": "Correctly joins DEPT and EMP to find managers",
+            "point": "Correct relational algebra for manager names/salary",
             "marks": 2
           },
           {
-            "point": "Uses set difference or outer join to find items not in SALES",
+            "point": "Correct set difference for unsold items",
             "marks": 4
           },
           {
-            "point": "Uses intersection or self-join with item name conditions",
+            "point": "Correct intersection for employees selling both",
             "marks": 5
           },
           {
-            "point": "Uses aggregation (sum) with grouping and having clause",
+            "point": "Correct aggregation/grouping for items >1000 sold",
             "marks": 6
           },
           {
-            "point": "Uses aggregation, ordering, and limiting to find most sold item",
+            "point": "Correct ordering and limiting for most sold item",
             "marks": 8
           }
         ],
-        "model_answer": "a) π_eName,salary(DEPT ⨝ EMP). b) π_itemName,price,availableQty(ITEM) - π_itemName,price,availableQty(ITEM ⨝ SALES). c) intersection of employees selling computers and cameras. d) grouping with sum > 1000. e) ordering by sum desc, limit 1."
+        "model_answer": "a) π_ename,salary(DEPT ⨝ mgrEno=eNo EMP) b) π_iname,price,availableQty(ITEM) \\ π_iname,price,availableQty(ITEM ⨝ itemNo=itemNo SALES) c) π_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM)) ∩ π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM)) d) π_iname(ITEM ⨝ SALES) grouped with γ_sum(soldQty)>1000 e) π_iname(ITEM ⨝ SALES) grouped, ordered by sum(soldQty) DESC, LIMIT 1"
       },
       {
         "question_no": "04",
-        "question_text": "Consider the following relations in a database created for an online store:\nCustomers(cid, name, phone, country)\nEmployees(eid, ename, phone, hiredte)\nOrders(oid, eid, cid, orderDate, requiredDate, shippedDate)\nOrderDetails(oid, productId, quantity, discount)\nProducts(productId, productName, UnitPrice, unitsInStock, ROL)\n\na) Use SQL queries to answer the following:\ni) Display the name and address of customers who had ordered products which cost over Rs.500. (4 marks)\nii) Find the names and unit prices of all products which has not been ordered by customers from 'Germany'. (5 marks)\niii) Find the customer ids and names of the customers who have obtained more than 5% discount for every product in every order they have placed. (6 marks)\nb) Create a view named incomplete_Orders that contains customer name, country and number of times an order is not completed. (7 marks)\nc) Create a function named calc_cost to calculate and return the total cost of an order given the order id and the discount. (8 marks)\nd) Create a trigger named updateCost to update the cost column when the order details are added to the OrderDetails table. (10 marks)",
+        "question_text": "Consider the following relations in a database created for an online store:\nCustomers(cid, name, phone, country)\nEmployees(eid, ename, phone, hiredate)\nOrders(oid, eid, cid, orderDate, requiredDate, shippedDate)\nOrderDetails(oid, productId, quantity, discount)\nProducts(productId, productName, UnitPrice, unitsInStock, ROL)\n\na) Use SQL queries to answer following questions.\ni. Display the name and address of customers who had ordered products which cost over Rs.500. (4 marks)\nii. Find the names and unit prices of all products which has not been ordered by customers from 'Germany'. (5 marks)\niii. Find the customer ids and names of the customers who have obtained more than 5% discount for every product in every order they have placed. (6 marks)\nb) Create a view named incompleteOrders that contains customer name, country and number of times an order is not completed. (7 marks)\nc) Create a function named calc_lost to calculate and return the total cost of an order given the order id and the discount. (8 marks)\nd) Create a trigger named updateCost to update the cost column when order details are added. (10 marks)",
         "max_marks": 40,
         "criteria": [
           {
-            "point": "Correct SQL query with proper JOIN and WHERE clause for products costing over 500",
+            "point": "Correct SQL for customers ordering products >500",
             "marks": 4
           },
           {
-            "point": "Correct use of NOT IN or EXCEPT to exclude German customers' orders",
+            "point": "Correct SQL for products not ordered by German customers",
             "marks": 5
           },
           {
-            "point": "Correct GROUP BY with HAVING clause checking discount > 5% for ALL orders",
+            "point": "Correct SQL for customers with >5% discount on all products",
             "marks": 6
           },
           {
-            "point": "Correct CREATE VIEW with JOIN and filtering for incomplete orders",
+            "point": "Correct VIEW creation with proper JOIN and filtering",
             "marks": 7
           },
           {
-            "point": "Correct CREATE FUNCTION with proper logic to calculate total cost with discount",
+            "point": "Correct FUNCTION with loop/aggregation and discount calc",
             "marks": 8
           },
           {
-            "point": "Correct CREATE TRIGGER that fires on INSERT and updates cost",
+            "point": "Correct TRIGGER that updates cost using the function",
             "marks": 10
           }
         ],
-        "model_answer": "a) i) SELECT c.name, c.phone FROM Customers c JOIN Orders o ON c.cid=o.cid JOIN OrderDetails od ON o.oid=od.oid JOIN Products p ON od.productId=p.productId WHERE p.UnitPrice > 500; ii) SELECT productName, UnitPrice FROM Products WHERE productId NOT IN (SELECT od.productId FROM OrderDetails od JOIN Orders o ON od.oid=o.oid JOIN Customers c ON o.cid=c.cid WHERE c.country='Germany'); iii) SELECT cid, name FROM Customers WHERE cid NOT IN (SELECT o.cid FROM Orders o JOIN OrderDetails od ON o.oid=od.oid WHERE od.discount <= 0.05); b) CREATE VIEW incomplete_Orders AS SELECT c.name, c.country, COUNT(*) FROM Customers c JOIN Orders o ON c.cid=o.cid JOIN OrderDetails od ON o.oid=od.oid JOIN Products p ON od.productId=p.productId WHERE p.unitsInStock < od.quantity GROUP BY c.name, c.country; c) CREATE FUNCTION calc_cost(@oid INT, @discount REAL) RETURNS REAL AS BEGIN DECLARE @total REAL; SELECT @total = SUM(UnitPrice * quantity * (1-discount)) FROM OrderDetails od JOIN Products p ON od.productId=p.productId WHERE od.oid=@oid; RETURN @total; END; d) CREATE TRIGGER updateCost ON OrderDetails AFTER INSERT AS UPDATE Orders SET cost = (SELECT calc_cost(i.oid, i.discount) FROM inserted i WHERE Orders.oid = i.oid);"
+        "model_answer": "a) i) SELECT c.name, c.phone FROM Customers c JOIN Orders o ON c.cid=o.cid JOIN OrderDetails od ON o.oid=od.oid JOIN Products p ON od.productId=p.productId WHERE p.UnitPrice>500; ii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (...German orders...); iii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (...discount<=0.05...); b) CREATE VIEW incompleteOrders AS ...; c) CREATE FUNCTION calc_lost ...; d) CREATE TRIGGER updateCost ..."
       }
-    ]
-  },
-  {
-    "_id": { "$oid": "6d89887f8c33278a18482b99" },
-    "examCode": "ERD-001",
-    "session_name": "Final Examination",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
-    "semester": 1,
+    ],
+    "examCode": "EER-001",
     "guideLines": [
       {
         "id": 1,
-        "criterion": "Student entity",
-        "description": "Student must be represented as an entity rectangle.",
-        "expected": { "entity": "Student" },
-        "marks": 2
+        "criterion": "Person entity identification",
+        "description": "Correctly identifies Person as superclass with attributes SSN (PK), Name, Address.",
+        "marks": 3
       },
       {
         "id": 2,
-        "criterion": "Student attributes",
-        "description": "Student should have Name, Gender, DOB and Age attributes.",
-        "expected": { "entity": "Student", "attributes": ["Name", "Gender", "DOB", "Age"] },
-        "marks": 2
+        "criterion": "Instructor subclass mapping",
+        "description": "Correctly maps Instructor subclass with attributes Rank and Salary, with appropriate FK to Person.",
+        "marks": 4
       },
       {
         "id": 3,
-        "criterion": "Derived attribute",
-        "description": "Age must be represented as a derived attribute using a dashed ellipse.",
-        "expected": { "attribute": "Age", "type": "derived" },
-        "marks": 1
+        "criterion": "Researcher subclass mapping",
+        "description": "Correctly maps Researcher subclass with attributes GrantAmount and Publications, with appropriate FK to Person.",
+        "marks": 4
       },
       {
         "id": 4,
-        "criterion": "College entity",
-        "description": "College must be represented as an entity rectangle.",
-        "expected": { "entity": "College" },
-        "marks": 2
+        "criterion": "Superclass/subclass strategy",
+        "description": "Uses appropriate mapping strategy for superclass/subclass (single relation, multiple relations, or shared PK).",
+        "marks": 4
       },
       {
         "id": 5,
-        "criterion": "College attributes",
-        "description": "College should have Name, Affiliation and Address attributes.",
-        "expected": { "entity": "College", "attributes": ["Name", "Affiliation", "Address"] },
-        "marks": 2
+        "criterion": "Correct ER notation",
+        "description": "Entities use rectangles, attributes use ellipses, relationships use correct notation, PK underlined.",
+        "marks": 3
       },
       {
         "id": 6,
-        "criterion": "Enrolls in relationship",
-        "description": "Student and College must be connected through the Enrolls in relationship.",
-        "expected": { "relationship": "Enrolls in", "entities": ["Student", "College"] },
-        "marks": 3
-      },
-      {
-        "id": 7,
-        "criterion": "Specialized in relationship",
-        "description": "College must be connected to the Specialized in relationship.",
-        "expected": { "relationship": "Specialized in", "entity": "College" },
+        "criterion": "Correct connections and keys",
+        "description": "All attributes connected to correct entities, PKs clearly indicated, FKs reference correct relations.",
         "marks": 2
-      },
-      {
-        "id": 8,
-        "criterion": "Specialization entities",
-        "description": "Computer Science, Mechanical and Electronics should be represented as entities.",
-        "expected": { "entities": ["Computer Science", "Mechanical", "Electronics"] },
-        "marks": 3
-      },
-      {
-        "id": 9,
-        "criterion": "Correct ER notation",
-        "description": "Entities should use rectangles, attributes should use ellipses, relationships should use diamonds, and the derived attribute should use a dashed ellipse.",
-        "marks": 2
-      },
-      {
-        "id": 10,
-        "criterion": "Correct connections",
-        "description": "All entities, attributes and relationships should be connected according to the reference diagram.",
-        "marks": 1
       }
-    ],
-    "totalMarks": 20
+    ]
   }
 ]
