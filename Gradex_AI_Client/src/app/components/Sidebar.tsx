@@ -35,7 +35,7 @@ const subItemClass = ({ isActive }: { isActive: boolean }) =>
 
 export function Sidebar({ role, onLogout }: SidebarProps) {
   return (
-    <aside className="w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0">
+    <aside className="w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 print:hidden">
       <div className="px-6 py-5 border-b border-sidebar-border flex items-center gap-3">
         <div className="size-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
           <GraduationCap className="size-5" />

@@ -32,10 +32,34 @@ def load_raw_sample_documents() -> tuple[list[dict], list[dict], list[dict]]:
             return loads(fh.read())
 
     courses = load(SAMPLE_DIR / "courses" / "courses.json")
-    rubrics = [load(SAMPLE_DIR / "rubricCollection" / "rubricCollection.json")]
+    raw_rubric = load(SAMPLE_DIR / "rubricCollection" / "rubricCollection.json")
+    if isinstance(raw_rubric, list):
+        rubrics = raw_rubric
+    elif isinstance(raw_rubric, dict):
+        rubrics = [raw_rubric]
+    else:
+        rubrics = [raw_rubric]
+    # Normalize submissions: file may be a single doc (dict) or list
     submissions: list[dict] = []
     for path in sorted((SAMPLE_DIR / "submissions").glob("submission*.json")):
-        submissions.extend(load(path))
+        loaded = load(path)
+        # Support both shapes: flat list of docs or nested list where last entry is array
+        def _flatten(items: object, out: list[dict]) -> None:
+            if isinstance(items, list):
+                for item in items:
+                    if isinstance(item, list):
+                        _flatten(item, out)
+                    elif isinstance(item, dict):
+                        out.append(item)
+            elif isinstance(items, dict):
+                out.append(items)
+
+        if isinstance(loaded, list):
+            _flatten(loaded, submissions)
+        elif isinstance(loaded, dict):
+            submissions.append(loaded)
+        else:
+            _flatten(loaded, submissions)
     return courses, rubrics, submissions
 
 
@@ -128,7 +152,7 @@ async def main(db_name: str) -> int:
         print("then run: python switch_llm.py colab <new-url> <new-key>")
         return 2
 
-    client = AsyncIOMotorClient(settings.mongodb_uri)
+    client = AsyncIOMotorClient(settings.effective_mongodb_uri)
     db = client[db_name]
     progress_bar: tqdm | None = None
 

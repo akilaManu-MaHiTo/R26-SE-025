@@ -2,8 +2,22 @@ from app.sample_data.loader import _load, load_real, parse_submission
 
 
 def test_parse_submission_reads_awarded_marks_and_rubric_maxima():
-    rubric = _load("rubricCollection/rubricCollection.json")
-    sub = _load("submissions/submission.json")[0]
+    raw_rubric = _load("rubricCollection/rubricCollection.json")
+    rubric = raw_rubric[0] if isinstance(raw_rubric, list) else raw_rubric
+    raw_sub = _load("submissions/submission.json")
+    # File may be nested [dict*5, [dict*4]] — flatten
+    flat = []
+    def _flat(items):
+        for it in items:
+            if isinstance(it, list):
+                _flat(it)
+            else:
+                flat.append(it)
+    if isinstance(raw_sub, list):
+        _flat(raw_sub)
+        sub = flat[0]
+    else:
+        sub = raw_sub
     rows = parse_submission(
         sub, "IT2040-Final Examination", "IT2040", rubric["questions"]
     )

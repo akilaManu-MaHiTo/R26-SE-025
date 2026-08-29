@@ -459,6 +459,23 @@ def _history_date_str(value) -> str | None:
     return text[:10] if text else None
 
 
+def _history_iso_ts(value) -> str | None:
+    """Normalize created/updated timestamps to a sortable ISO string."""
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    if isinstance(value, (int, float)):
+        from datetime import datetime as _dt
+
+        try:
+            return _dt.utcfromtimestamp(value).isoformat() + "Z"
+        except (OSError, OverflowError, ValueError):
+            return None
+    text = str(value).strip()
+    return text or None
+
+
 def _history_item_from_subs(rubric: dict, batch_job_id: str | None, subs: list[dict]) -> dict:
     counts = {
         "not_started": 0,
@@ -517,6 +534,7 @@ def _history_item_from_subs(rubric: dict, batch_job_id: str | None, subs: list[d
         status = "Completed"
 
     avg_score = round(sum(score_pcts) / len(score_pcts), 1) if score_pcts else None
+    sort_at = _history_iso_ts(latest_ts) or _history_iso_ts(rubric.get("parsed_at"))
     date_str = _history_date_str(latest_ts) or _history_date_str(rubric.get("parsed_at"))
     rid = str(rubric.get("_id") or "")
     job = (batch_job_id or "").strip() or None
@@ -532,6 +550,7 @@ def _history_item_from_subs(rubric: dict, batch_job_id: str | None, subs: list[d
         "avg_score": avg_score,
         "status": status,
         "date": date_str,
+        "sort_at": sort_at,
     }
 
 
@@ -599,8 +618,11 @@ async def grading_history(limit: int = Query(default=50, ge=1, le=200)):
         items.append(_history_item_from_subs(rubric, None, []))
 
     def _sort_key(item: dict):
-        date = item.get("date") or ""
-        return (date, item.get("history_key") or "")
+        return (
+            item.get("sort_at") or "",
+            item.get("date") or "",
+            item.get("history_key") or "",
+        )
 
     items.sort(key=_sort_key, reverse=True)
     items = items[:limit]

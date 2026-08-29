@@ -38,7 +38,7 @@ def _load(name: str) -> object:
         return json.load(fh)
 
 
-def _save(name: str, document: dict) -> None:
+def _save(name: str, document: object) -> None:
     with open(SAMPLE_DIR / name, "w", encoding="utf-8") as fh:
         json.dump(document, fh, indent=2, ensure_ascii=False)
         fh.write("\n")
@@ -108,7 +108,7 @@ def submission_v2(existing: dict) -> dict:
 
 def main() -> None:
     courses = _load(COURSES_FILE)
-    rubric = _load(RUBRIC_FILE)
+    raw_rubric = _load(RUBRIC_FILE)
     submission_paths = sorted((SAMPLE_DIR / SUBMISSIONS_DIR).glob("submission*.json"))
     submissions = [
         sub
@@ -117,7 +117,12 @@ def main() -> None:
     ]
     roster = [sub["student_id"] for sub in submissions]
     _save(COURSES_FILE, [course_v2(course) for course in courses])
-    _save(RUBRIC_FILE, rubric_v2(rubric, roster))
+    # Support both dict and list storage for rubric
+    if isinstance(raw_rubric, list):
+        migrated = [rubric_v2(r, roster) for r in raw_rubric]
+        _save(RUBRIC_FILE, migrated)
+    else:
+        _save(RUBRIC_FILE, rubric_v2(raw_rubric, roster))
     for path in submission_paths:
         _save(
             f"{SUBMISSIONS_DIR}/{path.name}",
