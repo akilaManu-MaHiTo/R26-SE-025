@@ -9,7 +9,7 @@
     "semester": 1,
     "session_name": "Final Examination",
     "exam_code": "ERD-001",
-    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "rubric_ref": { "$oid": "6d89887f8c33278a18482b99" },
     "evaluation_result": {
       "total_score": 18,
       "max_score": 20,
@@ -41,7 +41,7 @@
     "semester": 1,
     "session_name": "Final Examination",
     "exam_code": "ERD-001",
-    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "rubric_ref": { "$oid": "6d89887f8c33278a18482b99" },
     "evaluation_result": {
       "total_score": 16,
       "max_score": 20,
@@ -73,7 +73,7 @@
     "semester": 1,
     "session_name": "Final Examination",
     "exam_code": "ERD-001",
-    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "rubric_ref": { "$oid": "6d89887f8c33278a18482b99" },
     "evaluation_result": {
       "total_score": 15,
       "max_score": 20,
@@ -105,7 +105,7 @@
     "semester": 1,
     "session_name": "Final Examination",
     "exam_code": "ERD-001",
-    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "rubric_ref": { "$oid": "6d89887f8c33278a18482b99" },
     "evaluation_result": {
       "total_score": 14,
       "max_score": 20,
@@ -137,7 +137,7 @@
     "semester": 1,
     "session_name": "Final Examination",
     "exam_code": "ERD-001",
-    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "rubric_ref": { "$oid": "6d89887f8c33278a18482b99" },
     "evaluation_result": {
       "total_score": 17,
       "max_score": 20,
@@ -169,7 +169,7 @@
     "semester": 1,
     "session_name": "Final Examination",
     "exam_code": "ERD-001",
-    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "rubric_ref": { "$oid": "6d89887f8c33278a18482b99" },
     "evaluation_result": {
       "total_score": 12,
       "max_score": 20,
@@ -201,7 +201,7 @@
     "semester": 1,
     "session_name": "Final Examination",
     "exam_code": "ERD-001",
-    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "rubric_ref": { "$oid": "6d89887f8c33278a18482b99" },
     "evaluation_result": {
       "total_score": 19,
       "max_score": 20,
@@ -233,7 +233,7 @@
     "semester": 1,
     "session_name": "Final Examination",
     "exam_code": "ERD-001",
-    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "rubric_ref": { "$oid": "6d89887f8c33278a18482b99" },
     "evaluation_result": {
       "total_score": 13,
       "max_score": 20,
@@ -265,7 +265,7 @@
     "semester": 1,
     "session_name": "Final Examination",
     "exam_code": "ERD-001",
-    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "rubric_ref": { "$oid": "6d89887f8c33278a18482b99" },
     "evaluation_result": {
       "total_score": 16,
       "max_score": 20,
@@ -297,7 +297,7 @@
     "semester": 1,
     "session_name": "Final Examination",
     "exam_code": "ERD-001",
-    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "rubric_ref": { "$oid": "6d89887f8c33278a18482b99" },
     "evaluation_result": {
       "total_score": 15,
       "max_score": 20,

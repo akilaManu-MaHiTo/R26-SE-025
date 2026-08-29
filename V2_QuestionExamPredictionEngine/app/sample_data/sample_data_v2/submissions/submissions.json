@@ -4,30 +4,86 @@
     "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
     "student_id": "IT22262551",
     "paper_key": "script_01",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
     "semester": 1,
     "session_name": "Final Examination",
-    "max_marks_paper_total": 20.0,
+    "max_marks_paper_total": 100.0,
     "max_marks_per_question": [
-      { "question_no": "ERD-001", "max_marks": 20.0 }
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 15.0 },
+      { "question_no": "03", "max_marks": 25.0 },
+      { "question_no": "04", "max_marks": 40.0 }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262551\n\nQuestion: Draw an ER diagram for a University system where a Student enrolls in a College. A College has specialization into Computer Science, Mechanical, and Electronics departments.\n\nMy ER Diagram:\n\nEntities:\n1. Student - Rectangle\n   Attributes: Name, Gender, DOB, Age (derived - dashed ellipse)\n\n2. College - Rectangle\n   Attributes: Name, Affiliation, Address\n\n3. Computer Science - Rectangle\n4. Mechanical - Rectangle\n5. Electronics - Rectangle\n\nRelationships:\n- Enrolls in (diamond) connecting Student and College\n- Specialized in (diamond) connecting College to Computer Science, Mechanical, Electronics\n\nConnections:\n- Student --(Enrolls in)--> College\n- College --(Specialized in)--> Computer Science\n- College --(Specialized in)--> Mechanical\n- College --(Specialized in)--> Electronics\n\nAll attributes connected to their respective entities with lines. Age attribute shown as dashed ellipse to indicate derived attribute.",
+    "raw_ocr_transcript": "Student ID: IT22262551\n\nQuestion 1\nThe EER model has Person as a superclass with attributes SSN (PK), Name, Address. Instructor and Researcher are subclasses. Instructor has Rank, Salary. Researcher has GrantAmount, Publications.\n\nRelational mapping using separate relations:\nPerson(SSN, Name, Address) - PK: SSN\nInstructor(SSN, Rank, Salary) - PK: SSN, FK: SSN references Person(SSN)\nResearcher(SSN, GrantAmount, Publications) - PK: SSN, FK: SSN references Person(SSN)\n\nAlternatively, using single relation with type attribute:\nPerson(SSN, Name, Address, PersonType, Rank, Salary, GrantAmount, Publications) - PK: SSN\nThis uses NULL values for non-applicable attributes.\n\nThe third approach uses one relation per subclass with shared PK:\nInstructor(SSN, Name, Address, Rank, Salary) - PK: SSN\nResearcher(SSN, Name, Address, GrantAmount, Publications) - PK: SSN\nThis duplicates Person attributes but avoids NULLs.\n\nI recommend the separate relations approach as it is cleanest and avoids NULLs.\n\nQuestion 2\na) Given FDs: A→BC, BC→E, E→DA\n\nA⁺: Start with {A}. A→BC adds {B,C}. BC→E adds {E}. E→DA adds {D,A}. So A⁺ = {A,B,C,D,E} = R. A is a candidate key.\n\nBC⁺: Start with {B,C}. BC→E adds {E}. E→DA adds {D,A}. Now we have {A,B,C,D,E} = R. BC is a candidate key.\n\nCD⁺: Start with {C,D}. No FD starts with C alone or D alone or CD. CD⁺ = {C,D}. Not a superkey.\n\nBE⁺: Start with {B,E}. BC→E is satisfied. E→DA adds {D,A}. Now {A,B,D,E}. A→BC adds {C}. BE⁺ = {A,B,C,D,E} = R. BE is a candidate key.\n\nCandidate keys: A, BC, BE.\n\nb) Is R in 3NF?\nFor 3NF, for every non-trivial FD X→Y, either X is a superkey or Y is a prime attribute.\nA→BC: A is superkey ✓\nBC→E: BC is superkey ✓\nE→DA: E is not a superkey. D and A are prime (part of keys A and BE). So DA contains prime attributes. ✓\nR is in 3NF.\n\nc) Is R in BCNF?\nFor BCNF, every determinant must be a superkey.\nE→DA: E is not a superkey (E⁺ = {A,D,E} ≠ R). So R is NOT in BCNF.\n\nDecomposition to BCNF:\nR1(E, D, A) with FD E→DA, E is PK\nR2(A, B, C) with FD A→BC, A is PK\nR3(B, C, E) with FD BC→E, BC is PK\nThis is lossless decomposition.",
     "status": "graded",
     "evaluation": {
-      "total_score": 18,
-      "max_score": 20,
-      "justification": "Excellent ER diagram covering all required entities, attributes, and relationships. All notation is correct.",
-      "feedback": "Very well done. Minor improvement could be made to the clarity of attribute connections.",
+      "total_score": 82.0,
+      "max_score": 100.0,
+      "justification": "Excellent answers across all questions. Q1 mapping is thorough with three approaches. Q2 key computation is complete and correct. Q3 relational algebra mostly correct. Q4 SQL queries are accurate with proper JOIN syntax.",
+      "feedback": "Outstanding performance. Q1 could mention which approach is preferred for EER with overlapping subclasses. Q4 trigger logic could be more detailed.",
       "results": [
-        { "q_no": "ERD-001", "score": 18 }
+        {
+          "q_no": "01",
+          "score": 18.0,
+          "criteria_breakdown": [
+            { "point": "Correctly identifies all entities and creates relations", "awarded_marks": 4, "reason": "All entities covered with correct attributes" },
+            { "point": "Correctly handles superclass/subclass with mapping strategy", "awarded_marks": 5, "reason": "Three strategies discussed with recommendation" },
+            { "point": "Correctly maps attributes including multi-valued/derived", "awarded_marks": 3, "reason": "All attributes correctly mapped" },
+            { "point": "Correctly identifies primary keys", "awarded_marks": 3, "reason": "PKs correctly identified for all relations" },
+            { "point": "Correctly identifies foreign keys with references", "awarded_marks": 2, "reason": "FK references shown correctly" },
+            { "point": "Handles cardinality constraints correctly", "awarded_marks": 1, "reason": "Partial credit for mentioning but not detailed" }
+          ],
+          "justification": "Comprehensive answer with three mapping strategies. Minor deduction for not handling overlapping subclass constraints explicitly.",
+          "feedback": "Consider discussing single vs multiple inheritance trade-offs for EER diagrams."
+        },
+        {
+          "q_no": "02",
+          "score": 14.0,
+          "criteria_breakdown": [
+            { "point": "Correctly computes attribute closures", "awarded_marks": 3, "reason": "Step-by-step closure computation shown" },
+            { "point": "Identifies all candidate keys", "awarded_marks": 3, "reason": "Keys A, BC, BE correctly identified" },
+            { "point": "Shows Armstrong's axioms application", "awarded_marks": 3, "reason": "Transitivity and augmentation used correctly" },
+            { "point": "Correctly determines 3NF status", "awarded_marks": 3, "reason": "R is in 3NF with correct justification" },
+            { "point": "Correctly determines BCNF status and decomposes", "awarded_marks": 2, "reason": "BCNF violation identified and decomposition provided" }
+          ],
+          "justification": "Key computation is excellent. 3NF and BCNF analysis is correct. Decomposition is lossless.",
+          "feedback": "Good work. Verify the BCNF decomposition maintains dependency preservation."
+        },
+        {
+          "q_no": "03",
+          "score": 21.0,
+          "criteria_breakdown": [
+            { "point": "Correctly joins DEPT and EMP for managers", "awarded_marks": 2, "reason": "Correct natural join with projection" },
+            { "point": "Uses set difference for items not sold", "awarded_marks": 4, "reason": "Correct approach with set difference" },
+            { "point": "Uses intersection for computers and cameras", "awarded_marks": 4, "reason": "Correct intersection of two queries" },
+            { "point": "Uses aggregation for items > 1000 sold", "awarded_marks": 5, "reason": "Correct grouping and having clause" },
+            { "point": "Uses aggregation and ordering for most sold item", "awarded_marks": 6, "reason": "Correct approach with limit/top" }
+          ],
+          "justification": "Relational algebra is mostly correct. Some notation could be more precise.",
+          "feedback": "Ensure proper use of Greek letters and notation in formal submissions."
+        },
+        {
+          "q_no": "04",
+          "score": 29.0,
+          "criteria_breakdown": [
+            { "point": "Correct SQL for customers ordering products > 500", "awarded_marks": 4, "reason": "Proper JOIN and WHERE clause" },
+            { "point": "Correct NOT IN for excluding German customers", "awarded_marks": 5, "reason": "Subquery approach correct" },
+            { "point": "Correct GROUP BY with HAVING for > 5% discount", "awarded_marks": 6, "reason": "Proper aggregation logic" },
+            { "point": "Correct CREATE VIEW for incomplete orders", "awarded_marks": 7, "reason": "View definition is correct" },
+            { "point": "Correct CREATE FUNCTION for cost calculation", "awarded_marks": 4, "reason": "Function logic present but incomplete discount handling" },
+            { "point": "Correct CREATE TRIGGER for order cost update", "awarded_marks": 3, "reason": "Trigger structure shown but details sparse" }
+          ],
+          "justification": "SQL queries are mostly correct. Function and trigger could be more detailed.",
+          "feedback": "Add error handling in functions and proper trigger logic with UPDATE statement."
+        }
       ],
       "grading_source": "colab",
       "rag_context_used": true,
       "rag_chunks": 5,
-      "rag_course": "SE3040"
+      "rag_course": "IT2040"
     },
     "processed_at": { "$date": "2026-08-25T09:00:00.000Z" },
     "lecturer_note": null
@@ -37,30 +93,86 @@
     "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
     "student_id": "IT22262552",
     "paper_key": "script_02",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
     "semester": 1,
     "session_name": "Final Examination",
-    "max_marks_paper_total": 20.0,
+    "max_marks_paper_total": 100.0,
     "max_marks_per_question": [
-      { "question_no": "ERD-001", "max_marks": 20.0 }
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 15.0 },
+      { "question_no": "03", "max_marks": 25.0 },
+      { "question_no": "04", "max_marks": 40.0 }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262552\n\nER Diagram for University System:\n\nEntities:\n- Student (rectangle) with attributes: Name, Gender, DOB, Age\n- College (rectangle) with attributes: Name, Affiliation, Address\n- Computer Science (rectangle)\n- Mechanical (rectangle)\n- Electronics (rectangle)\n\nRelationships:\n- Enrolls in (diamond) between Student and College\n- Specialized in (diamond) connecting College to departments\n\nAll entities connected properly. Age shown with dashed ellipse for derived attribute.",
+    "raw_ocr_transcript": "Student ID: IT22262552\n\nQuestion 1\nFrom the EER diagram, Person is superclass with SSN, Name, Address. Instructor subclass has Rank, Salary. Researcher subclass has GrantAmount, Publications.\n\nRelational mapping (separate relations approach):\nPerson(SSN, Name, Address) - PK: SSN\nInstructor(SSN, Rank, Salary) - PK: SSN, FK: SSN → Person(SSN)\nResearcher(SSN, GrantAmount, Publications) - PK: SSN, FK: SSN → Person(SSN)\n\nThis approach avoids NULL values and maintains referential integrity through foreign keys.\n\nQuestion 2\na) FDs: A→BC, BC→E, E→DA\n\nA⁺ = {A,B,C,D,E} = R → A is key\nBC⁺ = {A,B,C,D,E} = R → BC is key\nBE⁺ = {A,B,C,D,E} = R → BE is key\n\nCandidate keys: {A}, {BC}, {BE}\n\nb) 3NF check:\nA→BC: A is superkey ✓\nBC→E: BC is superkey ✓\nE→DA: E is not superkey, but DA contains prime attributes (A is prime) ✓\nR is in 3NF.\n\nc) BCNF check:\nE→DA: E is not superkey (E⁺ = {A,D,E}) → NOT in BCNF\n\nBCNF decomposition:\nR1(A, B, C) - FD: A→BC\nR2(B, C, E) - FD: BC→E  \nR3(E, D, A) - FD: E→DA\n\nQuestion 3\na) π_eName, salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) π_itemName, price, availableQty(ITEM) \\ π_itemName, price, availableQty(ITEM ⨝ itemNo=itemNo SALES)\n\nc) (π_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM))) ∩ (π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM)))\n\nd) π_itemName(ITEM ⨝ SALES) grouped by itemName with γ_sum(soldQty) > 1000\n\ne) π_itemName(ITEM ⨝ SALES) grouped by itemName, ordered by sum(soldQty) DESC, LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c, Orders o, OrderDetails od, Products p WHERE c.cid = o.cid AND o.oid = od.oid AND od.productId = p.productId AND p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od, Orders o, Customers c WHERE od.oid = o.oid AND o.cid = c.cid AND c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o, OrderDetails od WHERE o.oid = od.oid AND od.discount <= 0.05);\n\nb) CREATE VIEW incomplete_Orders AS SELECT c.name, c.country, COUNT(DISTINCT o.oid) AS incomplete_count FROM Customers c JOIN Orders o ON c.cid = o.cid JOIN OrderDetails od ON o.oid = od.oid JOIN Products p ON od.productId = p.productId WHERE p.unitsInStock < od.quantity GROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_cost(@oid INT, @discount DECIMAL(5,2)) RETURNS DECIMAL(10,2) AS BEGIN DECLARE @total DECIMAL(10,2); SELECT @total = SUM(p.UnitPrice * od.quantity * (1 - @discount)) FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = @oid; RETURN @total; END;\n\nd) CREATE TRIGGER updateCost ON OrderDetails AFTER INSERT AS BEGIN UPDATE o SET o.cost = dbo.calc_cost(i.oid, i.discount) FROM Orders o JOIN inserted i ON o.oid = i.oid; END;",
     "status": "graded",
     "evaluation": {
-      "total_score": 16,
-      "max_score": 20,
-      "justification": "Good understanding of ER diagram concepts. All main components present.",
-      "feedback": "Missing some attribute connections and notation details.",
+      "total_score": 76.0,
+      "max_score": 100.0,
+      "justification": "Good answers overall. Q1 is correct but brief. Q2 key computation correct. Q3 has some notation issues. Q4 SQL queries are functional.",
+      "feedback": "Q1 could discuss overlapping vs disjoint constraints. Q4 trigger needs proper syntax for SQL Server.",
       "results": [
-        { "q_no": "ERD-001", "score": 16 }
+        {
+          "q_no": "01",
+          "score": 16.0,
+          "criteria_breakdown": [
+            { "point": "Correctly identifies all entities and creates relations", "awarded_marks": 4, "reason": "All entities identified correctly" },
+            { "point": "Correctly handles superclass/subclass with mapping strategy", "awarded_marks": 4, "reason": "Separate relations approach used correctly" },
+            { "point": "Correctly maps attributes", "awarded_marks": 3, "reason": "Attributes correctly mapped" },
+            { "point": "Correctly identifies primary keys", "awarded_marks": 3, "reason": "PKs identified" },
+            { "point": "Correctly identifies foreign keys", "awarded_marks": 2, "reason": "FKs shown with references" },
+            { "point": "Handles cardinality constraints", "awarded_marks": 0, "reason": "Not addressed" }
+          ],
+          "justification": "Correct mapping but only one approach discussed. Cardinality constraints not addressed.",
+          "feedback": "Discuss multiple mapping strategies and mention overlapping/disjoint constraints."
+        },
+        {
+          "q_no": "02",
+          "score": 13.0,
+          "criteria_breakdown": [
+            { "point": "Correctly computes attribute closures", "awarded_marks": 3, "reason": "Closures computed correctly" },
+            { "point": "Identifies all candidate keys", "awarded_marks": 3, "reason": "All keys identified" },
+            { "point": "Shows Armstrong's axioms", "awarded_marks": 2, "reason": "Axioms applied but not detailed" },
+            { "point": "Correctly determines 3NF", "awarded_marks": 3, "reason": "3NF analysis correct" },
+            { "point": "Correctly determines BCNF and decomposes", "awarded_marks": 2, "reason": "Decomposition provided" }
+          ],
+          "justification": "Key computation correct. 3NF/BCNF analysis accurate.",
+          "feedback": "Show more detail in Armstrong's axiom application steps."
+        },
+        {
+          "q_no": "03",
+          "score": 19.0,
+          "criteria_breakdown": [
+            { "point": "Correctly joins DEPT and EMP", "awarded_marks": 2, "reason": "Correct join" },
+            { "point": "Uses set difference for items not sold", "awarded_marks": 3, "reason": "Correct approach" },
+            { "point": "Uses intersection for computers/cameras", "awarded_marks": 4, "reason": "Correct intersection" },
+            { "point": "Uses aggregation for > 1000 sold", "awarded_marks": 5, "reason": "Correct grouping" },
+            { "point": "Uses aggregation for most sold item", "awarded_marks": 5, "reason": "Correct with ordering" }
+          ],
+          "justification": "Relational algebra is correct. Some notation could be cleaner.",
+          "feedback": "Use proper relational algebra notation consistently."
+        },
+        {
+          "q_no": "04",
+          "score": 28.0,
+          "criteria_breakdown": [
+            { "point": "Correct SQL for products > 500", "awarded_marks": 4, "reason": "Proper JOIN syntax" },
+            { "point": "Correct NOT IN for German customers", "awarded_marks": 5, "reason": "Subquery correct" },
+            { "point": "Correct GROUP BY for > 5% discount", "awarded_marks": 6, "reason": "Proper aggregation" },
+            { "point": "Correct CREATE VIEW", "awarded_marks": 7, "reason": "View definition correct" },
+            { "point": "Correct CREATE FUNCTION", "awarded_marks": 3, "reason": "Function present but discount handling unclear" },
+            { "point": "Correct CREATE TRIGGER", "awarded_marks": 3, "reason": "Trigger structure shown" }
+          ],
+          "justification": "SQL queries mostly correct. Function and trigger need more detail.",
+          "feedback": "Improve function parameter handling and trigger update logic."
+        }
       ],
       "grading_source": "colab",
       "rag_context_used": true,
       "rag_chunks": 5,
-      "rag_course": "SE3040"
+      "rag_course": "IT2040"
     },
     "processed_at": { "$date": "2026-08-25T09:05:00.000Z" },
     "lecturer_note": null
@@ -70,30 +182,86 @@
     "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
     "student_id": "IT22262553",
     "paper_key": "script_03",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
     "semester": 1,
     "session_name": "Final Examination",
-    "max_marks_paper_total": 20.0,
+    "max_marks_paper_total": 100.0,
     "max_marks_per_question": [
-      { "question_no": "ERD-001", "max_marks": 20.0 }
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 15.0 },
+      { "question_no": "03", "max_marks": 25.0 },
+      { "question_no": "04", "max_marks": 40.0 }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262553\n\nER Diagram:\n\nStudent entity with Name, Gender, DOB attributes.\nCollege entity with Name, Affiliation, Address.\nEnrolls in relationship between Student and College.\nSpecialized in relationship from College to Computer Science, Mechanical, Electronics.\nAge is derived attribute (dashed ellipse).\nAll rectangles for entities, ellipses for attributes, diamonds for relationships.",
+    "raw_ocr_transcript": "Student ID: IT22262553\n\nQuestion 1\nThe EER model shows Person as superclass. Instructor and Researcher are subclasses.\n\nRelational mapping:\nPerson(SSN, Name, Address) PK: SSN\nInstructor(SSN, Rank, Salary) PK: SSN, FK: SSN references Person\nResearcher(SSN, GrantAmount, Publications) PK: SSN, FK: SSN references Person\n\nQuestion 2\na) FDs: A→BC, BC→E, E→DA\nA⁺ = {A,B,C,D,E} → A is key\nBC⁺ = {A,B,C,D,E} → BC is key\nCandidate keys: A, BC\n\nb) R is in 3NF because all FDs have superkey as determinant or RHS is prime.\n\nc) R is not in BCNF because E→DA has E which is not a superkey.\n\nQuestion 3\na) π_eName,salary(EMP ⨝ DEPT)\nb) Items not in SALES: use set difference\nc) Employees selling both: intersection of two queries\nd) Items with sum > 1000: grouping\ne) Most sold: ordering by sum\n\nQuestion 4\na) i) SELECT name FROM Customers WHERE cid IN (SELECT cid FROM Orders WHERE oid IN (SELECT oid FROM OrderDetails WHERE productId IN (SELECT productId FROM Products WHERE UnitPrice > 500)));\n\nii) SELECT productName FROM Products WHERE productId NOT IN (SELECT productId FROM OrderDetails WHERE oid IN (SELECT oid FROM Orders WHERE cid IN (SELECT cid FROM Customers WHERE country = 'Germany')));\n\niii) SELECT cid, name FROM Customers WHERE cid IN (SELECT cid FROM Orders WHERE oid IN (SELECT oid FROM OrderDetails GROUP BY oid HAVING MIN(discount) > 0.05));\n\nb) CREATE VIEW incomplete_Orders AS SELECT name, country, COUNT(*) FROM Customers JOIN Orders ON cid = cid JOIN OrderDetails ON oid = oid JOIN Products ON productId = productId WHERE unitsInStock < quantity GROUP BY name, country;\n\nc) CREATE FUNCTION calc_cost(@oid INT) RETURNS DECIMAL AS BEGIN DECLARE @cost DECIMAL; SELECT @cost = SUM(UnitPrice * quantity) FROM OrderDetails JOIN Products ON productId = productId WHERE OrderDetails.oid = @oid; RETURN @cost; END;\n\nd) CREATE TRIGGER updateCost ON OrderDetails AFTER INSERT AS UPDATE Orders SET cost = dbo.calc_cost(inserted.oid) FROM Orders JOIN inserted ON Orders.oid = inserted.oid;",
     "status": "graded",
     "evaluation": {
-      "total_score": 15,
-      "max_score": 20,
-      "justification": "Basic ER diagram with all required components.",
-      "feedback": "Some connections between attributes and entities unclear. Review notation standards.",
+      "total_score": 58.0,
+      "max_score": 100.0,
+      "justification": "Basic understanding shown but answers lack depth. Q1 is correct but brief. Q2 misses one candidate key. Q3 lacks formal notation. Q4 queries work but could be more efficient.",
+      "feedback": "Work on showing detailed steps in key computation. Use formal relational algebra notation. SQL queries should use JOIN syntax instead of nested subqueries where possible.",
       "results": [
-        { "q_no": "ERD-001", "score": 15 }
+        {
+          "q_no": "01",
+          "score": 14.0,
+          "criteria_breakdown": [
+            { "point": "Correctly identifies all entities", "awarded_marks": 3, "reason": "Entities identified" },
+            { "point": "Correctly handles superclass/subclass", "awarded_marks": 4, "reason": "Separate relations used" },
+            { "point": "Correctly maps attributes", "awarded_marks": 3, "reason": "Attributes mapped" },
+            { "point": "Correctly identifies PKs", "awarded_marks": 2, "reason": "PKs identified" },
+            { "point": "Correctly identifies FKs", "awarded_marks": 2, "reason": "FKs shown" },
+            { "point": "Handles cardinality", "awarded_marks": 0, "reason": "Not addressed" }
+          ],
+          "justification": "Correct but brief. Only one mapping strategy discussed.",
+          "feedback": "Discuss cardinality constraints and multiple mapping strategies."
+        },
+        {
+          "q_no": "02",
+          "score": 9.0,
+          "criteria_breakdown": [
+            { "point": "Correctly computes closures", "awarded_marks": 2, "reason": "Partial computation shown" },
+            { "point": "Identifies all candidate keys", "awarded_marks": 2, "reason": "Missed BE as candidate key" },
+            { "point": "Shows Armstrong's axioms", "awarded_marks": 2, "reason": "Basic steps shown" },
+            { "point": "Correctly determines 3NF", "awarded_marks": 2, "reason": "3NF conclusion correct" },
+            { "point": "BCNF analysis", "awarded_marks": 1, "reason": "BCNF violation identified but no decomposition" }
+          ],
+          "justification": "Missed BE as candidate key. 3NF correct but BCNF decomposition missing.",
+          "feedback": "Verify all candidate keys by checking all attribute combinations."
+        },
+        {
+          "q_no": "03",
+          "score": 15.0,
+          "criteria_breakdown": [
+            { "point": "Joins DEPT and EMP", "awarded_marks": 2, "reason": "Correct join" },
+            { "point": "Items not sold", "awarded_marks": 2, "reason": "Approach described but not formal" },
+            { "point": "Both computers and cameras", "awarded_marks": 3, "reason": "Intersection approach described" },
+            { "point": "Items > 1000 sold", "awarded_marks": 4, "reason": "Grouping described" },
+            { "point": "Most sold item", "awarded_marks": 4, "reason": "Ordering described" }
+          ],
+          "justification": "Approaches are correct but lack formal relational algebra notation.",
+          "feedback": "Use proper relational algebra symbols and formal notation."
+        },
+        {
+          "q_no": "04",
+          "score": 20.0,
+          "criteria_breakdown": [
+            { "point": "SQL for products > 500", "awarded_marks": 3, "reason": "Works but uses nested subqueries" },
+            { "point": "NOT IN for German customers", "awarded_marks": 4, "reason": "Correct approach" },
+            { "point": "GROUP BY for > 5% discount", "awarded_marks": 5, "reason": "Correct using MIN(discount)" },
+            { "point": "CREATE VIEW", "awarded_marks": 3, "reason": "View present but missing JOIN syntax" },
+            { "point": "CREATE FUNCTION", "awarded_marks": 3, "reason": "Function basic, no discount parameter" },
+            { "point": "CREATE TRIGGER", "awarded_marks": 2, "reason": "Trigger basic structure" }
+          ],
+          "justification": "SQL queries work but could use more efficient JOIN syntax. Function missing discount parameter.",
+          "feedback": "Use explicit JOIN syntax. Add discount parameter to calc_cost function."
+        }
       ],
       "grading_source": "colab",
       "rag_context_used": true,
       "rag_chunks": 5,
-      "rag_course": "SE3040"
+      "rag_course": "IT2040"
     },
     "processed_at": { "$date": "2026-08-25T09:10:00.000Z" },
     "lecturer_note": null
@@ -103,30 +271,86 @@
     "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
     "student_id": "IT22262554",
     "paper_key": "script_04",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
     "semester": 1,
     "session_name": "Final Examination",
-    "max_marks_paper_total": 20.0,
+    "max_marks_paper_total": 100.0,
     "max_marks_per_question": [
-      { "question_no": "ERD-001", "max_marks": 20.0 }
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 15.0 },
+      { "question_no": "03", "max_marks": 25.0 },
+      { "question_no": "04", "max_marks": 40.0 }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262554\n\nER Diagram:\n\nEntities:\n- Student (rectangle): Name, Gender, DOB, Age (derived)\n- College (rectangle): Name, Affiliation, Address\n- Computer Science (rectangle)\n- Mechanical (rectangle)\n- Electronics (rectangle)\n\nRelationships:\n- Enrolls in (diamond): Student, College\n- Specialized in (diamond): College, Computer Science, Mechanical, Electronics\n\nAge attribute uses dashed ellipse. All connections properly drawn.",
+    "raw_ocr_transcript": "Student ID: IT22262554\n\nQuestion 1\nEER to Relational mapping:\n\nPerson(SSN, Name, Address) PK: SSN\nInstructor(SSN, Rank, Salary) PK: SSN, FK: SSN → Person(SSN)\nResearcher(SSN, GrantAmount, Publications) PK: SSN, FK: SSN → Person(SSN)\n\nUsing the separate relations approach for the superclass/subclass hierarchy.\n\nQuestion 2\na) FDs: A→BC, BC→E, E→DA\n\nA⁺: A → BC → E → DA → {A,B,C,D,E}. A is key.\nBC⁺: BC → E → DA → {A,B,C,D,E}. BC is key.\nBE⁺: E → DA, but B is not determined. BE⁺ = {B,E,D,A}. Missing C. Not a key.\n\nWait, let me recheck. A→BC means if we have A, we get B and C. So BE⁺: start with {B,E}. BC→E is already satisfied. E→DA gives D and A. Now we have {A,B,D,E}. A→BC gives C. So BE⁺ = {A,B,C,D,E}. BE is also a key.\n\nCandidate keys: A, BC, BE.\n\nb) 3NF: For every FD X→Y, X is superkey or Y is prime.\nA→BC: A is superkey ✓\nBC→E: BC is superkey ✓\nE→DA: E is not superkey, but DA contains prime A ✓\nR is in 3NF.\n\nc) BCNF: Every determinant must be superkey.\nE→DA: E is not superkey (E⁺ = {A,D,E} ≠ R). Not in BCNF.\n\nBCNF decomposition:\nR1(A,B,C) FD: A→BC\nR2(B,C,E) FD: BC→E\nR3(E,D,A) FD: E→DA\n\nQuestion 3\na) π_eName,salary(σ_mgrEno=eNo(DEPT × EMP)) or better: π_eName,salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) π_itemName,price,availableQty(ITEM) - π_itemName,price,availableQty(ITEM ⨝ itemNo SALES)\n\nc) (π_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM))) ∩ (π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM)))\n\nd) π itemName(ITEM ⨝ SALES) grouped by itemNo, γ_sum(soldQty) > 1000\n\ne) π itemName(ITEM ⨝ SALES) grouped by itemNo, ordered by γ_sum(soldQty) DESC, LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c JOIN Orders o ON c.cid = o.cid JOIN OrderDetails od ON o.oid = od.oid JOIN Products p ON od.productId = p.productId WHERE p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od JOIN Orders o ON od.oid = o.oid JOIN Customers c ON o.cid = c.cid WHERE c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid IN (SELECT o.cid FROM Orders o JOIN OrderDetails od ON o.oid = od.oid GROUP BY o.cid HAVING MIN(od.discount) > 0.05);\n\nb) CREATE VIEW incomplete_Orders AS SELECT c.name, c.country, COUNT(DISTINCT o.oid) AS incomplete_count FROM Customers c JOIN Orders o ON c.cid = o.cid JOIN OrderDetails od ON o.oid = od.oid JOIN Products p ON od.productId = p.productId WHERE p.unitsInStock < od.quantity GROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_cost(@oid INT, @discount REAL) RETURNS REAL AS BEGIN DECLARE @total REAL; SELECT @total = SUM(p.UnitPrice * od.quantity * (1 - @discount)) FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = @oid; RETURN @total; END;\n\nd) CREATE TRIGGER updateCost ON OrderDetails AFTER INSERT AS BEGIN UPDATE o SET o.cost = dbo.calc_cost(i.oid, i.discount) FROM Orders o JOIN inserted i ON o.oid = i.oid; END;",
     "status": "graded",
     "evaluation": {
-      "total_score": 14,
-      "max_score": 20,
-      "justification": "Complete ER diagram but some notation inconsistencies.",
-      "feedback": "Review derived attribute notation and relationship cardinality markers.",
+      "total_score": 71.0,
+      "max_score": 100.0,
+      "justification": "Good answers overall. Q1 correct. Q2 key computation shows self-correction which is good. Q3 notation improved. Q4 SQL queries are correct.",
+      "feedback": "Q1 could discuss attribute mapping more thoroughly. Q4 trigger logic is basic but correct.",
       "results": [
-        { "q_no": "ERD-001", "score": 14 }
+        {
+          "q_no": "01",
+          "score": 15.0,
+          "criteria_breakdown": [
+            { "point": "Correctly identifies entities", "awarded_marks": 4, "reason": "All entities identified" },
+            { "point": "Handles superclass/subclass", "awarded_marks": 4, "reason": "Separate relations correct" },
+            { "point": "Maps attributes correctly", "awarded_marks": 3, "reason": "Attributes mapped" },
+            { "point": "Identifies PKs", "awarded_marks": 2, "reason": "PKs correct" },
+            { "point": "Identifies FKs", "awarded_marks": 2, "reason": "FKs correct" },
+            { "point": "Cardinality constraints", "awarded_marks": 0, "reason": "Not addressed" }
+          ],
+          "justification": "Correct mapping. Self-correction in Q2 is good practice.",
+          "feedback": "Address cardinality constraints in EER mapping."
+        },
+        {
+          "q_no": "02",
+          "score": 12.0,
+          "criteria_breakdown": [
+            { "point": "Computes closures correctly", "awarded_marks": 3, "reason": "Closures computed with self-correction" },
+            { "point": "Identifies all keys", "awarded_marks": 3, "reason": "All keys found including BE" },
+            { "point": "Shows Armstrong's axioms", "awarded_marks": 2, "reason": "Steps shown" },
+            { "point": "3NF analysis", "awarded_marks": 2, "reason": "Correct conclusion" },
+            { "point": "BCNF and decomposition", "awarded_marks": 2, "reason": "Decomposition provided" }
+          ],
+          "justification": "Good self-correction on BE key. BCNF decomposition is lossless.",
+          "feedback": "Continue showing detailed closure computation steps."
+        },
+        {
+          "q_no": "03",
+          "score": 18.0,
+          "criteria_breakdown": [
+            { "point": "Joins DEPT and EMP", "awarded_marks": 2, "reason": "Correct join" },
+            { "point": "Items not sold", "awarded_marks": 3, "reason": "Correct set difference" },
+            { "point": "Both computers/cameras", "awarded_marks": 4, "reason": "Correct intersection" },
+            { "point": "Items > 1000", "awarded_marks": 5, "reason": "Correct grouping" },
+            { "point": "Most sold item", "awarded_marks": 4, "reason": "Correct ordering" }
+          ],
+          "justification": "Relational algebra is correct. Notation improved.",
+          "feedback": "Use consistent notation throughout."
+        },
+        {
+          "q_no": "04",
+          "score": 26.0,
+          "criteria_breakdown": [
+            { "point": "SQL for products > 500", "awarded_marks": 4, "reason": "Proper JOIN syntax" },
+            { "point": "NOT IN for German", "awarded_marks": 5, "reason": "Correct approach" },
+            { "point": "GROUP BY for > 5%", "awarded_marks": 6, "reason": "Correct using MIN" },
+            { "point": "CREATE VIEW", "awarded_marks": 5, "reason": "View correct with proper JOIN" },
+            { "point": "CREATE FUNCTION", "awarded_marks": 3, "reason": "Function correct with discount" },
+            { "point": "CREATE TRIGGER", "awarded_marks": 3, "reason": "Trigger basic but correct" }
+          ],
+          "justification": "SQL queries are correct. Function properly handles discount.",
+          "feedback": "Trigger could include error handling and transaction management."
+        }
       ],
       "grading_source": "colab",
       "rag_context_used": true,
       "rag_chunks": 5,
-      "rag_course": "SE3040"
+      "rag_course": "IT2040"
     },
     "processed_at": { "$date": "2026-08-25T09:15:00.000Z" },
     "lecturer_note": null
@@ -136,30 +360,86 @@
     "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
     "student_id": "IT22262555",
     "paper_key": "script_05",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
     "semester": 1,
     "session_name": "Final Examination",
-    "max_marks_paper_total": 20.0,
+    "max_marks_paper_total": 100.0,
     "max_marks_per_question": [
-      { "question_no": "ERD-001", "max_marks": 20.0 }
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 15.0 },
+      { "question_no": "03", "max_marks": 25.0 },
+      { "question_no": "04", "max_marks": 40.0 }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262555\n\nER Diagram:\n\nI drew the following:\n- Student box with Name, Gender, DOB, Age\n- College box with Name, Affiliation, Address\n- Enrolls in diamond between Student and College\n- Specialized in diamond from College to CS, Mech, Electronics\n- Age shown as dashed ellipse\n\nAll entities connected to attributes. Relationships properly linked.",
+    "raw_ocr_transcript": "Student ID: IT22262555\n\nQuestion 1\nEER to relational:\nPerson(SSN, Name, Address) PK: SSN\nInstructor(SSN, Rank, Salary) PK: SSN, FK: SSN → Person(SSN)\nResearcher(SSN, GrantAmount, Publications) PK: SSN, FK: SSN → Person(SSN)\n\nQuestion 2\na) FDs: A→BC, BC→E, E→DA\nA⁺ = {A,B,C,D,E} key\nBC⁺ = {A,B,C,D,E} key\nCandidate keys: A, BC\n\nb) 3NF: Yes, all FDs have superkey determinant or prime RHS.\n\nc) BCNF: No, E→DA has E not superkey.\nDecompose: R1(A,B,C), R2(B,C,E), R3(E,D,A)\n\nQuestion 3\na) π_eName,salary(DEPT ⨝ EMP)\nb) π_itemName,price,availableQty(ITEM) - π_itemName,price,availableQty(ITEM ⨝ SALES)\nc) (π_eName(EMP ⨝ SALES ⨝ ITEM)) intersect (π_eName(EMP ⨝ SALES ⨝ ITEM))\nd) γ_itemName,sum(soldQty) > 1000(ITEM ⨝ SALES)\ne) π_itemName(γ_itemName,sum(soldQty)(ITEM ⨝ SALES)) ordered desc limit 1\n\nQuestion 4\na) i) SELECT name FROM Customers WHERE cid IN (SELECT cid FROM Orders WHERE oid IN (SELECT oid FROM OrderDetails WHERE productId IN (SELECT productId FROM Products WHERE UnitPrice > 500)));\nii) SELECT productName FROM Products WHERE productId NOT IN (SELECT productId FROM OrderDetails WHERE oid IN (SELECT oid FROM Orders WHERE cid IN (SELECT cid FROM Customers WHERE country = 'Germany')));\niii) SELECT cid, name FROM Customers WHERE cid IN (SELECT cid FROM Orders GROUP BY cid HAVING COUNT(DISTINCT oid) = (SELECT COUNT(DISTINCT oid) FROM Orders WHERE cid = Customers.cid AND oid IN (SELECT oid FROM OrderDetails WHERE discount > 0.05)));\n\nb) CREATE VIEW incomplete_Orders AS SELECT name, country, COUNT(*) FROM Customers JOIN Orders JOIN OrderDetails JOIN Products WHERE unitsInStock < quantity GROUP BY name, country;\n\nc) CREATE FUNCTION calc_cost(@oid INT) RETURNS DECIMAL AS BEGIN DECLARE @cost DECIMAL; SELECT @cost = SUM(UnitPrice * quantity) FROM OrderDetails JOIN Products WHERE OrderDetails.oid = @oid; RETURN @cost; END;\n\nd) CREATE TRIGGER updateCost ON OrderDetails AFTER INSERT AS UPDATE Orders SET cost = dbo.calc_cost(inserted.oid);",
     "status": "graded",
     "evaluation": {
-      "total_score": 17,
-      "max_score": 20,
-      "justification": "Well-structured ER diagram with correct notation throughout.",
-      "feedback": "Excellent work. Minor improvements in visual clarity possible.",
+      "total_score": 52.0,
+      "max_score": 100.0,
+      "justification": "Basic answers across all questions. Q1 correct but very brief. Q2 misses BE key. Q3 notation incomplete. Q4 has syntax issues in queries.",
+      "feedback": "Show more detail in answers. Fix SQL syntax issues. Use proper JOIN conditions.",
       "results": [
-        { "q_no": "ERD-001", "score": 17 }
+        {
+          "q_no": "01",
+          "score": 13.0,
+          "criteria_breakdown": [
+            { "point": "Identifies entities", "awarded_marks": 3, "reason": "Entities identified" },
+            { "point": "Handles superclass/subclass", "awarded_marks": 3, "reason": "Approach used" },
+            { "point": "Maps attributes", "awarded_marks": 3, "reason": "Attributes mapped" },
+            { "point": "Identifies PKs", "awarded_marks": 2, "reason": "PKs correct" },
+            { "point": "Identifies FKs", "awarded_marks": 2, "reason": "FKs shown" },
+            { "point": "Cardinality", "awarded_marks": 0, "reason": "Not addressed" }
+          ],
+          "justification": "Correct but very brief. Only one mapping approach.",
+          "feedback": "Discuss multiple mapping strategies and provide more detail."
+        },
+        {
+          "q_no": "02",
+          "score": 8.0,
+          "criteria_breakdown": [
+            { "point": "Computes closures", "awarded_marks": 2, "reason": "Partial computation" },
+            { "point": "Identifies keys", "awarded_marks": 2, "reason": "Missed BE key" },
+            { "point": "Armstrong's axioms", "awarded_marks": 1, "reason": "Basic steps" },
+            { "point": "3NF analysis", "awarded_marks": 2, "reason": "Correct conclusion" },
+            { "point": "BCNF decomposition", "awarded_marks": 1, "reason": "Basic decomposition" }
+          ],
+          "justification": "Missed BE as candidate key. 3NF correct. BCNF decomposition basic.",
+          "feedback": "Verify all candidate keys systematically."
+        },
+        {
+          "q_no": "03",
+          "score": 14.0,
+          "criteria_breakdown": [
+            { "point": "Joins DEPT/EMP", "awarded_marks": 2, "reason": "Correct" },
+            { "point": "Items not sold", "awarded_marks": 2, "reason": "Correct approach" },
+            { "point": "Both computers/cameras", "awarded_marks": 3, "reason": "Intersection described" },
+            { "point": "Items > 1000", "awarded_marks": 4, "reason": "Grouping correct" },
+            { "point": "Most sold item", "awarded_marks": 3, "reason": "Ordering correct" }
+          ],
+          "justification": "Approaches correct but notation incomplete.",
+          "feedback": "Use proper relational algebra notation with symbols."
+        },
+        {
+          "q_no": "04",
+          "score": 17.0,
+          "criteria_breakdown": [
+            { "point": "SQL for > 500", "awarded_marks": 2, "reason": "Nested subqueries, not JOIN" },
+            { "point": "NOT IN German", "awarded_marks": 3, "reason": "Correct approach" },
+            { "point": "GROUP BY > 5%", "awarded_marks": 4, "reason": "Complex but correct logic" },
+            { "point": "CREATE VIEW", "awarded_marks": 3, "reason": "Missing ON conditions in JOIN" },
+            { "point": "CREATE FUNCTION", "awarded_marks": 3, "reason": "Basic function" },
+            { "point": "CREATE TRIGGER", "awarded_marks": 2, "reason": "Missing JOIN in UPDATE" }
+          ],
+          "justification": "SQL queries have syntax issues. Missing ON conditions in JOINs.",
+          "feedback": "Always specify ON conditions for JOINs. Use explicit JOIN syntax."
+        }
       ],
       "grading_source": "colab",
       "rag_context_used": true,
       "rag_chunks": 5,
-      "rag_course": "SE3040"
+      "rag_course": "IT2040"
     },
     "processed_at": { "$date": "2026-08-25T09:20:00.000Z" },
     "lecturer_note": null
@@ -169,30 +449,86 @@
     "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
     "student_id": "IT22262556",
     "paper_key": "script_06",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
     "semester": 1,
     "session_name": "Final Examination",
-    "max_marks_paper_total": 20.0,
+    "max_marks_paper_total": 100.0,
     "max_marks_per_question": [
-      { "question_no": "ERD-001", "max_marks": 20.0 }
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 15.0 },
+      { "question_no": "03", "max_marks": 25.0 },
+      { "question_no": "04", "max_marks": 40.0 }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262556\n\nER Diagram:\n\nEntities:\n- Student with Name, Gender, DOB, Age\n- College with Name, Affiliation, Address\n- Computer Science, Mechanical, Electronics\n\nRelationships:\n- Enrolls in connects Student to College\n- Specialized in connects College to departments\n\nAge is derived attribute shown with dashed line.",
+    "raw_ocr_transcript": "Student ID: IT22262556\n\nQuestion 1\nEER mapping:\nPerson(SSN, Name, Address)\nInstructor(SSN, Rank, Salary)\nResearcher(SSN, GrantAmount, Publications)\n\nQuestion 2\na) Keys: A, BC\nb) Yes 3NF\nc) No BCNF, decompose\n\nQuestion 3\na) managers: select from join of DEPT and EMP\nb) items not sold: set difference\nc) both: intersection\nd) > 1000: aggregation\ne) most sold: ordering\n\nQuestion 4\na) i) SELECT name FROM Customers WHERE cid IN (SELECT cid FROM Orders WHERE oid IN (SELECT oid FROM OrderDetails WHERE productId IN (SELECT productId FROM Products WHERE UnitPrice > 500)));\nii) SELECT productName FROM Products WHERE productId NOT IN (SELECT productId FROM OrderDetails WHERE oid IN (SELECT oid FROM Orders WHERE cid IN (SELECT cid FROM Customers WHERE country = 'Germany')));\niii) SELECT cid, name FROM Customers WHERE cid IN (SELECT cid FROM Orders WHERE oid IN (SELECT oid FROM OrderDetails WHERE discount > 0.05));\n\nb) CREATE VIEW incomplete_Orders AS SELECT name, country, COUNT(*) FROM Customers JOIN Orders JOIN OrderDetails JOIN Products WHERE unitsInStock < quantity GROUP BY name, country;\n\nc) CREATE FUNCTION calc_cost(@oid INT) RETURNS DECIMAL AS BEGIN RETURN (SELECT SUM(UnitPrice * quantity) FROM OrderDetails JOIN Products WHERE OrderDetails.oid = @oid); END;\n\nd) CREATE TRIGGER updateCost ON OrderDetails AFTER INSERT AS UPDATE Orders SET cost = dbo.calc_cost(inserted.oid);",
     "status": "graded",
     "evaluation": {
-      "total_score": 12,
-      "max_score": 20,
-      "justification": "Basic ER diagram covering main components.",
-      "feedback": "Missing some attribute connections. Age attribute not properly marked as derived.",
+      "total_score": 42.0,
+      "max_score": 100.0,
+      "justification": "Minimal answers. Q1 correct but no detail. Q2 incomplete key computation. Q3 no formal notation. Q4 has syntax issues.",
+      "feedback": "Provide more detailed explanations. Show key computation steps. Use proper SQL JOIN syntax.",
       "results": [
-        { "q_no": "ERD-001", "score": 12 }
+        {
+          "q_no": "01",
+          "score": 10.0,
+          "criteria_breakdown": [
+            { "point": "Identifies entities", "awarded_marks": 2, "reason": "Basic identification" },
+            { "point": "Handles superclass/subclass", "awarded_marks": 2, "reason": "Basic approach" },
+            { "point": "Maps attributes", "awarded_marks": 2, "reason": "Basic mapping" },
+            { "point": "Identifies PKs", "awarded_marks": 2, "reason": "PKs implied" },
+            { "point": "Identifies FKs", "awarded_marks": 2, "reason": "FKs implied" },
+            { "point": "Cardinality", "awarded_marks": 0, "reason": "Not addressed" }
+          ],
+          "justification": "Very brief. No discussion of mapping strategies or cardinality.",
+          "feedback": "Provide detailed explanations and discuss mapping approaches."
+        },
+        {
+          "q_no": "02",
+          "score": 6.0,
+          "criteria_breakdown": [
+            { "point": "Computes closures", "awarded_marks": 1, "reason": "No closure computation shown" },
+            { "point": "Identifies keys", "awarded_marks": 1, "reason": "Only A and BC listed, missed BE" },
+            { "point": "Armstrong's axioms", "awarded_marks": 0, "reason": "No steps shown" },
+            { "point": "3NF analysis", "awarded_marks": 2, "reason": "Conclusion correct" },
+            { "point": "BCNF decomposition", "awarded_marks": 2, "reason": "Decomposition correct" }
+          ],
+          "justification": "No closure computation shown. Missing BE key. BCNF decomposition correct.",
+          "feedback": "Always show step-by-step closure computation."
+        },
+        {
+          "q_no": "03",
+          "score": 12.0,
+          "criteria_breakdown": [
+            { "point": "Joins DEPT/EMP", "awarded_marks": 2, "reason": "Correct approach" },
+            { "point": "Items not sold", "awarded_marks": 2, "reason": "Correct approach" },
+            { "point": "Both computers/cameras", "awarded_marks": 2, "reason": "Intersection mentioned" },
+            { "point": "Items > 1000", "awarded_marks": 3, "reason": "Aggregation mentioned" },
+            { "point": "Most sold item", "awarded_marks": 3, "reason": "Ordering mentioned" }
+          ],
+          "justification": "Approaches described in English, not formal notation.",
+          "feedback": "Use formal relational algebra notation with symbols."
+        },
+        {
+          "q_no": "04",
+          "score": 14.0,
+          "criteria_breakdown": [
+            { "point": "SQL for > 500", "awarded_marks": 2, "reason": "Nested subqueries" },
+            { "point": "NOT IN German", "awarded_marks": 3, "reason": "Correct approach" },
+            { "point": "GROUP BY > 5%", "awarded_marks": 3, "reason": "Missing GROUP BY in subquery" },
+            { "point": "CREATE VIEW", "awarded_marks": 2, "reason": "Missing ON conditions" },
+            { "point": "CREATE FUNCTION", "awarded_marks": 2, "reason": "Basic function" },
+            { "point": "CREATE TRIGGER", "awarded_marks": 2, "reason": "Missing JOIN in UPDATE" }
+          ],
+          "justification": "SQL queries have multiple syntax issues.",
+          "feedback": "Fix JOIN syntax and GROUP BY clauses."
+        }
       ],
       "grading_source": "colab",
       "rag_context_used": true,
       "rag_chunks": 5,
-      "rag_course": "SE3040"
+      "rag_course": "IT2040"
     },
     "processed_at": { "$date": "2026-08-25T09:25:00.000Z" },
     "lecturer_note": null
@@ -202,30 +538,86 @@
     "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
     "student_id": "IT22262557",
     "paper_key": "script_07",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
     "semester": 1,
     "session_name": "Final Examination",
-    "max_marks_paper_total": 20.0,
+    "max_marks_paper_total": 100.0,
     "max_marks_per_question": [
-      { "question_no": "ERD-001", "max_marks": 20.0 }
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 15.0 },
+      { "question_no": "03", "max_marks": 25.0 },
+      { "question_no": "04", "max_marks": 40.0 }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262557\n\nER Diagram:\n\nStudent entity: Name, Gender, DOB, Age (derived)\nCollege entity: Name, Affiliation, Address\nComputer Science, Mechanical, Electronics entities\nEnrolls in relationship: Student - College\nSpecialized in relationship: College - departments\n\nAll notation correct: rectangles for entities, ellipses for attributes, diamonds for relationships, dashed ellipse for Age.",
+    "raw_ocr_transcript": "Student ID: IT22262557\n\nQuestion 1\nEER to relational conversion:\n\nThe EER diagram shows Person as a superclass entity with attributes SSN (primary key), Name, and Address. Instructor and Researcher are subclasses.\n\nInstructor subclass has additional attributes: Rank and Salary.\nResearcher subclass has additional attributes: GrantAmount and Publications.\n\nUsing the shared primary key approach (most common for IS-A relationships):\n\nPerson(SSN, Name, Address)\n- Primary Key: SSN\n\nInstructor(SSN, Rank, Salary)\n- Primary Key: SSN\n- Foreign Key: SSN references Person(SSN)\n\nResearcher(SSN, GrantAmount, Publications)\n- Primary Key: SSN  \n- Foreign Key: SSN references Person(SSN)\n\nThis approach:\n1. Avoids NULL values (each subclass only has its own attributes)\n2. Maintains referential integrity through foreign keys\n3. Allows efficient querying of subclass-specific data\n4. Supports both overlapping and disjoint constraints\n\nQuestion 2\na) Given FDs: A→BC, BC→E, E→DA\n\nStep 1: Find closure of A\nA⁺ = {A} (start)\nApply A→BC: {A, B, C}\nApply BC→E: {A, B, C, E}\nApply E→DA: {A, B, C, D, E}\nA⁺ = R, so A is a candidate key.\n\nStep 2: Find closure of BC\nBC⁺ = {B, C} (start)\nApply BC→E: {B, C, E}\nApply E→DA: {A, B, C, D, E}\nBC⁺ = R, so BC is a candidate key.\n\nStep 3: Find closure of BE\nBE⁺ = {B, E} (start)\nApply BC→E: {B, E} (E already present)\nApply E→DA: {A, B, D, E}\nApply A→BC: {A, B, C, D, E}\nBE⁺ = R, so BE is a candidate key.\n\nCandidate keys: {A}, {BC}, {BE}\n\nb) Is R in 3NF?\nFor 3NF: For every non-trivial FD X→Y, either X is a superkey OR Y is a prime attribute.\n\nCheck A→BC: A is a superkey ✓\nCheck BC→E: BC is a superkey ✓\nCheck E→DA: E is not a superkey. But D and A are prime attributes (part of keys) ✓\n\nAll FDs satisfy 3NF conditions. R IS in 3NF.\n\nc) Is R in BCNF?\nFor BCNF: For every non-trivial FD X→Y, X must be a superkey.\n\nCheck E→DA: E is not a superkey (E⁺ = {A, D, E} ≠ R)\n\nR is NOT in BCNF.\n\nBCNF Decomposition:\nR1(A, B, C) with FD A→BC, PK: A\nR2(B, C, E) with FD BC→E, PK: BC  \nR3(E, D, A) with FD E→DA, PK: E\n\nThis is a lossless-join decomposition.\n\nQuestion 3\na) Display name and salary of all managers:\nπ_eName, salary(DEPT ⨝_mgrEno=eNo EMP)\n\nb) Display names, prices and quantities of items not sold:\nπ_itemName, price, availableQty(ITEM) \\ π_itemName, price, availableQty(ITEM ⨝_itemNo itemNo SALES)\n\nc) Display names of employees who sold both computers and cameras:\n(π_eName(EMP ⨝ SALES ⨝_itemNo itemNo σ_itemName='computer'(ITEM))) ∩ (π_eName(EMP ⨝ SALES ⨝_itemNo itemNo σ_itemName='camera'(ITEM)))\n\nd) Display names of items with more than 1000 pieces sold:\nπ_itemName(ITEM ⨝_itemNo itemNo (SALES)) with grouping by itemNo and having sum(soldQty) > 1000\nFormal: π_itemName(ITEM ⨝ γ_itemNo, sum(soldQty)>1000(SALES))\n\ne) Display name of items sold the most:\nπ_itemName(ITEM ⨝ γ_itemNo, sum(soldQty)=MAX(sum(soldQty))(SALES))\nOr: ρ(temp, γ_itemNo, sum(soldQty)(SALES))\n   ρ(maxQty, π_max(sum(soldQty))(temp))\n   π_itemName(ITEM ⨝ temp ⨝ maxQty)\n\nQuestion 4\na) i) Display name and address of customers who ordered products costing over Rs.500:\nSELECT c.name, c.phone FROM Customers c\nJOIN Orders o ON c.cid = o.cid\nJOIN OrderDetails od ON o.oid = od.oid\nJOIN Products p ON od.productId = p.productId\nWHERE p.UnitPrice > 500;\n\nii) Find names and unit prices of products not ordered by German customers:\nSELECT p.productName, p.UnitPrice FROM Products p\nWHERE p.productId NOT IN (\n  SELECT od.productId FROM OrderDetails od\n  JOIN Orders o ON od.oid = o.oid\n  JOIN Customers c ON o.cid = c.cid\n  WHERE c.country = 'Germany'\n);\n\niii) Find customers who obtained > 5% discount on every product in every order:\nSELECT c.cid, c.name FROM Customers c\nWHERE c.cid NOT IN (\n  SELECT o.cid FROM Orders o\n  JOIN OrderDetails od ON o.oid = od.oid\n  WHERE od.discount <= 0.05\n);\n\nb) Create view incomplete_Orders:\nCREATE VIEW incomplete_Orders AS\nSELECT c.name, c.country, COUNT(DISTINCT o.oid) AS incomplete_count\nFROM Customers c\nJOIN Orders o ON c.cid = o.cid\nJOIN OrderDetails od ON o.oid = od.oid\nJOIN Products p ON od.productId = p.productId\nWHERE p.unitsInStock < od.quantity\nGROUP BY c.name, c.country;\n\nc) Create function calc_cost:\nCREATE FUNCTION calc_cost(@oid INT, @discount REAL)\nRETURNS REAL\nAS\nBEGIN\n  DECLARE @total REAL;\n  SELECT @total = SUM(p.UnitPrice * od.quantity * (1 - @discount))\n  FROM OrderDetails od\n  JOIN Products p ON od.productId = p.productId\n  WHERE od.oid = @oid;\n  RETURN @total;\nEND;\n\nd) Create trigger updateCost:\nCREATE TRIGGER updateCost\nON OrderDetails\nAFTER INSERT\nAS\nBEGIN\n  UPDATE o\n  SET o.cost = dbo.calc_cost(i.oid, i.discount)\n  FROM Orders o\n  JOIN inserted i ON o.oid = i.oid;\nEND;",
     "status": "graded",
     "evaluation": {
-      "total_score": 19,
-      "max_score": 20,
-      "justification": "Outstanding ER diagram with perfect notation and clear connections.",
-      "feedback": "Perfect execution. Well done!",
+      "total_score": 88.0,
+      "max_score": 100.0,
+      "justification": "Excellent comprehensive answers. Q1 discusses mapping strategies with justification. Q2 shows detailed closure computation. Q3 uses proper notation. Q4 SQL is correct and well-structured.",
+      "feedback": "Outstanding performance. Q1 could mention overlapping/disjoint constraints more explicitly. Q4 trigger could handle multiple inserted rows more robustly.",
       "results": [
-        { "q_no": "ERD-001", "score": 19 }
+        {
+          "q_no": "01",
+          "score": 19.0,
+          "criteria_breakdown": [
+            { "point": "Identifies all entities", "awarded_marks": 4, "reason": "All entities covered" },
+            { "point": "Handles superclass/subclass", "awarded_marks": 5, "reason": "Shared PK approach with justification" },
+            { "point": "Maps attributes correctly", "awarded_marks": 3, "reason": "All attributes mapped" },
+            { "point": "Identifies PKs", "awarded_marks": 3, "reason": "PKs clearly stated" },
+            { "point": "Identifies FKs", "awarded_marks": 3, "reason": "FKs with references shown" },
+            { "point": "Cardinality constraints", "awarded_marks": 1, "reason": "Briefly mentioned" }
+          ],
+          "justification": "Comprehensive answer with clear justification for approach chosen. Discusses benefits of shared PK approach.",
+          "feedback": "Excellent work. Could add explicit handling of overlapping vs disjoint constraints."
+        },
+        {
+          "q_no": "02",
+          "score": 14.0,
+          "criteria_breakdown": [
+            { "point": "Computes closures correctly", "awarded_marks": 3, "reason": "Detailed step-by-step closure computation" },
+            { "point": "Identifies all keys", "awarded_marks": 3, "reason": "A, BC, BE all identified" },
+            { "point": "Shows Armstrong's axioms", "awarded_marks": 3, "reason": "Transitivity and augmentation shown" },
+            { "point": "3NF analysis", "awarded_marks": 3, "reason": "Correct with justification" },
+            { "point": "BCNF decomposition", "awarded_marks": 2, "reason": "Lossless decomposition provided" }
+          ],
+          "justification": "Excellent key computation with detailed steps. 3NF and BCNF analysis correct.",
+          "feedback": "Perfect execution on this question."
+        },
+        {
+          "q_no": "03",
+          "score": 23.0,
+          "criteria_breakdown": [
+            { "point": "Joins DEPT/EMP", "awarded_marks": 2, "reason": "Correct join notation" },
+            { "point": "Items not sold", "awarded_marks": 4, "reason": "Correct set difference" },
+            { "point": "Both computers/cameras", "awarded_marks": 5, "reason": "Correct intersection with selection" },
+            { "point": "Items > 1000", "awarded_marks": 6, "reason": "Correct aggregation" },
+            { "point": "Most sold item", "awarded_marks": 6, "reason": "Correct with ordering" }
+          ],
+          "justification": "Excellent relational algebra with proper notation. All queries correct.",
+          "feedback": "Outstanding use of formal notation."
+        },
+        {
+          "q_no": "04",
+          "score": 32.0,
+          "criteria_breakdown": [
+            { "point": "SQL for > 500", "awarded_marks": 4, "reason": "Proper JOIN syntax" },
+            { "point": "NOT IN German", "awarded_marks": 5, "reason": "Correct approach" },
+            { "point": "GROUP BY > 5%", "awarded_marks": 6, "reason": "Correct using NOT IN" },
+            { "point": "CREATE VIEW", "awarded_marks": 7, "reason": "View correct with proper JOIN" },
+            { "point": "CREATE FUNCTION", "awarded_marks": 5, "reason": "Function correct with discount" },
+            { "point": "CREATE TRIGGER", "awarded_marks": 5, "reason": "Trigger correct with JOIN" }
+          ],
+          "justification": "Excellent SQL queries. Function and trigger are well-structured.",
+          "feedback": "Minor improvement: add error handling in function and trigger."
+        }
       ],
       "grading_source": "colab",
       "rag_context_used": true,
       "rag_chunks": 5,
-      "rag_course": "SE3040"
+      "rag_course": "IT2040"
     },
     "processed_at": { "$date": "2026-08-25T09:30:00.000Z" },
     "lecturer_note": null
@@ -235,30 +627,86 @@
     "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
     "student_id": "IT22262558",
     "paper_key": "script_08",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
     "semester": 1,
     "session_name": "Final Examination",
-    "max_marks_paper_total": 20.0,
+    "max_marks_paper_total": 100.0,
     "max_marks_per_question": [
-      { "question_no": "ERD-001", "max_marks": 20.0 }
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 15.0 },
+      { "question_no": "03", "max_marks": 25.0 },
+      { "question_no": "04", "max_marks": 40.0 }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262558\n\nER Diagram:\n\nStudent with Name, Gender, DOB, Age\nCollege with Name, Affiliation, Address\nComputer Science, Mechanical, Electronics\nEnrolls in (Student, College)\nSpecialized in (College, departments)\n\nAge shown as derived attribute.",
+    "raw_ocr_transcript": "Student ID: IT22262558\n\nQuestion 1\nPerson(SSN, Name, Address)\nInstructor(SSN, Rank, Salary)\nResearcher(SSN, GrantAmount, Publications)\nAll PKs are SSN. FKs in Instructor and Researcher reference Person.\n\nQuestion 2\na) A→BC, BC→E, E→DA\nA⁺ = {A,B,C,D,E} key\nBC⁺ = {A,B,C,D,E} key\nBE⁺ = {A,B,C,D,E} key\nKeys: A, BC, BE\n\nb) 3NF: Yes\nc) BCNF: No, E→DA violates. Decompose to R1(A,B,C), R2(B,C,E), R3(E,D,A)\n\nQuestion 3\na) π_eName,salary(DEPT ⨝ EMP)\nb) set difference of items and items in SALES\nc) intersection of employees selling computers and cameras\nd) grouping with sum > 1000\ne) ordering by sum desc, limit 1\n\nQuestion 4\na) i) SELECT name FROM Customers JOIN Orders JOIN OrderDetails JOIN Products WHERE UnitPrice > 500;\nii) SELECT productName FROM Products WHERE productId NOT IN (SELECT productId FROM OrderDetails JOIN Orders JOIN Customers WHERE country = 'Germany');\niii) SELECT cid, name FROM Customers WHERE cid NOT IN (SELECT cid FROM Orders JOIN OrderDetails WHERE discount <= 0.05);\n\nb) CREATE VIEW incomplete_Orders AS SELECT name, country, COUNT(*) FROM Customers JOIN Orders JOIN OrderDetails JOIN Products WHERE unitsInStock < quantity GROUP BY name, country;\n\nc) CREATE FUNCTION calc_cost(@oid INT) RETURNS DECIMAL AS BEGIN RETURN (SELECT SUM(UnitPrice * quantity) FROM OrderDetails JOIN Products WHERE OrderDetails.oid = @oid); END;\n\nd) CREATE TRIGGER updateCost ON OrderDetails AFTER INSERT AS UPDATE Orders SET cost = dbo.calc_cost(inserted.oid);",
     "status": "graded",
     "evaluation": {
-      "total_score": 13,
-      "max_score": 20,
-      "justification": "Minimal ER diagram with required components.",
-      "feedback": "Missing proper notation symbols. Connections between attributes and entities not clear.",
+      "total_score": 55.0,
+      "max_score": 100.0,
+      "justification": "Basic answers. Q1 correct but brief. Q2 key computation complete. Q3 no formal notation. Q4 has SQL syntax issues (missing ON conditions in JOINs).",
+      "feedback": "Fix SQL JOIN syntax by adding ON conditions. Use formal relational algebra notation. Show more detail in explanations.",
       "results": [
-        { "q_no": "ERD-001", "score": 13 }
+        {
+          "q_no": "01",
+          "score": 12.0,
+          "criteria_breakdown": [
+            { "point": "Identifies entities", "awarded_marks": 3, "reason": "Entities identified" },
+            { "point": "Handles superclass/subclass", "awarded_marks": 3, "reason": "Approach used" },
+            { "point": "Maps attributes", "awarded_marks": 2, "reason": "Basic mapping" },
+            { "point": "Identifies PKs", "awarded_marks": 2, "reason": "PKs implied" },
+            { "point": "Identifies FKs", "awarded_marks": 2, "reason": "FKs mentioned" },
+            { "point": "Cardinality", "awarded_marks": 0, "reason": "Not addressed" }
+          ],
+          "justification": "Correct but brief. No discussion of mapping strategies.",
+          "feedback": "Provide more detail and discuss different mapping approaches."
+        },
+        {
+          "q_no": "02",
+          "score": 11.0,
+          "criteria_breakdown": [
+            { "point": "Computes closures", "awarded_marks": 3, "reason": "All closures computed" },
+            { "point": "Identifies keys", "awarded_marks": 3, "reason": "All keys identified" },
+            { "point": "Armstrong's axioms", "awarded_marks": 1, "reason": "Steps not shown" },
+            { "point": "3NF analysis", "awarded_marks": 2, "reason": "Correct conclusion" },
+            { "point": "BCNF decomposition", "awarded_marks": 2, "reason": "Decomposition correct" }
+          ],
+          "justification": "Key computation correct. 3NF/BCNF analysis correct.",
+          "feedback": "Show Armstrong's axiom application steps."
+        },
+        {
+          "q_no": "03",
+          "score": 13.0,
+          "criteria_breakdown": [
+            { "point": "Joins DEPT/EMP", "awarded_marks": 2, "reason": "Correct" },
+            { "point": "Items not sold", "awarded_marks": 2, "reason": "Approach described" },
+            { "point": "Both computers/cameras", "awarded_marks": 3, "reason": "Intersection described" },
+            { "point": "Items > 1000", "awarded_marks": 3, "reason": "Aggregation described" },
+            { "point": "Most sold item", "awarded_marks": 3, "reason": "Ordering described" }
+          ],
+          "justification": "Approaches correct but no formal notation.",
+          "feedback": "Use proper relational algebra symbols."
+        },
+        {
+          "q_no": "04",
+          "score": 19.0,
+          "criteria_breakdown": [
+            { "point": "SQL for > 500", "awarded_marks": 3, "reason": "Missing ON conditions" },
+            { "point": "NOT IN German", "awarded_marks": 4, "reason": "Correct approach" },
+            { "point": "GROUP BY > 5%", "awarded_marks": 4, "reason": "Correct using NOT IN" },
+            { "point": "CREATE VIEW", "awarded_marks": 3, "reason": "Missing ON conditions" },
+            { "point": "CREATE FUNCTION", "awarded_marks": 3, "reason": "Basic function" },
+            { "point": "CREATE TRIGGER", "awarded_marks": 2, "reason": "Missing JOIN in UPDATE" }
+          ],
+          "justification": "SQL queries missing ON conditions in JOINs. Multiple syntax issues.",
+          "feedback": "Always specify ON conditions for JOINs. Fix trigger UPDATE syntax."
+        }
       ],
       "grading_source": "colab",
       "rag_context_used": true,
       "rag_chunks": 5,
-      "rag_course": "SE3040"
+      "rag_course": "IT2040"
     },
     "processed_at": { "$date": "2026-08-25T09:35:00.000Z" },
     "lecturer_note": null
@@ -268,30 +716,86 @@
     "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
     "student_id": "IT22262559",
     "paper_key": "script_09",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
     "semester": 1,
     "session_name": "Final Examination",
-    "max_marks_paper_total": 20.0,
+    "max_marks_paper_total": 100.0,
     "max_marks_per_question": [
-      { "question_no": "ERD-001", "max_marks": 20.0 }
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 15.0 },
+      { "question_no": "03", "max_marks": 25.0 },
+      { "question_no": "04", "max_marks": 40.0 }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262559\n\nER Diagram:\n\nEntities:\n- Student (rectangle): Name, Gender, DOB, Age (derived - dashed ellipse)\n- College (rectangle): Name, Affiliation, Address\n- Computer Science (rectangle)\n- Mechanical (rectangle)\n- Electronics (rectangle)\n\nRelationships:\n- Enrolls in (diamond) connecting Student and College\n- Specialized in (diamond) connecting College to three departments\n\nAll attributes properly connected to entities. Clear notation throughout.",
+    "raw_ocr_transcript": "Student ID: IT22262559\n\nQuestion 1\nEER to relational mapping:\n\nPerson(SSN, Name, Address) PK: SSN\nInstructor(SSN, Rank, Salary) PK: SSN, FK: SSN references Person(SSN)\nResearcher(SSN, GrantAmount, Publications) PK: SSN, FK: SSN references Person(SSN)\n\nUsing separate relations for each entity. This avoids NULL values and maintains referential integrity.\n\nQuestion 2\na) FDs: A→BC, BC→E, E→DA\n\nClosure of A:\nA⁺ = {A}\nA→BC: {A,B,C}\nBC→E: {A,B,C,E}\nE→DA: {A,B,C,D,E} = R\nA is a candidate key.\n\nClosure of BC:\nBC⁺ = {B,C}\nBC→E: {B,C,E}\nE→DA: {A,B,C,D,E} = R\nBC is a candidate key.\n\nClosure of BE:\nBE⁺ = {B,E}\nBC→E: {B,E} (E already present)\nE→DA: {A,B,D,E}\nA→BC: {A,B,C,D,E} = R\nBE is a candidate key.\n\nCandidate keys: {A}, {BC}, {BE}\n\nb) 3NF check:\nFor 3NF, every FD X→Y must have X as superkey or Y as prime attribute.\nA→BC: A is superkey ✓\nBC→E: BC is superkey ✓\nE→DA: E is not superkey, but A and D are prime ✓\nR is in 3NF.\n\nc) BCNF check:\nFor BCNF, every determinant must be a superkey.\nE→DA: E is not superkey (E⁺ = {A,D,E} ≠ R)\nR is not in BCNF.\n\nDecomposition:\nR1(A,B,C) FD: A→BC\nR2(B,C,E) FD: BC→E\nR3(E,D,A) FD: E→DA\n\nQuestion 3\na) π_eName,salary(DEPT ⨝_mgrEno=eNo EMP)\n\nb) π_itemName,price,availableQty(ITEM) \\ π_itemName,price,availableQty(ITEM ⨝_itemNo itemNo SALES)\n\nc) (π_eName(EMP ⨝_eNo eNo SALES ⨝_itemNo itemNo σ_itemName='computer'(ITEM))) ∩ (π_eName(EMP ⨝_eNo eNo SALES ⨝_itemNo itemNo σ_itemName='camera'(ITEM)))\n\nd) ρ(temp, γ_itemNo, sum(soldQty)(SALES))\nπ_itemName(ITEM ⨝_itemNo itemNo σ_sum(soldQty)>1000(temp))\n\ne) ρ(temp, γ_itemNo, sum(soldQty)(SALES))\nρ(maxval, π_max(sum(soldQty))(temp))\nπ_itemName(ITEM ⨝_itemNo itemNo temp ⨝_sum(soldQty) max(sum(soldQty)) maxval)\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c JOIN Orders o ON c.cid = o.cid JOIN OrderDetails od ON o.oid = od.oid JOIN Products p ON od.productId = p.productId WHERE p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od JOIN Orders o ON od.oid = o.oid JOIN Customers c ON o.cid = c.cid WHERE c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o JOIN OrderDetails od ON o.oid = od.oid WHERE od.discount <= 0.05);\n\nb) CREATE VIEW incomplete_Orders AS SELECT c.name, c.country, COUNT(DISTINCT o.oid) AS incomplete_count FROM Customers c JOIN Orders o ON c.cid = o.cid JOIN OrderDetails od ON o.oid = od.oid JOIN Products p ON od.productId = p.productId WHERE p.unitsInStock < od.quantity GROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_cost(@oid INT, @discount REAL) RETURNS REAL AS BEGIN DECLARE @total REAL; SELECT @total = SUM(p.UnitPrice * od.quantity * (1 - @discount)) FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = @oid; RETURN @total; END;\n\nd) CREATE TRIGGER updateCost ON OrderDetails AFTER INSERT AS BEGIN UPDATE o SET o.cost = dbo.calc_cost(i.oid, i.discount) FROM Orders o JOIN inserted i ON o.oid = i.oid; END;",
     "status": "graded",
     "evaluation": {
-      "total_score": 16,
-      "max_score": 20,
-      "justification": "Good ER diagram with all required components properly represented.",
-      "feedback": "Minor improvements possible in visual organization.",
+      "total_score": 85.0,
+      "max_score": 100.0,
+      "justification": "Very good answers. Q1 correct with clear mapping. Q2 shows detailed closure computation. Q3 uses proper notation. Q4 SQL is correct with proper JOIN syntax.",
+      "feedback": "Strong performance. Q1 could discuss overlapping/disjoint constraints. Q3 relational algebra notation is good but could be more consistent.",
       "results": [
-        { "q_no": "ERD-001", "score": 16 }
+        {
+          "q_no": "01",
+          "score": 17.0,
+          "criteria_breakdown": [
+            { "point": "Identifies entities", "awarded_marks": 4, "reason": "All entities identified" },
+            { "point": "Handles superclass/subclass", "awarded_marks": 4, "reason": "Separate relations with justification" },
+            { "point": "Maps attributes", "awarded_marks": 3, "reason": "All attributes mapped" },
+            { "point": "Identifies PKs", "awarded_marks": 3, "reason": "PKs clearly stated" },
+            { "point": "Identifies FKs", "awarded_marks": 3, "reason": "FKs with references" },
+            { "point": "Cardinality", "awarded_marks": 0, "reason": "Not addressed" }
+          ],
+          "justification": "Correct mapping with clear justification. Missing cardinality discussion.",
+          "feedback": "Add discussion of cardinality constraints in EER mapping."
+        },
+        {
+          "q_no": "02",
+          "score": 13.0,
+          "criteria_breakdown": [
+            { "point": "Computes closures", "awarded_marks": 3, "reason": "Detailed step-by-step" },
+            { "point": "Identifies keys", "awarded_marks": 3, "reason": "All keys found" },
+            { "point": "Armstrong's axioms", "awarded_marks": 2, "reason": "Steps shown" },
+            { "point": "3NF analysis", "awarded_marks": 3, "reason": "Correct with justification" },
+            { "point": "BCNF decomposition", "awarded_marks": 2, "reason": "Correct decomposition" }
+          ],
+          "justification": "Excellent key computation. 3NF/BCNF analysis correct.",
+          "feedback": "Great work on this question."
+        },
+        {
+          "q_no": "03",
+          "score": 22.0,
+          "criteria_breakdown": [
+            { "point": "Joins DEPT/EMP", "awarded_marks": 2, "reason": "Correct notation" },
+            { "point": "Items not sold", "awarded_marks": 4, "reason": "Correct set difference" },
+            { "point": "Both computers/cameras", "awarded_marks": 4, "reason": "Correct intersection" },
+            { "point": "Items > 1000", "awarded_marks": 6, "reason": "Correct with renaming" },
+            { "point": "Most sold item", "awarded_marks": 6, "reason": "Correct with aggregation" }
+          ],
+          "justification": "Excellent relational algebra with proper notation.",
+          "feedback": "Outstanding use of formal notation."
+        },
+        {
+          "q_no": "04",
+          "score": 33.0,
+          "criteria_breakdown": [
+            { "point": "SQL for > 500", "awarded_marks": 4, "reason": "Proper JOIN syntax" },
+            { "point": "NOT IN German", "awarded_marks": 5, "reason": "Correct approach" },
+            { "point": "GROUP BY > 5%", "awarded_marks": 6, "reason": "Correct using NOT IN" },
+            { "point": "CREATE VIEW", "awarded_marks": 7, "reason": "View correct" },
+            { "point": "CREATE FUNCTION", "awarded_marks": 6, "reason": "Function correct with discount" },
+            { "point": "CREATE TRIGGER", "awarded_marks": 5, "reason": "Trigger correct" }
+          ],
+          "justification": "Excellent SQL queries. Function and trigger are well-structured.",
+          "feedback": "Very strong SQL performance."
+        }
       ],
       "grading_source": "colab",
       "rag_context_used": true,
       "rag_chunks": 5,
-      "rag_course": "SE3040"
+      "rag_course": "IT2040"
     },
     "processed_at": { "$date": "2026-08-25T09:40:00.000Z" },
     "lecturer_note": null
@@ -301,30 +805,86 @@
     "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
     "student_id": "IT22262560",
     "paper_key": "script_10",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
     "semester": 1,
     "session_name": "Final Examination",
-    "max_marks_paper_total": 20.0,
+    "max_marks_paper_total": 100.0,
     "max_marks_per_question": [
-      { "question_no": "ERD-001", "max_marks": 20.0 }
+      { "question_no": "01", "max_marks": 20.0 },
+      { "question_no": "02", "max_marks": 15.0 },
+      { "question_no": "03", "max_marks": 25.0 },
+      { "question_no": "04", "max_marks": 40.0 }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262560\n\nER Diagram:\n\nStudent entity: Name, Gender, DOB, Age\nCollege entity: Name, Affiliation, Address\nEnrolls in relationship between Student and College\nSpecialized in relationship from College to Computer Science, Mechanical, Electronics\nAge attribute with dashed ellipse for derived notation.\nAll connections properly drawn with lines.",
+    "raw_ocr_transcript": "Student ID: IT22262560\n\nQuestion 1\nEER to relational:\nPerson(SSN, Name, Address) PK: SSN\nInstructor(SSN, Rank, Salary) PK: SSN, FK: SSN → Person(SSN)\nResearcher(SSN, GrantAmount, Publications) PK: SSN, FK: SSN → Person(SSN)\n\nQuestion 2\na) A→BC, BC→E, E→DA\nA⁺ = {A,B,C,D,E} key\nBC⁺ = {A,B,C,D,E} key\nBE⁺ = {A,B,C,D,E} key\nKeys: A, BC, BE\n\nb) 3NF: Yes\nc) BCNF: No, E→DA violates. Decompose.\n\nQuestion 3\na) π_eName,salary(DEPT ⨝ EMP)\nb) set difference\nc) intersection\nd) aggregation with sum > 1000\ne) ordering by sum desc, limit 1\n\nQuestion 4\na) i) SELECT name FROM Customers WHERE cid IN (SELECT cid FROM Orders WHERE oid IN (SELECT oid FROM OrderDetails WHERE productId IN (SELECT productId FROM Products WHERE UnitPrice > 500)));\nii) SELECT productName FROM Products WHERE productId NOT IN (SELECT productId FROM OrderDetails WHERE oid IN (SELECT oid FROM Orders WHERE cid IN (SELECT cid FROM Customers WHERE country = 'Germany')));\niii) SELECT cid, name FROM Customers WHERE cid IN (SELECT cid FROM Orders WHERE oid IN (SELECT oid FROM OrderDetails WHERE discount > 0.05));\n\nb) CREATE VIEW incomplete_Orders AS SELECT name, country, COUNT(*) FROM Customers JOIN Orders JOIN OrderDetails JOIN Products WHERE unitsInStock < quantity GROUP BY name, country;\n\nc) CREATE FUNCTION calc_cost(@oid INT) RETURNS DECIMAL AS BEGIN RETURN (SELECT SUM(UnitPrice * quantity) FROM OrderDetails JOIN Products WHERE OrderDetails.oid = @oid); END;\n\nd) CREATE TRIGGER updateCost ON OrderDetails AFTER INSERT AS UPDATE Orders SET cost = dbo.calc_cost(inserted.oid);",
     "status": "graded",
     "evaluation": {
-      "total_score": 15,
-      "max_score": 20,
-      "justification": "Complete ER diagram covering all required elements.",
-      "feedback": "Good work overall. Some connections could be clearer.",
+      "total_score": 48.0,
+      "max_score": 100.0,
+      "justification": "Basic answers. Q1 correct but minimal detail. Q2 keys correct but no computation shown. Q3 no formal notation. Q4 has SQL syntax issues.",
+      "feedback": "Provide more detailed explanations. Fix SQL JOIN syntax. Use formal relational algebra notation.",
       "results": [
-        { "q_no": "ERD-001", "score": 15 }
+        {
+          "q_no": "01",
+          "score": 11.0,
+          "criteria_breakdown": [
+            { "point": "Identifies entities", "awarded_marks": 2, "reason": "Basic identification" },
+            { "point": "Handles superclass/subclass", "awarded_marks": 3, "reason": "Approach used" },
+            { "point": "Maps attributes", "awarded_marks": 2, "reason": "Basic mapping" },
+            { "point": "Identifies PKs", "awarded_marks": 2, "reason": "PKs implied" },
+            { "point": "Identifies FKs", "awarded_marks": 2, "reason": "FKs mentioned" },
+            { "point": "Cardinality", "awarded_marks": 0, "reason": "Not addressed" }
+          ],
+          "justification": "Correct but very brief. No discussion of mapping strategies.",
+          "feedback": "Provide detailed explanations and discuss different approaches."
+        },
+        {
+          "q_no": "02",
+          "score": 10.0,
+          "criteria_breakdown": [
+            { "point": "Computes closures", "awarded_marks": 2, "reason": "Closures listed, not computed" },
+            { "point": "Identifies keys", "awarded_marks": 3, "reason": "All keys identified" },
+            { "point": "Armstrong's axioms", "awarded_marks": 1, "reason": "No steps shown" },
+            { "point": "3NF analysis", "awarded_marks": 2, "reason": "Correct conclusion" },
+            { "point": "BCNF decomposition", "awarded_marks": 2, "reason": "Decomposition correct" }
+          ],
+          "justification": "Keys correct but no computation steps shown. BCNF decomposition correct.",
+          "feedback": "Show step-by-step closure computation."
+        },
+        {
+          "q_no": "03",
+          "score": 12.0,
+          "criteria_breakdown": [
+            { "point": "Joins DEPT/EMP", "awarded_marks": 2, "reason": "Correct" },
+            { "point": "Items not sold", "awarded_marks": 2, "reason": "Approach described" },
+            { "point": "Both computers/cameras", "awarded_marks": 2, "reason": "Intersection described" },
+            { "point": "Items > 1000", "awarded_marks": 3, "reason": "Aggregation described" },
+            { "point": "Most sold item", "awarded_marks": 3, "reason": "Ordering described" }
+          ],
+          "justification": "Approaches correct but no formal notation.",
+          "feedback": "Use proper relational algebra symbols."
+        },
+        {
+          "q_no": "04",
+          "score": 15.0,
+          "criteria_breakdown": [
+            { "point": "SQL for > 500", "awarded_marks": 2, "reason": "Nested subqueries, not JOIN" },
+            { "point": "NOT IN German", "awarded_marks": 3, "reason": "Correct approach" },
+            { "point": "GROUP BY > 5%", "awarded_marks": 3, "reason": "Missing GROUP BY in subquery" },
+            { "point": "CREATE VIEW", "awarded_marks": 2, "reason": "Missing ON conditions" },
+            { "point": "CREATE FUNCTION", "awarded_marks": 3, "reason": "Basic function" },
+            { "point": "CREATE TRIGGER", "awarded_marks": 2, "reason": "Missing JOIN in UPDATE" }
+          ],
+          "justification": "SQL queries have syntax issues. Missing ON conditions in JOINs.",
+          "feedback": "Fix JOIN syntax and add ON conditions."
+        }
       ],
       "grading_source": "colab",
       "rag_context_used": true,
       "rag_chunks": 5,
-      "rag_course": "SE3040"
+      "rag_course": "IT2040"
     },
     "processed_at": { "$date": "2026-08-25T09:45:00.000Z" },
     "lecturer_note": null
