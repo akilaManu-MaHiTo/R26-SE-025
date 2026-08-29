@@ -31,7 +31,7 @@ def test_exam_analytics_serializes_exact_top_level_contract():
         "session_name", "exam", "statistics", "topic_performance",
         "bloom_performance", "question_performance", "topic_bloom_matrix", "attention_areas",
         "insights", "canonical_topic_performance", "canonical_attention_areas",
-        "canonical_insights", "unmapped_topics", "generated_at", "analytics_version",
+        "canonical_insights", "unmapped_topics", "diagram_analysis", "generated_at", "analytics_version",
     }
 
 

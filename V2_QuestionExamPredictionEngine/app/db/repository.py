@@ -455,7 +455,15 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
             {"_id": 0, "evaluation.total_score": 1, "evaluation.max_score": 1, "max_marks_paper_total": 1}
         ).to_list(length=500)
 
-        student_count = len(submissions)
+        # Also count diagram evaluations for this exam
+        diagram_evals = await db["diagram_evaluation"].find(
+            {"subject_code": course_code, "session_name": session_name,
+             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
+            {"_id": 0, "evaluation_result.total_score": 1, "evaluation_result.max_score": 1}
+        ).to_list(length=500)
+
+        # Merge: use submissions if available, otherwise diagram_evals
+        student_count = len(submissions) if submissions else len(diagram_evals)
         avg_score = 0.0
         avg_percentage = 0.0
         highest_score = 0.0
@@ -463,7 +471,27 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
         pass_count = 0
         total_marks = 0.0
 
-        if student_count > 0:
+        if submissions:
+            # Text submissions — use existing logic
+            pass
+        elif diagram_evals:
+            # Diagram-only exam: compute stats from diagram evaluations
+            percentages = []
+            scores = []
+            for de in diagram_evals:
+                ev_result = de.get("evaluation_result") or {}
+                obtained = float(ev_result.get("total_score", 0))
+                maximum = float(ev_result.get("max_score", 20))
+                pct = (obtained / maximum * 100.0) if maximum > 0 else 0.0
+                percentages.append(pct)
+                scores.append(obtained)
+            if percentages:
+                avg_percentage = round(sum(percentages) / len(percentages), 2)
+                avg_score = round(sum(scores) / len(scores), 2)
+                highest_score = round(max(scores), 2)
+                lowest_score = round(min(scores), 2)
+                pass_count = sum(1 for p in percentages if p >= 50.0)
+        elif student_count > 0:
             percentages = []
             scores = []
             for sub in submissions:
@@ -669,3 +697,42 @@ async def find_user_by_student_id(db, student_id: str) -> dict | None:
 
 async def upsert_user(db, doc: dict) -> None:
     await db["users"].replace_one({"email": doc["email"]}, deepcopy(doc), upsert=True)
+
+
+# ─── Diagram Evaluation & Marking ────────────────────────────────────────
+async def find_diagram_evaluations_for_exam(
+    db: AsyncIOMotorDatabase, course_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
+) -> list[dict]:
+    """Return all diagram_evaluation documents matching an exam."""
+    query: dict = {"subject_code": course_code, "session_name": session_name}
+    if year is not None:
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+    cursor = db["diagram_evaluation"].find(query)
+    docs = await cursor.to_list(length=None)
+    for doc in docs:
+        doc.pop("_id", None)
+    return docs
+
+
+async def find_diagram_markings_for_exam(
+    db: AsyncIOMotorDatabase, course_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
+) -> list[dict]:
+    """Return all diagram_marking documents matching an exam."""
+    query: dict = {"subject_code": course_code, "session_name": session_name}
+    if year is not None:
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+    cursor = db["diagram_marking"].find(query)
+    docs = await cursor.to_list(length=None)
+    for doc in docs:
+        doc.pop("_id", None)
+    return docs

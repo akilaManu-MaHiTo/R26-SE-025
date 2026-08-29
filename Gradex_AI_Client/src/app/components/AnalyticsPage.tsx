@@ -34,6 +34,7 @@ import { BloomChart } from "./analytics/BloomChart";
 import { QuestionPerformanceTable } from "./analytics/QuestionPerformanceTable";
 import { InsightsPanel } from "./analytics/InsightsPanel";
 import { TeachingActions } from "./analytics/TeachingActions";
+import { DiagramAnalysisPanel } from "./analytics/DiagramAnalysisPanel";
 import { TopicDetailModal } from "./analytics/TopicDetailModal";
 import { QuestionDetailModal } from "./analytics/QuestionDetailModal";
 
@@ -544,6 +545,25 @@ export default function AnalyticsPage() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}>
             <InsightsPanel insights={analytics.canonical_insights} />
           </motion.div>
+
+          {analytics.diagram_analysis && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}>
+              <div className="rounded-xl border bg-card/50 backdrop-blur p-1">
+                <div className="px-4 pt-4 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="size-8 rounded-lg bg-violet-500/10 text-violet-600 flex items-center justify-center">
+                      <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold">Diagram Analysis</h3>
+                      <p className="text-xs text-muted-foreground">Rubric-based evaluation of diagram submissions</p>
+                    </div>
+                  </div>
+                </div>
+                <DiagramAnalysisPanel diagramAnalysis={analytics.diagram_analysis} />
+              </div>
+            </motion.div>
+          )}
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.30 }}>
             <TeachingActions actions={teachingActions} loading={loadingActions} />

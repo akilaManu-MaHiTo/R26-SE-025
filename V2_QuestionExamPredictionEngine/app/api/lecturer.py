@@ -14,6 +14,7 @@ from app.db.repository import (
     find_graded_submission,
     find_graded_submissions_for_exam,
     find_student_analytics,
+    find_diagram_evaluations_for_exam,
     list_all_exams,
 )
 from app.schemas.exam_analytics import ExamAnalyticsDocument
@@ -181,6 +182,31 @@ async def lecturer_student_list(
     submissions = await find_graded_submissions_for_exam(
         db, course_code, session_name, year, month, semester
     )
+    # Also include diagram-evaluated students
+    diagram_evals = await find_diagram_evaluations_for_exam(
+        db, course_code, session_name, year, month, semester
+    )
+    # Merge: diagram students not already in submissions
+    submission_ids = {s["student_id"] for s in submissions}
+    for de in diagram_evals:
+        if de["student_id"] not in submission_ids:
+            # Synthesize a pseudo-submission from diagram evaluation
+            ev_result = de.get("evaluation_result") or {}
+            submissions.append({
+                "student_id": de["student_id"],
+                "subject_code": de.get("subject_code", course_code),
+                "session_name": session_name,
+                "year": year,
+                "month": month,
+                "semester": semester,
+                "status": "graded",
+                "evaluation": {
+                    "total_score": ev_result.get("total_score", 0),
+                    "max_score": ev_result.get("max_score", 20),
+                },
+                "max_marks_paper_total": ev_result.get("max_score", 20),
+            })
+            submission_ids.add(de["student_id"])
     if not submissions:
         raise HTTPException(status_code=404, detail="no graded submissions for exam")
     rows = []

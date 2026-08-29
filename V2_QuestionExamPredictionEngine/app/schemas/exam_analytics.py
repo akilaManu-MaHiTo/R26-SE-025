@@ -73,6 +73,65 @@ class AttentionArea(BaseModel):
     priority: RecommendationPriority
 
 
+class DiagramCriterionPerformance(BaseModel):
+    criterion_id: int
+    criterion: str
+    max_marks: float = Field(ge=0)
+    average_awarded_marks: float = Field(ge=0)
+    average_percentage: float = Field(ge=0, le=100)
+    pass_count: int = Field(ge=0)
+    partial_count: int = Field(ge=0)
+    fail_count: int = Field(ge=0)
+    student_count: int = Field(ge=0)
+    fail_rate: float = Field(ge=0, le=1)
+
+
+class DiagramStudentSummary(BaseModel):
+    student_id: str
+    score: float
+    max_score: float
+    percentage: float
+    status: str
+    criteria: list[dict] = Field(default_factory=list)
+    feedback: str = Field(default="")
+
+
+class DiagramDetectionSummary(BaseModel):
+    avg_entity_count: float = 0.0
+    avg_relationship_count: float = 0.0
+    avg_label_count: float = 0.0
+    total_detections: int = 0
+    avg_marking_score: float = 0.0
+
+
+class DiagramWeakestCriterion(BaseModel):
+    criterion_id: int
+    criterion: str
+    fail_rate: float
+    fail_count: int
+
+
+class DiagramAnalysisStatistics(BaseModel):
+    total_students: int = Field(ge=0)
+    average_score: float = Field(ge=0)
+    max_score: float = Field(ge=0)
+    average_percentage: float = Field(ge=0, le=100)
+    pass_rate: float = Field(ge=0, le=100)
+    highest_score: float = Field(ge=0)
+    lowest_score: float = Field(ge=0)
+    median_percentage: float = 0.0
+    std_percentage: float = 0.0
+
+
+class DiagramAnalysis(BaseModel):
+    statistics: DiagramAnalysisStatistics
+    criterion_performance: list[DiagramCriterionPerformance] = Field(default_factory=list)
+    student_summaries: list[DiagramStudentSummary] = Field(default_factory=list)
+    detection_summary: DiagramDetectionSummary | None = None
+    weakest_criteria: list[DiagramWeakestCriterion] = Field(default_factory=list)
+    insights: list[str] = Field(default_factory=list)
+
+
 class CanonicalTopicSummary(BaseModel):
     topic: str = Field(min_length=1)
     average_percentage: float = Field(ge=0, le=100)
@@ -120,6 +179,7 @@ class ExamAnalyticsDocument(BaseModel):
     canonical_attention_areas: list[CanonicalAttentionArea] = Field(default_factory=list)
     canonical_insights: list[str] = Field(default_factory=list)
     unmapped_topics: list[str] = Field(default_factory=list)
+    diagram_analysis: DiagramAnalysis | None = None
     generated_at: datetime
     analytics_version: str = Field(min_length=1)
 
