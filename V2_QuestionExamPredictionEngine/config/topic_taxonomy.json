@@ -21,7 +21,7 @@
   },
   "logical_database_design": {
     "canonical_topic": "Logical Database Design",
-    "aliases": ["Database Design and Relational Algebra"],
+    "aliases": ["Database Design and Relational Algebra", "Relational Algebra"],
     "subtopics": [
       "Logical Database Design Process and Relational Model Overview",
       "Relational Model Components: Relations, Schemas, and Instances",
@@ -43,7 +43,7 @@
   },
   "schema_refinement": {
     "canonical_topic": "Schema Refinement",
-    "aliases": [],
+    "aliases": ["Database Normalization", "Database Normalisation", "Normalization", "Normalisation"],
     "subtopics": [
       "Pitfalls of Incorrect Attribute Grouping (Redundancy, Anomalies)",
       "Properties of Good Decomposition: Lossless Join and Dependency Preservation",
