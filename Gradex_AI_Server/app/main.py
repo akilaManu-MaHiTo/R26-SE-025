@@ -271,15 +271,34 @@ async def diagram_evaluate(
             result = run_er_pipeline(file_path, progress_callback=pipeline_progress)
             logger.info("Diagram extraction completed guideline_id=%s detections=%s ocr_rows=%s", resolved_guideline_id, len(result.get("detections", [])), len(result.get("ocr", [])))
             result["guideline_object_id"] = resolved_guideline_id
+            
+            # Send extraction result with annotated image and detections
+            extraction_result = {
+                "status": result.get("status"),
+                "annotated_image": result.get("annotated_image"),
+                "detections": result.get("detections"),
+                "structure": result.get("structure"),
+                "ocr_error": result.get("ocr_error"),
+                "guideline_object_id": resolved_guideline_id,
+            }
+            event_queue.put({"type": "result", "payload": extraction_result})
+            
             try:
                 result["agent_grading"] = grade_diagram_with_ollama(
                     result, guideline, progress_callback=pipeline_progress
                 )
                 result["agent_marks"] = result["agent_grading"]["agent_marks"]
+                
+                # Send grading result with agent marks and feedback
+                grading_result = {
+                    "agent_marks": result.get("agent_marks"),
+                    "agent_grading": result.get("agent_grading"),
+                }
+                event_queue.put({"type": "grading_result", "payload": grading_result})
             except Exception as exc:
                 logger.exception("Ollama grading failed guideline_id=%s", resolved_guideline_id)
                 result["agent_grading_error"] = str(exc)
-            event_queue.put({"type": "result", "payload": result})
+                event_queue.put({"type": "grading_error", "payload": str(exc)})
         except Exception as exc:
             event_queue.put({"type": "error", "payload": str(exc)})
         finally:
@@ -295,8 +314,12 @@ async def diagram_evaluate(
             if isinstance(item, dict) and item.get("type") == "error":
                 yield _sse_event("error", {"detail": item["payload"]})
                 break
-            if isinstance(item, dict) and item.get("type") == "result":
-                yield _sse_event("result", item["payload"])
+            if isinstance(item, dict) and item.get("type") == "grading_error":
+                yield _sse_event("grading_error", {"detail": item["payload"]})
+                continue
+            if isinstance(item, dict) and item.get("type") in ("result", "grading_result"):
+                event_type = item.get("type")
+                yield _sse_event(event_type, item["payload"])
                 continue
             yield _sse_event("progress", item if isinstance(item, dict) else {"message": str(item)})
 
