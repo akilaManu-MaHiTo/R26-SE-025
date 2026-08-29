@@ -348,6 +348,42 @@ export async function fetchExamStudents(
   return res.json();
 }
 
+export interface DiagramEvaluation {
+  student_id: string;
+  subject_code: string;
+  session_name: string;
+  year: number;
+  month: number;
+  semester: number;
+  evaluation_result?: {
+    total_score: number;
+    max_score: number;
+    criteria_results: Array<{ criterion_id: number; criterion: string; awarded_marks: number; max_marks: number; status: string; remarks: string }>;
+    overall_feedback?: string;
+    grading_source?: string;
+  };
+  created_at?: string;
+}
+
+export interface DiagramMarking {
+  student_id: string;
+  subject_code: string;
+  session_name: string;
+  diagram_marks?: number;
+  diagram_details?: {
+    label_count?: number;
+    entity_count?: number;
+    relationship_count?: number;
+    detections?: Array<{ id: string; label: string; bbox: number[]; confidence: number; text: string }>;
+    entities?: Array<{ entity_name: string; attributes: string[] }>;
+    relationships?: Array<{ relation_name: string; entities: string[]; attributes: string[] }>;
+  };
+  diagram_entity_relations?: Array<{ entity_name: string; attributes: string[] }>;
+  diagram_relations?: Array<{ relation_name: string; entities: string[]; attributes: string[] }>;
+  evaluation_result?: any;
+  created_at?: string;
+}
+
 export interface LecturerStudentDetail {
   student_id: string;
   subject_code: string;
@@ -383,6 +419,10 @@ export interface LecturerStudentDetail {
   model_metadata: { bloom_model: string; bloom_model_type: string; grading_source: string; rag_context_used: boolean };
   generated_at: string;
   analysis_version: string;
+  // diagram data (when lecturer clicks student with diagram)
+  diagram?: { evaluation?: DiagramEvaluation; marking?: DiagramMarking };
+  diagram_evaluation?: DiagramEvaluation | null;
+  diagram_marking?: DiagramMarking | null;
 }
 
 export async function fetchLecturerStudentDetail(

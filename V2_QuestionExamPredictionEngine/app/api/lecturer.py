@@ -276,9 +276,100 @@ async def lecturer_student_detail(
             doc_model = await ensure_student_analytics(db, student_id, course_code, session_name, year, month, semester)
             doc = doc_model.model_dump(mode="json") if hasattr(doc_model, "model_dump") else dict(doc_model)
         except StudentNotFound as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
+            # If diagram exists for this student, return diagram-only view instead of 404
+            try:
+                from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
+                _d = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
+                _m = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
+                if _d is not None or _m is not None:
+                    # synthesize minimal student doc with diagram
+                    ev = (_d or {}).get("evaluation_result") or {}
+                    total = float(ev.get("total_score", 0) if ev else 0)
+                    max_sc = float(ev.get("max_score", 20) if ev else 20)
+                    pct = (total / max_sc * 100) if max_sc else 0
+                    doc = {
+                        "student_id": student_id,
+                        "subject_code": course_code,
+                        "subject_name": course_code,
+                        "year": year or 0,
+                        "month": month or 0,
+                        "semester": semester or 0,
+                        "session_name": session_name,
+                        "overall_performance": {"score": total, "maximum": max_sc, "percentage": round(pct,2), "status": performance_status(pct)},
+                        "question_performance": [],
+                        "topic_performance": [],
+                        "bloom_performance": [],
+                        "learning_analysis": {"overall_performance": performance_status(pct), "strong_topics": [], "developing_topics": [], "weak_topics": [], "critical_topics": [], "learning_gaps": []},
+                        "model_metadata": {"bloom_model": "diagram", "bloom_model_type": "diagram", "grading_source": "diagram", "rag_context_used": False},
+                        "generated_at": ev.get("created_at") or "",
+                        "analysis_version": "1.0",
+                    }
+                else:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
+            # Fallback: if diagram exists, synthesize diagram-only doc instead of 500
+            try:
+                from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
+                _d2 = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
+                _m2 = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
+                if _d2 is not None or _m2 is not None:
+                    ev2 = (_d2 or {}).get("evaluation_result") or {}
+                    total2 = float(ev2.get("total_score", 0) if ev2 else 0)
+                    max2 = float(ev2.get("max_score", 20) if ev2 else 20)
+                    pct2 = (total2 / max2 * 100) if max2 else 0
+                    doc = {
+                        "student_id": student_id,
+                        "subject_code": course_code,
+                        "subject_name": course_code,
+                        "year": year or 0,
+                        "month": month or 0,
+                        "semester": semester or 0,
+                        "session_name": session_name,
+                        "overall_performance": {"score": total2, "maximum": max2, "percentage": round(pct2,2), "status": performance_status(pct2)},
+                        "question_performance": [],
+                        "topic_performance": [],
+                        "bloom_performance": [],
+                        "learning_analysis": {"overall_performance": performance_status(pct2), "strong_topics": [], "developing_topics": [], "weak_topics": [], "critical_topics": [], "learning_gaps": []},
+                        "model_metadata": {"bloom_model": "diagram", "bloom_model_type": "diagram", "grading_source": "diagram", "rag_context_used": False},
+                        "generated_at": ev2.get("created_at") or "",
+                        "analysis_version": "1.0",
+                    }
+                else:
+                    raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
+    # Enrich with diagram data (best-effort) - from diagram_evaluation / diagram_marking
+    diagram = None
+    diagram_marking = None
+    try:
+        from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
+        diagram = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
+        diagram_marking = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
+    except Exception:
+        pass
+
+    def _attach_diagram(target: dict) -> dict:
+        if diagram is not None or diagram_marking is not None:
+            # attach under 'diagram' key for frontend
+            payload = {}
+            if diagram is not None:
+                payload["evaluation"] = diagram
+            if diagram_marking is not None:
+                payload["marking"] = diagram_marking
+            target["diagram"] = payload
+            # also expose top-level for convenience
+            if diagram is not None:
+                target["diagram_evaluation"] = diagram
+            if diagram_marking is not None:
+                target["diagram_marking"] = diagram_marking
+        return target
+
     if not include_ai_tips:
         # Strip AI improvement tips — keep only raw performance
         filtered = dict(doc)
@@ -292,7 +383,9 @@ async def lecturer_student_detail(
             # Ensure at least an empty list so frontend doesn't break
             la_copy["learning_gaps"] = []
             filtered["learning_analysis"] = la_copy
+        _attach_diagram(filtered)
         return filtered
+    _attach_diagram(doc)
     return doc
 
 
@@ -316,6 +409,19 @@ async def lecturer_student_detail_stream(
         cached = await find_student_analytics(db, student_id, course_code, session_name, year, month, semester)
         if cached is not None:
             yield sse("progress", {"phase": "cached", "message": "PULSE·AI — Using cached student analysis", "progress": 100, "studentId": student_id})
+            # attach diagram (best-effort)
+            try:
+                from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
+                _diag = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
+                _mark = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
+                if _diag is not None or _mark is not None:
+                    if _diag is not None:
+                        cached["diagram_evaluation"] = _diag
+                    if _mark is not None:
+                        cached["diagram_marking"] = _mark
+                    cached["diagram"] = {k: v for k, v in {"evaluation": _diag, "marking": _mark}.items() if v is not None}
+            except Exception:
+                pass
             if not include_ai_tips:
                 filtered = dict(cached)
                 filtered.pop("recommendations", None)
@@ -406,6 +512,19 @@ async def lecturer_student_detail_stream(
         # Final 100%
         yield sse("progress", {"phase": "finalizing", "message": f"PULSE·AI — {student_id} analysis complete", "progress": 100, "studentId": student_id})
 
+        # attach diagram to stream result (best-effort)
+        try:
+            from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
+            _diag2 = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
+            _mark2 = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
+            if _diag2 is not None or _mark2 is not None:
+                if _diag2 is not None:
+                    doc["diagram_evaluation"] = _diag2
+                if _mark2 is not None:
+                    doc["diagram_marking"] = _mark2
+                doc["diagram"] = {k: v for k, v in {"evaluation": _diag2, "marking": _mark2}.items() if v is not None}
+        except Exception:
+            pass
         if not include_ai_tips:
             filtered = dict(doc)
             filtered.pop("recommendations", None)
