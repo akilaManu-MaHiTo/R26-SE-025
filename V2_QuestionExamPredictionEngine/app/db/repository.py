@@ -700,6 +700,72 @@ async def upsert_user(db, doc: dict) -> None:
 
 
 # ─── Diagram Evaluation & Marking ────────────────────────────────────────
+async def find_diagram_evaluation_for_student(
+    db: AsyncIOMotorDatabase, student_id: str, course_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
+) -> dict | None:
+    """Return single diagram_evaluation for a student/exam (with fallback without year)."""
+    query: dict = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
+    if year is not None:
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+    doc = await db["diagram_evaluation"].find_one(query)
+    if doc is None and (year is not None or month is not None or semester is not None):
+        # fallback without year for legacy
+        fallback = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
+        doc = await db["diagram_evaluation"].find_one(fallback)
+    if doc is None:
+        return None
+    doc.pop("_id", None)
+    return doc
+
+
+async def find_diagram_marking_for_student(
+    db: AsyncIOMotorDatabase, student_id: str, course_code: str, session_name: str,
+    year: int | None = None, month: int | None = None, semester: int | None = None,
+) -> dict | None:
+    """Return single diagram_marking for a student/exam."""
+    query: dict = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
+    if year is not None:
+        # diagram_marking stores year/month/semester as strings in current gradev2 data
+        # try both int and str
+        query["year"] = year
+    if month is not None:
+        query["month"] = month
+    if semester is not None:
+        query["semester"] = semester
+    doc = await db["diagram_marking"].find_one(query)
+    if doc is None and (year is not None or month is not None or semester is not None):
+        # try string variant and fallback
+        q2 = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
+        if year is not None:
+            q2["year"] = str(year)
+        if month is not None:
+            q2["month"] = str(month)
+        if semester is not None:
+            q2["semester"] = str(semester)
+        doc = await db["diagram_marking"].find_one(q2)
+        if doc is None:
+            doc = await db["diagram_marking"].find_one({"student_id": student_id, "subject_code": course_code, "session_name": session_name})
+    if doc is None:
+        return None
+    doc.pop("_id", None)
+    # parse stringified dict fields if needed
+    import ast
+    for f in ("diagram_details", "diagram_entity_relations", "diagram_relations", "evaluation_result"):
+        v = doc.get(f)
+        if isinstance(v, str):
+            try:
+                # stored as python repr with single quotes
+                doc[f] = ast.literal_eval(v)
+            except Exception:
+                pass
+    return doc
+
+
 async def find_diagram_evaluations_for_exam(
     db: AsyncIOMotorDatabase, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
