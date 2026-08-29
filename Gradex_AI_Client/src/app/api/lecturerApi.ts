@@ -83,6 +83,67 @@ export interface AttentionArea {
   priority: string;
 }
 
+export interface DiagramCriterionPerformance {
+  criterion_id: number;
+  criterion: string;
+  max_marks: number;
+  average_awarded_marks: number;
+  average_percentage: number;
+  pass_count: number;
+  partial_count: number;
+  fail_count: number;
+  student_count: number;
+  fail_rate: number;
+}
+
+export interface DiagramStudentSummary {
+  student_id: string;
+  score: number;
+  max_score: number;
+  percentage: number;
+  status: string;
+  criteria: Array<{
+    criterion_id: number;
+    criterion: string;
+    awarded_marks: number;
+    status: string;
+    remarks: string;
+  }>;
+  feedback: string;
+}
+
+export interface DiagramDetectionSummary {
+  avg_entity_count: number;
+  avg_relationship_count: number;
+  avg_label_count: number;
+  total_detections: number;
+  avg_marking_score: number;
+}
+
+export interface DiagramAnalysis {
+  statistics: {
+    total_students: number;
+    average_score: number;
+    max_score: number;
+    average_percentage: number;
+    pass_rate: number;
+    highest_score: number;
+    lowest_score: number;
+    median_percentage: number;
+    std_percentage: number;
+  };
+  criterion_performance: DiagramCriterionPerformance[];
+  student_summaries: DiagramStudentSummary[];
+  detection_summary: DiagramDetectionSummary | null;
+  weakest_criteria: Array<{
+    criterion_id: number;
+    criterion: string;
+    fail_rate: number;
+    fail_count: number;
+  }>;
+  insights: string[];
+}
+
 export interface ExamAnalytics {
   subject_code: string;
   subject_name: string;
@@ -106,6 +167,7 @@ export interface ExamAnalytics {
   canonical_attention_areas: CanonicalAttentionArea[];
   canonical_insights: string[];
   unmapped_topics: string[];
+  diagram_analysis?: DiagramAnalysis | null;
   generated_at: string;
   analytics_version: string;
 }
