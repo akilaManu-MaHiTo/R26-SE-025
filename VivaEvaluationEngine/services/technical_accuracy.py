@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 import json
+import threading
 import urllib.error
 import urllib.request
 from typing import Any, Dict, List, Optional
@@ -19,6 +20,10 @@ from services.llm_judge import _api_key, _extract_json_object, _model_candidates
 
 
 CONCEPT_BATCH_SIZE = 12
+
+# Set by _call_groq_batch to the model that actually answered. Thread-local so
+# concurrent batches cannot overwrite each other's value.
+_USED_MODEL = threading.local()
 
 _SYSTEM_PROMPT = """You are grading the technical accuracy of a university viva transcript
 against a list of concepts the student was expected to know for this subject.
@@ -153,7 +158,13 @@ def _call_groq_batch(
     last_error: Optional[BaseException] = None
     for candidate in _model_candidates(model):
         try:
-            return _call_groq_batch_once(transcript, concepts, api_key, candidate)
+            content = _call_groq_batch_once(transcript, concepts, api_key, candidate)
+            # Record which candidate actually answered. The configured model may
+            # be retired (Groq 404s it) and the call then falls through to the
+            # next candidate, so reporting the *requested* model would credit a
+            # model that never ran. Thread-local because batches run in a pool.
+            _USED_MODEL.value = candidate
+            return content
         except urllib.error.HTTPError as exc:
             last_error = exc
             try:
@@ -287,10 +298,14 @@ def run_technical_accuracy(
     errors: List[str] = []
 
     def _score_one(batch: List[Dict[str, Any]]) -> Any:
+        _USED_MODEL.value = None
         try:
-            return score_concepts_batch(
+            scored_batch = score_concepts_batch(
                 transcript, batch, api_key=api_key, model=model, debug=debug, groq_call=groq_call
             )
+            # Carry the worker thread's value back — the caller reads it from the
+            # main thread, where the thread-local would otherwise be unset.
+            return (scored_batch, getattr(_USED_MODEL, "value", None))
         except Exception as exc:  # noqa: BLE001 - collected below, never raised to caller
             return exc
 
@@ -300,10 +315,14 @@ def run_technical_accuracy(
 
     by_id = {c["id"]: c for c in normalized}
     scored: List[Dict[str, Any]] = []
+    used_model: Optional[str] = None
     for batch, batch_result in zip(batches, batch_results):
         if isinstance(batch_result, Exception):
             errors.append(str(batch_result))
             continue
+        batch_result, batch_model = batch_result
+        if batch_model:
+            used_model = batch_model
         for item in batch_result:
             concept = by_id.get(item["concept_id"])
             scored.append(
@@ -329,7 +348,9 @@ def run_technical_accuracy(
 
     payload: Dict[str, Any] = {
         "status": "success" if not errors else "partial",
-        "model": model,
+        # The model that answered, not the one requested — they differ whenever
+        # the configured model is retired and the call falls through.
+        "model": used_model or model,
         "overall_score": overall_score,
         "concepts": scored,
     }

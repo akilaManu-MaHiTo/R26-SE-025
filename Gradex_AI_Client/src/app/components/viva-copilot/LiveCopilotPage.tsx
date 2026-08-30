@@ -27,6 +27,7 @@ import {
   buildKeyMoments,
 } from "../viva/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { SubjectRubricSummary, listSubjectContent } from "../viva/subjectContentApi";
 import { EmotionDistribution } from "../viva/EmotionDistribution";
 import { EngagementTimeline } from "../viva/EngagementTimeline";
 import { KeyMoments } from "../viva/KeyMoments";
@@ -71,6 +72,12 @@ function LiveCopilotScreen() {
   const [assessmentMode, setAssessmentMode] = useState<CopilotAssessmentMode>(
     "WITHOUT_TECHNICAL_ACCURACY",
   );
+  // Same rubric link as an uploaded viva: chosen before the session starts,
+  // sent with the recording at finalize so the end-of-session analysis can
+  // attach an AI-suggested technical accuracy score.
+  const [subjectCode, setSubjectCode] = useState("");
+  const [subjectOptions, setSubjectOptions] = useState<SubjectRubricSummary[]>([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [studentId, setStudentId] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -87,6 +94,30 @@ function LiveCopilotScreen() {
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns, partial]);
+
+  // Only in technical mode — a presentation viva never uses a rubric. A failed
+  // lookup is non-fatal: the subject link is optional, so the select just stays
+  // empty rather than blocking the session.
+  useEffect(() => {
+    if (assessmentMode !== "WITH_TECHNICAL_ACCURACY") return;
+    let cancelled = false;
+    setSubjectsLoading(true);
+    listSubjectContent()
+      .then((rows) => {
+        if (cancelled) return;
+        setSubjectOptions(rows);
+        setSubjectCode((current) =>
+          current && !rows.some((row) => row.subject_code === current) ? "" : current,
+        );
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setSubjectsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [assessmentMode]);
 
   const clearIdleTimer = useCallback(() => {
     if (idleTimerRef.current !== null) {
@@ -326,6 +357,10 @@ function LiveCopilotScreen() {
         const analysis = await analyzeCopilotSession(id, recording, {
           assessmentMode,
           studentId: studentId.trim() || undefined,
+          subjectCode:
+            assessmentMode === "WITH_TECHNICAL_ACCURACY" && subjectCode
+              ? subjectCode
+              : undefined,
         });
         setResult(analysis as unknown as AnalysisResult);
         toast.success("Session analyzed and scored");
@@ -411,6 +446,34 @@ function LiveCopilotScreen() {
                 </option>
               </select>
             </div>
+            {assessmentMode === "WITH_TECHNICAL_ACCURACY" && (
+              <div className="flex flex-col gap-1">
+                <label htmlFor="copilot-subject" className="text-[11px] text-muted-foreground">
+                  Subject (optional)
+                </label>
+                <select
+                  id="copilot-subject"
+                  value={subjectCode}
+                  onChange={(event) => setSubjectCode(event.target.value)}
+                  disabled={busy || subjectsLoading}
+                  className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                >
+                  <option value="">
+                    {subjectsLoading
+                      ? "Loading subjects…"
+                      : subjectOptions.length
+                        ? "No subject linked"
+                        : "No subjects uploaded yet"}
+                  </option>
+                  {subjectOptions.map((subject) => (
+                    <option key={subject.subject_code} value={subject.subject_code}>
+                      {subject.subject_code} · {subject.subject_name} ({subject.concept_count}{" "}
+                      concepts)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               <label htmlFor="copilot-student" className="text-[11px] text-muted-foreground">
                 Student ID (optional)
