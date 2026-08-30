@@ -10,7 +10,8 @@ import numpy as np
 import pypdfium2 as pdfium
 from dotenv import load_dotenv
 
-load_dotenv()
+_GRADING_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(_GRADING_ROOT / ".env")
 
 OCR_TOKEN = os.getenv("OCR_TOKEN")
 OCR_SPACE_URL = "https://api.ocr.space/parse/image"
