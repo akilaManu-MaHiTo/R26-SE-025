@@ -208,6 +208,7 @@ export interface AnalyzeSessionOptions {
   assessmentMode: CopilotAssessmentMode;
   subjectCode?: string;
   studentId?: string;
+  progressId?: string;
 }
 
 /** Upload the full session recording and run the same analysis+scoring chain
@@ -224,6 +225,7 @@ export async function analyzeCopilotSession(
   form.append("assessment_mode", options.assessmentMode);
   if (options.subjectCode) form.append("subject_code", options.subjectCode);
   if (options.studentId) form.append("student_id", options.studentId);
+  if (options.progressId) form.append("progress_id", options.progressId);
 
   const url = `${copilotHttpBase()}/api/viva-copilot/sessions/${sessionId}/analyze`;
   let response: Response;
