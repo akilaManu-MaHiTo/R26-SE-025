@@ -491,6 +491,9 @@ def analyze_audio_from_video(
     }
 
     try:
+        from services.pipeline_progress import emit
+
+        emit("extract_audio", "Extracting audio")
         extract_audio(video_path, temp_audio_path)
 
         diarization: Dict[str, Any] = {}
@@ -588,10 +591,14 @@ def analyze_audio_from_video(
             whisper_segments=segments,
         )
 
+        from services.pipeline_progress import emit as emit_audio
+
+        emit_audio("acoustics", "Measuring voice quality")
         acoustic_features = extract_acoustic_features(scoring_wav)
 
         emotion_features: Dict[str, Any] = {}
         try:
+            emit_audio("audio_emotion", "Gathering speech emotion")
             emotion_features = extract_speech_emotion(scoring_wav)
             emotion_features["input_track"] = diarization.get("scored_track") or (
                 "student" if scoring_wav == student_audio_path else "mixed"

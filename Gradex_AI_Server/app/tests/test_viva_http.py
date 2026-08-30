@@ -434,5 +434,25 @@ class CopilotAskPhaseTests(unittest.TestCase):
         store.delete(session.session_id)
 
 
+class VivaProgressTests(unittest.TestCase):
+    def test_publish_and_snapshot(self):
+        from Gradex_AI_Server.app.viva_progress import clear, publish, snapshot
+
+        job = "prog_test_ui"
+        clear(job)
+        publish(job, "whisper", "Transcribing speech (Whisper)")
+        row = snapshot(job)
+        self.assertEqual(row["stage"], "whisper")
+        self.assertIn("whisper", row["done"])
+        self.assertIn("Transcribing", row["message"])
+        clear(job)
+
+    def test_rejects_bad_id(self):
+        from Gradex_AI_Server.app.viva_progress import normalize_progress_id
+
+        self.assertIsNone(normalize_progress_id("../etc"))
+        self.assertIsNotNone(normalize_progress_id("a1b2-c3"))
+
+
 if __name__ == "__main__":
     unittest.main()

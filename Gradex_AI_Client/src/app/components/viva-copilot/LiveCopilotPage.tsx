@@ -19,7 +19,13 @@ import {
   normalizeSuggestions,
   setCopilotPhase,
   TranscriptTurn,
+  copilotHttpBase,
 } from "./copilotApi";
+import {
+  fetchVivaAnalyzeProgress,
+  VivaAnalyzeProgress,
+  VivaProgressSnapshot,
+} from "../viva/VivaAnalyzeProgress";
 import {
   AnalysisResult,
   AssessmentMode,
@@ -80,6 +86,8 @@ function LiveCopilotScreen() {
   const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [studentId, setStudentId] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeProgress, setAnalyzeProgress] = useState<VivaProgressSnapshot | null>(null);
+  const [analyzeElapsedMs, setAnalyzeElapsedMs] = useState(0);
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
   const cameraRef = useRef<CopilotCameraHandle>(null);
@@ -352,7 +360,23 @@ function LiveCopilotScreen() {
     cameraRef.current?.stop();
 
     if (id && recording && recording.size > 0) {
+      const progressId =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `prog_${Date.now()}`;
       setAnalyzing(true);
+      setAnalyzeProgress(null);
+      setAnalyzeElapsedMs(0);
+      const started = Date.now();
+      const apiKey =
+        ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env
+          ?.VITE_GRADEX_API_KEY) ?? "";
+      const tick = window.setInterval(() => {
+        setAnalyzeElapsedMs(Date.now() - started);
+        void fetchVivaAnalyzeProgress(copilotHttpBase(), progressId, apiKey).then((next) => {
+          if (next) setAnalyzeProgress(next);
+        });
+      }, 400);
       try {
         const analysis = await analyzeCopilotSession(id, recording, {
           assessmentMode,
@@ -361,6 +385,7 @@ function LiveCopilotScreen() {
             assessmentMode === "WITH_TECHNICAL_ACCURACY" && subjectCode
               ? subjectCode
               : undefined,
+          progressId,
         });
         setResult(analysis as unknown as AnalysisResult);
         toast.success("Session analyzed and scored");
@@ -369,6 +394,7 @@ function LiveCopilotScreen() {
         setError(message);
         toast.error(message);
       } finally {
+        window.clearInterval(tick);
         setAnalyzing(false);
       }
     } else if (id) {
@@ -614,16 +640,9 @@ function LiveCopilotScreen() {
       </div>
 
       {analyzing && (
-        <Card className="p-4 flex items-center gap-3 shrink-0">
-          <Loader2 className="size-4 animate-spin text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Analyzing the session recording…</p>
-            <p className="text-xs text-muted-foreground">
-              Running emotion, engagement, audio and transcript scoring. This can take a
-              few minutes for a long viva.
-            </p>
-          </div>
-        </Card>
+        <div className="shrink-0">
+          <VivaAnalyzeProgress snapshot={analyzeProgress} elapsedSeconds={analyzeElapsedMs / 1000} />
+        </div>
       )}
 
       {result && (

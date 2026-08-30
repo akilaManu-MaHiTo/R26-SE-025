@@ -156,6 +156,9 @@ def _build_multi_face_summary(
 
 
 def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, object]:
+    from services.pipeline_progress import emit
+
+    emit("face_landmarks", "Reading face landmarks")
     landmark_samples = list(
         iter_landmark_samples(config.video_path, sample_fps=BLINK_SAMPLE_FPS)
     )
@@ -191,6 +194,8 @@ def analyze_video(config: AppConfig, include_summary: bool = True) -> Dict[str, 
             dense_gaze: List[Optional[Dict]] = [
                 gaze_analyser.from_landmarks(sample.landmarks) for sample in landmark_samples
             ]
+            emit("facial_emotion", "Gathering facial expressions")
+            emit("engagement", "Gathering engagement")
             for frame_data in video_processor.iter_frames(config.video_path):
                 nearby = nearest_sample(landmark_samples, frame_data.time_sec)
                 gaze = gaze_analyser.from_landmarks(nearby.landmarks if nearby else None)
