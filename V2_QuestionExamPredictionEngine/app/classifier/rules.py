@@ -38,6 +38,22 @@ TOPIC_KEYWORDS: dict[str, set[str]] = {
     "Database Security": {
         "security", "privilege", "grant", "revoke", "encryption", "authentication", "authorization", "access control", "sql injection",
     },
+    # Aliases / missing TOPICS entries — keep _topic_hits tolerant but also provide explicit keywords
+    "Introduction to DBMS & Conceptual Database Design": {
+        "dbms", "database management system", "conceptual", "er model", "entity relationship", "architecture", "data model", "schema",
+    },
+    "Structured Query Language (SQL)": {
+        "select", "insert", "update", "delete", "join", "where", "group by", "order by", "having", "sql", "subquery", "view", "index", "aggregate",
+    },
+    "Database Indexes and Storage Structures": {
+        "index", "b+ tree", "b tree", "hash", "extendible", "linear hashing", "clustered", "non-clustered", "storage", "page", "block", "external sort", "merge sort",
+    },
+    "Database Transaction Management and Concurrency Control": {
+        "transaction", "concurrency", "schedule", "serializable", "conflict serializable", "view serializable", "2pl", "lock", "mvcc", "snapshot isolation", "write skew", "acid",
+    },
+    "Database Recovery and Log Management": {
+        "recovery", "aries", "wal", "write-ahead", "log", "redo", "undo", "checkpoint", "compensat", "dirty page", "transaction table", "physiological",
+    },
 }
 
 _TOPIC_ORDER = TOPICS
@@ -64,8 +80,19 @@ def _topic_hits(text: str) -> dict[str, int]:
     lower = text.lower()
     hits: dict[str, int] = {}
     for topic in _TOPIC_ORDER:
+        # TOPICS and TOPIC_KEYWORDS use slightly different strings (e.g. "&" vs "and",
+        # "Structured Query Language (SQL)" vs "SQL"). Be tolerant of missing keys.
+        kws = TOPIC_KEYWORDS.get(topic)
+        if kws is None:
+            # normalize "&" -> "and" and try again
+            norm = topic.replace("&", "and")
+            kws = TOPIC_KEYWORDS.get(norm)
+        if kws is None and "SQL" in topic:
+            kws = TOPIC_KEYWORDS.get("SQL")
+        if not kws:
+            continue
         count = 0
-        for kw in TOPIC_KEYWORDS[topic]:
+        for kw in kws:
             count += len(re.findall(re.escape(kw), lower))
         if count > 0:
             hits[topic] = count

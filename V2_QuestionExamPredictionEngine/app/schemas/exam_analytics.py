@@ -21,12 +21,21 @@ class ExamStatistics(BaseModel):
     pass_rate: float = Field(ge=0, le=100)
     highest_score: float = Field(ge=0)
     lowest_score: float = Field(ge=0)
+    median_score: float = Field(ge=0, default=0.0)
+    median_percentage: float = Field(ge=0, le=100, default=0.0)
+    std_score: float = Field(ge=0, default=0.0)
+    std_percentage: float = Field(ge=0, default=0.0)
+    iqr_percentage: float = Field(ge=0, default=0.0)
+    grade_distribution: dict[str, int] = Field(default_factory=lambda: {"A":0,"B":0,"C":0,"D":0,"F":0})
 
 
 class TopicPerformanceSummary(BaseModel):
     topic: str = Field(min_length=1)
     average_percentage: float = Field(ge=0, le=100)
     status: PerformanceStatus
+    evidence_status: str = Field(default="insufficient_evidence")
+    student_count: int = Field(ge=0, default=0)
+    attempt_count: int = Field(ge=0, default=0)
 
 
 class BloomPerformanceSummary(BaseModel):
@@ -40,6 +49,21 @@ class QuestionPerformanceSummary(BaseModel):
     topic: str = Field(min_length=1)
     bloom_level: BloomLevel
     average_percentage: float = Field(ge=0, le=100)
+    evidence_status: str = Field(default="insufficient_evidence")
+    student_count: int = Field(ge=0, default=0)
+    attempt_count: int = Field(ge=0, default=0)
+    p_value: float = Field(ge=0, le=100, default=0.0)
+    discrimination: float = Field(ge=-1, le=1, default=0.0)
+    missed_criterion_rate: float | None = Field(default=None, ge=0, le=1)
+
+
+class TopicBloomCell(BaseModel):
+    topic: str = Field(min_length=1)
+    bloom_level: BloomLevel
+    average_percentage: float = Field(ge=0, le=100)
+    student_count: int = Field(ge=0, default=0)
+    attempt_count: int = Field(ge=0, default=0)
+    evidence_status: str = Field(default="insufficient_evidence")
 
 
 class AttentionArea(BaseModel):
@@ -89,6 +113,7 @@ class ExamAnalyticsDocument(BaseModel):
     topic_performance: list[TopicPerformanceSummary] = Field(default_factory=list)
     bloom_performance: list[BloomPerformanceSummary] = Field(default_factory=list)
     question_performance: list[QuestionPerformanceSummary] = Field(default_factory=list)
+    topic_bloom_matrix: list[TopicBloomCell] = Field(default_factory=list)
     attention_areas: list[AttentionArea] = Field(default_factory=list)
     insights: list[str] = Field(default_factory=list)
     canonical_topic_performance: list[CanonicalTopicSummary] = Field(default_factory=list)

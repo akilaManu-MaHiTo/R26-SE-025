@@ -5,5 +5,6 @@
     { "min": 60, "max": 74.99,  "status": "Developing",         "priority": "Medium" },
     { "min": 75, "max": 100,    "status": "Strong",             "priority": "Low" }
   ],
-  "low_sample_threshold": 10
+  "low_sample_threshold": 10,
+  "min_attempts": 2
 }
