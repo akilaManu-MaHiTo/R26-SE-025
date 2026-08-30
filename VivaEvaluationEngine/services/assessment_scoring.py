@@ -4,18 +4,18 @@ Authoritative pipeline:
   analysis JSON → canonical features → quality gates → AI performance /100
   → optional technical fusion → final_score /100 → grade resolver
 
-Does NOT use: LLM criterion scores, UI sliders, confidence_score, engagement_score,
+Does NOT use: LLM criterion scores, UI sliders, engagement_score (diagnostic blend),
 audio_grade, pitch_score (180 Hz), transcript_score, segment_score.
 
 Families (equal weight, missing families dropped and renormalized):
-  engagement       — average_engagement_score only (CNN mean, 0–1)
+  engagement       — equal mix of CNN average_engagement_score + facial_confidence
+                     (facial_confidence = confidence_score/100; emotion-weighted face tone)
   audio_acoustics  — pitch stability from std, HNR clarity, jitter/shimmer
                      (not audio_grade; not 180 Hz pitch_score; rms excluded as recording-level)
   transcript       — WPM band, hedges, fillers, long pauses, sentence completion
                      (not word_count/80)
 
-SER / facial emotion ratios are stored on the canonical vector as evidence only.
-They do not enter the Stage-1 performance mark (emotion ≠ achievement).
+SER / raw emotion ratio bars remain evidence/UI; facial_confidence is the scored face-tone input.
 
 Mode WITHOUT_TECHNICAL_ACCURACY: final = AI performance; technical_accuracy = null
 Mode WITH_TECHNICAL_ACCURACY: final = w_ai * AI + w_tech * technical_0_100
@@ -34,7 +34,7 @@ from services.canonical_features import (
 )
 
 
-SCORING_VERSION = "v1"
+SCORING_VERSION = "v1.1"
 
 MODE_WITHOUT = "WITHOUT_TECHNICAL_ACCURACY"
 MODE_WITH = "WITH_TECHNICAL_ACCURACY"
@@ -276,21 +276,37 @@ def validate_features(
 
 
 def _engagement_family(features: Dict[str, Any]) -> Tuple[Optional[float], List[Dict[str, Any]]]:
-    # stage1_cnn_engagement only. Not diagnostic_engagement or feature_complete_engagement.
-    value = (features.get("video") or {}).get("average_engagement_score")
-    if value is None:
+    # CNN engagement + facial confidence (positivity). Not diagnostic engagement_score blend.
+    video = features.get("video") or {}
+    parts: Dict[str, Optional[float]] = {
+        "average_engagement_score": (
+            _clamp(float(video["average_engagement_score"]))
+            if video.get("average_engagement_score") is not None
+            else None
+        ),
+        "facial_confidence": (
+            _clamp(float(video["facial_confidence"]))
+            if video.get("facial_confidence") is not None
+            else None
+        ),
+    }
+    available = {k: v for k, v in parts.items() if v is not None}
+    if not available:
         return None, []
-    score = _clamp(float(value))
-    return score, [
+    weight = 1.0 / len(available)
+    family = sum(available.values()) / len(available)
+    components = [
         {
-            "feature": "average_engagement_score",
-            "normalized": round(score, 4),
+            "feature": name,
+            "normalized": round(float(value), 4),
             "direction": "higher_better",
             "missing": False,
             "family": "engagement",
-            "weight_within_family": 1.0,
+            "weight_within_family": round(weight, 4),
         }
+        for name, value in available.items()
     ]
+    return family, components
 
 
 def _audio_family(features: Dict[str, Any]) -> Tuple[Optional[float], List[Dict[str, Any]]]:
