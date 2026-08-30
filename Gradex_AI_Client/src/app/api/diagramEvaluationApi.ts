@@ -31,6 +31,15 @@ export type DiagramApiResponse = {
 	structure?: DiagramStructure;
 	ocr?: Array<Record<string, unknown>>;
 	ocr_error?: string;
+	guideline_object_id?: string;
+	agent_marks?: number;
+	agent_grading?: {
+		agent_marks: number;
+		max_marks: number;
+		criterion_results?: Array<{ id: number; marks: number; reason: string }>;
+		feedback?: string;
+	};
+	agent_grading_error?: string;
 	save_dir?: string;
 };
 
@@ -46,6 +55,8 @@ export type DiagramEvaluationSaveInput = {
 	sessionName?: string;
 	diagramMarks?: number;
 	remarks?: string;
+	guidelineObjectId?: string;
+	agentMarks?: number;
 };
 
 export type DiagramEvaluationRecord = {
@@ -87,6 +98,8 @@ export type DiagramEvaluationRecord = {
 		attributes: string[];
 	}>;
 	remarks: string;
+	guideline_object_id?: string;
+	agent_marks?: number;
 	evaluation_result: DiagramApiResponse;
 	created_at: string;
 	updated_at: string;
@@ -208,6 +221,8 @@ export function buildDiagramEvaluationSavePayload({
 	sessionName,
 	diagramMarks,
 	remarks,
+	guidelineObjectId,
+	agentMarks,
 }: DiagramEvaluationSaveInput): DiagramEvaluationRecord {
 	const detections = normalizeDetections(result);
 	const diagramEntityRelations = normalizeEntityRelations(result);
@@ -242,6 +257,8 @@ export function buildDiagramEvaluationSavePayload({
 		diagram_entity_relations: diagramEntityRelations,
 		diagram_relations: diagramRelations,
 		remarks: toTrimmedString(remarks, result.ocr_error ?? ""),
+		guideline_object_id: guidelineObjectId,
+		agent_marks: agentMarks ?? result.agent_marks,
 		evaluation_result: sanitizedResult,
 		created_at: currentDate.toISOString(),
 		updated_at: currentDate.toISOString(),

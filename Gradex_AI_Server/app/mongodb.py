@@ -4,6 +4,8 @@ import importlib
 import os
 from typing import Any
 
+from bson import ObjectId
+
 
 def _load_env_file() -> None:
     env_path = Path(__file__).resolve().with_name(".env")
@@ -42,6 +44,13 @@ def get_diagram_evaluations_collection():
         database = client["Grading"]
     return database["diagram_evaluations"]
 
+@lru_cache(maxsize=1)
+def get_diagram_evaluation_guidelines_collection():
+    client = get_mongo_client()
+    database = client.get_default_database()
+    if database is None:
+        database = client["Grading"]
+    return database["diagram_marking"]
 
 def insert_diagram_evaluation(record: dict) -> str:
     result = get_diagram_evaluations_collection().insert_one(record)
@@ -50,3 +59,15 @@ def insert_diagram_evaluation(record: dict) -> str:
 
 def list_diagram_evaluations(limit: int = 100):
     return list(get_diagram_evaluations_collection().find().sort("created_at", -1).limit(limit))
+
+def list_diagram_evaluation_guidelines(limit: int = 100):
+    return list(get_diagram_evaluation_guidelines_collection().find().sort("created_at", -1).limit(limit))
+
+
+def get_diagram_evaluation_guideline(guideline_object_id: str):
+    try:
+        object_id = ObjectId(guideline_object_id)
+    except Exception as exc:
+        raise ValueError("Invalid guideline object id.") from exc
+
+    return get_diagram_evaluation_guidelines_collection().find_one({"_id": object_id})
