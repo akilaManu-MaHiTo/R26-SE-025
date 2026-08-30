@@ -19,10 +19,21 @@ from bson.errors import InvalidId
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENGINE_ROOT = PROJECT_ROOT / "DiagramEvaluationEngine"
 V2_ROOT = PROJECT_ROOT / "V2_QuestionExamPredictionEngine"
+GRADING_ROOT = PROJECT_ROOT / "GradingEngine"
 for path in (PROJECT_ROOT, ENGINE_ROOT, V2_ROOT):
     path_str = str(path)
     if path_str not in sys.path:
         sys.path.append(path_str)
+
+# GradingEngine must preload before analytics_api (V2 also uses top-level ``app``).
+from Gradex_AI_Server.app.grading_integration import (
+    close_grading_mongo,
+    connect_grading_mongo,
+    preload_grading_engine,
+)
+from Gradex_AI_Server.app.grading_api import setup_grading_api
+
+preload_grading_engine()
 
 from DiagramEvaluationEngine.predict import run_er_pipeline
 from Gradex_AI_Server.app.mongodb import insert_diagram_evaluation, list_diagram_evaluations
@@ -52,7 +63,9 @@ async def lifespan(app: FastAPI):
     if not configured_api_key():
         ensure_dev_api_key()
     await connect_to_mongo()
+    await connect_grading_mongo()
     yield
+    await close_grading_mongo()
     await close_mongo_connection()
 
 
@@ -70,6 +83,8 @@ app.include_router(analytics_router)
 app.include_router(viva_copilot_router)
 app.include_router(v2_lecturer_router, prefix="/api")
 app.include_router(v2_student_router, prefix="/api")
+
+setup_grading_api(app)
 
 UPLOAD_DIR = PROJECT_ROOT / "Gradex_AI_Server" / "app" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
