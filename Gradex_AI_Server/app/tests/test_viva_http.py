@@ -7,6 +7,7 @@ Does not load CNN/Whisper weights. Run from repo root:
 from __future__ import annotations
 
 import asyncio
+import inspect
 import os
 import time
 import unittest
@@ -14,7 +15,8 @@ from io import BytesIO
 from unittest.mock import patch
 
 from bson import ObjectId
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException, UploadFile, params
+from pydantic_core import PydanticUndefined
 from starlette.datastructures import Headers
 from starlette.requests import Request
 
@@ -38,6 +40,36 @@ def _video_upload(name: str = "clip.mp4", body: bytes = b"not-a-real-mp4") -> Up
         file=BytesIO(body),
         headers=Headers({"content-type": "video/mp4"}),
     )
+
+
+def _form_defaults(func) -> dict:
+    """Resolve `Form(...)` markers to the values FastAPI would supply.
+
+    These tests call the endpoint coroutines directly instead of going through
+    the HTTP stack, so nothing parses the form body and each unpassed parameter
+    keeps its raw `Form` object as its default. Reading `.default` off those
+    markers reproduces what a real request yields, which keeps the call sites
+    working when a new optional Form parameter is added to an endpoint.
+    """
+    defaults = {}
+    for name, param in inspect.signature(func).parameters.items():
+        marker = param.default
+        if isinstance(marker, params.Form):
+            value = marker.default
+            # A required Form (`Form(...)`) carries the undefined sentinel;
+            # there is no value to pass, so leave it to the caller's override.
+            if value is PydanticUndefined or value is Ellipsis:
+                continue
+            defaults[name] = value
+    return defaults
+
+
+def _analyze(**overrides):
+    """Call viva_analyze() the way an HTTP request would."""
+    kwargs = _form_defaults(viva_analyze)
+    kwargs.update(overrides)
+    kwargs.setdefault("video", _video_upload())
+    return viva_analyze(**kwargs)
 
 
 def _run(coro):
@@ -155,7 +187,7 @@ class AnalyzeHttpTests(unittest.TestCase):
             headers=Headers({"content-type": "text/plain"}),
         )
         with self.assertRaises(HTTPException) as ctx:
-            _run(viva_analyze(upload))
+            _run(_analyze(video=upload))
         self.assertEqual(ctx.exception.status_code, 400)
 
     def test_unreadable_video_is_400_and_upload_deleted(self):
@@ -168,7 +200,7 @@ class AnalyzeHttpTests(unittest.TestCase):
         before = {p.name for p in UPLOAD_DIR.glob("*")}
         with patch("Gradex_AI_Server.app.viva_service.analyze_video_file", side_effect=boom):
             with self.assertRaises(HTTPException) as ctx:
-                _run(viva_analyze(_video_upload()))
+                _run(_analyze())
         self.assertEqual(ctx.exception.status_code, 400)
         after = {p.name for p in UPLOAD_DIR.glob("*")}
         self.assertEqual(after, before)
@@ -180,7 +212,7 @@ class AnalyzeHttpTests(unittest.TestCase):
         before = {p.name for p in UPLOAD_DIR.glob("*")}
         with patch("Gradex_AI_Server.app.viva_service.analyze_video_file", side_effect=boom):
             with self.assertRaises(HTTPException) as ctx:
-                _run(viva_analyze(_video_upload()))
+                _run(_analyze())
         self.assertEqual(ctx.exception.status_code, 500)
         after = {p.name for p in UPLOAD_DIR.glob("*")}
         self.assertEqual(after, before)
@@ -194,7 +226,7 @@ class AnalyzeHttpTests(unittest.TestCase):
         with patch.dict(os.environ, {"VIVA_ANALYZE_TIMEOUT_SECONDS": "0.05"}):
             with patch("Gradex_AI_Server.app.viva_service.analyze_video_file", side_effect=slow):
                 with self.assertRaises(HTTPException) as ctx:
-                    _run(viva_analyze(_video_upload()))
+                    _run(_analyze())
         self.assertEqual(ctx.exception.status_code, 504)
         after = {p.name for p in UPLOAD_DIR.glob("*")}
         self.assertEqual(after, before)
@@ -208,7 +240,7 @@ class AnalyzeHttpTests(unittest.TestCase):
         db_instance.marks_col = None
         try:
             with patch("Gradex_AI_Server.app.viva_service.analyze_video_file", return_value=dict(fake)):
-                result = _run(viva_analyze(_video_upload()))
+                result = _run(_analyze())
         finally:
             db_instance.marks_col = previous
         self.assertNotIn("mark_id", result)
@@ -258,7 +290,7 @@ class AnalyzeHttpTests(unittest.TestCase):
         db_instance.marks_col = FakeCol()
         try:
             with patch("Gradex_AI_Server.app.viva_service.analyze_video_file", return_value=dict(fake)):
-                result = _run(viva_analyze(_video_upload()))
+                result = _run(_analyze())
         finally:
             db_instance.marks_col = previous
         self.assertEqual(result["mark_id"], "507f1f77bcf86cd799439011")
@@ -296,7 +328,7 @@ class AnalyzeHttpTests(unittest.TestCase):
         try:
             with patch("Gradex_AI_Server.app.viva_service.analyze_video_file", return_value=dict(fake)):
                 result = _run(
-                    viva_analyze(_video_upload(), assessment_mode="WITH_TECHNICAL_ACCURACY")
+                    _analyze(assessment_mode="WITH_TECHNICAL_ACCURACY")
                 )
         finally:
             db_instance.marks_col = previous
@@ -351,7 +383,7 @@ class AnalyzeHttpTests(unittest.TestCase):
                 "VivaEvaluationEngine.services.technical_accuracy._call_groq_batch_once",
                 side_effect=fake_groq,
             ):
-                result = _run(viva_analyze(_video_upload(), subject_code="CS101"))
+                result = _run(_analyze(subject_code="CS101"))
         finally:
             db_instance.marks_col = previous
         self.assertEqual(result["technical_accuracy_ai"]["status"], "success")
@@ -365,7 +397,7 @@ class AnalyzeHttpTests(unittest.TestCase):
             with patch(
                 "Gradex_AI_Server.app.viva_service.analyze_video_file", return_value=dict(fake)
             ):
-                result = _run(viva_analyze(_video_upload()))
+                result = _run(_analyze())
         finally:
             db_instance.marks_col = previous
         self.assertNotIn("technical_accuracy_ai", result)
