@@ -1,3 +1,4 @@
+import logging
 from collections import Counter
 from typing import Dict, List, Optional
 import numpy as np
@@ -11,32 +12,68 @@ from config import (
     canonical_emotion_label,
 )
 
+logger = logging.getLogger(__name__)
+
+
+def _frame_time(item: Dict[str, object], fallback: float) -> float:
+    try:
+        return float(item.get('time'))
+    except (TypeError, ValueError):
+        return fallback
+
 
 def smooth_emotions(timeline: List[Dict[str, object]], window: int = 3) -> List[Dict[str, object]]:
-    if window <= 0:
+    """Majority-vote smoothing over a *time-local* neighborhood.
+
+    Invalid (NoFace/LowQuality) frames are dropped before this runs, so
+    array neighbours can be seconds or minutes apart in real time. Walking
+    outward stops as soon as the gap between consecutive timestamps exceeds
+    ~2x the session's typical frame spacing, so a smoothing window never
+    bridges across a dropped stretch of video.
+    """
+    if window <= 0 or not timeline:
         return timeline
+
+    half = window // 2
+    times = [_frame_time(item, float(idx)) for idx, item in enumerate(timeline)]
+    gaps = [times[i + 1] - times[i] for i in range(len(times) - 1) if times[i + 1] > times[i]]
+    median_gap = sorted(gaps)[len(gaps) // 2] if gaps else 1.0
+    max_gap = max(median_gap * 2.0, 1e-6)
 
     smoothed: List[Dict[str, object]] = []
     for i in range(len(timeline)):
-        half = window // 2
-        window_slice = timeline[max(0, i - half): min(len(timeline), i + half + 1)]
+        indices = {i}
+        j = i - 1
+        while j >= max(0, i - half) and (times[j + 1] - times[j]) <= max_gap:
+            indices.add(j)
+            j -= 1
+        j = i + 1
+        while j <= min(len(timeline) - 1, i + half) and (times[j] - times[j - 1]) <= max_gap:
+            indices.add(j)
+            j += 1
+        window_slice = [timeline[k] for k in sorted(indices)]
+
         emotions = [str(item.get('emotion', '')) for item in window_slice]
-        if emotions:
-            most_common = Counter(emotions).most_common(1)[0][0]
-            # Compute mean confidence over the window, ignoring None
-            confidences = [item.get('emotion_confidence') for item in window_slice
-                          if item.get('emotion_confidence') is not None]
-            mean_conf = round(sum(confidences) / len(confidences), 4) if confidences else None
-            updated = dict(timeline[i])
-            updated['emotion'] = most_common
-            updated['emotion_confidence'] = mean_conf
-            smoothed.append(updated)
-        else:
-            smoothed.append(dict(timeline[i]))
+        most_common = Counter(emotions).most_common(1)[0][0]
+        # Confidence is only meaningful for the label that actually won —
+        # averaging across the whole window would mix in other emotions' scores.
+        confidences = [
+            item.get('emotion_confidence') for item in window_slice
+            if str(item.get('emotion', '')) == most_common and item.get('emotion_confidence') is not None
+        ]
+        mean_conf = round(sum(confidences) / len(confidences), 4) if confidences else timeline[i].get('emotion_confidence')
+
+        updated = dict(timeline[i])
+        updated['emotion'] = most_common
+        updated['emotion_confidence'] = mean_conf
+        smoothed.append(updated)
     return smoothed
 
 
 def compute_confidence_score(timeline: List[Dict[str, object]]) -> float:
+    """Each frame's vote is scaled by the model's own emotion_confidence, so a
+    label the model was barely sure of (e.g. 0.26) pulls the score toward
+    zero instead of counting as a full vote equal to a 0.99-confidence frame."""
     valid_timeline = [
         item for item in timeline
         if canonical_emotion_label(str(item.get('emotion', ''))) not in ('noface', 'no_face', 'lowquality', 'low_quality')
@@ -45,27 +82,31 @@ def compute_confidence_score(timeline: List[Dict[str, object]]) -> float:
     if total_frames == 0:
         return 0.0
 
-    positive_frames = 0
-    surprise_frames = 0
-    neutral_frames = 0
-    negative_frames = 0
+    positive_weight = 0.0
+    surprise_weight = 0.0
+    neutral_weight = 0.0
+    negative_weight = 0.0
 
     for item in valid_timeline:
         emotion = canonical_emotion_label(str(item.get('emotion', '')))
+        try:
+            weight = max(0.0, min(1.0, float(item.get('emotion_confidence', 1.0))))
+        except (TypeError, ValueError):
+            weight = 1.0
         if emotion in POSITIVE_EMOTIONS:
-            positive_frames += 1
+            positive_weight += weight
         elif emotion in SURPRISE_EMOTIONS:
-            surprise_frames += 1
+            surprise_weight += weight
         elif emotion in NEUTRAL_EMOTIONS:
-            neutral_frames += 1
+            neutral_weight += weight
         elif emotion in NEGATIVE_EMOTIONS:
-            negative_frames += 1
+            negative_weight += weight
 
-    negative_ratio = negative_frames / total_frames
+    negative_ratio = negative_weight / total_frames
     positive_score = (
-        positive_frames * 1.0 +
-        surprise_frames * 0.8 +
-        neutral_frames * 0.6
+        positive_weight * 1.0 +
+        surprise_weight * 0.8 +
+        neutral_weight * 0.6
     ) / total_frames
 
     confidence = positive_score
@@ -113,23 +154,35 @@ def compute_engagement_score(
         "contempt": 0.2,
     }
 
-    avg_emotion = sum(
-        emotion_map.get(canonical_emotion_label(str(t.get("emotion", ""))), 0.5)
-        for t in timeline
-    ) / total
+    def _engagement_weight(raw_emotion: str) -> float:
+        label = canonical_emotion_label(raw_emotion)
+        if label in emotion_map:
+            return emotion_map[label]
+        logger.warning("Unmapped emotion label reached engagement scoring: %r -> %r", raw_emotion, label)
+        return 0.5
+
+    avg_emotion = sum(_engagement_weight(str(t.get("emotion", ""))) for t in timeline) / total
 
     valid_gaze = [g for g in gaze_signals if g is not None]
     if valid_gaze:
         gaze_score = sum(1 for g in valid_gaze if g.get("gaze_ok")) / len(valid_gaze)
         yaw_values = []
         for g in valid_gaze:
-            proxy = g.get("yaw_proxy")
+            # Prefer the inter-ocular-distance-normalized proxy so a subject
+            # moving closer/further from the camera isn't read as head
+            # movement; fall back to the raw proxy for older stored data.
+            proxy = g.get("yaw_normalized")
+            if proxy is None:
+                proxy = g.get("yaw_proxy")
             if proxy is None:
                 proxy = g.get("yaw")
             if proxy is not None:
                 yaw_values.append(float(proxy))
         if yaw_values:
-            head_stability = 1.0 - min(1.0, float(np.std(yaw_values)) * 10.0)
+            # 1.6 ≈ 10 / 6.3, rescaled by the same empirical ratio used for
+            # HEAD_POSE_YAW_STD_SCALE in config.py, to keep this diagnostic
+            # score in a comparable range to its pre-normalization behavior.
+            head_stability = 1.0 - min(1.0, float(np.std(yaw_values)) * 1.6)
         else:
             head_stability = None
     else:

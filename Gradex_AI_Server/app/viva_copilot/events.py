@@ -49,6 +49,22 @@ def candidate_answer_final(session_id: str, answer_id: str, text: str) -> Dict[s
     }
 
 
+def followup_suggestion_partial(
+    session_id: str,
+    answer_id: str,
+    suggestion: Dict[str, Any],
+) -> Dict[str, Any]:
+    """A single suggestion streamed in early, before the full LLM turn (and
+    its remaining 1-2 suggestions) has finished generating."""
+    return {
+        "event": "followup.suggestion.partial",
+        "sessionId": session_id,
+        "answerId": answer_id,
+        "timestamp": _now(),
+        "data": {"suggestion": suggestion},
+    }
+
+
 def followup_suggestions(
     session_id: str,
     answer_id: str,
@@ -101,4 +117,14 @@ def session_state(session_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         "sessionId": session_id,
         "timestamp": _now(),
         "data": payload,
+    }
+
+
+def session_expired(session_id: str, *, ttl_seconds: float) -> Dict[str, Any]:
+    return {
+        "event": "session.expired",
+        "sessionId": session_id,
+        "message": "Copilot session expired after inactivity. Create a new session to continue.",
+        "ttlSeconds": int(ttl_seconds),
+        "timestamp": _now(),
     }
