@@ -88,5 +88,10 @@ docs
 **/CLAUDE.md
 skills-lock.json
 
-# Playwright MCP testing artifacts
-.playwright-mcp/
+# Docker (not used for local viva/dev right now)
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+.docker/
