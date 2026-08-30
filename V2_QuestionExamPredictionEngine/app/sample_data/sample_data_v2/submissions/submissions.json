@@ -1,0 +1,332 @@
+[
+  {
+    "_id": { "$oid": "6b1000000000000000000001" },
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "student_id": "IT22262551",
+    "paper_key": "script_01",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 20.0,
+    "max_marks_per_question": [
+      { "question_no": "ERD-001", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22262551\n\nQuestion: Draw an ER diagram for a University system where a Student enrolls in a College. A College has specialization into Computer Science, Mechanical, and Electronics departments.\n\nMy ER Diagram:\n\nEntities:\n1. Student - Rectangle\n   Attributes: Name, Gender, DOB, Age (derived - dashed ellipse)\n\n2. College - Rectangle\n   Attributes: Name, Affiliation, Address\n\n3. Computer Science - Rectangle\n4. Mechanical - Rectangle\n5. Electronics - Rectangle\n\nRelationships:\n- Enrolls in (diamond) connecting Student and College\n- Specialized in (diamond) connecting College to Computer Science, Mechanical, Electronics\n\nConnections:\n- Student --(Enrolls in)--> College\n- College --(Specialized in)--> Computer Science\n- College --(Specialized in)--> Mechanical\n- College --(Specialized in)--> Electronics\n\nAll attributes connected to their respective entities with lines. Age attribute shown as dashed ellipse to indicate derived attribute.",
+    "status": "graded",
+    "evaluation": {
+      "total_score": 18,
+      "max_score": 20,
+      "justification": "Excellent ER diagram covering all required entities, attributes, and relationships. All notation is correct.",
+      "feedback": "Very well done. Minor improvement could be made to the clarity of attribute connections.",
+      "results": [
+        { "q_no": "ERD-001", "score": 18 }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 5,
+      "rag_course": "SE3040"
+    },
+    "processed_at": { "$date": "2026-08-25T09:00:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "6b1000000000000000000002" },
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "student_id": "IT22262552",
+    "paper_key": "script_02",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 20.0,
+    "max_marks_per_question": [
+      { "question_no": "ERD-001", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22262552\n\nER Diagram for University System:\n\nEntities:\n- Student (rectangle) with attributes: Name, Gender, DOB, Age\n- College (rectangle) with attributes: Name, Affiliation, Address\n- Computer Science (rectangle)\n- Mechanical (rectangle)\n- Electronics (rectangle)\n\nRelationships:\n- Enrolls in (diamond) between Student and College\n- Specialized in (diamond) connecting College to departments\n\nAll entities connected properly. Age shown with dashed ellipse for derived attribute.",
+    "status": "graded",
+    "evaluation": {
+      "total_score": 16,
+      "max_score": 20,
+      "justification": "Good understanding of ER diagram concepts. All main components present.",
+      "feedback": "Missing some attribute connections and notation details.",
+      "results": [
+        { "q_no": "ERD-001", "score": 16 }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 5,
+      "rag_course": "SE3040"
+    },
+    "processed_at": { "$date": "2026-08-25T09:05:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "6b1000000000000000000003" },
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "student_id": "IT22262553",
+    "paper_key": "script_03",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 20.0,
+    "max_marks_per_question": [
+      { "question_no": "ERD-001", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22262553\n\nER Diagram:\n\nStudent entity with Name, Gender, DOB attributes.\nCollege entity with Name, Affiliation, Address.\nEnrolls in relationship between Student and College.\nSpecialized in relationship from College to Computer Science, Mechanical, Electronics.\nAge is derived attribute (dashed ellipse).\nAll rectangles for entities, ellipses for attributes, diamonds for relationships.",
+    "status": "graded",
+    "evaluation": {
+      "total_score": 15,
+      "max_score": 20,
+      "justification": "Basic ER diagram with all required components.",
+      "feedback": "Some connections between attributes and entities unclear. Review notation standards.",
+      "results": [
+        { "q_no": "ERD-001", "score": 15 }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 5,
+      "rag_course": "SE3040"
+    },
+    "processed_at": { "$date": "2026-08-25T09:10:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "6b1000000000000000000004" },
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "student_id": "IT22262554",
+    "paper_key": "script_04",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 20.0,
+    "max_marks_per_question": [
+      { "question_no": "ERD-001", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22262554\n\nER Diagram:\n\nEntities:\n- Student (rectangle): Name, Gender, DOB, Age (derived)\n- College (rectangle): Name, Affiliation, Address\n- Computer Science (rectangle)\n- Mechanical (rectangle)\n- Electronics (rectangle)\n\nRelationships:\n- Enrolls in (diamond): Student, College\n- Specialized in (diamond): College, Computer Science, Mechanical, Electronics\n\nAge attribute uses dashed ellipse. All connections properly drawn.",
+    "status": "graded",
+    "evaluation": {
+      "total_score": 14,
+      "max_score": 20,
+      "justification": "Complete ER diagram but some notation inconsistencies.",
+      "feedback": "Review derived attribute notation and relationship cardinality markers.",
+      "results": [
+        { "q_no": "ERD-001", "score": 14 }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 5,
+      "rag_course": "SE3040"
+    },
+    "processed_at": { "$date": "2026-08-25T09:15:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "6b1000000000000000000005" },
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "student_id": "IT22262555",
+    "paper_key": "script_05",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 20.0,
+    "max_marks_per_question": [
+      { "question_no": "ERD-001", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22262555\n\nER Diagram:\n\nI drew the following:\n- Student box with Name, Gender, DOB, Age\n- College box with Name, Affiliation, Address\n- Enrolls in diamond between Student and College\n- Specialized in diamond from College to CS, Mech, Electronics\n- Age shown as dashed ellipse\n\nAll entities connected to attributes. Relationships properly linked.",
+    "status": "graded",
+    "evaluation": {
+      "total_score": 17,
+      "max_score": 20,
+      "justification": "Well-structured ER diagram with correct notation throughout.",
+      "feedback": "Excellent work. Minor improvements in visual clarity possible.",
+      "results": [
+        { "q_no": "ERD-001", "score": 17 }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 5,
+      "rag_course": "SE3040"
+    },
+    "processed_at": { "$date": "2026-08-25T09:20:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "6b1000000000000000000006" },
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "student_id": "IT22262556",
+    "paper_key": "script_06",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 20.0,
+    "max_marks_per_question": [
+      { "question_no": "ERD-001", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22262556\n\nER Diagram:\n\nEntities:\n- Student with Name, Gender, DOB, Age\n- College with Name, Affiliation, Address\n- Computer Science, Mechanical, Electronics\n\nRelationships:\n- Enrolls in connects Student to College\n- Specialized in connects College to departments\n\nAge is derived attribute shown with dashed line.",
+    "status": "graded",
+    "evaluation": {
+      "total_score": 12,
+      "max_score": 20,
+      "justification": "Basic ER diagram covering main components.",
+      "feedback": "Missing some attribute connections. Age attribute not properly marked as derived.",
+      "results": [
+        { "q_no": "ERD-001", "score": 12 }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 5,
+      "rag_course": "SE3040"
+    },
+    "processed_at": { "$date": "2026-08-25T09:25:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "6b1000000000000000000007" },
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "student_id": "IT22262557",
+    "paper_key": "script_07",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 20.0,
+    "max_marks_per_question": [
+      { "question_no": "ERD-001", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22262557\n\nER Diagram:\n\nStudent entity: Name, Gender, DOB, Age (derived)\nCollege entity: Name, Affiliation, Address\nComputer Science, Mechanical, Electronics entities\nEnrolls in relationship: Student - College\nSpecialized in relationship: College - departments\n\nAll notation correct: rectangles for entities, ellipses for attributes, diamonds for relationships, dashed ellipse for Age.",
+    "status": "graded",
+    "evaluation": {
+      "total_score": 19,
+      "max_score": 20,
+      "justification": "Outstanding ER diagram with perfect notation and clear connections.",
+      "feedback": "Perfect execution. Well done!",
+      "results": [
+        { "q_no": "ERD-001", "score": 19 }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 5,
+      "rag_course": "SE3040"
+    },
+    "processed_at": { "$date": "2026-08-25T09:30:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "6b1000000000000000000008" },
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "student_id": "IT22262558",
+    "paper_key": "script_08",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 20.0,
+    "max_marks_per_question": [
+      { "question_no": "ERD-001", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22262558\n\nER Diagram:\n\nStudent with Name, Gender, DOB, Age\nCollege with Name, Affiliation, Address\nComputer Science, Mechanical, Electronics\nEnrolls in (Student, College)\nSpecialized in (College, departments)\n\nAge shown as derived attribute.",
+    "status": "graded",
+    "evaluation": {
+      "total_score": 13,
+      "max_score": 20,
+      "justification": "Minimal ER diagram with required components.",
+      "feedback": "Missing proper notation symbols. Connections between attributes and entities not clear.",
+      "results": [
+        { "q_no": "ERD-001", "score": 13 }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 5,
+      "rag_course": "SE3040"
+    },
+    "processed_at": { "$date": "2026-08-25T09:35:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "6b1000000000000000000009" },
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "student_id": "IT22262559",
+    "paper_key": "script_09",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 20.0,
+    "max_marks_per_question": [
+      { "question_no": "ERD-001", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22262559\n\nER Diagram:\n\nEntities:\n- Student (rectangle): Name, Gender, DOB, Age (derived - dashed ellipse)\n- College (rectangle): Name, Affiliation, Address\n- Computer Science (rectangle)\n- Mechanical (rectangle)\n- Electronics (rectangle)\n\nRelationships:\n- Enrolls in (diamond) connecting Student and College\n- Specialized in (diamond) connecting College to three departments\n\nAll attributes properly connected to entities. Clear notation throughout.",
+    "status": "graded",
+    "evaluation": {
+      "total_score": 16,
+      "max_score": 20,
+      "justification": "Good ER diagram with all required components properly represented.",
+      "feedback": "Minor improvements possible in visual organization.",
+      "results": [
+        { "q_no": "ERD-001", "score": 16 }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 5,
+      "rag_course": "SE3040"
+    },
+    "processed_at": { "$date": "2026-08-25T09:40:00.000Z" },
+    "lecturer_note": null
+  },
+  {
+    "_id": { "$oid": "6b1000000000000000000010" },
+    "rubric_ref": { "$oid": "6a89887f8c33278a18482b47" },
+    "student_id": "IT22262560",
+    "paper_key": "script_10",
+    "subject_code": "SE3040",
+    "subject_name": "Software Architecture",
+    "year": 2026,
+    "month": 8,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 20.0,
+    "max_marks_per_question": [
+      { "question_no": "ERD-001", "max_marks": 20.0 }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22262560\n\nER Diagram:\n\nStudent entity: Name, Gender, DOB, Age\nCollege entity: Name, Affiliation, Address\nEnrolls in relationship between Student and College\nSpecialized in relationship from College to Computer Science, Mechanical, Electronics\nAge attribute with dashed ellipse for derived notation.\nAll connections properly drawn with lines.",
+    "status": "graded",
+    "evaluation": {
+      "total_score": 15,
+      "max_score": 20,
+      "justification": "Complete ER diagram covering all required elements.",
+      "feedback": "Good work overall. Some connections could be clearer.",
+      "results": [
+        { "q_no": "ERD-001", "score": 15 }
+      ],
+      "grading_source": "colab",
+      "rag_context_used": true,
+      "rag_chunks": 5,
+      "rag_course": "SE3040"
+    },
+    "processed_at": { "$date": "2026-08-25T09:45:00.000Z" },
+    "lecturer_note": null
+  }
+]

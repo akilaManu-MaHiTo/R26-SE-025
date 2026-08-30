@@ -19,6 +19,7 @@ LLM_LINES = (
     "ENV",
     "OLLAMA_BASE_URL",
     "OLLAMA_MODEL",
+    "COLAB_MODEL",
     "OLLAMA_API_KEY",
 )
 
@@ -59,11 +60,14 @@ class SwitchableEnv:
         self.env_path.write_bytes(text.encode("utf-8"))
 
     def set_colab(self, base_url: str, api_key: str | None) -> None:
+        # v2 notebook (ngrok) has no API key — api_key may be None/empty, handle both
+        # Always set COLAB_MODEL to qwen3:8b for colab, keep OLLAMA_MODEL for local fallback
         self._rewrite(
             {
                 "ENV": "colab",
-                "OLLAMA_BASE_URL": base_url,
+                "OLLAMA_BASE_URL": base_url.rstrip("/"),
                 "OLLAMA_MODEL": LOCAL_MODEL,
+                "COLAB_MODEL": COLAB_MODEL,
                 "OLLAMA_API_KEY": api_key or "",
             }
         )
@@ -74,6 +78,7 @@ class SwitchableEnv:
                 "ENV": "local",
                 "OLLAMA_BASE_URL": LOCAL_BASE_URL,
                 "OLLAMA_MODEL": LOCAL_MODEL,
+                "COLAB_MODEL": COLAB_MODEL,
                 "OLLAMA_API_KEY": "",
             }
         )
@@ -97,21 +102,42 @@ def main(argv: list[str] | None = None) -> int:
             run_env = values.get("ENV") or "local"
             if run_env == "colab":
                 base_url = values.get("OLLAMA_BASE_URL", "")
-                model = values.get("COLAB_MODEL") or COLAB_MODEL
+                model = values.get("COLAB_MODEL") or values.get("OLLAMA_MODEL") or COLAB_MODEL
+                # detect tunnel type for v2 docs
+                tunnel = "ngrok" if "ngrok" in base_url else "cloudflared" if "trycloudflare" in base_url else "custom"
+                print(f"ENV={run_env} ({tunnel})")
+                print(f"LLM_BASE_URL={base_url}")
+                print(f"LLM_MODEL={model}")
+                api_key = values.get('OLLAMA_API_KEY','')
+                print(f"OLLAMA_API_KEY={'(empty, ngrok v2)' if not api_key else api_key[:6]+'...'}")
+                # v2 hint
+                if "ngrok" in base_url and not api_key:
+                    print("note: v2 ngrok needs no API key (colab_ollama_v2.ipynb)")
+                return 0
             else:
                 base_url = LOCAL_BASE_URL
                 model = values.get("OLLAMA_MODEL") or LOCAL_MODEL
-            print(f"ENV={run_env}")
-            print(f"LLM_BASE_URL={base_url}")
-            print(f"LLM_MODEL={model}")
-            print(f"OLLAMA_API_KEY={values.get('OLLAMA_API_KEY', '')}")
-            return 0
+                print(f"ENV={run_env}")
+                print(f"LLM_BASE_URL={base_url}")
+                print(f"LLM_MODEL={model}")
+                print(f"OLLAMA_API_KEY={values.get('OLLAMA_API_KEY', '')}")
+                return 0
         if command == "colab":
             if len(args) < 2:
                 print("usage: python switch_llm.py colab <base-url> [api-key]")
+                print("  v1 (cloudflared): python switch_llm.py colab https://xxx.trycloudflare.com <api-key>")
+                print("  v2 (ngrok):       python switch_llm.py colab https://xxx.ngrok-free.app")
+                print("                    (v2 colab_ollama_v2.ipynb prints only OLLAMA_BASE_URL, no key needed)")
                 return 1
-            env.set_colab(args[1], args[2] if len(args) > 2 else None)
-            print("switched to colab: " + env.values()["OLLAMA_BASE_URL"])
+            # handle v2: base_url may be ngrok-free.app or ngrok.app, no key
+            base_url = args[1]
+            api_key = args[2] if len(args) > 2 else ""
+            # support `python switch_llm.py colab <url>` for v2
+            if base_url.startswith("https://") and "ngrok" in base_url and not api_key:
+                print("detected v2 ngrok URL (no API key)")
+            env.set_colab(base_url, api_key)
+            vals = env.values()
+            print(f"switched to colab: {vals['OLLAMA_BASE_URL']} model={vals.get('COLAB_MODEL', COLAB_MODEL)}")
             return 0
         if command == "local":
             env.set_local()
