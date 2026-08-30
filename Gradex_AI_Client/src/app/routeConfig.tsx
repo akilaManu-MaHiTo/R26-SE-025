@@ -5,6 +5,7 @@ import type { AIModel } from "./components/AIBrand";
 import { GradingPage } from "./components/GradingPage";
 import { DiagramGrading } from "./components/DiagramGrading";
 import { DiagramReconstructionPage } from "./components/DiagramReconstructionPage";
+import { DiagramGuidelinePage } from "./components/DiagramGuidelinePage";
 import AnalyticsPage from "./components/AnalyticsPage";
 import { ExamCreator } from "./components/ExamCreator";
 import { VivaPage } from "./components/VivaPage";
@@ -40,6 +41,13 @@ export const AGENT_CONFIG: AgentConfig[] = [
     icon: Workflow,
     model: "structr",
     features: [
+      {
+        path: "/diagram-evaluation/diagram-guideline",
+        label: "Diagram Guideline",
+        title: "Diagram Guideline",
+        subtitle: "Turn a marking scheme into the criteria used to grade diagrams",
+        element: <DiagramGuidelinePage />,
+      },
       {
         path: "/diagram-evaluation/diagram-grading",
         label: "Diagram Grading",
