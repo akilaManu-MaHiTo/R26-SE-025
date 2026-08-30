@@ -24,6 +24,12 @@ def _f(value: Any) -> Optional[float]:
     return number
 
 
+def _clamp01(value: Optional[float]) -> Optional[float]:
+    if value is None:
+        return None
+    return max(0.0, min(1.0, float(value)))
+
+
 def _i(value: Any) -> Optional[int]:
     number = _f(value)
     if number is None:
@@ -48,6 +54,7 @@ def extract_canonical_features(result: Dict[str, Any]) -> Dict[str, Any]:
             "face_coverage_ratio": _f(coverage.get("face_coverage_ratio")),
             "frames_with_face": _i(coverage.get("frames_with_face")),
             "frames_sampled": _i(coverage.get("frames_sampled")),
+            "frames_rejected_non_frontal": _i(coverage.get("frames_rejected_non_frontal")),
             "video_status": result.get("video_status"),
             "audio_status": audio.get("status"),
             "transcript_word_count": _i(
@@ -74,9 +81,16 @@ def extract_canonical_features(result: Dict[str, Any]) -> Dict[str, Any]:
                 "neutral": _f(summary.get("neutral_ratio")),
                 "negative": _f(summary.get("negative_ratio")),
             },
-            # stage1_cnn_engagement: per-frame CNN mean (0–1). Official /100 family only.
+            # stage1_cnn_engagement: per-frame CNN mean (0–1).
             # Not engagement_score (diagnostic_engagement) and not feature_complete_engagement.
             "average_engagement_score": _f(engagement_summary.get("average_engagement_score")),
+            # Facial confidence / positivity (result.confidence_score is 0–100).
+            # Emotion-weighted face tone; used inside the engagement family of Stage-1.
+            "facial_confidence": (
+                _clamp01(_f(result.get("confidence_score")) / 100.0)
+                if _f(result.get("confidence_score")) is not None
+                else None
+            ),
             "blinks_per_minute": _f(coverage.get("blinks_per_minute"))
             if coverage.get("blinks_measured")
             else None,
@@ -128,6 +142,7 @@ def flatten_canonical_features(features: Dict[str, Any]) -> Dict[str, Any]:
         "face_coverage_ratio": quality.get("face_coverage_ratio"),
         "frames_with_face": quality.get("frames_with_face"),
         "frames_sampled": quality.get("frames_sampled"),
+        "frames_rejected_non_frontal": quality.get("frames_rejected_non_frontal"),
         "video_status": quality.get("video_status"),
         "audio_status": quality.get("audio_status"),
         "transcript_word_count": quality.get("transcript_word_count"),
@@ -139,6 +154,7 @@ def flatten_canonical_features(features: Dict[str, Any]) -> Dict[str, Any]:
         "emotion_neutral_ratio": ratios.get("neutral"),
         "emotion_negative_ratio": ratios.get("negative"),
         "average_engagement_score": video.get("average_engagement_score"),
+        "facial_confidence": video.get("facial_confidence"),
         "blinks_per_minute": video.get("blinks_per_minute"),
         "pitch_std_hz": audio.get("pitch_std_hz"),
         "hnr_mean_db": audio.get("hnr_mean_db"),

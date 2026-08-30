@@ -26,8 +26,10 @@ export function LlmJudgePanel({ evaluation, transcriptFeatures }: LlmJudgePanelP
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <div className="text-sm font-medium text-foreground">Supporting analysis (not the official grade)</div>
+            {/* Model name omitted: "did an LLM or the formula produce this"
+                changes how an examiner reads the numbers; which LLM does not. */}
             <Badge variant="outline" className="text-xs">
-              {isFallback ? "Formula fallback" : evaluation.model ? `LLM · ${evaluation.model}` : "LLM"}
+              {isFallback ? "Formula fallback" : "LLM"}
             </Badge>
           </div>
           {isFallback && evaluation.error && (

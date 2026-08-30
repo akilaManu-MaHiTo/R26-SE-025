@@ -14,8 +14,16 @@ import {
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import { AIPageBanner, AIBadgePill } from "./AIBrand";
 import { VivaVideoPlayer, VivaVideoPlayerHandle } from "./viva/VivaVideoPlayer";
 import { ScoreOverview } from "./viva/ScoreOverview";
@@ -30,6 +38,11 @@ import { QaRelevancePanel } from "./viva/QaRelevancePanel";
 import { LiveVivaRecorder } from "./viva/LiveVivaRecorder";
 import { EvaluationPanel } from "./viva/EvaluationPanel";
 import { ReportPrintView } from "./viva/ReportPrintView";
+import { publishVivaMark } from "./viva/vivaMarksApi";
+import {
+  SubjectRubricSummary,
+  listSubjectContent,
+} from "./viva/subjectContentApi";
 import {
   AnalysisResult,
   AssessmentMode,
@@ -37,6 +50,10 @@ import {
   buildKeyMoments,
   formatTime,
 } from "./viva/types";
+
+/** Radix Select rejects an empty string as an item value, so "no subject" needs
+ *  a sentinel that is mapped back to "" before the code reaches the server. */
+const NO_SUBJECT = "__none__";
 
 export function VivaPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -54,8 +71,18 @@ export function VivaPage() {
 
   const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>("WITHOUT_TECHNICAL_ACCURACY");
   const [technicalAccuracy, setTechnicalAccuracy] = useState<number | null>(null);
+  // Optional link to a subject's concept rubric (see /api/subject-content) so
+  // the server can attach an AI-suggested technical_accuracy_ai score. Only
+  // meaningful in WITH_TECHNICAL_ACCURACY mode; never auto-published either way.
+  const [subjectCode, setSubjectCode] = useState("");
+  // Picked from a list rather than typed: the server matches subject_code
+  // exactly, so a typo silently yields no rubric instead of an error.
+  const [subjectOptions, setSubjectOptions] = useState<SubjectRubricSummary[]>([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
+  const [subjectsFailed, setSubjectsFailed] = useState(false);
   const [studentId, setStudentId] = useState("");
   const [published, setPublished] = useState(false);
+  const [autoPublishedWithoutTech, setAutoPublishedWithoutTech] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [sourceTab, setSourceTab] = useState<"upload" | "live">("upload");
 
@@ -69,11 +96,15 @@ export function VivaPage() {
     ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env?.VITE_GRADEX_API_KEY) ??
     "";
 
+  // Deliberately does NOT reset assessmentMode: the examiner picks it upfront,
+  // before choosing upload/live or selecting a file, via the selector below —
+  // not afterward per recording. It stays sticky across "Remove"/re-record so a
+  // lecturer grading several same-type vivas back to back isn't re-asked each time.
   const resetAssessmentState = () => {
-    setAssessmentMode("WITHOUT_TECHNICAL_ACCURACY");
     setTechnicalAccuracy(null);
     setStudentId("");
     setPublished(false);
+    setAutoPublishedWithoutTech(false);
     setPublishing(false);
   };
 
@@ -82,6 +113,35 @@ export function VivaPage() {
       xhrRef.current?.abort();
     };
   }, []);
+
+  // Fetched only in technical mode — a presentation viva never uses a rubric.
+  useEffect(() => {
+    if (assessmentMode !== "WITH_TECHNICAL_ACCURACY") return;
+    let cancelled = false;
+    setSubjectsLoading(true);
+    listSubjectContent()
+      .then((rows) => {
+        if (cancelled) return;
+        setSubjectOptions(rows);
+        setSubjectsFailed(false);
+        // A code held from an earlier session may no longer exist; leaving it
+        // set would show an empty trigger and silently send a dead code.
+        setSubjectCode((current) =>
+          current && !rows.some((row) => row.subject_code === current) ? "" : current,
+        );
+      })
+      .catch(() => {
+        // Non-fatal: the subject link is optional, so a failed lookup must not
+        // block the viva. The field falls back to free text below.
+        if (!cancelled) setSubjectsFailed(true);
+      })
+      .finally(() => {
+        if (!cancelled) setSubjectsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [assessmentMode]);
 
   const handlePublish = async () => {
     const markId = analysisResult?.mark_id;
@@ -93,39 +153,45 @@ export function VivaPage() {
       });
       return;
     }
+    if (assessmentMode !== "WITH_TECHNICAL_ACCURACY") {
+      return;
+    }
     if (published || publishing) return;
 
     setPublishing(true);
     try {
-      const response = await fetch(`${backendBaseUrl}/api/viva-marks/${markId}/publish`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(apiKey ? { "X-API-Key": apiKey } : {}),
-        },
-        body: JSON.stringify({
-          assessment_mode: assessmentMode,
-          technical_accuracy:
-            assessmentMode === "WITH_TECHNICAL_ACCURACY" ? technicalAccuracy : null,
-          student_id: studentId.trim() || null,
-          published: true,
-        }),
+      const saved = await publishVivaMark(markId, {
+        assessment_mode: assessmentMode,
+        technical_accuracy: technicalAccuracy,
+        student_id: studentId.trim() || null,
+        published: true,
       });
-      if (!response.ok) {
-        let detail = `HTTP ${response.status}`;
-        try {
-          const payload = await response.json();
-          if (typeof payload?.detail === "string" && payload.detail.trim()) {
-            detail = payload.detail.trim();
-          }
-        } catch {
-          // ignore
+      // The server recomputes the fused mark on publish. Merge it back, or the
+      // panel and the printed report keep showing the pre-fusion score.
+      setAnalysisResult((previous) => {
+        if (!previous) return previous;
+        const merged: AnalysisResult = {
+          ...previous,
+          final_score: saved.final_score ?? previous.final_score,
+          final_grade: saved.final_grade ?? previous.final_grade,
+          assessment_mode: assessmentMode,
+        };
+        if (previous.assessment) {
+          merged.assessment = {
+            ...previous.assessment,
+            final_score: saved.final_score ?? previous.assessment.final_score,
+            grade: saved.final_grade ?? previous.assessment.grade,
+            technical_accuracy: technicalAccuracy,
+            assessment_mode: assessmentMode,
+          };
         }
-        throw new Error(detail);
-      }
+        return merged;
+      });
       setPublished(true);
       toast.success("Assessment published", {
-        description: "Final score and grade saved from the engine scorer.",
+        description: `Final mark ${
+          saved.final_score != null ? saved.final_score.toFixed(1) : "—"
+        }/100 (grade ${saved.final_grade ?? "—"}) saved.`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to publish";
@@ -241,6 +307,13 @@ export function VivaPage() {
     setAnalysisPhase("uploading");
     const formData = new FormData();
     formData.append("video", file);
+    // Chosen upfront via the selector below, before this file was ever picked —
+    // the server uses this to decide whether the mark may auto-publish (see
+    // main.py::viva_analyze). Technical vivas never auto-publish.
+    formData.append("assessment_mode", assessmentMode);
+    if (assessmentMode === "WITH_TECHNICAL_ACCURACY" && subjectCode.trim()) {
+      formData.append("subject_code", subjectCode.trim());
+    }
 
     try {
       const apiUrl = `${backendBaseUrl}/api/viva-analyze`;
@@ -298,13 +371,30 @@ export function VivaPage() {
       const data = JSON.parse(response) as AnalysisResult;
       setAnalysisResult(data);
       setAnalysisPhase("complete");
-      setPublished(false);
+      // Pre-fill from the AI suggestion when available; the examiner can still
+      // adjust it before publishing — see EvaluationPanel's Technical accuracy slider.
+      const suggested = data.technical_accuracy_ai?.overall_score;
+      setTechnicalAccuracy(suggested != null ? Math.round(suggested) : null);
+      const wasAutoPublished = Boolean(data.auto_published && data.published);
+      setAutoPublishedWithoutTech(wasAutoPublished);
+      setPublished(wasAutoPublished);
       setPublishing(false);
-      setAssessmentMode("WITHOUT_TECHNICAL_ACCURACY");
-      setTechnicalAccuracy(null);
       if (data.persistence_error) {
         toast.warning("Analysis complete — mark not saved", {
           description: data.persistence_error,
+        });
+      } else if (wasAutoPublished) {
+        toast.success("Analysis complete — score saved", {
+          description: `Final mark ${data.final_score?.toFixed(1) ?? data.assessment?.final_score ?? "—"}/100 (grade ${data.final_grade ?? data.assessment?.grade ?? "—"}) saved.`,
+        });
+      } else if (data.mark_id) {
+        toast.success("Analysis complete", {
+          description:
+            data.assessment?.status === "INCOMPLETE"
+              ? "Recording is incomplete — no official grade saved."
+              : assessmentMode === "WITH_TECHNICAL_ACCURACY"
+                ? "Draft saved — enter a technical accuracy score and publish when ready."
+                : "Draft saved.",
         });
       } else if (data.assessment) {
         toast.success("Analysis complete", {
@@ -382,6 +472,82 @@ export function VivaPage() {
 
       {!videoPreview && (
         <Card className="p-6">
+          <div className="mb-5">
+            <div className="text-sm font-medium text-foreground mb-2">Assessment type</div>
+            <Tabs
+              value={assessmentMode}
+              onValueChange={(value) => setAssessmentMode(value as AssessmentMode)}
+            >
+              <TabsList>
+                <TabsTrigger value="WITHOUT_TECHNICAL_ACCURACY">Non-technical</TabsTrigger>
+                <TabsTrigger value="WITH_TECHNICAL_ACCURACY">Technical</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <p className="text-xs text-muted-foreground mt-2">
+              {assessmentMode === "WITH_TECHNICAL_ACCURACY"
+                ? "Technical modules — the mark stays a draft until an examiner enters a technical accuracy score and publishes. Chosen once, before uploading or recording."
+                : "Communication / presentation vivas — the AI performance score saves automatically once analysis completes. Chosen once, before uploading or recording."}
+            </p>
+            {assessmentMode === "WITH_TECHNICAL_ACCURACY" && (
+              <div className="mt-3">
+                <label className="text-xs text-muted-foreground" htmlFor="viva-subject-code">
+                  Subject (optional — links to an uploaded concept rubric for an AI-suggested score)
+                </label>
+                {subjectsFailed ? (
+                  <>
+                    <Input
+                      id="viva-subject-code"
+                      className="mt-1 max-w-xs"
+                      value={subjectCode}
+                      onChange={(e) => setSubjectCode(e.target.value)}
+                      placeholder="e.g. CS3021"
+                    />
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                      Could not load the subject list — type the code exactly as saved.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Select
+                      value={subjectCode || NO_SUBJECT}
+                      onValueChange={(value) =>
+                        setSubjectCode(value === NO_SUBJECT ? "" : value)
+                      }
+                      disabled={subjectsLoading && subjectOptions.length === 0}
+                    >
+                      <SelectTrigger id="viva-subject-code" className="mt-1 max-w-xs">
+                        <SelectValue
+                          placeholder={
+                            subjectsLoading
+                              ? "Loading subjects…"
+                              : subjectOptions.length
+                                ? "No subject linked"
+                                : "No subjects uploaded yet"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_SUBJECT}>No subject linked</SelectItem>
+                        {subjectOptions.map((subject) => (
+                          <SelectItem key={subject.subject_code} value={subject.subject_code}>
+                            {subject.subject_code} · {subject.subject_name} (
+                            {subject.concept_count} concepts)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!subjectsLoading && subjectOptions.length === 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Upload lecture material under Subject Content to enable AI-suggested
+                        technical accuracy.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
           <Tabs value={sourceTab} onValueChange={(value) => setSourceTab(value as "upload" | "live")}>
             <TabsList>
               <TabsTrigger value="upload">Upload recording</TabsTrigger>
@@ -536,14 +702,15 @@ export function VivaPage() {
         <>
           <ScoreOverview
             assessment={analysisResult.assessment}
+            analysisResult={analysisResult}
+            assessmentMode={assessmentMode}
+            technicalAccuracy={technicalAccuracy}
+            published={published}
             confidenceScore={analysisResult.confidence_score}
             engagementScore={analysisResult.engagement_score}
             audioGrade={audioAnalysis?.audio_grade}
             videoStatus={analysisResult.video_status}
             faceCoverageRatio={analysisResult.coverage?.face_coverage_ratio}
-            framesRejectedQuality={analysisResult.coverage?.frames_rejected_quality}
-            framesEnhanced={analysisResult.coverage?.frames_enhanced}
-            framesQualityWarning={analysisResult.coverage?.frames_quality_warning}
           />
 
           <div className="grid lg:grid-cols-3 gap-6">
@@ -660,15 +827,23 @@ export function VivaPage() {
                 <EvaluationPanel
                   assessment={analysisResult.assessment}
                   assessmentMode={assessmentMode}
-                  onChangeMode={setAssessmentMode}
                   technicalAccuracy={technicalAccuracy}
                   onChangeTechnicalAccuracy={setTechnicalAccuracy}
+                  technicalAccuracyAI={analysisResult.technical_accuracy_ai}
                   studentId={studentId}
                   onChangeStudentId={setStudentId}
                   aiRecommendation={aiRecommendation}
+                  markId={analysisResult.mark_id}
+                  persistenceError={analysisResult.persistence_error}
+                  autoPublishedWithoutTech={autoPublishedWithoutTech}
                   published={published}
                   publishing={publishing}
                   onPublish={handlePublish}
+                  analysisResult={{
+                    final_score: analysisResult.final_score,
+                    final_grade: analysisResult.final_grade,
+                    auto_published: analysisResult.auto_published,
+                  }}
                 />
               </Card>
             </div>

@@ -1,0 +1,15 @@
+**/node_modules
+**/.git
+**/dist
+**/build
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+docs/
+*.md
+!Gradex_AI_Server/app/viva_copilot/PROCESS.md
+.vscode/
+.idea/
+**/coverage

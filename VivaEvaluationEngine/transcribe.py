@@ -8,6 +8,33 @@ from pathlib import Path
 ENGINE_ROOT = Path(__file__).resolve().parent
 DEFAULT_TRANSCRIPTION_OUTPUT = ENGINE_ROOT / "outputs" / "transcription_result.json"
 
+ALLOWED_WHISPER_MODELS = (
+    "tiny",
+    "base",
+    "small",
+    "medium",
+    "large",
+    "large-v2",
+    "large-v3",
+    "turbo",
+)
+DEFAULT_WHISPER_MODEL = "medium"
+
+
+def resolve_whisper_model_size(raw: str | None, *, default: str = DEFAULT_WHISPER_MODEL) -> str:
+    """Normalize VIVA_WHISPER_MODEL env value."""
+    value = (raw or default).strip().lower()
+    aliases = {
+        "largev3": "large-v3",
+        "large_v3": "large-v3",
+        "large-v3-turbo": "turbo",
+    }
+    value = aliases.get(value, value)
+    if value in ALLOWED_WHISPER_MODELS:
+        return value
+    print(f"Unknown Whisper model {raw!r}; falling back to {default}.")
+    return default
+
 
 @lru_cache(maxsize=2)
 def _load_whisper_model(model_size):
@@ -25,12 +52,13 @@ def release_whisper_models() -> None:
     gc.collect()
 
 
-def transcribe_audio(audio_path, model_size="base", output_path=None):
+def transcribe_audio(audio_path, model_size=None, output_path=None):
     """Transcribe audio using Whisper.
 
     Returns:
         transcript (str), segments (list), meta (dict with available/reason)
     """
+    model_size = resolve_whisper_model_size(model_size)
     try:
         model = _load_whisper_model(model_size)
     except ImportError:
@@ -76,6 +104,7 @@ def transcribe_audio(audio_path, model_size="base", output_path=None):
     return transcript, segments, {
         "available": True,
         "reason": None,
+        "model": model_size,
         "words_with_times": words_with_times,
     }
 

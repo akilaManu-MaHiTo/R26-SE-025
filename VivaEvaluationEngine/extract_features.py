@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Optional
 
 import librosa
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 SR = 16000
 
@@ -29,7 +31,8 @@ def _safe_pitch_stats(y: np.ndarray, sr: int) -> Dict[str, float]:
             "pitch_max": float(np.max(valid)),
             "pitch_std": float(np.std(valid)),
         }
-    except Exception:
+    except Exception as exc:
+        logger.warning("Pitch extraction (librosa YIN) failed; reporting unmeasured: %s", exc)
         return {"pitch_mean": 0.0, "pitch_min": 0.0, "pitch_max": 0.0, "pitch_std": 0.0}
 
 
@@ -54,7 +57,8 @@ def _safe_voice_quality(audio_path: str) -> Dict[str, Optional[float]]:
             "hnr_mean": max(0.0, hnr_mean),
             "voice_quality_measured": 1.0,
         }
-    except Exception:
+    except Exception as exc:
+        logger.warning("Voice quality extraction (Praat/parselmouth) failed; reporting unmeasured: %s", exc)
         return {
             "jitter_local": None,
             "shimmer_local": None,
@@ -72,7 +76,8 @@ def extract_acoustic_features(audio_path: str) -> Dict[str, Any]:
     try:
         tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
         tempo_value = float(np.squeeze(tempo))
-    except Exception:
+    except Exception as exc:
+        logger.warning("Tempo extraction (librosa beat_track) failed; reporting unmeasured: %s", exc)
         tempo_value = 0.0
 
     pitch = _safe_pitch_stats(y, sr)
@@ -87,7 +92,8 @@ def extract_acoustic_features(audio_path: str) -> Dict[str, Any]:
         if mfcc.size:
             mfcc_mean = [round(float(v), 4) for v in np.mean(mfcc, axis=1)]
             mfcc_std = [round(float(v), 4) for v in np.std(mfcc, axis=1)]
-    except Exception:
+    except Exception as exc:
+        logger.warning("MFCC extraction (librosa) failed; reporting unmeasured: %s", exc)
         mfcc_mean = None
         mfcc_std = None
 

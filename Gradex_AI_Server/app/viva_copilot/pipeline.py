@@ -2,23 +2,93 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
+import os
 import time
 from typing import Any, Callable, Dict, Optional
 from uuid import uuid4
 
 from Gradex_AI_Server.app.viva_copilot import events
+from Gradex_AI_Server.app.viva_copilot import events
 from Gradex_AI_Server.app.viva_copilot.answer_detector import detect_final_answer, word_count
 from Gradex_AI_Server.app.viva_copilot.context_builder import build_llm_context
 from Gradex_AI_Server.app.viva_copilot.followup_llm import generate_followups
-from Gradex_AI_Server.app.viva_copilot.session_store import CopilotSession, broadcast
+from Gradex_AI_Server.app.viva_copilot.session_store import CopilotSession, broadcast, session_ttl_seconds, store
 from Gradex_AI_Server.app.viva_copilot.stt import transcribe_chunk
 
 GenerateFn = Callable[[Dict[str, Any], Optional[list]], Dict[str, Any]]
 TranscribeFn = Callable[..., str]
 
-# Bulk LLM during presentation: not every STT chunk. Free Groq is ~30k TPM / low RPM.
-PRESENTATION_SUGGEST_MIN_WORDS = 28
-PRESENTATION_SUGGEST_MIN_SECONDS = 40.0
+def _env_int(name: str, default: int) -> int:
+    try:
+        value = int((os.getenv(name) or "").strip())
+        return value if value > 0 else default
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        value = float((os.getenv(name) or "").strip())
+        return value if value > 0 else default
+    except ValueError:
+        return default
+
+
+# Suggestion cadence, applied to BOTH phases. The presentation phase used to
+# run at 5 words / 3 seconds, which is why a talking candidate still produced a
+# burst of questions even after the viva phase was gated.
+#
+# At ~130 WPM, 15 seconds of speech is roughly 30-35 words, so a 15-word
+# threshold was reached in about 7s and never actually bound — the time gate
+# did all the work. The word gate is sized to match the time gate instead.
+PRESENTATION_SUGGEST_MIN_WORDS = _env_int("COPILOT_SUGGEST_MIN_WORDS", 30)
+PRESENTATION_SUGGEST_MIN_SECONDS = _env_float("COPILOT_SUGGEST_MIN_SECONDS", 15.0)
+
+# Shortest utterance that can count as an answer. Three words admitted
+# fragments like "He doesn't" / "Eat him I said", which gave the LLM nothing to
+# work with and produced "what do you mean?" questions.
+#
+# Set to 11 by explicit request. Note this is a deliberately strict cut:
+# observed noise sits at 3-4 words, but genuine short answers ("Guards validate
+# the token before controllers run." = 7w) also fall below 11 and are dropped
+# from the transcript entirely, not merely held back from the LLM. Lower it via
+# COPILOT_MIN_ANSWER_WORDS if short answers start going missing.
+MIN_ANSWER_WORDS = _env_int("COPILOT_MIN_ANSWER_WORDS", 11)
+
+# Viva-phase suggestion cadence. Previously ungated: every finalized answer
+# triggered its own LLM call, so a candidate speaking in short bursts produced
+# a stream of noisy, context-free questions. Answers now accumulate and one
+# request covers the whole window.
+VIVA_SUGGEST_MIN_WORDS = _env_int(
+    "COPILOT_VIVA_SUGGEST_MIN_WORDS", PRESENTATION_SUGGEST_MIN_WORDS
+)
+VIVA_SUGGEST_MIN_SECONDS = _env_float(
+    "COPILOT_VIVA_SUGGEST_MIN_SECONDS", PRESENTATION_SUGGEST_MIN_SECONDS
+)
+
+
+def should_refresh_viva_suggestions(
+    *,
+    pending_words: int,
+    last_at: float,
+    now: Optional[float] = None,
+    min_words: int = VIVA_SUGGEST_MIN_WORDS,
+    min_seconds: float = VIVA_SUGGEST_MIN_SECONDS,
+) -> bool:
+    """Gate viva-phase follow-ups on both accumulated words and elapsed time.
+
+    Both must clear: enough substance to reason about, and enough spacing that
+    the examiner is not buried. The first answer of a session (last_at == 0)
+    passes the time gate so suggestions are not withheld at the start.
+    """
+    current_time = time.time() if now is None else now
+    if pending_words < min_words:
+        return False
+    if last_at and current_time - last_at < min_seconds:
+        return False
+    return True
+
 
 
 def should_refresh_presentation_suggestions(
@@ -38,6 +108,18 @@ def should_refresh_presentation_suggestions(
     if last_at and current_time - last_at < min_seconds:
         return False
     return True
+
+
+def _accepts_on_partial_suggestion(fn: Callable[..., Any]) -> bool:
+    try:
+        signature = inspect.signature(fn)
+    except (TypeError, ValueError):
+        return False
+    params = signature.parameters.values()
+    return any(
+        p.name == "on_partial_suggestion" or p.kind == inspect.Parameter.VAR_KEYWORD
+        for p in params
+    )
 
 
 def _append_utterance(buffer: str, piece: str) -> str:
@@ -64,6 +146,12 @@ async def ingest_audio_chunk(
     transcribe: Optional[TranscribeFn] = None,
     generate: Optional[GenerateFn] = None,
 ) -> None:
+    if session.is_expired():
+        ttl = session_ttl_seconds()
+        await broadcast(session, events.session_expired(session.session_id, ttl_seconds=ttl))
+        store.delete(session.session_id)
+        return
+    session.touch()
     if session.phase not in {"presentation", "viva"}:
         return
     overflow = False
@@ -143,14 +231,58 @@ async def ingest_audio_chunk(
         )
 
 
+async def ingest_text(
+    session: CopilotSession,
+    text: str,
+    *,
+    is_final: bool,
+    generate: Optional[GenerateFn] = None,
+) -> None:
+    """Ingest a transcript fragment produced client-side (browser Web Speech
+    API) instead of server-side Groq Whisper STT.
+
+    This is the fast path: the browser's on-device/network speech engine
+    returns text with ~0 network latency, so we can display it and — once a
+    final segment arrives — kick off follow-up generation immediately,
+    without waiting for an audio chunk to be uploaded and transcribed by
+    Groq. Groq STT (``ingest_audio_chunk``) keeps running in parallel as an
+    accuracy backstop; whichever path finalizes an utterance first wins
+    because ``detect_final_answer`` de-dupes by content hash.
+    """
+    if session.phase not in {"presentation", "viva"}:
+        return
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return
+
+    if not is_final:
+        # Browser SpeechRecognition interim results already contain the full
+        # accumulated utterance-so-far, so we show it directly rather than
+        # appending (unlike the Groq audio-chunk path, which sees only the
+        # newly-transcribed slice each time).
+        async with session.lock:
+            session.utterance_buffer = cleaned
+        await broadcast(session, events.transcript_partial(session.session_id, cleaned))
+        return
+
+    async with session.lock:
+        session.utterance_buffer = ""
+        session.last_chunk_had_speech = False
+    await _finalize_utterance(session, cleaned, generate=generate)
+
+
 async def _finalize_utterance(
     session: CopilotSession,
     text: str,
     *,
     generate: Optional[GenerateFn] = None,
 ) -> None:
-    min_words = 4 if session.phase == "presentation" else 5
-    cleaned = detect_final_answer(text, session.recent_hashes, min_words=min_words)
+    cleaned = detect_final_answer(
+        text,
+        session.recent_hashes,
+        min_words=MIN_ANSWER_WORDS,
+        recent_texts=list(session.recent_texts),
+    )
     if not cleaned:
         return
 
@@ -167,7 +299,21 @@ async def _finalize_utterance(
     await broadcast(session, events.candidate_answer_final(session.session_id, answer_id, cleaned))
     if session.current_question:
         session.recent_qa.append({"question": session.current_question, "answer": cleaned})
-    await _run_followups(session, answer_id, candidate_answer=cleaned, generate=generate)
+
+    # Accumulate, then generate on a cadence. The transcript above still
+    # updates live; only the LLM call is throttled, so the examiner sees
+    # speech immediately but gets questions grounded in a full window.
+    session.pending_answer_parts.append(cleaned)
+    accumulated = session.pending_answer_text()
+    if not should_refresh_viva_suggestions(
+        pending_words=word_count(accumulated),
+        last_at=session.last_suggest_at,
+    ):
+        return
+
+    session.pending_answer_parts.clear()
+    await _run_followups(session, answer_id, candidate_answer=accumulated, generate=generate)
+
 
 
 async def enter_viva_phase(
@@ -297,6 +443,11 @@ async def _run_followups(
         else:
             session.busy_llm = True
             queued = False
+            # Stamp the cadence clock when the request STARTS. Stamping on
+            # completion made the real gap 15s + LLM latency, and a failed call
+            # stamped nothing at all — leaving the gate open for the next
+            # utterance and producing a burst.
+            session.last_suggest_at = time.time()
     if overflow:
         await broadcast(
             session,
@@ -317,8 +468,34 @@ async def _run_followups(
         presentation_excerpt=session.presentation_text(),
     )
     generate_fn = generate or generate_followups
+    loop = asyncio.get_event_loop()
+
+    def _on_partial_suggestion(suggestion: Dict[str, Any]) -> None:
+        # Called from the worker thread running generate_fn (via
+        # asyncio.to_thread). Hop back onto the event loop to broadcast so
+        # the interviewer sees the first suggestion the moment Groq streams
+        # it, instead of waiting for the whole follow-up JSON to finish.
+        asyncio.run_coroutine_threadsafe(
+            broadcast(
+                session,
+                events.followup_suggestion_partial(session.session_id, answer_id, suggestion),
+            ),
+            loop,
+        )
+
+    supports_partial = _accepts_on_partial_suggestion(generate_fn)
     try:
-        result = await asyncio.to_thread(generate_fn, context, list(session.asked_questions))
+        if supports_partial:
+            result = await asyncio.to_thread(
+                generate_fn,
+                context,
+                list(session.asked_questions),
+                on_partial_suggestion=_on_partial_suggestion,
+            )
+        else:
+            # Backwards compatible with test doubles / custom generate_fn
+            # implementations that do not accept on_partial_suggestion.
+            result = await asyncio.to_thread(generate_fn, context, list(session.asked_questions))
         analysis = result.get("analysis") or {}
         suggestions = result.get("suggestions") or []
         points = result.get("main_points") or []
@@ -336,7 +513,6 @@ async def _run_followups(
             session,
             events.followup_suggestions(session.session_id, answer_id, suggestions, analysis),
         )
-        session.last_suggest_at = time.time()
         session.last_suggest_word_count = word_count(candidate_answer)
     except Exception as exc:
         await broadcast(session, events.copilot_error(session.session_id, f"Suggestion generation failed: {exc}"))
@@ -347,6 +523,13 @@ async def _run_followups(
             if session.pending_followups:
                 next_job = session.pending_followups.popleft()
         if next_job:
+            # Draining the backlog used to fire immediately, back-to-back,
+            # ignoring the cadence entirely — the main source of question
+            # bursts. Wait out the remaining interval first so queued work is
+            # spaced like everything else.
+            wait_for = VIVA_SUGGEST_MIN_SECONDS - (time.time() - session.last_suggest_at)
+            if wait_for > 0:
+                await asyncio.sleep(wait_for)
             await _run_followups(
                 session,
                 next_job["answer_id"],
