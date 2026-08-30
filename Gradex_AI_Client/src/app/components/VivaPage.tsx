@@ -36,6 +36,11 @@ import { AudioAnalysisPanel } from "./viva/AudioAnalysisPanel";
 import { LlmJudgePanel } from "./viva/LlmJudgePanel";
 import { QaRelevancePanel } from "./viva/QaRelevancePanel";
 import { LiveVivaRecorder } from "./viva/LiveVivaRecorder";
+import {
+  fetchVivaAnalyzeProgress,
+  VivaAnalyzeProgress,
+  VivaProgressSnapshot,
+} from "./viva/VivaAnalyzeProgress";
 import { EvaluationPanel } from "./viva/EvaluationPanel";
 import { ReportPrintView } from "./viva/ReportPrintView";
 import { publishVivaMark } from "./viva/vivaMarksApi";
@@ -67,6 +72,8 @@ export function VivaPage() {
   const [uploadStartTime, setUploadStartTime] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [analysisPhase, setAnalysisPhase] = useState<"idle" | "uploading" | "processing" | "complete">("idle");
+  const [progressSnapshot, setProgressSnapshot] = useState<VivaProgressSnapshot | null>(null);
+  const progressIdRef = useRef<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
 
   const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>("WITHOUT_TECHNICAL_ACCURACY");
@@ -233,6 +240,23 @@ export function VivaPage() {
     return () => clearInterval(id);
   }, [isAnalyzing, uploadStartTime]);
 
+  useEffect(() => {
+    if (!isAnalyzing || analysisPhase !== "processing") return;
+    const progressId = progressIdRef.current;
+    if (!progressId) return;
+    let cancelled = false;
+    const poll = async () => {
+      const next = await fetchVivaAnalyzeProgress(backendBaseUrl, progressId, apiKey);
+      if (!cancelled && next) setProgressSnapshot(next);
+    };
+    void poll();
+    const id = window.setInterval(() => void poll(), 400);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [isAnalyzing, analysisPhase, backendBaseUrl, apiKey]);
+
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -305,8 +329,15 @@ export function VivaPage() {
     setElapsedMs(0);
     setUploadStartTime(Date.now());
     setAnalysisPhase("uploading");
+    setProgressSnapshot(null);
+    const progressId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `prog_${Date.now()}`;
+    progressIdRef.current = progressId;
     const formData = new FormData();
     formData.append("video", file);
+    formData.append("progress_id", progressId);
     // Chosen upfront via the selector below, before this file was ever picked —
     // the server uses this to decide whether the mark may auto-publish (see
     // main.py::viva_analyze). Technical vivas never auto-publish.
@@ -673,18 +704,10 @@ export function VivaPage() {
 
               {analysisPhase === "processing" && (
                 <div className="space-y-3">
-                  <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
-                    <div className="flex items-center gap-3">
-                      <Loader2 className="size-5 text-amber-600 dark:text-amber-400 animate-spin" />
-                      <div className="text-sm text-foreground">
-                        <div className="font-medium">Analyzing video</div>
-                        <div className="text-xs text-muted-foreground mt-1 tabular-nums">
-                          Processing frames, extracting audio, transcribing…
-                          {uploadStartTime && ` (${(elapsedMs / 1000).toFixed(1)}s elapsed)`}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <VivaAnalyzeProgress
+                    snapshot={progressSnapshot}
+                    elapsedSeconds={elapsedMs / 1000}
+                  />
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Skeleton className="h-20" />
                     <Skeleton className="h-20" />

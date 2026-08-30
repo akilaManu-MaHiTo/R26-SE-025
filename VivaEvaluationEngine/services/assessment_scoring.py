@@ -514,7 +514,10 @@ def build_assessment(
     if mode not in {MODE_WITHOUT, MODE_WITH}:
         mode = MODE_WITHOUT
 
+    from services.pipeline_progress import emit
     from services.lip_motion_validation import classify_lip_motion_evidence, summarize_lip_motion
+
+    emit("assessment", "Computing official mark")
     from services.multi_face_validation import classify_multi_face_evidence, summarize_multi_face
 
     lip_motion = summarize_lip_motion(result)

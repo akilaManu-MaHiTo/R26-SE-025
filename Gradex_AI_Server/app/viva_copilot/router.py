@@ -143,6 +143,7 @@ async def analyze_session(
     assessment_mode: str = Form(default=MODE_WITHOUT),
     subject_code: Optional[str] = Form(default=None),
     student_id: Optional[str] = Form(default=None),
+    progress_id: Optional[str] = Form(default=None),
 ) -> Dict[str, Any]:
     """Score a finished live viva from its full session recording.
 
@@ -177,6 +178,9 @@ async def analyze_session(
 
     await broadcast(session, events.phase_changed(session.session_id, "analyzing"))
     try:
+        from Gradex_AI_Server.app.viva_progress import normalize_progress_id
+
+        job_id = normalize_progress_id(progress_id)
         result = await analyze_live_session(
             session,
             str(file_path),
@@ -185,6 +189,7 @@ async def analyze_session(
             video_filename=filename or file_path.name,
             subject_code=code,
             student_id=sid,
+            progress_id=job_id,
         )
         result["sessionId"] = session.session_id
         await broadcast(

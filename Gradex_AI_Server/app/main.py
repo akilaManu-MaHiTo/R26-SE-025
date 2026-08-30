@@ -480,11 +480,23 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
         ) from None
 
 
+@app.get("/api/viva-analyze/progress/{progress_id}", dependencies=[Depends(require_api_key)])
+async def viva_analyze_progress(progress_id: str):
+    """Live step list for the analyze UI. Polled while POST /api/viva-analyze runs."""
+    from Gradex_AI_Server.app.viva_progress import normalize_progress_id, snapshot
+
+    job_id = normalize_progress_id(progress_id)
+    if not job_id:
+        raise HTTPException(status_code=400, detail="Invalid progress id.")
+    return snapshot(job_id)
+
+
 @app.post("/api/viva-analyze", dependencies=[Depends(require_api_key)])
 async def viva_analyze(
     video: UploadFile = File(...),
     assessment_mode: str = Form(default="WITHOUT_TECHNICAL_ACCURACY"),
     subject_code: Optional[str] = Form(default=None),
+    progress_id: Optional[str] = Form(default=None),
 ):
     """
     Analyze a viva recording for emotion detection and engagement scoring.
@@ -519,9 +531,11 @@ async def viva_analyze(
         persist_and_autopublish,
         run_analysis,
     )
+    from Gradex_AI_Server.app.viva_progress import normalize_progress_id
 
     request_start = time.time()
     requested_mode = normalize_mode(assessment_mode)
+    job_id = normalize_progress_id(progress_id)
 
     filename = video.filename or ""
     suffix = Path(filename).suffix.lower()
@@ -550,7 +564,7 @@ async def viva_analyze(
         analysis_start = time.time()
         # ML pipeline is CPU/GPU-bound; keep the event loop free for other requests.
         try:
-            result = await run_analysis(str(file_path))
+            result = await run_analysis(str(file_path), progress_id=job_id)
         except asyncio.TimeoutError as exc:
             raise HTTPException(
                 status_code=504,
@@ -564,7 +578,9 @@ async def viva_analyze(
         # analyze_video_file/viva_service.py's internal chain — it's layered
         # on here as a decoupled post-processing call so that file, and the
         # rest of VivaEvaluationEngine's existing pipeline, stay untouched.
-        result = await attach_subject_technical_accuracy(result, subject_code, db_instance)
+        result = await attach_subject_technical_accuracy(
+            result, subject_code, db_instance, progress_id=job_id
+        )
 
         print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")
         # Persist to MongoDB (vivamark.marks) and auto-publish non-technical
@@ -575,6 +591,7 @@ async def viva_analyze(
             mode=requested_mode,
             video_filename=video.filename,
             source="upload",
+            progress_id=job_id,
         )
         return result
     except ModuleNotFoundError as exc:
