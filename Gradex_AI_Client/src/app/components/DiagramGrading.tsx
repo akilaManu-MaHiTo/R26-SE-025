@@ -331,7 +331,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
 
     try {
       await saveDiagramEvaluation(payload);
-      setSaveState("Saved to MongoDB");
+      setSaveState("Saved");
     } catch (saveError) {
       setSaveState(
         saveError instanceof Error ? saveError.message : "Save failed.",

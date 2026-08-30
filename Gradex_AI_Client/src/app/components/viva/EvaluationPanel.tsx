@@ -16,61 +16,85 @@ import {
 } from "../ui/alert-dialog";
 import {
   AssessmentMode,
+  TechnicalAccuracyAI,
   VivaAssessment,
-  resolveGradeFromPercent,
 } from "./types";
+import {
+  formatFusionLabel,
+  parseFusionWeights,
+  resolveOfficialMark,
+} from "./officialMark";
+import { TechnicalAccuracyPanel } from "./TechnicalAccuracyPanel";
 
 interface EvaluationPanelProps {
   assessment?: VivaAssessment;
+  /** Chosen upfront (before upload/recording) via the selector on VivaPage; read-only here. */
   assessmentMode: AssessmentMode;
-  onChangeMode: (mode: AssessmentMode) => void;
   technicalAccuracy: number | null;
   onChangeTechnicalAccuracy: (value: number) => void;
+  /** AI-suggested score + per-concept evidence; pre-fills the slider above but never publishes on its own. */
+  technicalAccuracyAI?: TechnicalAccuracyAI;
   studentId: string;
   onChangeStudentId: (value: string) => void;
   aiRecommendation: string;
+  markId?: string | null;
+  persistenceError?: string | null;
+  autoPublishedWithoutTech?: boolean;
   published: boolean;
   publishing?: boolean;
   onPublish: () => void;
+  analysisResult?: {
+    final_score?: number | null;
+    final_grade?: string | null;
+    auto_published?: boolean;
+  } | null;
 }
-
-const FUSION_AI = 0.5;
-const FUSION_TECH = 0.5;
 
 export function EvaluationPanel({
   assessment,
   assessmentMode,
-  onChangeMode,
   technicalAccuracy,
   onChangeTechnicalAccuracy,
+  technicalAccuracyAI,
   studentId,
   onChangeStudentId,
   aiRecommendation,
+  markId,
+  persistenceError,
+  autoPublishedWithoutTech = false,
   published,
   publishing = false,
   onPublish,
+  analysisResult,
 }: EvaluationPanelProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const incomplete = assessment?.status === "INCOMPLETE";
   const aiScore = assessment?.ai_performance?.score ?? null;
   const withTech = assessmentMode === "WITH_TECHNICAL_ACCURACY";
+  const fusionWeights = parseFusionWeights(assessment?.fusion);
 
-  const preview = useMemo(() => {
-    if (aiScore == null || incomplete) return { final: null as number | null, grade: null as string | null };
-    if (!withTech) {
-      return { final: aiScore, grade: resolveGradeFromPercent(aiScore) };
-    }
-    if (technicalAccuracy == null) return { final: null, grade: null };
-    const technical100 = (technicalAccuracy / 10) * 100;
-    const final = FUSION_AI * aiScore + FUSION_TECH * technical100;
-    return { final: Math.round(final * 100) / 100, grade: resolveGradeFromPercent(final) };
-  }, [aiScore, incomplete, withTech, technicalAccuracy]);
+  const preview = useMemo(
+    () =>
+      resolveOfficialMark({
+        assessment,
+        analysisResult,
+        assessmentMode,
+        technicalAccuracy,
+        published,
+      }),
+    [assessment, analysisResult, assessmentMode, technicalAccuracy, published],
+  );
 
   const canPublish =
+    withTech &&
+    Boolean(markId) &&
     !incomplete &&
     aiScore != null &&
-    (!withTech || technicalAccuracy != null);
+    technicalAccuracy != null;
+
+  /** Lock inputs only after a manual publish in technical-accuracy mode. */
+  const lockedAfterTechPublish = published && withTech;
 
   const familyScores = assessment?.ai_performance?.family_scores || {};
 
@@ -100,7 +124,9 @@ export function EvaluationPanel({
           <span className="text-3xl font-semibold">{aiScore != null ? aiScore.toFixed(1) : "—"}</span>
           <span className="text-muted-foreground"> / 100</span>
         </div>
+        {/* Hidden: internal provenance, not something an examiner acts on.
         <p className="text-xs text-muted-foreground mt-1">Locked engine score — not LLM rubric values.</p>
+        */}
       </div>
 
       <div className="mt-4 space-y-1.5 text-xs text-muted-foreground">
@@ -119,44 +145,53 @@ export function EvaluationPanel({
         {aiRecommendation}
       </div>
 
-      <div className="mt-5 space-y-2">
-        <div className="text-sm text-foreground">Assessment mode</div>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="radio"
-            name="viva-mode"
-            className="mt-1"
-            disabled={published}
-            checked={!withTech}
-            onChange={() => onChangeMode("WITHOUT_TECHNICAL_ACCURACY")}
-          />
-          <span>
-            Without technical accuracy
-            <span className="block text-xs text-muted-foreground">Communication / presentation vivas</span>
-          </span>
-        </label>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="radio"
-            name="viva-mode"
-            className="mt-1"
-            disabled={published}
-            checked={withTech}
-            onChange={() => onChangeMode("WITH_TECHNICAL_ACCURACY")}
-          />
-          <span>
-            With technical accuracy
-            <span className="block text-xs text-muted-foreground">Technical modules — examiner enters subject knowledge</span>
-          </span>
-        </label>
+      {markId ? (
+        <div className="mt-4 rounded-lg border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/70 dark:bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-300">
+          {!withTech && autoPublishedWithoutTech
+            ? "Score saved automatically."
+            : published
+              ? "Score saved."
+              : withTech
+                ? "Draft saved — set technical accuracy and publish when ready."
+                : "Score saved."}
+        </div>
+      ) : persistenceError ? (
+        <div className="mt-4 rounded-lg border border-amber-200 dark:border-amber-500/20 bg-amber-50/70 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+          {persistenceError}
+        </div>
+      ) : null}
+
+      <div className="mt-5">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-foreground">Assessment type</div>
+          <Badge variant="outline" className="text-xs">
+            {withTech ? "Technical" : "Non-technical"}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          {withTech
+            ? "Technical module — this mark stays a draft until you set a technical accuracy score and publish."
+            : "Communication / presentation viva — the AI performance score saves automatically."}
+          {" "}Chosen before this recording was analyzed; start a new recording to change it.
+        </p>
       </div>
+
+      {withTech && technicalAccuracyAI && (
+        <div className="mt-4 rounded-lg border border-border p-3">
+          <TechnicalAccuracyPanel evaluation={technicalAccuracyAI} />
+        </div>
+      )}
 
       {withTech && (
         <div className="mt-4">
           <div className="flex items-center justify-between text-sm gap-2">
             <div>
               <div className="text-foreground">Technical accuracy</div>
-              <div className="text-xs text-muted-foreground">Examiner only — not inferred from video</div>
+              <div className="text-xs text-muted-foreground">
+                {technicalAccuracyAI?.overall_score != null
+                  ? "Pre-filled from the AI suggestion above — examiner decides the final score"
+                  : "Examiner only — not inferred from video"}
+              </div>
             </div>
             <span className="font-medium shrink-0">
               {technicalAccuracy != null ? `${technicalAccuracy} / 10` : "— / 10"}
@@ -168,7 +203,7 @@ export function EvaluationPanel({
             min={0}
             max={10}
             step={1}
-            disabled={published}
+            disabled={lockedAfterTechPublish}
             onValueChange={([v]) => onChangeTechnicalAccuracy(v)}
             aria-label="Technical accuracy"
           />
@@ -183,7 +218,7 @@ export function EvaluationPanel({
           id="viva-student-id"
           className="mt-1"
           value={studentId}
-          disabled={published}
+          disabled={lockedAfterTechPublish}
           onChange={(e) => onChangeStudentId(e.target.value)}
           placeholder="e.g. STU-001"
         />
@@ -195,7 +230,7 @@ export function EvaluationPanel({
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Final score</div>
             <div className="tracking-tight text-foreground mt-0.5">
               <span className="text-3xl font-semibold">
-                {preview.final != null ? preview.final.toFixed(1) : "—"}
+                {preview.finalScore != null ? preview.finalScore.toFixed(1) : "—"}
               </span>
               <span className="text-muted-foreground"> / 100</span>
             </div>
@@ -206,17 +241,23 @@ export function EvaluationPanel({
         </div>
         {withTech && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Fusion v1: 50% AI performance + 50% technical accuracy (0–10 scaled to 100).
+            {formatFusionLabel(fusionWeights)}
+            {preview.isPreview ? " Preview updates as you move the slider." : ""}
           </p>
         )}
       </div>
 
-      {published ? (
+      {!withTech && autoPublishedWithoutTech && published ? (
+        <div className="w-full mt-4 flex items-center justify-center gap-2 rounded-lg border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-700 dark:text-emerald-400">
+          <CheckCircle2 className="size-4" />
+          Score saved automatically
+        </div>
+      ) : withTech && published ? (
         <div className="w-full mt-4 flex items-center justify-center gap-2 rounded-lg border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-700 dark:text-emerald-400">
           <CheckCircle2 className="size-4" />
           Assessment published
         </div>
-      ) : (
+      ) : withTech ? (
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <Button
             className="w-full mt-4"
@@ -230,8 +271,8 @@ export function EvaluationPanel({
             <AlertDialogHeader>
               <AlertDialogTitle>Publish this assessment?</AlertDialogTitle>
               <AlertDialogDescription>
-                Publishes final score {preview.final != null ? preview.final.toFixed(1) : "—"}/100
-                (grade {preview.grade ?? "—"}) and stores a training row. AI performance stays locked.
+                Publishes final score {preview.finalScore != null ? preview.finalScore.toFixed(1) : "—"}/100
+                (grade {preview.grade ?? "—"}) with your technical accuracy input.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -248,8 +289,13 @@ export function EvaluationPanel({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      ) : null}
+      {!published && !canPublish && !incomplete && !markId && (
+        <p className="mt-2 text-xs text-muted-foreground text-center">
+          Mark was not saved — check MongoDB connection on the server.
+        </p>
       )}
-      {!published && !canPublish && !incomplete && withTech && technicalAccuracy == null && (
+      {!published && withTech && !canPublish && !incomplete && markId && technicalAccuracy == null && (
         <p className="mt-2 text-xs text-muted-foreground text-center">Set technical accuracy to publish.</p>
       )}
     </div>
