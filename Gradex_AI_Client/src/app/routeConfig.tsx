@@ -8,6 +8,7 @@ import { DiagramReconstructionPage } from "./components/DiagramReconstructionPag
 import AnalyticsPage from "./components/AnalyticsPage";
 import { ExamCreator } from "./components/ExamCreator";
 import { VivaPage } from "./components/VivaPage";
+import { SubjectContentPage } from "./components/SubjectContentPage";
 import { LiveCopilotPage } from "./components/viva-copilot/LiveCopilotPage";
 
 export type AgentId = "diagram-evaluation" | "grading" | "question-exam" | "viva-evaluation";
@@ -104,6 +105,13 @@ export const AGENT_CONFIG: AgentConfig[] = [
     icon: Video,
     model: "voca",
     features: [
+      {
+        path: "/viva-evaluation/subject-content",
+        label: "Subject Content",
+        title: "Subject Content",
+        subtitle: "Turn lecture material into a concept rubric for technical vivas",
+        element: <SubjectContentPage />,
+      },
       {
         path: "/viva-evaluation/viva-assessment",
         label: "Viva Assessment",

@@ -124,7 +124,9 @@ export function EvaluationPanel({
           <span className="text-3xl font-semibold">{aiScore != null ? aiScore.toFixed(1) : "—"}</span>
           <span className="text-muted-foreground"> / 100</span>
         </div>
+        {/* Hidden: internal provenance, not something an examiner acts on.
         <p className="text-xs text-muted-foreground mt-1">Locked engine score — not LLM rubric values.</p>
+        */}
       </div>
 
       <div className="mt-4 space-y-1.5 text-xs text-muted-foreground">
@@ -148,10 +150,10 @@ export function EvaluationPanel({
           {!withTech && autoPublishedWithoutTech
             ? "Score saved automatically."
             : published
-              ? "Score saved to MongoDB."
+              ? "Score saved."
               : withTech
                 ? "Draft saved — set technical accuracy and publish when ready."
-                : "Score saved to MongoDB."}
+                : "Score saved."}
         </div>
       ) : persistenceError ? (
         <div className="mt-4 rounded-lg border border-amber-200 dark:border-amber-500/20 bg-amber-50/70 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">

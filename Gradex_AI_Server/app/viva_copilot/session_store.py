@@ -56,6 +56,13 @@ class CopilotSession:
     last_error_at: float = 0.0
     last_suggest_at: float = 0.0
     last_suggest_word_count: int = 0
+    # Raw accepted utterances, for near-duplicate rejection (hashes alone miss
+    # a growing utterance finalized twice by the two independent STT paths).
+    recent_texts: Deque[str] = field(default_factory=lambda: deque(maxlen=12))
+    # Answers accepted since the last viva-phase suggestion run. They are
+    # joined into one block so the LLM reasons over a full stretch of speech
+    # rather than a single fragment.
+    pending_answer_parts: List[str] = field(default_factory=list)
 
     def touch(self) -> None:
         self.last_activity_at = time.time()
@@ -99,6 +106,11 @@ class CopilotSession:
         digest = answer_hash(text)
         if digest:
             self.recent_hashes.append(digest)
+        if text and text.strip():
+            self.recent_texts.append(text.strip())
+
+    def pending_answer_text(self) -> str:
+        return " ".join(part for part in self.pending_answer_parts if part).strip()
 
     def append_transcript(self, speaker: str, text: str, final: bool) -> None:
         self.transcript_log.append(

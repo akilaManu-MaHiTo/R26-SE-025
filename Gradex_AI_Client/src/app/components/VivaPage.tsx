@@ -17,6 +17,13 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import { AIPageBanner, AIBadgePill } from "./AIBrand";
 import { VivaVideoPlayer, VivaVideoPlayerHandle } from "./viva/VivaVideoPlayer";
 import { ScoreOverview } from "./viva/ScoreOverview";
@@ -33,12 +40,20 @@ import { EvaluationPanel } from "./viva/EvaluationPanel";
 import { ReportPrintView } from "./viva/ReportPrintView";
 import { publishVivaMark } from "./viva/vivaMarksApi";
 import {
+  SubjectRubricSummary,
+  listSubjectContent,
+} from "./viva/subjectContentApi";
+import {
   AnalysisResult,
   AssessmentMode,
   buildAIInterpretation,
   buildKeyMoments,
   formatTime,
 } from "./viva/types";
+
+/** Radix Select rejects an empty string as an item value, so "no subject" needs
+ *  a sentinel that is mapped back to "" before the code reaches the server. */
+const NO_SUBJECT = "__none__";
 
 export function VivaPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -60,6 +75,11 @@ export function VivaPage() {
   // the server can attach an AI-suggested technical_accuracy_ai score. Only
   // meaningful in WITH_TECHNICAL_ACCURACY mode; never auto-published either way.
   const [subjectCode, setSubjectCode] = useState("");
+  // Picked from a list rather than typed: the server matches subject_code
+  // exactly, so a typo silently yields no rubric instead of an error.
+  const [subjectOptions, setSubjectOptions] = useState<SubjectRubricSummary[]>([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
+  const [subjectsFailed, setSubjectsFailed] = useState(false);
   const [studentId, setStudentId] = useState("");
   const [published, setPublished] = useState(false);
   const [autoPublishedWithoutTech, setAutoPublishedWithoutTech] = useState(false);
@@ -93,6 +113,35 @@ export function VivaPage() {
       xhrRef.current?.abort();
     };
   }, []);
+
+  // Fetched only in technical mode — a presentation viva never uses a rubric.
+  useEffect(() => {
+    if (assessmentMode !== "WITH_TECHNICAL_ACCURACY") return;
+    let cancelled = false;
+    setSubjectsLoading(true);
+    listSubjectContent()
+      .then((rows) => {
+        if (cancelled) return;
+        setSubjectOptions(rows);
+        setSubjectsFailed(false);
+        // A code held from an earlier session may no longer exist; leaving it
+        // set would show an empty trigger and silently send a dead code.
+        setSubjectCode((current) =>
+          current && !rows.some((row) => row.subject_code === current) ? "" : current,
+        );
+      })
+      .catch(() => {
+        // Non-fatal: the subject link is optional, so a failed lookup must not
+        // block the viva. The field falls back to free text below.
+        if (!cancelled) setSubjectsFailed(true);
+      })
+      .finally(() => {
+        if (!cancelled) setSubjectsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [assessmentMode]);
 
   const handlePublish = async () => {
     const markId = analysisResult?.mark_id;
@@ -142,7 +191,7 @@ export function VivaPage() {
       toast.success("Assessment published", {
         description: `Final mark ${
           saved.final_score != null ? saved.final_score.toFixed(1) : "—"
-        }/100 (grade ${saved.final_grade ?? "—"}) saved to MongoDB.`,
+        }/100 (grade ${saved.final_grade ?? "—"}) saved.`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to publish";
@@ -336,7 +385,7 @@ export function VivaPage() {
         });
       } else if (wasAutoPublished) {
         toast.success("Analysis complete — score saved", {
-          description: `Final mark ${data.final_score?.toFixed(1) ?? data.assessment?.final_score ?? "—"}/100 (grade ${data.final_grade ?? data.assessment?.grade ?? "—"}) saved to MongoDB.`,
+          description: `Final mark ${data.final_score?.toFixed(1) ?? data.assessment?.final_score ?? "—"}/100 (grade ${data.final_grade ?? data.assessment?.grade ?? "—"}) saved.`,
         });
       } else if (data.mark_id) {
         toast.success("Analysis complete", {
@@ -442,15 +491,59 @@ export function VivaPage() {
             {assessmentMode === "WITH_TECHNICAL_ACCURACY" && (
               <div className="mt-3">
                 <label className="text-xs text-muted-foreground" htmlFor="viva-subject-code">
-                  Subject code (optional — links to an uploaded concept rubric for an AI-suggested score)
+                  Subject (optional — links to an uploaded concept rubric for an AI-suggested score)
                 </label>
-                <Input
-                  id="viva-subject-code"
-                  className="mt-1 max-w-xs"
-                  value={subjectCode}
-                  onChange={(e) => setSubjectCode(e.target.value)}
-                  placeholder="e.g. CS3021"
-                />
+                {subjectsFailed ? (
+                  <>
+                    <Input
+                      id="viva-subject-code"
+                      className="mt-1 max-w-xs"
+                      value={subjectCode}
+                      onChange={(e) => setSubjectCode(e.target.value)}
+                      placeholder="e.g. CS3021"
+                    />
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                      Could not load the subject list — type the code exactly as saved.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Select
+                      value={subjectCode || NO_SUBJECT}
+                      onValueChange={(value) =>
+                        setSubjectCode(value === NO_SUBJECT ? "" : value)
+                      }
+                      disabled={subjectsLoading && subjectOptions.length === 0}
+                    >
+                      <SelectTrigger id="viva-subject-code" className="mt-1 max-w-xs">
+                        <SelectValue
+                          placeholder={
+                            subjectsLoading
+                              ? "Loading subjects…"
+                              : subjectOptions.length
+                                ? "No subject linked"
+                                : "No subjects uploaded yet"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_SUBJECT}>No subject linked</SelectItem>
+                        {subjectOptions.map((subject) => (
+                          <SelectItem key={subject.subject_code} value={subject.subject_code}>
+                            {subject.subject_code} · {subject.subject_name} (
+                            {subject.concept_count} concepts)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!subjectsLoading && subjectOptions.length === 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Upload lecture material under Subject Content to enable AI-suggested
+                        technical accuracy.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -618,9 +711,6 @@ export function VivaPage() {
             audioGrade={audioAnalysis?.audio_grade}
             videoStatus={analysisResult.video_status}
             faceCoverageRatio={analysisResult.coverage?.face_coverage_ratio}
-            framesRejectedQuality={analysisResult.coverage?.frames_rejected_quality}
-            framesEnhanced={analysisResult.coverage?.frames_enhanced}
-            framesQualityWarning={analysisResult.coverage?.frames_quality_warning}
           />
 
           <div className="grid lg:grid-cols-3 gap-6">

@@ -302,7 +302,9 @@ async def upload_subject_content(
     try:
         text = extract_pdf_text(str(tmp_path))
         concepts = generate_concept_rubric(text, name or code)
-        return await upsert_subject_rubric(db_instance, code, name, filename, concepts)
+        return await upsert_subject_rubric(
+            db_instance, code, name, filename, concepts, source_text=text
+        )
     except RubricGenerationError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -311,6 +313,21 @@ async def upload_subject_content(
         raise HTTPException(status_code=500, detail=f"Failed to process subject content: {exc}") from exc
     finally:
         tmp_path.unlink(missing_ok=True)
+
+
+@app.get("/api/subject-content", dependencies=[Depends(require_api_key)])
+async def list_subject_content():
+    """Summaries of every stored subject rubric, newest first.
+
+    Declared before /{subject_code} so the literal path is not swallowed by the
+    parameterised route.
+    """
+    from Gradex_AI_Server.app.subject_rubric_service import list_subject_rubrics
+
+    try:
+        return _json_safe(await list_subject_rubrics(db_instance))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @app.get("/api/subject-content/{subject_code}", dependencies=[Depends(require_api_key)])

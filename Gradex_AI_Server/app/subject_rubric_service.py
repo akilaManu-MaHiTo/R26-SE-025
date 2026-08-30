@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -32,6 +33,15 @@ _LIVE_CHAT_MODELS = (
     "qwen/qwen3.6-27b",
 )
 _MAX_SOURCE_CHARS = 60000
+
+# Extracted text retained per source file so the lecturer can see what the AI
+# read (the PDF itself is not kept). Bounded to protect the 16MB document limit.
+_MAX_STORED_TEXT_CHARS = 200000
+
+# Groq's JSON mode fails sporadically on long inputs; a few spaced-out retries
+# absorb it. Kept small so an upload still fails fast when Groq is truly down.
+_RUBRIC_ATTEMPTS = 3
+_RUBRIC_RETRY_DELAY_S = 1.5
 
 
 def _load_env() -> None:
@@ -110,7 +120,9 @@ Return strict JSON only (no markdown) with exactly this shape:
     {"name": "short concept name", "description": "one sentence of what correct coverage looks like", "weight": 3}
   ]
 }
-"weight" is 1-5 importance (5 = core/foundational, 1 = minor detail). Produce at most 40 concepts.
+"weight" is 1-5 importance (5 = core/foundational, 1 = minor detail).
+Produce at most 25 concepts, and keep each "description" to one short sentence (under 20 words).
+Prefer the most important concepts if the content covers more than 25.
 Do not invent concepts not present in the text.
 """
 
@@ -120,6 +132,11 @@ def _call_groq_once(text: str, subject_name: str, api_key: str, model: str) -> s
     body = {
         "model": model,
         "temperature": 0.2,
+        # Without an explicit budget the model can be cut off mid-object on
+        # content-rich PDFs; Groq's JSON mode then rejects the truncated body
+        # with json_validate_failed and an empty failed_generation. This is
+        # sized for the 25-concept cap the system prompt asks for.
+        "max_tokens": 4096,
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": _SYSTEM_PROMPT},
@@ -224,13 +241,27 @@ def generate_concept_rubric(pdf_text: str, subject_name: str) -> List[Dict[str, 
 
     model = _model_name()
     last_error = "Groq response failed schema validation"
-    for attempt in range(2):
-        content = _call_groq(pdf_text, subject_name, api_key, model)
+    for attempt in range(_RUBRIC_ATTEMPTS):
+        try:
+            content = _call_groq(pdf_text, subject_name, api_key, model)
+        except RubricGenerationError as exc:
+            # Groq's JSON mode intermittently rejects its own output
+            # (code "json_validate_failed", often with an empty
+            # failed_generation). That is transient, so it must be retried
+            # like a schema miss rather than failing the upload outright —
+            # previously this raise escaped the loop and only one call was
+            # ever made despite the retry range.
+            last_error = f"attempt {attempt + 1}: {exc}"
+            if attempt + 1 < _RUBRIC_ATTEMPTS:
+                time.sleep(_RUBRIC_RETRY_DELAY_S * (attempt + 1))
+            continue
+
         parsed = _extract_json_object(content)
         concepts = _normalize_concepts(parsed)
         if concepts:
             return concepts
         last_error = f"attempt {attempt + 1}: no usable concepts in Groq response"
+
     raise RubricGenerationError(last_error)
 
 
@@ -258,6 +289,44 @@ async def get_subject_rubric(db_instance, subject_code: str) -> Optional[Dict[st
     return doc
 
 
+async def list_subject_rubrics(db_instance) -> List[Dict[str, Any]]:
+    """Summaries for the subject browser: no concepts, no extracted text.
+
+    Both are large and unused by a list view, so they are projected away rather
+    than fetched and discarded client-side.
+    """
+    collection = _collection(db_instance)
+    if collection is None:
+        raise RuntimeError("MongoDB is not connected.")
+
+    cursor = collection.find(
+        {},
+        {
+            "subject_code": 1,
+            "subject_name": 1,
+            "updated_at": 1,
+            "generated_at": 1,
+            "concepts": 1,
+            "source_files.filename": 1,
+            "source_files.uploaded_at": 1,
+        },
+    ).sort("updated_at", -1)
+
+    summaries: List[Dict[str, Any]] = []
+    async for doc in cursor:
+        summaries.append(
+            {
+                "subject_code": doc.get("subject_code"),
+                "subject_name": doc.get("subject_name"),
+                "concept_count": len(doc.get("concepts") or []),
+                "source_files": doc.get("source_files") or [],
+                "updated_at": doc.get("updated_at"),
+                "generated_at": doc.get("generated_at"),
+            }
+        )
+    return summaries
+
+
 MAX_UPSERT_RETRIES = 5
 
 
@@ -275,6 +344,7 @@ async def upsert_subject_rubric(
     subject_name: str,
     filename: str,
     new_concepts: List[Dict[str, Any]],
+    source_text: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Merge concepts from one uploaded file into the subject's rubric.
 
@@ -303,11 +373,19 @@ async def upsert_subject_rubric(
         tagged = [{**concept, "source_file": filename} for concept in new_concepts]
         existing = await collection.find_one({"subject_code": subject_code})
 
+        # The PDF itself is discarded after extraction, so the extracted text is
+        # kept here as the only record of what the AI actually read. Capped so a
+        # large deck cannot push the document toward Mongo's 16MB limit.
+        file_entry: Dict[str, Any] = {"filename": filename, "uploaded_at": now}
+        if source_text:
+            file_entry["extracted_text"] = source_text[:_MAX_STORED_TEXT_CHARS]
+            file_entry["extracted_chars"] = len(source_text)
+
         if existing is None:
             doc = {
                 "subject_code": subject_code,
                 "subject_name": subject_name or subject_code,
-                "source_files": [{"filename": filename, "uploaded_at": now}],
+                "source_files": [file_entry],
                 "concepts": tagged,
                 "generated_at": now,
                 "updated_at": now,
@@ -332,7 +410,7 @@ async def upsert_subject_rubric(
         source_files = [
             f for f in (existing.get("source_files") or []) if f.get("filename") != filename
         ]
-        source_files.append({"filename": filename, "uploaded_at": now})
+        source_files.append(file_entry)
 
         current_version = existing.get("version", 0)
         result = await collection.update_one(
@@ -367,13 +445,39 @@ async def replace_subject_rubric(
         raise RuntimeError("MongoDB is not connected.")
 
     now = datetime.now(timezone.utc)
+
+    # The PUT payload model carries no source_file, so an edited concept would
+    # come back unattributed. That tag is what lets upsert_subject_rubric
+    # replace only one file's concepts on re-upload — dropping it orphans every
+    # edited concept, and re-uploading the same PDF then duplicates rather than
+    # replaces them. Carry the existing tag over by concept id, falling back to
+    # name for a concept the lecturer renamed.
+    existing = await collection.find_one({"subject_code": subject_code})
+    previous = (existing or {}).get("concepts") or []
+    source_by_id = {c.get("id"): c.get("source_file") for c in previous if c.get("source_file")}
+    source_by_name = {
+        str(c.get("name", "")).lower(): c.get("source_file")
+        for c in previous
+        if c.get("source_file")
+    }
+
+    merged: List[Dict[str, Any]] = []
+    for concept in concepts:
+        entry = dict(concept)
+        source = source_by_id.get(entry.get("id")) or source_by_name.get(
+            str(entry.get("name", "")).lower()
+        )
+        if source:
+            entry["source_file"] = source
+        merged.append(entry)
+
     await collection.update_one(
         {"subject_code": subject_code},
         {
             "$set": {
                 "subject_code": subject_code,
                 "subject_name": subject_name,
-                "concepts": concepts,
+                "concepts": merged,
                 "updated_at": now,
             },
             "$setOnInsert": {"generated_at": now, "source_files": []},
