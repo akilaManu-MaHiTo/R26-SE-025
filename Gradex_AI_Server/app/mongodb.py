@@ -71,3 +71,30 @@ def get_diagram_evaluation_guideline(guideline_object_id: str):
         raise ValueError("Invalid guideline object id.") from exc
 
     return get_diagram_evaluation_guidelines_collection().find_one({"_id": object_id})
+
+def upsert_diagram_evaluation_guideline(document: dict) -> tuple[str, bool]:
+    """Store a guideline document under its examCode.
+
+    Re-uploading the same examCode replaces its criteria in place rather than
+    leaving two documents the lecturer would have to choose between on the
+    grading page. Returns (object_id, created).
+    """
+    collection = get_diagram_evaluation_guidelines_collection()
+    exam_code = document["examCode"]
+
+    existing = collection.find_one({"examCode": exam_code}, {"_id": 1, "created_at": 1})
+    if existing is None:
+        return str(collection.insert_one(document).inserted_id), True
+
+    update = {key: value for key, value in document.items() if key != "created_at"}
+    collection.update_one({"_id": existing["_id"]}, {"$set": update})
+    return str(existing["_id"]), False
+
+
+def delete_diagram_evaluation_guideline(guideline_object_id: str) -> bool:
+    try:
+        object_id = ObjectId(guideline_object_id)
+    except Exception as exc:
+        raise ValueError("Invalid guideline object id.") from exc
+
+    return get_diagram_evaluation_guidelines_collection().delete_one({"_id": object_id}).deleted_count > 0

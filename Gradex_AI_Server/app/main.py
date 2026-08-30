@@ -43,6 +43,7 @@ from Gradex_AI_Server.app.mongodb import (
     insert_diagram_evaluation,
     list_diagram_evaluation_guidelines,
     list_diagram_evaluations,
+    upsert_diagram_evaluation_guideline,
 )
 from DiagramEvaluationEngine.diagram_grading import grade_diagram_with_ollama
 from Gradex_AI_Server.app.analytics_api import router as analytics_router
@@ -376,6 +377,68 @@ async def diagram_evaluate_guideline():
         return _json_safe(list_diagram_evaluation_guidelines())
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/diagram-guidline")
+async def upload_diagram_guideline(
+    file: UploadFile = File(...),
+    examCode: str = Form(...),
+):
+    """Upload an ER-diagram marking-guideline PDF for an exam code.
+
+    The PDF's text is extracted with pypdf and distilled by the LLM into the
+    {examCode, guideLines[], totalMarks} document stored in ``diagram_marking``
+    — the same collection /api/diagram-evaluate reads its criteria from, so a
+    guideline uploaded here is immediately selectable on the grading page.
+    """
+    from Gradex_AI_Server.app.diagram_guideline_service import (
+        GuidelineGenerationError,
+        build_guideline_document,
+        extract_pdf_text,
+        generate_guidelines,
+    )
+
+    filename = file.filename or ""
+    if Path(filename).suffix.lower() != ".pdf":
+        raise HTTPException(status_code=400, detail="Only PDF uploads are supported.")
+
+    exam_code = examCode.strip()
+    if not exam_code:
+        raise HTTPException(status_code=400, detail="examCode is required.")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty upload.")
+
+    tmp_path = UPLOAD_DIR / f"{uuid4().hex}.pdf"
+    tmp_path.write_bytes(contents)
+    try:
+        text = extract_pdf_text(str(tmp_path))
+        guidelines = generate_guidelines(text, exam_code)
+        document = build_guideline_document(exam_code, guidelines, filename, text)
+        object_id, created = upsert_diagram_evaluation_guideline(document)
+        logger.info(
+            "Diagram guideline stored exam_code=%s id=%s criteria=%s created=%s",
+            exam_code,
+            object_id,
+            len(guidelines),
+            created,
+        )
+        return _json_safe(
+            {
+                "status": "created" if created else "updated",
+                "guideline_object_id": object_id,
+                **document,
+            }
+        )
+    except GuidelineGenerationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Failed to process diagram guideline exam_code=%s", exam_code)
+        raise HTTPException(status_code=500, detail=f"Failed to process guideline: {exc}") from exc
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
 
 class SubjectRubricConceptPayload(BaseModel):
     id: str
