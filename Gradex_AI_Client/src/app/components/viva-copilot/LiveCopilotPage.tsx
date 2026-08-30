@@ -577,7 +577,8 @@ function LiveCopilotScreen() {
               <div className="space-y-2">
                 {suggestions.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Suggested follow-up questions will appear here as the candidate speaks.
+                    Suggested follow-up questions appear after about 15 words
+                    (~one sentence). Later batches wait about 8 seconds.
                   </p>
                 )}
                 {suggestions.map((item) => (
