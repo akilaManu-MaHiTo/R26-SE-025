@@ -108,7 +108,8 @@ export function buildScoreExplain(
         `Scorer ${version}`,
         `Engagement ${eng} · Audio ${audio} · Transcript ${transcript}`,
         "Equal average of available families (missing families are dropped and weights re-balance).",
-        "Not included: LLM clarity/confidence, audio quality /10, engagement blend %, emotion bars alone.",
+        "Emotion: not a separate % of the mark. It enters inside Engagement as facial confidence/positivity (emotion-weighted face tone), mixed 50/50 with Face CNN engagement.",
+        "Still not included: LLM clarity/confidence, audio quality /10, engagement blend %, Positive/Neutral/Negative emotion bars as their own family.",
       ];
       if (withTech) {
         lines.push(
@@ -125,7 +126,7 @@ export function buildScoreExplain(
         title: topic === "official_mark" ? "How the official mark is calculated" : "How AI performance is calculated",
         summary: withTech
           ? "Blend of AI performance and technical accuracy."
-          : "Equal mix of engagement, audio acoustics, and transcript.",
+          : "Equal mix of engagement, audio acoustics, and transcript. Emotion feeds Engagement via facial confidence.",
         lines,
         formula: withTech
           ? `Final = ${fusion.weightAi}×AI + ${fusion.weightTechnical}×Technical`
@@ -144,10 +145,11 @@ export function buildScoreExplain(
               "• Facial confidence / positivity",
             ]),
         "Not the hero “engagement blend %” — that stays a supporting signal only.",
+        "Emotion bars (Positive/Neutral/Negative %) are not scored alone; facial confidence is the emotion input here.",
       ];
       return {
         title: "Engagement (≈33.3% of mark)",
-        summary: "Face CNN engagement + facial confidence.",
+        summary: "Face CNN engagement + facial confidence (emotion-weighted).",
         lines,
         formula: "Engagement = (CNN + facial confidence) / 2",
       };
