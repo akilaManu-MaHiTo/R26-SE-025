@@ -15,13 +15,13 @@ Copilot does **not** write Mongo, does **not** import `viva_service.py`, and doe
 
 | Process | Command | Default |
 |---|---|---|
-| FastAPI | From repo root: `.venv\Scripts\python.exe -m uvicorn Gradex_AI_Server.app.main:app --host 0.0.0.0 --port 8001` | **8001** (do not use `--reload`) |
+| FastAPI | From repo root: `.venv\Scripts\python.exe -m uvicorn Gradex_AI_Server.app.main:app --host 0.0.0.0 --port 8000` | **8000** (do not use `--reload`) |
 | Vite client | `Gradex_AI_Client` → `npm run dev` | **5173** |
 | Open | Lecturer login → **Viva Evaluation → Live Interviewer Copilot** | `http://localhost:5173/viva-evaluation/live-copilot` |
 
 Env:
 
-- Client: `VITE_BACKEND_URL` (fallback `http://localhost:8001`) and `VITE_GRADEX_API_KEY` (must match server `GRADEX_API_KEY`).
+- Client: `VITE_BACKEND_URL` (fallback `http://localhost:8000`) and `VITE_GRADEX_API_KEY` (must match server `GRADEX_API_KEY`).
 - Server: `Gradex_AI_Server/app/.env` — `GRADEX_API_KEY`, `AI_API_KEY` or `GROQ_API_KEY`. Optional `VIVA_COPILOT_LLM_MODEL` (fallback `openai/gpt-oss-20b`; Llama chat ids retired 16 Aug 2026), `VIVA_COPILOT_STT_MODEL`.
 - REST sends `X-API-Key`. WebSocket uses `?api_key=`.
 - STT chunks queue FIFO (cap 8). Follow-up LLM jobs queue (cap 4). Oldest is dropped only if the cap is exceeded.
@@ -47,7 +47,7 @@ Browser (LiveCopilotPage)
   │   ← JSON events (transcript, suggestions, errors)
   │
   ▼
-Gradex_AI_Server  (FastAPI, port 8001)
+Gradex_AI_Server  (FastAPI, port 8000)
   router.py  →  pipeline.py  →  session_store.py  (RAM dict, not Mongo)
                      │
                      ├─ ingest_text()     → bypasses STT entirely (fast path)
