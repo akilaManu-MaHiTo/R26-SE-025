@@ -57,6 +57,14 @@ type DiagramApiResponse = {
     }>;
   };
   ocr_error?: string;
+  guideline_object_id?: string;
+  agent_marks?: number;
+  agent_grading?: {
+    agent_marks: number;
+    max_marks: number;
+    feedback?: string;
+  };
+  agent_grading_error?: string;
 };
 
 type DiagramProgressState = {
@@ -67,6 +75,24 @@ type DiagramProgressState = {
   total?: number;
   label?: string;
 };
+
+type DiagramGuideline = {
+  _id?: string;
+  examCode: string;
+  guideLines?: Array<{
+    id: number;
+    criterion: string;
+    description: string;
+    marks: number;
+  }>;
+  totalMarks?: number;
+};
+
+const FALLBACK_GUIDELINES: DiagramGuideline[] = [{
+  _id: "6a89887f8c33278a18482b47",
+  examCode: "ERD-001",
+  totalMarks: 20,
+}];
 
 function parseApiError(data: unknown, fallback: string): string {
   if (data == null || typeof data !== "object") return fallback;
@@ -191,6 +217,9 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
   const [courses, setCourses] = useState<CourseItem[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("");
+  const [guidelines, setGuidelines] = useState<DiagramGuideline[]>([]);
+  const [guidelinesLoading, setGuidelinesLoading] = useState(false);
+  const [selectedGuidelineCode, setSelectedGuidelineCode] = useState("");
   const [studentId, setStudentId] = useState("");
   const [selectedYear, setSelectedYear] = useState<string>(() =>
     String(new Date().getFullYear()),
@@ -212,6 +241,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
   const [progressState, setProgressState] =
     useState<DiagramProgressState | null>(null);
   const [saveState, setSaveState] = useState<string | null>(null);
+  const [extractionCompleted, setExtractionCompleted] = useState(false);
   const [activeDetailTab, setActiveDetailTab] = useState<
     "labels" | "structure"
   >("labels");
@@ -221,6 +251,48 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
       if (previewUrlRef.current?.startsWith("blob:")) {
         URL.revokeObjectURL(previewUrlRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadGuidelines = async () => {
+      setGuidelinesLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/diagram-evaluate-guidelines`);
+        const data = (await readJsonResponse(response)) as unknown;
+        if (!response.ok || !Array.isArray(data)) throw new Error("Failed to load guidelines.");
+
+        const loadedGuidelines = data.filter(
+          (guideline): guideline is DiagramGuideline =>
+            Boolean(
+              guideline &&
+                typeof guideline === "object" &&
+                typeof (guideline as DiagramGuideline).examCode === "string" &&
+                (guideline as DiagramGuideline).examCode.trim(),
+            ),
+        );
+        if (!isActive) return;
+        setGuidelines(loadedGuidelines);
+        setSelectedGuidelineCode((previous) =>
+          previous && loadedGuidelines.some((guideline) => guideline.examCode === previous)
+            ? previous
+            : loadedGuidelines[0]?.examCode ?? FALLBACK_GUIDELINES[0].examCode,
+        );
+      } catch {
+        if (!isActive) return;
+        setGuidelines([]);
+        setSelectedGuidelineCode(FALLBACK_GUIDELINES[0].examCode);
+      } finally {
+        if (isActive) setGuidelinesLoading(false);
+      }
+    };
+
+    void loadGuidelines();
+
+    return () => {
+      isActive = false;
     };
   }, []);
 
@@ -265,6 +337,10 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     [courses, selectedCourse],
   );
   const courseList = courses.length > 0 ? courses : SAMPLE_COURSES;
+  const guidelineList = guidelines.length > 0 ? guidelines : FALLBACK_GUIDELINES;
+  const selectedGuideline = guidelineList.find(
+    (guideline) => guideline.examCode === selectedGuidelineCode,
+  ) ?? null;
 
   const summary = useMemo(
     () => ({
@@ -286,6 +362,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     setImageSize(null);
     setError(null);
     setResult(null);
+    setExtractionCompleted(false);
     setProgressState(null);
     setSaveState(null);
   };
@@ -324,6 +401,8 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
         selectedSession === "mid-term" ? "Mid Term" : "Final Examination",
       diagramMarks: nextResult.detections?.length ?? 0,
       remarks: nextResult.ocr_error ?? "",
+      guidelineObjectId: nextResult.guideline_object_id ?? selectedGuideline?._id,
+      agentMarks: nextResult.agent_marks,
     });
 
     setSaving(true);
@@ -350,6 +429,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     setLoading(true);
     setError(null);
     setSaveState(null);
+    setExtractionCompleted(false);
     setProgressState({
       stage: "starting",
       message: "Preparing diagram evaluation...",
@@ -365,6 +445,10 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
       const progressValue =
         typeof payload.progress === "number" ? payload.progress : 0;
 
+      if (stage.includes("extraction_completed")) {
+        setExtractionCompleted(true);
+      }
+
       setProgressState({
         stage,
         message,
@@ -379,6 +463,10 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     try {
       const formData = new FormData();
       formData.append("image", file, file.name);
+      if (!selectedGuideline?._id) {
+        throw new Error("Select a valid guideline before evaluating.");
+      }
+      formData.append("guideline_object_id", selectedGuideline._id);
 
       const response = await fetch(
         `${API_BASE_URL}/api/diagram-evaluate?stream=1`,
@@ -431,11 +519,35 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
 
             if (parsed.event === "result") {
               finalResult = payload as DiagramApiResponse;
+              setResult(finalResult);
               applyProgress({
-                stage: "completed",
-                message: "Diagram evaluation complete.",
+                stage: "extraction_completed",
+                message: "Extraction complete. Grading with AI...",
+                progress: 85,
+              });
+              continue;
+            }
+
+            if (parsed.event === "grading_result") {
+              const gradingPayload = payload as Record<string, unknown>;
+              finalResult = {
+                ...(finalResult ?? {}),
+                agent_marks: gradingPayload.agent_marks as number | undefined,
+                agent_grading: gradingPayload.agent_grading as DiagramApiResponse["agent_grading"] | undefined,
+              };
+              setResult(finalResult);
+              applyProgress({
+                stage: "grading_completed",
+                message: "Grading complete.",
                 progress: 100,
               });
+              continue;
+            }
+
+            if (parsed.event === "grading_error") {
+              if (finalResult) {
+                finalResult.agent_grading_error = typeof payload.detail === "string" ? payload.detail : "Grading failed.";
+              }
               continue;
             }
 
@@ -481,6 +593,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     setImageSize(null);
     setError(null);
     setResult(null);
+    setExtractionCompleted(false);
     setSaveState(null);
   };
 
@@ -554,7 +667,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Student ID
@@ -669,6 +782,37 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
                     {SESSION_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Guideline code
+                </label>
+                <Select
+                  value={selectedGuidelineCode}
+                  onValueChange={setSelectedGuidelineCode}
+                  disabled={guidelinesLoading && guidelineList.length === 0}
+                >
+                  <SelectTrigger className="w-full bg-card">
+                    <SelectValue
+                      placeholder={
+                        guidelinesLoading
+                          ? "Loading guidelines..."
+                          : "Select guideline code"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {guidelineList.map((guideline) => (
+                      <SelectItem
+                        key={guideline._id ?? guideline.examCode}
+                        value={guideline.examCode}
+                      >
+                        {guideline.examCode}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1037,12 +1181,36 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
                   ?.label ?? selectedSession}
               </div>
             </div>
+
+            <div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+              <div className="rounded-xl bg-muted/40 px-3 py-2">
+                <div className="uppercase tracking-wide">Guideline code</div>
+                <div className="mt-1 text-foreground">
+                  {selectedGuidelineCode || "No guideline selected"}
+                </div>
+              </div>
+              <div className="rounded-xl bg-muted/40 px-3 py-2">
+                <div className="uppercase tracking-wide">Agent marks</div>
+                <div className="mt-1 text-foreground">
+                  {typeof result?.agent_marks === "number"
+                    ? `${result.agent_marks}/${result.agent_grading?.max_marks ?? selectedGuideline?.totalMarks ?? "--"}`
+                    : "Pending evaluation"}
+                </div>
+              </div>
+            </div>
           </div>
 
           <Separator className="my-4" />
 
+          
+
           {result ? (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-4 text-sm">
+              
+
+              {/* Extracted Objects Section */}
+              
+
               <div className="flex items-center gap-2 text-emerald-700">
                 <CheckCircle2 className="size-4" />
                 Evaluation completed successfully.
@@ -1073,6 +1241,21 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
                     : "Using local label overlays"}
                 </div>
               </div>
+              {result.agent_grading?.feedback && (
+                <div className="rounded-xl bg-muted/40 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Agent feedback
+                  </div>
+                  <div className="mt-1 text-foreground">
+                    {result.agent_grading.feedback}
+                  </div>
+                </div>
+              )}
+              {result.agent_grading_error && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                  Agent marking unavailable: {result.agent_grading_error}
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
