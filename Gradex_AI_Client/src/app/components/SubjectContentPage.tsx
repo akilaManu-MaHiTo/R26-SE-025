@@ -216,8 +216,8 @@ export function SubjectContentPage() {
 
   function addConcept() {
     setConcepts((prev) => [
-      ...prev,
       { id: `concept-${Date.now()}`, name: "", description: "", weight: 3 },
+      ...prev,
     ]);
     setDirty(true);
   }

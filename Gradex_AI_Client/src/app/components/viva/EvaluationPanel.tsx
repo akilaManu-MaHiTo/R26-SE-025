@@ -25,6 +25,8 @@ import {
   resolveOfficialMark,
 } from "./officialMark";
 import { TechnicalAccuracyPanel } from "./TechnicalAccuracyPanel";
+import { ScoreExplainHover } from "./ScoreExplainHover";
+import type { ScoreExplainTopic } from "./scoreExplainers";
 
 interface EvaluationPanelProps {
   assessment?: VivaAssessment;
@@ -97,6 +99,11 @@ export function EvaluationPanel({
   const lockedAfterTechPublish = published && withTech;
 
   const familyScores = assessment?.ai_performance?.family_scores || {};
+  const familyTopics: Record<"engagement" | "audio_acoustics" | "transcript", ScoreExplainTopic> = {
+    engagement: "engagement",
+    audio_acoustics: "audio_acoustics",
+    transcript: "transcript",
+  };
 
   return (
     <div>
@@ -119,20 +126,32 @@ export function EvaluationPanel({
       )}
 
       <div className="mt-4">
-        <div className="text-xs text-muted-foreground uppercase tracking-wide">AI performance score</div>
+        <ScoreExplainHover
+          topic="ai_performance"
+          assessment={assessment}
+          assessmentMode={assessmentMode}
+          className="text-xs text-muted-foreground uppercase tracking-wide"
+        >
+          AI performance score
+        </ScoreExplainHover>
         <div className="tracking-tight text-foreground mt-0.5">
           <span className="text-3xl font-semibold">{aiScore != null ? aiScore.toFixed(1) : "—"}</span>
           <span className="text-muted-foreground"> / 100</span>
         </div>
-        {/* Hidden: internal provenance, not something an examiner acts on.
-        <p className="text-xs text-muted-foreground mt-1">Locked engine score — not LLM rubric values.</p>
-        */}
       </div>
 
       <div className="mt-4 space-y-1.5 text-xs text-muted-foreground">
         {(["engagement", "audio_acoustics", "transcript"] as const).map((family) => (
           <div key={family} className="flex justify-between gap-2">
-            <span className="capitalize">{family.replace("_", " ")}</span>
+            <ScoreExplainHover
+              topic={familyTopics[family]}
+              assessment={assessment}
+              assessmentMode={assessmentMode}
+              className="capitalize text-xs text-muted-foreground"
+              side="left"
+            >
+              {family.replace("_", " ")}
+            </ScoreExplainHover>
             <span>
               {familyScores[family] != null ? `${(familyScores[family]! * 100).toFixed(0)} / 100` : "—"}
             </span>
@@ -227,7 +246,14 @@ export function EvaluationPanel({
       <div className="mt-5 pt-4 border-t border-border">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <div className="text-xs text-muted-foreground uppercase tracking-wide">Final score</div>
+            <ScoreExplainHover
+              topic="official_mark"
+              assessment={assessment}
+              assessmentMode={assessmentMode}
+              className="text-xs text-muted-foreground uppercase tracking-wide"
+            >
+              Final score
+            </ScoreExplainHover>
             <div className="tracking-tight text-foreground mt-0.5">
               <span className="text-3xl font-semibold">
                 {preview.finalScore != null ? preview.finalScore.toFixed(1) : "—"}
@@ -235,9 +261,17 @@ export function EvaluationPanel({
               <span className="text-muted-foreground"> / 100</span>
             </div>
           </div>
-          <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-0">
-            Grade {preview.grade ?? "—"}
-          </Badge>
+          <ScoreExplainHover
+            topic="grade"
+            assessment={assessment}
+            assessmentMode={assessmentMode}
+            showIcon={false}
+            side="left"
+          >
+            <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-0">
+              Grade {preview.grade ?? "—"}
+            </Badge>
+          </ScoreExplainHover>
         </div>
         {withTech && (
           <p className="mt-2 text-xs text-muted-foreground">
