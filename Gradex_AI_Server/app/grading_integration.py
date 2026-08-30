@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Awaitable
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 
 _APP_DIR = Path(__file__).resolve().parent
@@ -56,6 +57,12 @@ def _ensure_grading_on_path() -> None:
     sys.path.insert(0, path_str)
 
 
+def _load_grading_env_file() -> None:
+    env_path = GRADING_ROOT / ".env"
+    if env_path.is_file():
+        load_dotenv(dotenv_path=env_path, override=False)
+
+
 def preload_grading_engine() -> bool:
     """
     Import GradingEngine while ``app`` is not owned by V2.
@@ -69,6 +76,8 @@ def preload_grading_engine() -> bool:
     if not GRADING_ROOT.is_dir():
         print(f"[GRADING] Skipped: missing {GRADING_ROOT}")
         return False
+
+    _load_grading_env_file()
 
     snapshot = _snapshot_app_modules()
     _clear_app_modules()
