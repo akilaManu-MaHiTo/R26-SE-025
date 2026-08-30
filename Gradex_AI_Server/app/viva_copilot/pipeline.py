@@ -35,26 +35,17 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
-# Suggestion cadence, applied to BOTH phases. The presentation phase used to
-# run at 5 words / 3 seconds, which is why a talking candidate still produced a
-# burst of questions even after the viva phase was gated.
-#
-# At ~130 WPM, 15 seconds of speech is roughly 30-35 words, so a 15-word
-# threshold was reached in about 7s and never actually bound — the time gate
-# did all the work. The word gate is sized to match the time gate instead.
-PRESENTATION_SUGGEST_MIN_WORDS = _env_int("COPILOT_SUGGEST_MIN_WORDS", 30)
-PRESENTATION_SUGGEST_MIN_SECONDS = _env_float("COPILOT_SUGGEST_MIN_SECONDS", 15.0)
+# Suggestion cadence, applied to BOTH phases.
+# 15 words ≈ one technical sentence (~7s at 130 WPM). 8s between batches
+# keeps the panel responsive without a flood of overlapping Groq calls.
+# Override with COPILOT_SUGGEST_MIN_WORDS / COPILOT_SUGGEST_MIN_SECONDS.
+PRESENTATION_SUGGEST_MIN_WORDS = _env_int("COPILOT_SUGGEST_MIN_WORDS", 15)
+PRESENTATION_SUGGEST_MIN_SECONDS = _env_float("COPILOT_SUGGEST_MIN_SECONDS", 8.0)
 
-# Shortest utterance that can count as an answer. Three words admitted
-# fragments like "He doesn't" / "Eat him I said", which gave the LLM nothing to
-# work with and produced "what do you mean?" questions.
-#
-# Set to 11 by explicit request. Note this is a deliberately strict cut:
-# observed noise sits at 3-4 words, but genuine short answers ("Guards validate
-# the token before controllers run." = 7w) also fall below 11 and are dropped
-# from the transcript entirely, not merely held back from the LLM. Lower it via
-# COPILOT_MIN_ANSWER_WORDS if short answers start going missing.
-MIN_ANSWER_WORDS = _env_int("COPILOT_MIN_ANSWER_WORDS", 11)
+# Shortest utterance that can count as an answer. 2–4 word noise
+# ("He doesn't", "Solid principle") is still dropped. A short technical
+# sentence (~6–8 words) is kept. Override with COPILOT_MIN_ANSWER_WORDS.
+MIN_ANSWER_WORDS = _env_int("COPILOT_MIN_ANSWER_WORDS", 6)
 
 # Viva-phase suggestion cadence. Previously ungated: every finalized answer
 # triggered its own LLM call, so a candidate speaking in short bursts produced
