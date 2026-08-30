@@ -13,6 +13,7 @@ import unittest
 from io import BytesIO
 from unittest.mock import patch
 
+from bson import ObjectId
 from fastapi import HTTPException, UploadFile
 from starlette.datastructures import Headers
 from starlette.requests import Request
@@ -23,6 +24,7 @@ from Gradex_AI_Server.app.main import (
     UPLOAD_DIR,
     PublishVivaMarkPayload,
     _analyze_timeout_seconds,
+    app,
     publish_viva_mark,
     viva_analyze,
 )
@@ -93,7 +95,59 @@ class AuthTests(unittest.TestCase):
             _run(require_api_key(request))
 
 
+class SubjectContentRouteAuthTests(unittest.TestCase):
+    """Route-level check (same style as require_api_key above — this repo has
+    no TestClient/ASGI-level HTTP tests elsewhere) that the three new
+    subject-content endpoints actually carry the auth dependency, so an
+    unauthenticated request would be rejected the same way /api/viva-analyze
+    already is."""
+
+    def _route_dependency_names(self, path: str, method: str) -> list[str]:
+        for route in app.routes:
+            if getattr(route, "path", None) == path and method in (getattr(route, "methods", None) or set()):
+                deps = getattr(route, "dependencies", None) or []
+                return [dep.dependency.__name__ for dep in deps]
+        raise AssertionError(f"No route registered for {method} {path}")
+
+    def test_upload_requires_api_key(self):
+        self.assertIn(
+            "require_api_key", self._route_dependency_names("/api/subject-content/upload", "POST")
+        )
+
+    def test_get_requires_api_key(self):
+        self.assertIn(
+            "require_api_key",
+            self._route_dependency_names("/api/subject-content/{subject_code}", "GET"),
+        )
+
+    def test_put_requires_api_key(self):
+        self.assertIn(
+            "require_api_key",
+            self._route_dependency_names("/api/subject-content/{subject_code}", "PUT"),
+        )
+
+
 class AnalyzeHttpTests(unittest.TestCase):
+    """viva_analyze() persistence paths, pinned offline.
+
+    viva_analyze calls ensure_marks_collection() before writing. With
+    allow_autoconnect left on, that dials the real Atlas cluster, replaces any
+    injected marks_col, and inserts live rows into vivamark.marks — so these
+    tests must disable it and clear the client for the ping guard.
+    """
+
+    def setUp(self):
+        self._prev_autoconnect = db_instance.allow_autoconnect
+        self._prev_client = db_instance.client
+        self._prev_marks_col = db_instance.marks_col
+        db_instance.allow_autoconnect = False
+        db_instance.client = None
+
+    def tearDown(self):
+        db_instance.allow_autoconnect = self._prev_autoconnect
+        db_instance.client = self._prev_client
+        db_instance.marks_col = self._prev_marks_col
+
     def test_non_video_is_400(self):
         upload = UploadFile(
             filename="notes.txt",
@@ -159,6 +213,162 @@ class AnalyzeHttpTests(unittest.TestCase):
             db_instance.marks_col = previous
         self.assertNotIn("mark_id", result)
         self.assertIn("persistence_error", result)
+
+    def test_success_with_mongo_returns_mark_id(self):
+        fake = {
+            "video_status": "success",
+            "assessment": {"status": "VALID", "final_score": 70, "scoring_version": "v1", "ai_performance": {"score": 70}},
+        }
+        inserted: dict = {}
+        stored: dict = {}
+
+        class FakeCol:
+            async def insert_one(self, doc):
+                inserted.update(doc)
+                oid = ObjectId("507f1f77bcf86cd799439011")
+                stored[oid] = dict(doc)
+                stored[oid]["_id"] = oid
+                stored[oid]["result"] = dict(fake)
+
+                class Result:
+                    inserted_id = oid
+
+                return Result()
+
+            async def find_one(self, query):
+                return stored.get(query.get("_id"))
+
+            async def update_one(self, query, update):
+                doc = stored.get(query.get("_id"))
+                if doc is None:
+                    class Result:
+                        matched_count = 0
+
+                    return Result()
+                doc.update(update.get("$set", {}))
+                class Result:
+                    matched_count = 1
+
+                return Result()
+
+            async def create_index(self, *_args, **_kwargs):
+                return None
+
+        previous = db_instance.marks_col
+        db_instance.marks_col = FakeCol()
+        try:
+            with patch("Gradex_AI_Server.app.viva_service.analyze_video_file", return_value=dict(fake)):
+                result = _run(viva_analyze(_video_upload()))
+        finally:
+            db_instance.marks_col = previous
+        self.assertEqual(result["mark_id"], "507f1f77bcf86cd799439011")
+        self.assertTrue(result["published"])
+        self.assertTrue(result["auto_published"])
+        self.assertNotIn("persistence_error", result)
+
+    def test_technical_mode_never_auto_publishes(self):
+        """A technical viva must stay a draft — the whole point of the upfront
+        assessment-type choice is that 'reviewed before publishing' becomes true
+        by construction for the vivas that need a human technical score."""
+        fake = {
+            "video_status": "success",
+            "assessment": {"status": "VALID", "final_score": 70, "scoring_version": "v1", "ai_performance": {"score": 70}},
+        }
+        stored: dict = {}
+
+        class FakeCol:
+            async def insert_one(self, doc):
+                oid = ObjectId("507f1f77bcf86cd799439012")
+                stored[oid] = dict(doc)
+                stored[oid]["_id"] = oid
+                stored[oid]["result"] = dict(fake)
+
+                class Result:
+                    inserted_id = oid
+
+                return Result()
+
+            async def create_index(self, *_args, **_kwargs):
+                return None
+
+        previous = db_instance.marks_col
+        db_instance.marks_col = FakeCol()
+        try:
+            with patch("Gradex_AI_Server.app.viva_service.analyze_video_file", return_value=dict(fake)):
+                result = _run(
+                    viva_analyze(_video_upload(), assessment_mode="WITH_TECHNICAL_ACCURACY")
+                )
+        finally:
+            db_instance.marks_col = previous
+        self.assertEqual(result["mark_id"], "507f1f77bcf86cd799439012")
+        self.assertEqual(result["assessment_mode"], "WITH_TECHNICAL_ACCURACY")
+        self.assertFalse(result["published"])
+        self.assertNotIn("auto_published", result)
+        self.assertFalse(stored[ObjectId("507f1f77bcf86cd799439012")]["published"])
+
+    def test_subject_code_attaches_technical_accuracy_ai(self):
+        """When subject_code is given and a rubric exists, technical_accuracy_ai
+        is attached without touching analyze_video_file's own output — proves
+        the post-processing step in main.py wires up VivaEvaluationEngine's new
+        technical_accuracy module without any change to viva_service.py."""
+        fake = {
+            "video_status": "success",
+            "assessment": {"status": "VALID", "final_score": 70},
+            "audio_analysis": {"conversation": {"full_transcript": "we used 3NF normalization"}},
+        }
+        rubric = {"concepts": [{"id": "c1", "name": "Normalization", "description": "3NF", "weight": 3}]}
+
+        def fake_groq(transcript, batch, api_key, model):
+            import json as _json
+
+            return _json.dumps(
+                {
+                    "concepts": [
+                        {
+                            "concept_id": c["id"],
+                            "covered": True,
+                            "correct": True,
+                            "evidence_quote": "3NF",
+                            "score": 1.0,
+                        }
+                        for c in batch
+                    ]
+                }
+            )
+
+        previous = db_instance.marks_col
+        db_instance.marks_col = None
+        try:
+            with patch(
+                "Gradex_AI_Server.app.viva_service.analyze_video_file", return_value=dict(fake)
+            ), patch(
+                "Gradex_AI_Server.app.subject_rubric_service.get_subject_rubric",
+                return_value=rubric,
+            ), patch(
+                "VivaEvaluationEngine.services.technical_accuracy._api_key",
+                return_value="gsk_test",
+            ), patch(
+                "VivaEvaluationEngine.services.technical_accuracy._call_groq_batch_once",
+                side_effect=fake_groq,
+            ):
+                result = _run(viva_analyze(_video_upload(), subject_code="CS101"))
+        finally:
+            db_instance.marks_col = previous
+        self.assertEqual(result["technical_accuracy_ai"]["status"], "success")
+        self.assertEqual(result["technical_accuracy_ai"]["overall_score"], 10.0)
+
+    def test_no_subject_code_skips_technical_accuracy(self):
+        fake = {"video_status": "success", "assessment": {"status": "VALID", "final_score": 70}}
+        previous = db_instance.marks_col
+        db_instance.marks_col = None
+        try:
+            with patch(
+                "Gradex_AI_Server.app.viva_service.analyze_video_file", return_value=dict(fake)
+            ):
+                result = _run(viva_analyze(_video_upload()))
+        finally:
+            db_instance.marks_col = previous
+        self.assertNotIn("technical_accuracy_ai", result)
 
 
 class PublishHttpTests(unittest.TestCase):

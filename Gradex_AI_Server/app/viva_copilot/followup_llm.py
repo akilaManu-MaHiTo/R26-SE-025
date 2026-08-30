@@ -1,6 +1,8 @@
 """Follow-up question generation + ranking. Isolated Groq client."""
 from __future__ import annotations
 
+import json
+import re
 from typing import Any, Callable, Dict, List, Optional
 
 from Gradex_AI_Server.app.viva_copilot.answer_detector import normalize_answer
@@ -72,14 +74,20 @@ Return ONLY valid JSON using this structure:
 }
 """
 
-ChatFn = Callable[[str, Dict[str, Any]], str]
+ChatFn = Callable[..., str]
+PartialFn = Callable[[Dict[str, Any]], None]
 
 
-def _default_chat(system_prompt: str, payload: Dict[str, Any]) -> str:
+def _default_chat(
+    system_prompt: str,
+    payload: Dict[str, Any],
+    *,
+    on_delta: Optional[Callable[[str], None]] = None,
+) -> str:
     key = api_key()
     if not key:
-        raise RuntimeError("No LLM API key configured (set AI_API_KEY or GROQ_API_KEY)")
-    return groq_chat(system_prompt, payload, api_key_value=key, model=chat_model())
+        raise RuntimeError("No LLM API key configured (set GROQ_API_KEY, AI_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY)")
+    return groq_chat(system_prompt, payload, api_key_value=key, model=chat_model(), on_delta=on_delta)
 
 
 def _as_str_list(value: Any) -> List[str]:
@@ -162,11 +170,60 @@ def parse_followup_payload(raw_text: str, asked: Optional[List[str]] = None) -> 
     }
 
 
+def _find_flat_objects(text: str) -> List[str]:
+    """Return every syntactically-closed ``{...}`` (no nested braces) found so
+    far. Suggestion entries in our schema are flat objects, so this is enough
+    to detect a complete suggestion mid-stream without a full JSON parser."""
+    return re.findall(r"\{[^{}]*\}", text)
+
+
 def generate_followups(
     context: Dict[str, Any],
     asked: Optional[List[str]] = None,
     *,
     chat: ChatFn = _default_chat,
+    on_partial_suggestion: Optional[Callable[[Dict[str, str]], None]] = None,
 ) -> Dict[str, Any]:
-    content = chat(SYSTEM_PROMPT, context)
+    """Generate follow-up suggestions.
+
+    When ``on_partial_suggestion`` is given, the request streams from Groq and
+    the callback fires with the *first* fully-formed, valid suggestion object
+    as soon as it appears in the token stream — well before the whole JSON
+    response (and its 2-3 other suggestions) has finished generating. This
+    lets the UI show a suggestion immediately instead of waiting for the
+    entire LLM turn to complete.
+    """
+    if on_partial_suggestion is None:
+        content = chat(SYSTEM_PROMPT, context)
+        return parse_followup_payload(content, asked)
+
+    seen_raw: set = set()
+    emitted = False
+    buffer: List[str] = []
+
+    def _on_delta(delta: str) -> None:
+        nonlocal emitted
+        buffer.append(delta)
+        if emitted:
+            return
+        joined = "".join(buffer)
+        # Only look inside the "suggestions" array once it has started.
+        idx = joined.find('"suggestions"')
+        if idx == -1:
+            return
+        for raw_obj in _find_flat_objects(joined[idx:]):
+            if raw_obj in seen_raw:
+                continue
+            seen_raw.add(raw_obj)
+            try:
+                candidate = json.loads(raw_obj)
+            except json.JSONDecodeError:
+                continue
+            validated = validate_suggestions([candidate], asked)
+            if validated:
+                emitted = True
+                on_partial_suggestion(validated[0])
+                return
+
+    content = chat(SYSTEM_PROMPT, context, on_delta=_on_delta)
     return parse_followup_payload(content, asked)

@@ -2,20 +2,23 @@ export type CopilotPhase = "idle" | "presentation" | "viva" | "ended";
 
 export type SuggestionPriority = "high" | "medium" | "low";
 export type SuggestionDifficulty = "basic" | "intermediate" | "advanced";
+export type BloomLevel = "Understand" | "Apply" | "Analyze" | "Evaluate" | "Remember" | "Create";
 
 export interface CopilotSuggestion {
   question: string;
   reason: string;
   difficulty: SuggestionDifficulty;
   priority: SuggestionPriority;
+  bloom_level?: BloomLevel;
+  category?: string;
 }
 
 export interface CopilotAnalysis {
   topics: string[];
-  concepts: string[];
-  technologies: string[];
-  claims: string[];
-  gaps: string[];
+  concepts?: string[];
+  technologies?: string[];
+  claims?: string[];
+  gaps?: string[];
 }
 
 export interface TranscriptTurn {
@@ -37,6 +40,7 @@ export interface SessionStateData {
   mainPoints?: string[];
   currentQuestion?: string | null;
   suggestions?: CopilotSuggestion[];
+  suggestion?: unknown;
   analysis?: CopilotAnalysis;
   transcript?: TranscriptTurn[];
   askedQuestions?: string[];
@@ -80,6 +84,11 @@ export function normalizeAnalysis(value: unknown): CopilotAnalysis | null {
   };
 }
 
+export function normalizeSuggestion(value: unknown): CopilotSuggestion | null {
+  const [first] = normalizeSuggestions([value]);
+  return first ?? null;
+}
+
 export function normalizeSuggestions(value: unknown): CopilotSuggestion[] {
   if (!Array.isArray(value)) return [];
   const out: CopilotSuggestion[] = [];
@@ -88,6 +97,10 @@ export function normalizeSuggestions(value: unknown): CopilotSuggestion[] {
     const row = item as Record<string, unknown>;
     const question = String(row.question || "").trim();
     if (!question) continue;
+    const rawBloom = String(row.bloom_level || row.bloom || "").trim();
+    const bloom_level = (["Understand", "Apply", "Analyze", "Evaluate", "Remember", "Create"].includes(rawBloom)
+      ? rawBloom
+      : "Analyze") as BloomLevel;
     out.push({
       question,
       reason: String(row.reason || "").trim(),
@@ -97,6 +110,8 @@ export function normalizeSuggestions(value: unknown): CopilotSuggestion[] {
       priority: (["high", "medium", "low"].includes(String(row.priority))
         ? row.priority
         : "medium") as SuggestionPriority,
+      bloom_level,
+      category: row.category ? String(row.category).trim() : undefined,
     });
   }
   return out;
@@ -145,7 +160,7 @@ async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     if (response.status === 404) {
       throw new Error(
-        "Copilot API not found (404). Restart the FastAPI server so /api/viva-copilot is loaded.",
+        "Live viva API not found (404). Restart the FastAPI server so /api/viva-copilot is loaded.",
       );
     }
     throw new Error(await parseError(response));
@@ -185,6 +200,53 @@ export function updateCopilotContext(sessionId: string, projectContext: ProjectC
     method: "POST",
     body: JSON.stringify({ projectContext }),
   });
+}
+
+export type CopilotAssessmentMode = "WITH_TECHNICAL_ACCURACY" | "WITHOUT_TECHNICAL_ACCURACY";
+
+export interface AnalyzeSessionOptions {
+  assessmentMode: CopilotAssessmentMode;
+  subjectCode?: string;
+  studentId?: string;
+}
+
+/** Upload the full session recording and run the same analysis+scoring chain
+ * as an uploaded viva video. Returns the engine result (assessment, grade,
+ * audio_analysis, timeline, ...) exactly as /api/viva-analyze does. */
+export async function analyzeCopilotSession(
+  sessionId: string,
+  recording: Blob,
+  options: AnalyzeSessionOptions,
+): Promise<Record<string, unknown>> {
+  const form = new FormData();
+  const ext = recording.type.includes("mp4") ? "mp4" : "webm";
+  form.append("video", recording, `live-viva-${sessionId}.${ext}`);
+  form.append("assessment_mode", options.assessmentMode);
+  if (options.subjectCode) form.append("subject_code", options.subjectCode);
+  if (options.studentId) form.append("student_id", options.studentId);
+
+  const url = `${copilotHttpBase()}/api/viva-copilot/sessions/${sessionId}/analyze`;
+  let response: Response;
+  try {
+    // No Content-Type header: the browser sets the multipart boundary itself.
+    response = await fetch(url, {
+      method: "POST",
+      headers: { Accept: "application/json", ...authHeaders() },
+      body: form,
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach ${copilotHttpBase()}. Start Gradex_AI_Server on that port, or set VITE_BACKEND_URL.`,
+    );
+  }
+  if (!response.ok) throw new Error(await parseError(response));
+  return response.json() as Promise<Record<string, unknown>>;
+}
+
+export function getCopilotTranscript(sessionId: string) {
+  return jsonFetch<Record<string, unknown>>(
+    `/api/viva-copilot/sessions/${sessionId}/transcript`,
+  );
 }
 
 export function endCopilotSession(sessionId: string) {
