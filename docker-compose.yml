@@ -12,7 +12,7 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     ports:
-      - "8001:8001"
+      - "8000:8000"
     environment:
       - GRADEX_API_KEY=dev-secret-key-12345
       - AI_API_KEY=sk-c87fa06deddc80c1-7qjnxv-f1754cd8
@@ -24,7 +24,7 @@ services:
       - VIVA_COPILOT_LLM_MODEL=openai/gpt-oss-20b
       - VIVA_COPILOT_STT_MODEL=groq/whisper-large-v3-turbo
       - VIVA_COPILOT_MIN_STT_GAP=0.4
-      - PORT=8001
+      - PORT=8000
     networks:
       - gradex-network
     restart: unless-stopped
@@ -35,7 +35,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        - VITE_BACKEND_URL=http://localhost:8001
+        - VITE_BACKEND_URL=http://localhost:8000
         - VITE_GRADEX_API_KEY=dev-secret-key-12345
     ports:
       - "5173:80"

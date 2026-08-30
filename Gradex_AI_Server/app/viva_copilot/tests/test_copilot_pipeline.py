@@ -538,6 +538,14 @@ class VivaSuggestionGateTests(unittest.TestCase):
             should_refresh_viva_suggestions(pending_words=8, last_at=940.0, now=1000.0)
         )
 
+    def test_first_batch_needs_fifteen_words(self):
+        self.assertFalse(
+            should_refresh_viva_suggestions(pending_words=14, last_at=0.0, now=1000.0)
+        )
+        self.assertTrue(
+            should_refresh_viva_suggestions(pending_words=15, last_at=0.0, now=1000.0)
+        )
+
     def test_passes_when_both_gates_clear(self):
         self.assertTrue(
             should_refresh_viva_suggestions(pending_words=40, last_at=984.0, now=1000.0)
