@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,7 +10,7 @@ from uuid import uuid4
 from typing import Any, Optional
 import os
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -482,13 +483,82 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
 
 @app.get("/api/viva-analyze/progress/{progress_id}", dependencies=[Depends(require_api_key)])
 async def viva_analyze_progress(progress_id: str):
-    """Live step list for the analyze UI. Polled while POST /api/viva-analyze runs."""
+    """One-shot step list for the analyze UI.
+
+    Kept as the fallback for clients that cannot hold an EventSource open; the
+    UI prefers the /stream variant below, which pushes instead of being asked.
+    """
     from Gradex_AI_Server.app.viva_progress import normalize_progress_id, snapshot
 
     job_id = normalize_progress_id(progress_id)
     if not job_id:
         raise HTTPException(status_code=400, detail="Invalid progress id.")
     return snapshot(job_id)
+
+
+# Long stages (Whisper on a long recording) can go minutes without a new stage.
+# Emit a keep-alive comment on this cadence so proxies and load balancers do not
+# reap the idle connection.
+_PROGRESS_KEEPALIVE_SECONDS = 15.0
+
+
+@app.get(
+    "/api/viva-analyze/progress/{progress_id}/stream",
+    dependencies=[Depends(require_api_key)],
+)
+async def viva_analyze_progress_stream(progress_id: str, request: Request):
+    """Server-sent progress for the analyze UI -- one connection per analysis.
+
+    Replaces a 400ms polling loop that produced hundreds of log lines and
+    requests per run. The stream blocks in a worker thread until the pipeline
+    actually publishes a new stage, so the browser is told the moment something
+    changes and the server does no work in between.
+
+    EventSource cannot set headers, so the API key arrives as ?api_key= --
+    require_api_key already accepts that form.
+    """
+    from Gradex_AI_Server.app.viva_progress import (
+        normalize_progress_id,
+        snapshot,
+        wait_for_change,
+    )
+
+    job_id = normalize_progress_id(progress_id)
+    if not job_id:
+        raise HTTPException(status_code=400, detail="Invalid progress id.")
+
+    async def stream_events():
+        # Send current state immediately: the job may already have advanced
+        # between the POST starting and this stream connecting.
+        current = snapshot(job_id)
+        yield _sse_event("progress", current)
+        version = int(current.get("version") or 0)
+
+        while True:
+            if await request.is_disconnected():
+                break
+            payload = await asyncio.to_thread(
+                wait_for_change, job_id, version, _PROGRESS_KEEPALIVE_SECONDS
+            )
+            if payload is None:
+                yield ": keep-alive\n\n"
+                continue
+            version = int(payload.get("version") or 0)
+            yield _sse_event("progress", payload)
+            if payload.get("finished"):
+                yield _sse_event("done", {"stage": payload.get("stage")})
+                break
+
+    return StreamingResponse(
+        stream_events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            # Stop nginx from buffering the stream into silence.
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.post("/api/viva-analyze", dependencies=[Depends(require_api_key)])
@@ -531,7 +601,10 @@ async def viva_analyze(
         persist_and_autopublish,
         run_analysis,
     )
-    from Gradex_AI_Server.app.viva_progress import normalize_progress_id
+    from Gradex_AI_Server.app.viva_progress import (
+        finish as finish_progress,
+        normalize_progress_id,
+    )
 
     request_start = time.time()
     requested_mode = normalize_mode(assessment_mode)
@@ -611,6 +684,12 @@ async def viva_analyze(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         raise HTTPException(status_code=500, detail=f"Viva analysis failed: {exc}") from exc
     finally:
+        # Close any attached SSE stream on success and on failure alike, so the
+        # browser stops listening instead of waiting out the keep-alives.
+        try:
+            finish_progress(job_id)
+        except Exception:
+            pass
         try:
             if file_path.exists():
                 file_path.unlink()

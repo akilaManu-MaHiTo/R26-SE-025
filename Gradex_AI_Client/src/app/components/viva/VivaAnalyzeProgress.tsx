@@ -19,6 +19,8 @@ export interface VivaProgressSnapshot {
   stage?: string | null;
   message?: string | null;
   done?: string[];
+  version?: number;
+  finished?: boolean;
 }
 
 export async function fetchVivaAnalyzeProgress(
@@ -38,6 +40,66 @@ export async function fetchVivaAnalyzeProgress(
   } catch {
     return null;
   }
+}
+
+/**
+ * Subscribe to analyze progress over SSE -- one connection for the whole run,
+ * in place of the timer that re-requested the same endpoint several times a
+ * second. The server pushes only when a stage actually changes.
+ *
+ * EventSource cannot send headers, so the API key goes in the query string;
+ * the server's require_api_key accepts ?api_key= as well as X-API-Key.
+ *
+ * Returns an unsubscribe function. Falls back to nothing if the browser has no
+ * EventSource -- callers keep fetchVivaAnalyzeProgress for that case.
+ */
+export function subscribeVivaAnalyzeProgress(
+  backendBaseUrl: string,
+  progressId: string,
+  apiKey: string,
+  onSnapshot: (snapshot: VivaProgressSnapshot) => void,
+  onError?: () => void,
+): () => void {
+  if (typeof EventSource === "undefined") {
+    onError?.();
+    return () => {};
+  }
+
+  const base = backendBaseUrl.replace(/\/$/, "");
+  const query = apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : "";
+  const url = `${base}/api/viva-analyze/progress/${encodeURIComponent(progressId)}/stream${query}`;
+
+  let closed = false;
+  const source = new EventSource(url);
+
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    source.close();
+  };
+
+  source.addEventListener("progress", (event) => {
+    try {
+      onSnapshot(JSON.parse((event as MessageEvent).data) as VivaProgressSnapshot);
+    } catch {
+      // A malformed frame is not worth tearing the stream down for.
+    }
+  });
+
+  // The pipeline finished; the server is about to hang up. Close first so
+  // EventSource does not treat the clean end as a drop and reconnect.
+  source.addEventListener("done", close);
+
+  source.onerror = () => {
+    // EventSource retries on its own. Only surface an error once the connection
+    // is genuinely gone, so the caller can fall back to a slow poll.
+    if (source.readyState === EventSource.CLOSED && !closed) {
+      closed = true;
+      onError?.();
+    }
+  };
+
+  return close;
 }
 
 export function VivaAnalyzeProgress({

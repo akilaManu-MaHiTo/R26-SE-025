@@ -38,6 +38,7 @@ import { QaRelevancePanel } from "./viva/QaRelevancePanel";
 import { LiveVivaRecorder } from "./viva/LiveVivaRecorder";
 import {
   fetchVivaAnalyzeProgress,
+  subscribeVivaAnalyzeProgress,
   VivaAnalyzeProgress,
   VivaProgressSnapshot,
 } from "./viva/VivaAnalyzeProgress";
@@ -240,20 +241,43 @@ export function VivaPage() {
     return () => clearInterval(id);
   }, [isAnalyzing, uploadStartTime]);
 
+  // Analyze progress arrives over a single SSE connection for the whole run.
+  // The server pushes each stage as it happens, so there is no polling timer
+  // here; the slow interval below is only a fallback for a failed stream.
   useEffect(() => {
     if (!isAnalyzing || analysisPhase !== "processing") return;
     const progressId = progressIdRef.current;
     if (!progressId) return;
+
     let cancelled = false;
-    const poll = async () => {
-      const next = await fetchVivaAnalyzeProgress(backendBaseUrl, progressId, apiKey);
-      if (!cancelled && next) setProgressSnapshot(next);
+    let fallbackId: number | null = null;
+
+    const startFallbackPolling = () => {
+      if (cancelled || fallbackId !== null) return;
+      const poll = async () => {
+        const next = await fetchVivaAnalyzeProgress(backendBaseUrl, progressId, apiKey);
+        if (!cancelled && next) setProgressSnapshot(next);
+      };
+      void poll();
+      // Deliberately slow: this path only runs when streaming is unavailable,
+      // and stage changes are seconds apart at best.
+      fallbackId = window.setInterval(() => void poll(), 3000);
     };
-    void poll();
-    const id = window.setInterval(() => void poll(), 400);
+
+    const unsubscribe = subscribeVivaAnalyzeProgress(
+      backendBaseUrl,
+      progressId,
+      apiKey,
+      (next) => {
+        if (!cancelled) setProgressSnapshot(next);
+      },
+      startFallbackPolling,
+    );
+
     return () => {
       cancelled = true;
-      window.clearInterval(id);
+      unsubscribe();
+      if (fallbackId !== null) window.clearInterval(fallbackId);
     };
   }, [isAnalyzing, analysisPhase, backendBaseUrl, apiKey]);
 
@@ -752,6 +776,7 @@ export function VivaPage() {
                     src={videoPreview}
                     durationLabel={videoDuration != null ? formatTime(videoDuration) : undefined}
                     onDurationChange={setVideoDuration}
+                    enablePictureInPicture
                   />
                   <div className="mt-3 flex items-center gap-3">
                     <Button
