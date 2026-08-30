@@ -42,6 +42,12 @@ def _load_whisper_model(model_size):
     import whisper
 
     print(f"Loading Whisper model: {model_size}")
+    try:
+        from services.pipeline_progress import emit
+
+        emit("whisper", f"Loading Whisper model ({model_size})")
+    except Exception:
+        pass
     return whisper.load_model(model_size)
 
 
@@ -67,6 +73,12 @@ def transcribe_audio(audio_path, model_size=None, output_path=None):
         return "", [], {"available": False, "reason": "whisper_not_installed", "words_with_times": []}
 
     print(f"Transcribing audio: {audio_path}")
+    try:
+        from services.pipeline_progress import emit
+
+        emit("whisper", "Transcribing speech (Whisper)")
+    except Exception:
+        pass
     use_gpu = False
     try:
         import torch

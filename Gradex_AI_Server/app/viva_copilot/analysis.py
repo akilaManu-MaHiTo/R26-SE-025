@@ -65,6 +65,7 @@ async def analyze_live_session(
     video_filename: Optional[str] = None,
     subject_code: Optional[str] = None,
     student_id: Optional[str] = None,
+    progress_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Full live-session assessment: recording -> engine -> mark -> publish."""
     from Gradex_AI_Server.app.viva_analysis_runner import (
@@ -75,9 +76,11 @@ async def analyze_live_session(
 
     live = build_live_transcript(session)
 
-    result = await run_analysis(video_path)
+    result = await run_analysis(video_path, progress_id=progress_id)
     result = attach_live_session(result, live)
-    result = await attach_subject_technical_accuracy(result, subject_code, db_instance)
+    result = await attach_subject_technical_accuracy(
+        result, subject_code, db_instance, progress_id=progress_id
+    )
 
     extra_doc: Dict[str, Any] = {
         "copilot_session_id": session.session_id,
@@ -93,4 +96,5 @@ async def analyze_live_session(
         video_filename=video_filename,
         source="live_copilot",
         extra_doc=extra_doc,
+        progress_id=progress_id,
     )
