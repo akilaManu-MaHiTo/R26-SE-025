@@ -26,9 +26,14 @@ export const SAMPLE_COURSES: CourseItem[] = [
   },
 ];
 
-const DEFAULT_API_BASE_URL =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ??
-  "http://127.0.0.1:8000";
+const env = (import.meta as { env?: Record<string, string> }).env ?? {};
+
+/** Server root only — same as viva/diagram. Grading callers pass GRADING_API_BASE_URL explicitly. */
+const DEFAULT_API_BASE_URL = (
+  env.VITE_BACKEND_URL?.trim() ||
+  env.VITE_API_BASE_URL?.trim() ||
+  "http://127.0.0.1:8000"
+).replace(/\/$/, "");
 
 function parseApiError(data: unknown, fallback: string): string {
   if (data == null || typeof data !== "object") return fallback;
