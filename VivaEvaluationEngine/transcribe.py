@@ -18,7 +18,8 @@ ALLOWED_WHISPER_MODELS = (
     "large-v3",
     "turbo",
 )
-DEFAULT_WHISPER_MODEL = "medium"
+# small is the CPU default: medium on CPU is FP32 and often minutes per minute of audio.
+DEFAULT_WHISPER_MODEL = "small"
 
 
 def resolve_whisper_model_size(raw: str | None, *, default: str = DEFAULT_WHISPER_MODEL) -> str:
@@ -66,7 +67,23 @@ def transcribe_audio(audio_path, model_size=None, output_path=None):
         return "", [], {"available": False, "reason": "whisper_not_installed", "words_with_times": []}
 
     print(f"Transcribing audio: {audio_path}")
-    result = model.transcribe(audio_path, word_timestamps=True, verbose=False)
+    use_gpu = False
+    try:
+        import torch
+
+        use_gpu = bool(torch.cuda.is_available())
+    except ImportError:
+        use_gpu = False
+
+    # The FP16 warning is not a failure: openai-whisper always prints it on CPU.
+    # GPU uses FP16 (faster). CPU stays FP32. language=en skips language detect.
+    result = model.transcribe(
+        audio_path,
+        word_timestamps=True,
+        verbose=False,
+        fp16=use_gpu,
+        language="en",
+    )
 
     transcript = result["text"]
     segments = result["segments"]

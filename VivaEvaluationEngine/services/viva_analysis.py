@@ -525,12 +525,16 @@ def analyze_audio_from_video(
             model_size=WHISPER_MODEL_SIZE,
             output_path=transcription_output,
         )
-        try:
-            from transcribe import release_whisper_models
+        # Keep Whisper in process memory so the next analyze does not reload
+        # weights (medium/small load is a large share of wall time on CPU).
+        # Set VIVA_WHISPER_RELEASE_AFTER=1 to free RAM after each request.
+        if (os.getenv("VIVA_WHISPER_RELEASE_AFTER") or "").strip() in {"1", "true", "yes"}:
+            try:
+                from transcribe import release_whisper_models
 
-            release_whisper_models()
-        except Exception:
-            pass
+                release_whisper_models()
+            except Exception:
+                pass
 
         mixed_transcript = (transcript or "").strip()
         student_id = diarization.get("student_speaker")
