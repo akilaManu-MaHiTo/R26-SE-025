@@ -1,4 +1,4 @@
-"""Tests for proportional lip-motion validation (1 lip event per 5 words)."""
+"""Tests for light lip-motion validation (1 event per 25 words, cap 3)."""
 from __future__ import annotations
 
 import sys
@@ -50,15 +50,20 @@ def _speech_result(*, words: int = 24, lip_events: int = 16, talking: bool = Tru
 
 
 class LipMotionSummaryTests(unittest.TestCase):
-    def test_twenty_words_need_four_lip_events(self):
-        summary = summarize_lip_motion(_speech_result(words=20, lip_events=4))
-        self.assertEqual(summary["minimum_required"], 4)
-        self.assertEqual(summary["lip_ratio"], "1/5")
+    def test_twenty_words_need_one_lip_event(self):
+        summary = summarize_lip_motion(_speech_result(words=20, lip_events=1))
+        self.assertEqual(summary["minimum_required"], 1)
+        self.assertEqual(summary["lip_ratio"], "1/25")
         self.assertTrue(summary["passed"])
 
-    def test_twenty_words_fail_with_three_lip_events(self):
-        summary = summarize_lip_motion(_speech_result(words=20, lip_events=3))
-        self.assertEqual(summary["minimum_required"], 4)
+    def test_long_transcript_caps_required_at_three(self):
+        summary = summarize_lip_motion(_speech_result(words=66, lip_events=3))
+        self.assertEqual(summary["minimum_required"], 3)
+        self.assertTrue(summary["passed"])
+
+    def test_sixty_six_words_fail_with_no_lip_events(self):
+        summary = summarize_lip_motion(_speech_result(words=66, lip_events=3, talking=False))
+        self.assertEqual(summary["minimum_required"], 3)
         self.assertFalse(summary["passed"])
 
     def test_fails_when_mouth_stays_closed_during_speech(self):

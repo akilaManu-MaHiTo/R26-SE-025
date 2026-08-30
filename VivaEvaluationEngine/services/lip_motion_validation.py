@@ -1,8 +1,11 @@
 """Lip-motion checks for viva validity — isolated from other engines.
 
-When speech is detected, lip movement on the on-camera face should scale with
-how much was said. Default: at least one visible lip-motion event per five
-transcript words (1/5). Example: 20 spoken words → minimum 4 lip motions.
+When speech is detected, the on-camera face should show *some* mouth movement.
+Live webcam + 1 fps sampling under-counts MAR, so this is a light anti-spoof
+(still photo + audio), not a 1:5 word/lip quota.
+
+Default: one motion event per 25 words, capped at 3 required events.
+66-word / 52s clips therefore need 3 talking or mouth-delta frames, not 14.
 """
 from __future__ import annotations
 
@@ -10,13 +13,17 @@ import math
 import os
 from typing import Any, Dict, Iterable, Optional
 
-# Match gaze_head_analyser.GazeHeadAnalyser talking threshold.
-MOUTH_TALKING_THRESHOLD = 0.32
-MOUTH_DELTA_MIN = 0.04
+# Below GazeHeadAnalyser talking (0.32): webcam MAR often sits 0.18–0.28 while speaking.
+MOUTH_TALKING_THRESHOLD = 0.20
+MOUTH_DELTA_MIN = 0.03
 
-# One lip-motion event per N transcript words (1/5 by default).
-DEFAULT_WORDS_PER_LIP_EVENT = 5
+# One lip-motion event per N transcript words (1/25). Cap so long talks do not
+# demand more and more frames than 1 fps can provide.
+DEFAULT_WORDS_PER_LIP_EVENT = 25
 MINIMUM_LIP_EVENTS = 1
+MAX_REQUIRED_LIP_EVENTS = 3
+# Ignore tiny transcripts; 2–3 Whisper words are not a lip-sync case.
+SPEECH_LIP_MIN_WORDS = 10
 
 
 def _words_per_lip_event() -> int:
@@ -53,7 +60,7 @@ def _speech_requires_lip_motion(result: Dict[str, Any]) -> bool:
     if "transcript_unavailable" in degraded:
         return False
     words = _speech_word_count(result)
-    return words > 2
+    return words >= SPEECH_LIP_MIN_WORDS
 
 
 def _iter_mouth_samples(result: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
@@ -72,7 +79,10 @@ def _iter_mouth_samples(result: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
 def _required_event_count(word_count: int, words_per_event: int) -> int:
     if word_count <= 0:
         return MINIMUM_LIP_EVENTS
-    return max(MINIMUM_LIP_EVENTS, math.ceil(word_count / words_per_event))
+    return min(
+        MAX_REQUIRED_LIP_EVENTS,
+        max(MINIMUM_LIP_EVENTS, math.ceil(word_count / words_per_event)),
+    )
 
 
 def summarize_lip_motion(result: Dict[str, Any]) -> Dict[str, Any]:
@@ -117,7 +127,9 @@ def summarize_lip_motion(result: Dict[str, Any]) -> Dict[str, Any]:
             open_transitions += 1
         prev_talking = talking
 
-    motion_events = max(open_transitions, talking_frames)
+    # Count talking frames, open/close transitions, and small MAR changes.
+    # 1 fps live webm often never stays above the old 0.32 talking flag.
+    motion_events = max(open_transitions, talking_frames, mouth_delta_moves)
     required = _required_event_count(word_count, words_per_event)
     speech_requires = _speech_requires_lip_motion(result)
     track_available = valid_samples > 0 and mouth_samples > 0

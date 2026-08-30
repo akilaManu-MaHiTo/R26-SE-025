@@ -70,9 +70,8 @@ _MIN_FACE_COVERAGE_RATIO = 0.15
 
 REASON_MESSAGES = {
     "insufficient_lip_motion": (
-        "Speech was detected but visible lip movement did not match the transcript "
-        "(need about one mouth-motion event per five spoken words). "
-        "Re-record with the student speaking clearly on camera."
+        "Speech was detected but almost no mouth movement was visible on camera. "
+        "Face the webcam and speak so your lips can be seen."
     ),
     "lip_motion_unavailable": (
         "Speech was detected but mouth movement could not be measured on the face track. "

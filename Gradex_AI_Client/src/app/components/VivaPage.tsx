@@ -91,7 +91,7 @@ export function VivaPage() {
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const backendBaseUrl =
     ((import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL) ??
-    "http://localhost:8001";
+    "http://localhost:8000";
   const apiKey =
     ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env?.VITE_GRADEX_API_KEY) ??
     "";
