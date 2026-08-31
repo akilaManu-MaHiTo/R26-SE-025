@@ -13,40 +13,45 @@ from app.services.llm_service import (
 
 
 def test_high_confidence_rules_skips_qwen(monkeypatch):
+    # Bloom level is now ONLY via bloom_modernbert — no Qwen call should happen
     async def fail(*a, **k):
-        raise AssertionError("Ollama should not be called")
+        raise AssertionError("Ollama should not be called for Bloom")
 
     monkeypatch.setattr(llm_service, "validate_with_retry", fail)
+
+    def fake_predict(text):
+        return {"label": "BT3", "level": "Apply", "confidence": 0.92, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+
+    monkeypatch.setattr("app.classifier.bloom_classifier.predict_bloom", fake_predict)
+    monkeypatch.setattr("app.classifier.bloom_classifier.is_bloom_model_available", lambda: True)
     result = classify_question("Write a SQL SELECT that joins two tables.")
-    assert result["status"] == "rules"
+    assert result["status"] == "bloom_model"
+    assert result["bloom"]["level"] == "Apply"
+    assert result["rules"]["bloom_level"] == "Apply"
 
 
 def test_low_confidence_calls_qwen_and_succeeds(monkeypatch):
-    class FakeClassification:
-        primary_topic = "SQL"
-        bloom_level = "Apply"
-        question_type = "coding"
-        key_concepts = []
-        rationale = "x"
-        review_flag = False
+    # Previously low confidence fell to Qwen; now always uses bloom_modernbert
+    def fake_predict(text):
+        return {"label": "BT2", "level": "Understand", "confidence": 0.88, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
 
-    async def fake_validate(schema, prompt, temperature, max_attempts=2):
-        return FakeClassification(), {}, False
-
-    monkeypatch.setattr(llm_service, "validate_with_retry", fake_validate)
+    monkeypatch.setattr("app.classifier.bloom_classifier.predict_bloom", fake_predict)
+    monkeypatch.setattr("app.classifier.bloom_classifier.is_bloom_model_available", lambda: True)
     result = classify_question("Discuss the history of computing.")
-    assert result["status"] == "qwen"
-    assert result["qwen"]["primary_topic"] == "SQL"
+    assert result["status"] == "bloom_model"
+    assert result["bloom"]["level"] == "Understand"
 
 
 def test_qwen_down_degrades_to_rules(monkeypatch):
-    async def raise_unavailable(*a, **k):
-        raise OllamaUnavailable("down")
+    # Qwen down no longer affects Bloom classification — model still succeeds
+    def fake_predict(text):
+        return {"label": "BT2", "level": "Understand", "confidence": 0.77, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
 
-    monkeypatch.setattr(llm_service, "validate_with_retry", raise_unavailable)
+    monkeypatch.setattr("app.classifier.bloom_classifier.predict_bloom", fake_predict)
+    monkeypatch.setattr("app.classifier.bloom_classifier.is_bloom_model_available", lambda: True)
     result = classify_question("Discuss the history of computing.")
-    assert result["status"] == "rules_degraded"
-    assert result["reason"] == "ollama_unavailable"
+    assert result["status"] == "bloom_model"
+    assert result["bloom"]["level"] == "Understand"
 
 
 async def test_misconception_summary_degraded_on_unavailable(monkeypatch):
@@ -68,7 +73,7 @@ async def test_generate_candidates_ok_skips_similarity_when_embeddings_off(monke
                 type("C", (), {"model_dump": lambda self: {"text": "q", "topic": "SQL"}})()
             ]
 
-    async def fake_validate(schema, prompt, temperature, max_attempts=2):
+    async def fake_validate(schema, prompt, temperature, max_attempts=2, **kwargs):
         return FakeCandidates(), {}, False
 
     monkeypatch.setattr(llm_service, "validate_with_retry", fake_validate)
@@ -79,21 +84,14 @@ async def test_generate_candidates_ok_skips_similarity_when_embeddings_off(monke
 
 
 async def test_classify_question_from_running_loop_does_not_crash(monkeypatch):
-    class FakeClassification:
-        primary_topic = "SQL"
-        bloom_level = "Apply"
-        question_type = "coding"
-        key_concepts = []
-        rationale = "x"
-        review_flag = False
+    def fake_predict(text):
+        return {"label": "BT3", "level": "Apply", "confidence": 0.91, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
 
-    async def fake_validate(schema, prompt, temperature, max_attempts=2):
-        return FakeClassification(), {}, False
-
-    monkeypatch.setattr(llm_service, "validate_with_retry", fake_validate)
+    monkeypatch.setattr("app.classifier.bloom_classifier.predict_bloom", fake_predict)
+    monkeypatch.setattr("app.classifier.bloom_classifier.is_bloom_model_available", lambda: True)
     result = classify_question("Discuss the history of computing.")
-    assert result["status"] == "qwen"
-    assert result["qwen"]["primary_topic"] == "SQL"
+    assert result["status"] == "bloom_model"
+    assert result["bloom"]["level"] == "Apply"
 
 
 async def test_study_actions_ok(monkeypatch):

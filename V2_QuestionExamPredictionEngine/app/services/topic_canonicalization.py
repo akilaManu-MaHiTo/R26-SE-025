@@ -111,8 +111,12 @@ async def canonicalize_topics(
         sid = sub.get("student_id", "")
         results = (sub.get("evaluation") or {}).get("results") or []
         for r in results:
-            q_id = f"Q{r.get('q_no', '')}"
-            if q_id not in question_canonical:
+            raw_qno = r.get("q_no") if r.get("q_no") is not None else r.get("question_no", "")
+            norm = str(raw_qno).strip()
+            # keep question_no as stored in rubric (zero-pad if purely numeric)
+            norm = norm.zfill(2) if norm.isdigit() else norm
+            q_id = f"Q{norm}" if norm else ""
+            if not q_id or q_id not in question_canonical:
                 continue
             cid = question_canonical[q_id]
             score = float(r.get("score", 0))
@@ -205,7 +209,11 @@ async def canonicalize_topics(
                     for sub in submissions:
                         results = (sub.get("evaluation") or {}).get("results") or []
                         for r in results:
-                            if f"Q{r.get('q_no', '')}" == qp["question_id"]:
+                            raw_q = r.get("q_no") if r.get("q_no") is not None else r.get("question_no", "")
+                            n = str(raw_q).strip()
+                            n = n.zfill(2) if n.isdigit() else n
+                            rid = f"Q{n}" if n else ""
+                            if rid == qp["question_id"]:
                                 q_score += float(r.get("score", 0))
                     if pct > 0 and q_score > 0:
                         est_max += q_score / (pct / 100.0)

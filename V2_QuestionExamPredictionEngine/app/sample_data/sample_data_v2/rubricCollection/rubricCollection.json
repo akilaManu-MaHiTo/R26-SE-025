@@ -1,106 +1,121 @@
 [
   {
     "_id": {
-      "$oid": "6a89887f8c33278a18482b47"
+      "$oid": "6a9263b6c7d058c29fb8ad5b"
     },
-    "examCode": "ERD-001",
-    "session_name": "Final Examination",
-    "subject_code": "SE3040",
-    "subject_name": "Software Architecture",
-    "year": 2026,
-    "month": 8,
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
     "semester": 1,
-    "guideLines": [
-      {
-        "id": 1,
-        "criterion": "Student entity",
-        "description": "Student must be represented as an entity rectangle.",
-        "expected": {
-          "entity": "Student"
-        },
-        "marks": 2
-      },
-      {
-        "id": 2,
-        "criterion": "Student attributes",
-        "description": "Student should have Name, Gender, DOB and Age attributes.",
-        "expected": {
-          "entity": "Student",
-          "attributes": ["Name", "Gender", "DOB", "Age"]
-        },
-        "marks": 2
-      },
-      {
-        "id": 3,
-        "criterion": "Derived attribute",
-        "description": "Age must be represented as a derived attribute using a dashed ellipse.",
-        "expected": {
-          "attribute": "Age",
-          "type": "derived"
-        },
-        "marks": 1
-      },
-      {
-        "id": 4,
-        "criterion": "College entity",
-        "description": "College must be represented as an entity rectangle.",
-        "expected": {
-          "entity": "College"
-        },
-        "marks": 2
-      },
-      {
-        "id": 5,
-        "criterion": "College attributes",
-        "description": "College should have Name, Affiliation and Address attributes.",
-        "expected": {
-          "entity": "College",
-          "attributes": ["Name", "Affiliation", "Address"]
-        },
-        "marks": 2
-      },
-      {
-        "id": 6,
-        "criterion": "Enrolls in relationship",
-        "description": "Student and College must be connected through the Enrolls in relationship.",
-        "expected": {
-          "relationship": "Enrolls in",
-          "entities": ["Student", "College"]
-        },
-        "marks": 3
-      },
-      {
-        "id": 7,
-        "criterion": "Specialized in relationship",
-        "description": "College must be connected to the Specialized in relationship.",
-        "expected": {
-          "relationship": "Specialized in",
-          "entity": "College"
-        },
-        "marks": 2
-      },
-      {
-        "id": 8,
-        "criterion": "Specialization entities",
-        "description": "Computer Science, Mechanical and Electronics should be represented as entities.",
-        "expected": {
-          "entities": ["Computer Science", "Mechanical", "Electronics"]
-        },
-        "marks": 3
-      },
-      {
-        "id": 9,
-        "criterion": "Correct ER notation",
-        "description": "Entities should use rectangles, attributes should use ellipses, relationships should use diamonds, and the derived attribute should use a dashed ellipse.",
-        "marks": 2
-      },
-      {
-        "id": 10,
-        "criterion": "Correct connections",
-        "description": "All entities, attributes and relationships should be connected according to the reference diagram.",
-        "marks": 1
-      }
+    "session_name": "Final Examination",
+    "filename": "IT2040_2024_theory_final_exam.pdf",
+    "parsed_at": 1720000000.124,
+    "exam_roster": [
+      "IT22262551",
+      "IT22262552",
+      "IT22262553",
+      "IT22262554",
+      "IT22262555",
+      "IT22262556",
+      "IT22262557",
+      "IT22262558",
+      "IT22262559",
+      "IT22262560"
     ],
-    "totalMarks": 20
+    "questions": [
+      {
+        "question_no": "02",
+        "question_text": "A university stores registration data in ENROLMENT(student_id, student_name, programme, module_code, module_title, lecturer_id, lecturer_name, semester, grade). The functional dependencies are student_id -> student_name, programme; module_code -> module_title, lecturer_id; lecturer_id -> lecturer_name; and (student_id, module_code, semester) -> grade. Prepare a complete normalization analysis that identifies the candidate key and the relation's current normal form, explains the redundancy and anomalies, produces a dependency-preserving decomposition in 3NF or BCNF with primary and foreign keys, and justifies that the decomposition is lossless. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Candidate key and attribute-closure analysis",
+            "marks": 4
+          },
+          {
+            "point": "Current normal form and dependency violations",
+            "marks": 4
+          },
+          {
+            "point": "Correct 3NF or BCNF decomposition",
+            "marks": 4
+          },
+          {
+            "point": "Primary-key and foreign-key identification",
+            "marks": 4
+          },
+          {
+            "point": "Lossless join, dependency preservation, and anomaly justification",
+            "marks": 4
+          }
+        ],
+        "model_answer": "The candidate key is (student_id, module_code, semester). Its closure contains every attribute: student_id determines student_name and programme; module_code determines module_title and lecturer_id; lecturer_id determines lecturer_name; and the complete key determines grade. The relation is in 1NF but not 2NF because student details depend only on student_id and module details depend only on module_code. It also contains the transitive dependency module_code -> lecturer_id -> lecturer_name. A BCNF decomposition is STUDENT(student_id PK, student_name, programme), LECTURER(lecturer_id PK, lecturer_name), MODULE(module_code PK, module_title, lecturer_id FK), and ENROLMENT(student_id FK, module_code FK, semester, grade, PK(student_id, module_code, semester)). Every determinant is a key in its relation. Each original dependency can be enforced in one relation, so the decomposition is dependency preserving. Successive joins use a referenced key, making it lossless, and the decomposition removes repeated student, module, and lecturer data and their update, insertion, and deletion anomalies."
+      },
+      {
+        "question_no": "03",
+        "question_text": "Consider MEMBER(member_id, member_name), BOOK(book_id, title, category), and LOAN(loan_id, member_id, book_id, borrowed_on, due_on, returned_on). Formulate one relational-algebra solution that returns the identifiers and names of members who have borrowed at least one book from every category represented in BOOK and who have never returned a book late and do not currently hold an overdue loan. Define any intermediate relations you use and explain how the expression enforces both conditions. (25 marks)",
+        "max_marks": 25,
+        "criteria": [
+          {
+            "point": "Member-category relation constructed with correct joins and projection",
+            "marks": 5
+          },
+          {
+            "point": "All-category condition expressed correctly using division or an equivalent",
+            "marks": 5
+          },
+          {
+            "point": "Late and currently overdue members identified correctly",
+            "marks": 5
+          },
+          {
+            "point": "Set difference, final join, and projection applied correctly",
+            "marks": 5
+          },
+          {
+            "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+            "marks": 5
+          }
+        ],
+        "model_answer": "Let MC = pi_member_id,category(LOAN join_{LOAN.book_id=BOOK.book_id} BOOK) and C = pi_category(BOOK). Let ALLCAT = MC divide C. Let LATE = pi_member_id(sigma_{returned_on > due_on OR (returned_on IS NULL AND due_on < CURRENT_DATE)}(LOAN)). Then ELIGIBLE = ALLCAT - LATE, and the required result is pi_member_id,member_name(MEMBER join_{MEMBER.member_id=ELIGIBLE.member_id} ELIGIBLE). Division keeps exactly the members paired with every category in C. LATE contains both completed late loans and open overdue loans; subtracting it before the final join enforces the second condition."
+      },
+      {
+        "question_no": "04",
+        "question_text": "An online shop uses CUSTOMER(customer_id, status), PRODUCT(product_id, unit_price, stock_qty), ORDERS(order_id, customer_id, ordered_at, total_amount, status), and ORDER_ITEM(order_id, product_id, quantity, unit_price, discount). Implement a single PostgreSQL PL/pgSQL function named place_order that accepts a customer id, product id, quantity, and discount, then safely creates the order and returns its id. The function must reject inactive or missing customers and invalid inputs, prevent overselling under concurrent requests, preserve the selling price in ORDER_ITEM, calculate the discounted total, update stock, and leave no partial changes after an error. Explain how the design supports atomicity, consistency, isolation, and durability. (35 marks)",
+        "max_marks": 35,
+        "criteria": [
+          {
+            "point": "Function interface and customer/input validation",
+            "marks": 5
+          },
+          {
+            "point": "Product lookup and row locking prevent overselling",
+            "marks": 5
+          },
+          {
+            "point": "Discounted total and preserved selling price calculated correctly",
+            "marks": 6
+          },
+          {
+            "point": "Order, order-item, and stock changes implemented atomically",
+            "marks": 6
+          },
+          {
+            "point": "Error handling prevents partial changes",
+            "marks": 5
+          },
+          {
+            "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
+            "marks": 4
+          },
+          {
+            "point": "ACID and concurrency reasoning is accurate",
+            "marks": 4
+          }
+        ],
+        "model_answer": "CREATE OR REPLACE FUNCTION place_order(p_customer_id bigint, p_product_id bigint, p_quantity integer, p_discount numeric) RETURNS bigint LANGUAGE plpgsql AS $$ DECLARE v_order_id bigint; v_price numeric(12,2); v_stock integer; BEGIN IF p_quantity <= 0 OR p_discount < 0 OR p_discount > 1 THEN RAISE EXCEPTION 'invalid quantity or discount'; END IF; PERFORM 1 FROM customer WHERE customer_id=p_customer_id AND status='ACTIVE'; IF NOT FOUND THEN RAISE EXCEPTION 'inactive or missing customer'; END IF; SELECT unit_price, stock_qty INTO v_price, v_stock FROM product WHERE product_id=p_product_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'missing product'; END IF; IF v_stock < p_quantity THEN RAISE EXCEPTION 'insufficient stock'; END IF; INSERT INTO orders(customer_id, ordered_at, total_amount, status) VALUES (p_customer_id, CURRENT_TIMESTAMP, v_price*p_quantity*(1-p_discount), 'PLACED') RETURNING order_id INTO v_order_id; INSERT INTO order_item(order_id, product_id, quantity, unit_price, discount) VALUES (v_order_id,p_product_id,p_quantity,v_price,p_discount); UPDATE product SET stock_qty=stock_qty-p_quantity WHERE product_id=p_product_id; RETURN v_order_id; END; $$;. The caller invokes the function inside a transaction. PostgreSQL rolls back the statement/transaction on an uncaught exception, so no partial order remains. FOR UPDATE serializes changes to the product row, constraints maintain valid values, WAL provides durability after commit, and the single transaction provides atomicity and a consistent result."
+      }
+    ]
   }
 ]

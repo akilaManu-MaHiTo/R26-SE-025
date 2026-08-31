@@ -10,3 +10,7 @@ pytest-asyncio==1.4.0
 httpx==0.28.1
 tqdm==4.70.0
 pymupdf==1.28.2
+# Bloom ModernBERT (hybrid)
+torch
+transformers==4.55.4
+safetensors

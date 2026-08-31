@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { ProgressLoader, type LoadStep } from "./ProgressLoader";
 import { AIPageBanner } from "./AIBrand";
+import { toast } from "sonner";
 import {
   fetchExams,
   fetchExamAnalytics,
@@ -18,6 +19,7 @@ import {
   fetchExamStudents,
   fetchLecturerStudentDetail,
   fetchLecturerStudentDetailStream,
+  fetchLlmHealth,
   type ExamListItem,
   type ExamAnalytics,
   type CanonicalTopic,
@@ -34,6 +36,7 @@ import { BloomChart } from "./analytics/BloomChart";
 import { QuestionPerformanceTable } from "./analytics/QuestionPerformanceTable";
 import { InsightsPanel } from "./analytics/InsightsPanel";
 import { TeachingActions } from "./analytics/TeachingActions";
+import { DiagramAnalysisPanel } from "./analytics/DiagramAnalysisPanel";
 import { TopicDetailModal } from "./analytics/TopicDetailModal";
 import { QuestionDetailModal } from "./analytics/QuestionDetailModal";
 
@@ -121,6 +124,20 @@ export default function AnalyticsPage() {
   }, []);
 
   const handleSelectExam = useCallback(async (exam: ExamListItem) => {
+    // If exam not yet analyzed, require model to be online — else toast and abort
+    if (!exam.analyzed) {
+      try {
+        const health = await fetchLlmHealth();
+        if (!health.online || !health.model_available) {
+          toast.error("Model unavailable, please retry when model comes online.");
+          return;
+        }
+      } catch {
+        toast.error("Model unavailable, please retry when model comes online.");
+        return;
+      }
+    }
+
     setSelectedExam(exam);
     setLoadingAnalytics(true);
     setAnalytics(null);
@@ -183,6 +200,18 @@ export default function AnalyticsPage() {
     } catch (err) {
       console.error(err);
       setLiveModelMessage("PULSE·AI — Analysis failed");
+      // Fallback: if pending exam failed and model is actually down, surface toast
+      if (!exam.analyzed) {
+        try {
+          const h = await fetchLlmHealth();
+          if (!h.online || !h.model_available) {
+            toast.error("Model unavailable, please retry when model comes online.");
+          }
+        } catch {
+          // health itself failed — treat as model unavailable
+          toast.error("Model unavailable, please retry when model comes online.");
+        }
+      }
     } finally {
       setLoadingAnalytics(false);
     }
@@ -190,6 +219,22 @@ export default function AnalyticsPage() {
 
   const handleSelectStudent = useCallback(async (studentId: string) => {
     if (!selectedExam) return;
+    // If student not yet analyzed, require model — else toast and abort
+    const targetRow = students.find((r) => r.student_id === studentId);
+    const needsAnalysis = !targetRow || targetRow.analysis_status !== "generated";
+    if (needsAnalysis) {
+      try {
+        const health = await fetchLlmHealth();
+        if (!health.online || !health.model_available) {
+          toast.error("Model unavailable, please retry when model comes online.");
+          return;
+        }
+      } catch {
+        toast.error("Model unavailable, please retry when model comes online.");
+        return;
+      }
+    }
+
     setSelectedStudentId(studentId);
     setLoadingStudentDetail(true);
     setStudentDetail(null);
@@ -232,13 +277,28 @@ export default function AnalyticsPage() {
       setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: "generated" } : r));
       setTimeout(() => dispatchTopbar(false), 2500);
     } catch (e) {
-      setStudentDetailError(e instanceof Error ? e.message : "Failed to load student detail");
+      const msg = e instanceof Error ? e.message : "Failed to load student detail";
+      setStudentDetailError(msg);
       dispatchTopbar(true, `Analysis failed for ${studentId}`, 0);
       setTimeout(() => dispatchTopbar(false), 3000);
+      // Fallback: if pending student failed due to model down, toast
+      if (needsAnalysis) {
+        const lower = msg.toLowerCase();
+        if (lower.includes("model") || lower.includes("ollama") || lower.includes("unavailable")) {
+          toast.error("Model unavailable, please retry when model comes online.");
+        } else {
+          try {
+            const h = await fetchLlmHealth();
+            if (!h.online || !h.model_available) toast.error("Model unavailable, please retry when model comes online.");
+          } catch {
+            // ignore — already showed detail error
+          }
+        }
+      }
     } finally {
       setLoadingStudentDetail(false);
     }
-  }, [selectedExam]);
+  }, [selectedExam, students]);
 
   // Exam Selection — dense, scannable table with filters
   if (!selectedExam) {
@@ -545,6 +605,25 @@ export default function AnalyticsPage() {
             <InsightsPanel insights={analytics.canonical_insights} />
           </motion.div>
 
+          {analytics.diagram_analysis && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}>
+              <div className="rounded-xl border bg-card/50 backdrop-blur p-1">
+                <div className="px-4 pt-4 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="size-8 rounded-lg bg-violet-500/10 text-violet-600 flex items-center justify-center">
+                      <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold">Diagram Analysis</h3>
+                      <p className="text-xs text-muted-foreground">Rubric-based evaluation of diagram submissions</p>
+                    </div>
+                  </div>
+                </div>
+                <DiagramAnalysisPanel diagramAnalysis={analytics.diagram_analysis} />
+              </div>
+            </motion.div>
+          )}
+
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.30 }}>
             <TeachingActions actions={teachingActions} loading={loadingActions} />
           </motion.div>
@@ -782,6 +861,229 @@ export default function AnalyticsPage() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-3 border-t pt-2">AI improvement tips (recommendations, next-question strategy) are intentionally hidden in lecturer view.</p>
               </Card>
+
+              {/* ——— Student Diagram ——— from diagram_evaluation / diagram_marking */}
+              {(() => {
+                const diagEval: any = (studentDetail as any).diagram_evaluation || (studentDetail as any).diagram?.evaluation;
+                const diagMark: any = (studentDetail as any).diagram_marking || (studentDetail as any).diagram?.marking;
+                if (!diagEval && !diagMark) return null;
+                const ev = diagEval?.evaluation_result || {};
+                const criteria: any[] = ev.criteria_results || [];
+                const total = ev.total_score ?? diagMark?.diagram_marks ?? 0;
+                const max = ev.max_score ?? 20;
+                const pct = max ? (total / max) * 100 : 0;
+                const detections: any[] = diagMark?.diagram_details?.detections || [];
+                const entities: any[] = diagMark?.diagram_details?.entities || diagMark?.diagram_entity_relations || [];
+                const rels: any[] = diagMark?.diagram_details?.relationships || diagMark?.diagram_relations || [];
+                // SVG bounds - normalize bbox to viewBox 0 0 600 600
+                const vbW = 600, vbH = 600;
+                const colorByLabel: Record<string, string> = { Entities: "#8b5cf6", Attributes: "#06b6d4", Subclass: "#f59e0b", Relationships: "#10b981", default: "#6366f1" };
+                return (
+                  <Card className="p-4 space-y-3 border-violet-200 bg-violet-50/30 dark:bg-violet-950/10">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <div className="size-7 rounded-md bg-violet-500/10 text-violet-600 flex items-center justify-center"><FileText className="size-4" /></div>
+                      Diagram — EER / ER Scores
+                      <Badge variant="outline" className="ml-auto text-xs tabular-nums">{total} / {max} · {pct.toFixed(1)}%</Badge>
+                    </div>
+
+                    {/* ER Diagram — rendered from entities/attributes (primary) + bbox toggle */}
+                    {(() => {
+                      const hasEntities = entities.length > 0;
+                      // Build ER layout: ISA case vs generic
+                      const isISACase = entities.some((e:any)=> e.entity_name==="Person") && entities.some((e:any)=> ["Instructor","Researcher"].includes(e.entity_name));
+                      // SVG helpers
+                      const erW = 700, erH = 460;
+                      const EntityBox = ({x,y,w=140,h=48,label}:{x:number;y:number;w?:number;h?:number;label:string})=>(
+                        <g>
+                          <rect x={x-w/2} y={y-h/2} width={w} height={h} rx={6} fill="#eef2ff" stroke="#6366f1" strokeWidth={1.8}/>
+                          <text x={x} y={y+4} textAnchor="middle" fontSize={13} fontWeight={700} fill="#312e81">{label}</text>
+                        </g>
+                      );
+                      const AttributeOval = ({x,y,label, isKey}:{x:number;y:number;label:string;isKey?:boolean})=>(
+                        <g>
+                          <ellipse cx={x} cy={y} rx={52} ry={16} fill="#ecfeff" stroke="#06b6d4" strokeWidth={1.4}/>
+                          <text x={x} y={y+4} textAnchor="middle" fontSize={10} fill="#0e7490" fontWeight={isKey?700:500} textDecoration={isKey?"underline":"none"}>{label}</text>
+                        </g>
+                      );
+                      const Line = ({x1,y1,x2,y2}:{x1:number;y1:number;x2:number;y2:number})=> <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#94a3b8" strokeWidth={1.2}/>;
+                      let erSvg: any = null;
+                      if (hasEntities) {
+                        if (isISACase) {
+                          const person = entities.find((e:any)=>e.entity_name==="Person");
+                          const instr = entities.find((e:any)=>e.entity_name==="Instructor");
+                          const resch = entities.find((e:any)=>e.entity_name==="Researcher");
+                          const pAttrs: string[] = person?.attributes || [];
+                          const iAttrs: string[] = instr?.attributes || [];
+                          const rAttrs: string[] = resch?.attributes || [];
+                          erSvg = (
+                            <svg viewBox={`0 0 ${erW} ${erH}`} className="w-full h-[360px] bg-white dark:bg-zinc-900">
+                              <rect x={0} y={0} width={erW} height={erH} fill="white" className="dark:fill-zinc-900"/>
+                              {/* ISA triangle */}
+                              <polygon points="300,150 285,180 315,180" fill="#f59e0b" stroke="#d97706" strokeWidth={1.5}/>
+                              <text x={300} y={175} textAnchor="middle" fontSize={8} fontWeight={700} fill="white">ISA</text>
+                              {/* Person */}
+                              <EntityBox x={300} y={90} label="Person"/>
+                              {/* Person attributes */}
+                              {pAttrs[0] && <><AttributeOval x={170} y={55} label={pAttrs[0]} isKey/><Line x1={230} y1={80} x2={190} y2={62}/></>}
+                              {pAttrs[1] && <><AttributeOval x={300} y={28} label={pAttrs[1]}/><Line x1={300} y1={66} x2={300} y2={44}/></>}
+                              {pAttrs[2] && <><AttributeOval x={430} y={55} label={pAttrs[2]}/><Line x1={370} y1={80} x2={410} y2={62}/></>}
+                              {/* lines Person -> ISA */}
+                              <Line x1={300} y1={114} x2={300} y2={150}/>
+                              {/* Instructor */}
+                              <EntityBox x={160} y={280} label="Instructor"/>
+                              <Line x1={200} y1={180} x2={160} y2={256}/>
+                              {iAttrs[0] && <><AttributeOval x={60} y={350} label={iAttrs[0]}/><Line x1={120} y1={300} x2={80} y2={340}/></>}
+                              {iAttrs[1] && <><AttributeOval x={260} y={350} label={iAttrs[1]}/><Line x1={200} y1={304} x2={240} y2={340}/></>}
+                              {/* Researcher */}
+                              <EntityBox x={540} y={280} label="Researcher"/>
+                              <Line x1={400} y1={180} x2={540} y2={256}/>
+                              {rAttrs[0] && <><AttributeOval x={440} y={350} label={rAttrs[0]}/><Line x1={500} y1={304} x2={460} y2={340}/></>}
+                              {rAttrs[1] && <><AttributeOval x={630} y={350} label={rAttrs[1]}/><Line x1={580} y1={300} x2={610} y2={340}/></>}
+                              {/* legend */}
+                              <text x={10} y={440} fontSize={9} fill="#64748b">EER ISA: Person superclass → Instructor / Researcher subclasses</text>
+                            </svg>
+                          );
+                        } else {
+                          // Generic: entities in a row
+                          const gap = erW / (entities.length + 1);
+                          erSvg = (
+                            <svg viewBox={`0 0 ${erW} ${erH}`} className="w-full h-[300px] bg-white dark:bg-zinc-900">
+                              <rect x={0} y={0} width={erW} height={erH} fill="white" className="dark:fill-zinc-900"/>
+                              {entities.map((e:any, idx:number)=>{
+                                const cx = gap * (idx+1);
+                                const cy = 140;
+                                const attrs: string[] = e.attributes || [];
+                                return (
+                                  <g key={idx}>
+                                    <EntityBox x={cx} y={cy} label={e.entity_name} w={130}/>
+                                    {attrs.map((a:string, ai:number)=>{
+                                      const ang = (ai / Math.max(1, attrs.length)) * Math.PI - Math.PI/2;
+                                      const r = 78;
+                                      const ax = cx + Math.cos(ang) * r;
+                                      const ay = cy + Math.sin(ang) * r;
+                                      // adjust for top/bottom
+                                      const ay2 = ai%2===0 ? ay-12 : ay+12;
+                                      return <g key={ai}><AttributeOval x={ax} y={ay2} label={a}/><Line x1={cx} y1={cy - (ai%2? -10:10)} x2={ax} y2={ay2}/></g>;
+                                    })}
+                                    {rels.filter((rel:any)=> (rel.entities||[]).includes(e.entity_name)).map((rel:any, ri:number)=>{
+                                      const other = (rel.entities||[]).find((en:string)=> en!==e.entity_name);
+                                      const oi = entities.findIndex((en:any)=> en.entity_name===other);
+                                      if (oi<=idx) return null;
+                                      const ox = gap * (oi+1);
+                                      const mx = (cx+ox)/2;
+                                      return <g key={ri}><polygon points={`${mx},190 ${mx-18},210 ${mx+18},210`} fill="#10b981" stroke="#059669" strokeWidth={1.2}/><text x={mx} y={206} textAnchor="middle" fontSize={8} fill="white" fontWeight={700}>{rel.relation_name||"R"}</text><Line x1={cx+50} y1={150} x2={mx} y2={200}/><Line x1={ox-50} y1={150} x2={mx} y2={200}/></g>;
+                                    })}
+                                  </g>
+                                );
+                              })}
+                            </svg>
+                          );
+                        }
+                      }
+                      return (
+                        <div className="rounded-lg border bg-white dark:bg-zinc-900 overflow-hidden">
+                          <div className="px-3 py-1.5 bg-violet-50 dark:bg-violet-950/20 border-b flex items-center justify-between">
+                            <span className="text-xs font-medium text-violet-700 dark:text-violet-300">ER Diagram · {hasEntities? `${entities.length} entities` : "no entities" } {rels.length? `· ${rels.length} rel`:""}</span>
+                            <span className="text-[10px] text-muted-foreground">rendered from diagram_evaluation · {detections.length} detections</span>
+                          </div>
+                          {hasEntities ? erSvg : (
+                            detections.length > 0 ? (
+                              <svg viewBox={`0 0 ${vbW} ${vbH}`} className="w-full h-[280px] bg-slate-50 dark:bg-zinc-950">
+                                <rect x={0} y={0} width={vbW} height={vbH} fill="white" className="dark:fill-zinc-900" />
+                                {detections.map((d: any, i: number) => {
+                                  const [x, y, x2, y2] = d.bbox || [0, 0, 0, 0];
+                                  const w = Math.max(4, (x2 - x) * 0.6);
+                                  const h = Math.max(4, (y2 - y) * 0.6);
+                                  const cx = x * 0.6;
+                                  const cy = y * 0.6;
+                                  const col = colorByLabel[d.label] || colorByLabel.default;
+                                  const isEntity = d.label === "Entities" || d.label === "Subclass";
+                                  const rx = isEntity ? 6 : 999;
+                                  return (
+                                    <g key={d.id || i}>
+                                      <rect x={cx} y={cy} width={w} height={h} rx={rx} fill={col} fillOpacity={0.12} stroke={col} strokeWidth={1.5} />
+                                      <text x={cx + 4} y={cy + 12} fontSize={9} fill={col} fontWeight={600} className="select-none">{d.text || d.label}</text>
+                                    </g>
+                                  );
+                                })}
+                              </svg>
+                            ) : <div className="p-6 text-center text-xs text-muted-foreground">No diagram data stored</div>
+                          )}
+                          <div className="px-3 py-1.5 flex gap-2 text-[10px] flex-wrap bg-muted/30">
+                            <span className="inline-flex items-center gap-1"><span className="size-3 rounded-sm bg-indigo-100 border border-indigo-500"/> Entity</span>
+                            <span className="inline-flex items-center gap-1"><span className="size-3 rounded-full bg-cyan-100 border border-cyan-500"/> Attribute</span>
+                            <span className="inline-flex items-center gap-1"><span className="size-2.5 bg-amber-500 rotate-45"/> ISA</span>
+                            {detections.length>0 && Object.entries(colorByLabel).filter(([k]) => k !== "default").map(([k, c]) => (
+                              <span key={k} className="inline-flex items-center gap-1 ml-2"><span className="size-2 rounded-full" style={{ background: c }} />{k}</span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Entities / Relationships summary */}
+                    {(entities.length > 0 || rels.length > 0) && (
+                      <div className="grid md:grid-cols-2 gap-3 text-xs">
+                        {entities.length > 0 && (
+                          <div className="rounded-lg border bg-card p-3">
+                            <div className="font-medium mb-1.5">Entities & Attributes</div>
+                            <div className="space-y-1.5">
+                              {entities.map((e: any, i: number) => (
+                                <div key={i} className="flex gap-2">
+                                  <span className="font-medium shrink-0">{e.entity_name}:</span>
+                                  <span className="text-muted-foreground">{(e.attributes || []).join(", ") || "—"}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {rels.length > 0 && (
+                          <div className="rounded-lg border bg-card p-3">
+                            <div className="font-medium mb-1.5">Relationships</div>
+                            <div className="space-y-1">
+                              {rels.map((r: any, i: number) => (
+                                <div key={i} className="flex gap-2">
+                                  <span className="font-medium">{r.relation_name || r.name || `R${i+1}`}:</span>
+                                  <span className="text-muted-foreground">{(r.entities || []).join(" — ") || "—"}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Criteria */}
+                    {criteria.length > 0 && (
+                      <div className="rounded-lg border overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/40">
+                              <TableHead className="text-xs">Criterion</TableHead>
+                              <TableHead className="text-xs text-center">Awarded</TableHead>
+                              <TableHead className="text-xs text-center">Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {criteria.map((c: any) => (
+                              <TableRow key={c.criterion_id} className="h-9">
+                                <TableCell className="text-xs max-w-[220px]"><div className="truncate" title={c.criterion}>{c.criterion}</div><div className="text-[10px] text-muted-foreground truncate">{c.remarks}</div></TableCell>
+                                <TableCell className="text-xs text-center tabular-nums">{c.awarded_marks} / {c.max_marks}</TableCell>
+                                <TableCell className="text-xs text-center"><Badge variant="outline" className={`text-[10px] ${c.status === "pass" ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : c.status === "partial" ? "bg-amber-500/10 text-amber-700 border-amber-500/20" : "bg-red-500/10 text-red-700 border-red-500/20"}`}>{c.status}</Badge></TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+
+                    {ev.overall_feedback && (
+                      <div className="rounded-lg bg-muted/40 border p-3 text-xs leading-relaxed">{ev.overall_feedback}</div>
+                    )}
+                    <div className="text-[11px] text-muted-foreground">Source: {ev.grading_source || diagMark?.source || "diagram_evaluation"} · {diagEval?.exam_code || ""} · {new Date(diagEval?.created_at || "").toLocaleDateString()}</div>
+                  </Card>
+                );
+              })()}
 
               <div className="text-xs text-muted-foreground text-center">Generated {new Date(studentDetail.generated_at).toLocaleString()} · {studentDetail.model_metadata.bloom_model} ({studentDetail.model_metadata.grading_source})</div>
             </div>

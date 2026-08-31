@@ -38,43 +38,39 @@ def _rules_dict(result) -> dict:
     }
 
 
+def _try_bloom_model(question_text: str) -> dict:
+    """Bloom ModernBERT ONLY: mandatory ModernBERT prediction, no threshold/fallback."""
+    from app.classifier.bloom_classifier import is_bloom_model_available, predict_bloom
+
+    if not is_bloom_model_available():
+        raise RuntimeError(
+            f"Bloom ModernBERT not available at {settings.bloom_model_dir} — "
+            "ensure models/bloom_modernbert/bloom.safetensors + tokenizer exist"
+        )
+    bloom = predict_bloom(question_text)
+    # No confidence threshold — always trust ModernBERT top-1 prediction
+    logger.info(
+        "Bloom ModernBERT prediction: %s (%.3f) for %r",
+        bloom["level"],
+        bloom["confidence"],
+        question_text[:80],
+    )
+    return bloom
+
+
 def classify_question(question_text: str) -> dict:
+    """Classify question: topic from rules, Bloom level ONLY from bloom_modernbert."""
     rules_result = classify_by_rules(question_text)
     rules = _rules_dict(rules_result)
-    if rules_result.confidence == "high":
-        return {"status": "rules", "rules": rules}
-    topics_list = ", ".join(TOPICS)
-    prompt = (
-        "Classify this DBMS exam question. Respond ONLY with JSON matching this schema:\n"
-        '{"primary_topic": str, "topic_weights": {str: float}, "bloom_level": str, '
-        '"question_type": str, "key_concepts": [str], "rationale": str, "review_flag": bool}\n'
-        f"Controlled topics: {topics_list}. "
-        "Bloom levels: Remember, Understand, Apply, Analyze, Evaluate, Create.\n"
-        f"Question: {question_text}"
-    )
     try:
-        parsed, raw, review = _run_coroutine(
-            lambda: validate_with_retry(
-                ClassificationResponse, prompt, temperature=settings.ollama_classify_temperature
-            )
-        )
-    except OllamaUnavailable as exc:
-        return {"status": "rules_degraded", "rules": rules, "reason": "ollama_unavailable"}
-    if parsed is None or review:
-        return {"status": "qwen_review", "rules": rules, "qwen": raw, "review_flag": True}
-    return {
-        "status": "qwen",
-        "rules": rules,
-        "qwen": {
-            "primary_topic": parsed.primary_topic,
-            "topic_weights": getattr(parsed, "topic_weights", {}),
-            "bloom_level": parsed.bloom_level,
-            "question_type": parsed.question_type,
-            "key_concepts": parsed.key_concepts,
-            "rationale": parsed.rationale,
-            "review_flag": parsed.review_flag,
-        },
-    }
+        bloom = _try_bloom_model(question_text)
+    except Exception as exc:
+        logger.warning("Bloom ModernBERT inference failed: %s", exc)
+        # No fallback to rules/Qwen for Bloom — surface error explicitly
+        return {"status": "bloom_error", "rules": rules, "reason": str(exc), "bloom": None}
+    # Overwrite Bloom level with ModernBERT prediction regardless of rules confidence
+    rules_with_bloom = {**rules, "bloom_level": bloom["level"]}
+    return {"status": "bloom_model", "rules": rules_with_bloom, "bloom": bloom}
 
 
 async def misconception_summary(topic: str, criteria: list[dict], answers: list[str]) -> dict:

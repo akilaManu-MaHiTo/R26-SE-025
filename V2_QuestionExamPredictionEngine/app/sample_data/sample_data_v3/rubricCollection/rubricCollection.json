@@ -1,0 +1,202 @@
+[
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd5b"
+    },
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "filename": "Explain the architecture of a Database Management System.pdf",
+    "parsed_at": 1788152400.0,
+    "exam_roster": [
+      "IT22263551",
+      "IT22263552",
+      "IT22263553",
+      "IT22263554",
+      "IT22263555",
+      "IT22263556",
+      "IT22263557",
+      "IT22263558",
+      "IT22263559",
+      "IT22263560"
+    ],
+    "questions": [
+      {
+        "question_no": "01",
+        "question_text": "Explain the architecture of a Database Management System (DBMS) in detail. Discuss the major components of a DBMS and explain how they interact to provide efficient database management. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Three-schema architecture and data independence",
+            "marks": 4
+          },
+          {
+            "point": "Query processor components and responsibilities",
+            "marks": 4
+          },
+          {
+            "point": "Storage manager components and responsibilities",
+            "marks": 4
+          },
+          {
+            "point": "Transaction, concurrency, authorization, and recovery services",
+            "marks": 4
+          },
+          {
+            "point": "Component interaction and efficient request flow",
+            "marks": 4
+          }
+        ],
+        "model_answer": "A DBMS can be described through the external, conceptual, and internal schema levels. External schemas provide user views, the conceptual schema describes the complete logical database, and the internal schema describes physical storage; mappings between them provide logical and physical data independence. The query processor contains a DDL interpreter, parser and semantic checker, DML compiler, optimizer, and execution engine. The storage manager includes file/index, buffer, authorization/integrity, and transaction managers and works with data files, indexes, catalog metadata, and log records. Concurrency control provides isolation, the recovery manager uses logging and checkpoints for atomicity and durability, and authorization and constraints protect data consistency. A request is parsed and validated using the catalog, optimized into a physical plan, executed through the storage manager and buffer pool, coordinated with locking or MVCC and logging, and finally returned through the appropriate external view."
+      },
+      {
+        "question_no": "02",
+        "question_text": "Discuss the different types of database models used in DBMS. Compare the hierarchical, network, relational, and object-oriented database models, highlighting their advantages, limitations, and suitable applications. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Hierarchical model structure, strengths, limitations, and uses",
+            "marks": 4
+          },
+          {
+            "point": "Network model structure, strengths, limitations, and uses",
+            "marks": 4
+          },
+          {
+            "point": "Relational model structure, strengths, limitations, and uses",
+            "marks": 4
+          },
+          {
+            "point": "Object-oriented model structure, strengths, limitations, and uses",
+            "marks": 4
+          },
+          {
+            "point": "Accurate comparison and appropriate application selection",
+            "marks": 4
+          }
+        ],
+        "model_answer": "The hierarchical model stores records as a parent-child tree and is fast for fixed one-to-many paths, such as directory or legacy mainframe data, but handles many-to-many relationships and structural change poorly. The network model stores a graph of records connected by set/pointer relationships, supports multiple parents and efficient navigation, but is complex and tightly coupled to access paths. The relational model represents data as tables linked by keys and uses declarative SQL; it offers simplicity, integrity, normalization, and flexible ad-hoc queries, although object-relational mismatch and costly joins can affect complex data. The object-oriented model stores persistent objects with identity, classes, inheritance, and methods, fitting CAD, multimedia, and scientific data, but has weaker standardization and fewer tools. Model choice depends on relationship shape, query flexibility, data complexity, performance, standards, and maintainability."
+      },
+      {
+        "question_no": "03",
+        "question_text": "Discuss SQL as a database query language in detail. Explain the different categories of SQL commands and their roles in creating, manipulating, controlling, and querying data in a relational database. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "SQL purpose, declarative nature, and relational role",
+            "marks": 4
+          },
+          {
+            "point": "DDL commands and schema-definition examples",
+            "marks": 4
+          },
+          {
+            "point": "DML and DQL commands with correct examples",
+            "marks": 4
+          },
+          {
+            "point": "DCL commands and access-control role",
+            "marks": 4
+          },
+          {
+            "point": "TCL commands and coherent command-lifecycle explanation",
+            "marks": 4
+          }
+        ],
+        "model_answer": "SQL is a declarative language for defining, querying, modifying, securing, and controlling transactions in relational databases. DDL commands such as CREATE, ALTER, TRUNCATE, and DROP define schema objects and constraints. DML commands INSERT, UPDATE, and DELETE change rows, while DQL is commonly used for SELECT with WHERE, JOIN, GROUP BY, HAVING, and ORDER BY. DCL commands GRANT and REVOKE control privileges. TCL commands BEGIN/START TRANSACTION, COMMIT, ROLLBACK, and SAVEPOINT define transaction boundaries and recovery points. For example, an administrator can CREATE a constrained table and GRANT access; an application can start a transaction, INSERT or UPDATE data, SELECT the result, and COMMIT, or ROLLBACK on failure. Together these categories support structure, data operations, retrieval, security, integrity, and reliable multi-step work."
+      },
+      {
+        "question_no": "04",
+        "question_text": "Explain the different types of SQL joins in detail. Discuss how joins are used to retrieve related data from multiple tables and explain the differences between commonly used join types with suitable examples. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Join purpose, keys, predicates, and general syntax",
+            "marks": 4
+          },
+          {
+            "point": "INNER JOIN behavior and suitable example",
+            "marks": 4
+          },
+          {
+            "point": "LEFT, RIGHT, and FULL OUTER JOIN comparison",
+            "marks": 4
+          },
+          {
+            "point": "CROSS JOIN and SELF JOIN behavior and uses",
+            "marks": 4
+          },
+          {
+            "point": "Correct result-set differences, NULL handling, and examples",
+            "marks": 4
+          }
+        ],
+        "model_answer": "A join combines rows from related tables using a predicate, usually a foreign-key to primary-key comparison. INNER JOIN returns only matching rows, for example SELECT e.name, d.name FROM Employee e INNER JOIN Department d ON e.dept_id=d.dept_id. LEFT JOIN preserves every left row and supplies NULLs for unmatched right columns; RIGHT JOIN does the mirror operation; FULL OUTER JOIN preserves unmatched rows from both sides. CROSS JOIN returns the Cartesian product and is useful for generating combinations. SELF JOIN uses two aliases of one table, for example joining Employee e to Employee m on e.manager_id=m.employee_id to show managers. Join predicates must be chosen carefully because omitted or incomplete predicates create unwanted multiplication, one-to-many matches legitimately duplicate the one-side row, and filters in WHERE can unintentionally remove NULL-extended outer-join rows."
+      },
+      {
+        "question_no": "05",
+        "question_text": "Draw and briefly explain a clear, well-labelled architecture diagram for a Database Management System. The diagram must show the external, conceptual, and internal schema levels; the query processor and its principal subcomponents; the storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and the direction in which a user request and database results flow through these components. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Three-schema levels, mappings, and data independence",
+            "marks": 4
+          },
+          {
+            "point": "Query processor and its main subcomponents",
+            "marks": 4
+          },
+          {
+            "point": "Storage manager, catalog, and physical data stores",
+            "marks": 4
+          },
+          {
+            "point": "Transaction, concurrency, recovery, and security services",
+            "marks": 4
+          },
+          {
+            "point": "Correct connections, request flow, labels, and diagram clarity",
+            "marks": 4
+          }
+        ],
+        "model_answer": "A correct diagram places users and external schemas at the top, mapped to the conceptual schema and then the internal schema. The request enters a query processor containing a DDL interpreter, parser/semantic checker, DML compiler, query optimizer, and execution engine. The query processor consults the system catalog for schemas, constraints, privileges, and statistics, then sends a physical execution plan to the storage manager. The storage manager contains buffer, file, index, and authorization/integrity managers and reads or writes data and index files. Transaction, concurrency-control, recovery, and log managers coordinate safe access and logging. Arrows show SQL requests flowing inward, metadata lookups and logged data access, and result rows returning to the appropriate external view."
+      }
+    ],
+    "examCode": "DBMS-ARCH-005",
+    "guideLines": [
+      {
+        "id": 1,
+        "criterion": "Three-schema levels, mappings, and data independence",
+        "description": "Shows external, conceptual, and internal levels with meaningful mappings or data-independence labels.",
+        "marks": 4
+      },
+      {
+        "id": 2,
+        "criterion": "Query processor and its main subcomponents",
+        "description": "Shows the query processor with parser/checker, compiler or interpreter, optimizer, and execution engine.",
+        "marks": 4
+      },
+      {
+        "id": 3,
+        "criterion": "Storage manager, catalog, and physical data stores",
+        "description": "Shows storage management, catalog metadata, buffer/file/index services, and physical database storage.",
+        "marks": 4
+      },
+      {
+        "id": 4,
+        "criterion": "Transaction, concurrency, recovery, and security services",
+        "description": "Shows transaction management, concurrency control, recovery/logging, and authorization or integrity services.",
+        "marks": 4
+      },
+      {
+        "id": 5,
+        "criterion": "Correct connections, request flow, labels, and diagram clarity",
+        "description": "Uses clear labels and correctly directed links for request, plan, metadata, page, log, and result flow.",
+        "marks": 4
+      }
+    ]
+  }
+]
