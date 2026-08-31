@@ -1,0 +1,901 @@
+<title>Viva Grading Stack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  /* ============ TOKENS — bare :root is the complete light set ============ */
+  :root{
+    --ground:#ECEEF1;
+    --surface:#FFFFFF;
+    --surface-2:#E4E7ED;
+    --surface-3:#D9DEE6;
+    --ink:#11161C;
+    --ink-2:#48545F;
+    --ink-3:#6E7B88;
+    --rule:#CFD5DE;
+    --rule-2:#B7C0CC;
+
+    --accent:#2F4B99;
+    --accent-2:#22376F;
+    --accent-soft:#DFE5F5;
+
+    --ok:#1C6B45;         --ok-bg:#DCEDE4;
+    --partial:#8A5A00;    --partial-bg:#F5E9D2;
+    --crit:#A6261C;       --crit-bg:#F7E0DD;
+    --gap-bg:#E4E7ED;
+
+    --lane-a:#2F4B99;
+    --lane-b:#1C6B45;
+    --lane-c:#8A5A00;
+
+    --shadow:0 1px 2px rgba(17,22,28,.05), 0 10px 28px -16px rgba(17,22,28,.22);
+
+    --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+    --f-body:"Source Serif 4",Georgia,"Times New Roman",serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0D1014; --surface:#171B21; --surface-2:#1F252D; --surface-3:#28303A;
+      --ink:#E7ECF2; --ink-2:#9BA8B6; --ink-3:#78858F;
+      --rule:#2A323B; --rule-2:#3A444F;
+      --accent:#93AEF2; --accent-2:#B4C6F7; --accent-soft:#18213A;
+      --ok:#54BE8B; --ok-bg:#11291F;
+      --partial:#DFAA55; --partial-bg:#2C2211;
+      --crit:#EE7A6C; --crit-bg:#2F1512;
+      --gap-bg:#1F252D;
+      --lane-a:#93AEF2; --lane-b:#54BE8B; --lane-c:#DFAA55;
+      --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 32px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0D1014; --surface:#171B21; --surface-2:#1F252D; --surface-3:#28303A;
+    --ink:#E7ECF2; --ink-2:#9BA8B6; --ink-3:#78858F;
+    --rule:#2A323B; --rule-2:#3A444F;
+    --accent:#93AEF2; --accent-2:#B4C6F7; --accent-soft:#18213A;
+    --ok:#54BE8B; --ok-bg:#11291F;
+    --partial:#DFAA55; --partial-bg:#2C2211;
+    --crit:#EE7A6C; --crit-bg:#2F1512;
+    --gap-bg:#1F252D;
+    --lane-a:#93AEF2; --lane-b:#54BE8B; --lane-c:#DFAA55;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 32px -18px rgba(0,0,0,.8);
+  }
+
+  /* ============ BASE ============ */
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--f-body);font-size:17px;line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{max-width:1140px;margin:0 auto;padding:0 28px 120px}
+  .measure{max-width:68ch}
+
+  h1,h2,h3,h4{font-family:var(--f-display);margin:0;line-height:1.14;text-wrap:balance}
+  h1{font-size:clamp(2.1rem,5vw,3.4rem);font-weight:700;letter-spacing:-.035em}
+  h2{font-size:clamp(1.45rem,2.6vw,1.95rem);font-weight:600;letter-spacing:-.022em}
+  h3{font-size:1.08rem;font-weight:600;letter-spacing:-.008em}
+  h4{font-size:.94rem;font-weight:600}
+  p{margin:0}
+  a{color:var(--accent);text-underline-offset:3px}
+  a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
+
+  code,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+  code{font-size:.82em;background:var(--surface-2);border:1px solid var(--rule);
+    border-radius:4px;padding:.08em .34em;color:var(--ink)}
+  .eyebrow{font-family:var(--f-mono);font-size:.68rem;font-weight:700;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+  .muted{color:var(--ink-2)}
+  .small{font-size:.9rem}
+
+  /* ============ MASTHEAD ============ */
+  .mast{border-bottom:1px solid var(--rule);background:var(--surface)}
+  .mast-in{max-width:1140px;margin:0 auto;padding:52px 28px 40px;display:flex;flex-direction:column;gap:26px}
+  .mast-id{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--ink-3);display:flex;flex-wrap:wrap;gap:8px 20px}
+  .mast-id b{color:var(--ink-2);font-weight:500}
+  .dek{font-size:1.16rem;color:var(--ink-2);max-width:62ch}
+  .trace{display:block;width:100%;height:44px}
+
+  .vitals{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+    gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+  .vital{background:var(--surface);padding:13px 15px;display:flex;flex-direction:column;gap:3px}
+  .vital .n{font-family:var(--f-mono);font-size:1.3rem;font-weight:700;letter-spacing:-.02em}
+  .vital .l{font-family:var(--f-mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .vital.flag .n{color:var(--crit)}
+  .vital.good .n{color:var(--ok)}
+
+  /* ============ SECTIONS ============ */
+  section{padding-top:76px}
+  .s-head{display:flex;flex-direction:column;gap:11px;margin-bottom:30px}
+  .s-head .rule{height:2px;background:var(--accent);width:44px;border-radius:2px}
+  .stack{display:flex;flex-direction:column;gap:18px}
+  .stack-lg{display:flex;flex-direction:column;gap:30px}
+
+  /* ============ CARDS ============ */
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:10px;
+    padding:22px 24px;box-shadow:var(--shadow)}
+  .card-h{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+  .grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+  .grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:18px}
+
+  /* ============ CHIPS ============ */
+  .chip{display:inline-flex;align-items:center;gap:6px;
+    font-family:var(--f-mono);font-size:.63rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+    padding:3px 9px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+  .chip.ok{background:var(--ok-bg);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 28%,transparent)}
+  .chip.partial{background:var(--partial-bg);color:var(--partial);border-color:color-mix(in srgb,var(--partial) 28%,transparent)}
+  .chip.crit{background:var(--crit-bg);color:var(--crit);border-color:color-mix(in srgb,var(--crit) 28%,transparent)}
+  .chip.gap{background:var(--gap-bg);color:var(--ink-3);border-color:var(--rule-2)}
+  .chip.acc{background:var(--accent-soft);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+
+  /* ============ SIGNAL LANES ============ */
+  .lanes{background:var(--surface);border:1px solid var(--rule);border-radius:10px;
+    overflow:hidden;box-shadow:var(--shadow)}
+  .lane{display:grid;grid-template-columns:52px 1fr;border-top:1px solid var(--rule)}
+  .lane:first-child{border-top:0}
+  .lane-n{background:var(--surface-2);display:flex;align-items:flex-start;justify-content:center;
+    padding-top:20px;font-family:var(--f-mono);font-size:.74rem;font-weight:700;color:var(--ink-3);
+    border-right:1px solid var(--rule)}
+  .lane-body{padding:18px 22px;display:flex;flex-direction:column;gap:10px}
+  .lane-title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .lane-title .src{font-family:var(--f-mono);font-size:.72rem;color:var(--ink-3)}
+  .lane-steps{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  .step{font-family:var(--f-mono);font-size:.69rem;padding:4px 9px;border-radius:5px;
+    background:var(--surface-2);border:1px solid var(--rule);color:var(--ink-2);white-space:nowrap}
+  .step.hot{border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accent);background:var(--accent-soft)}
+  .arrow{color:var(--ink-3);font-family:var(--f-mono);font-size:.7rem}
+  .lane-note{font-size:.94rem;color:var(--ink-2);max-width:80ch}
+
+  /* ============ TABLES ============ */
+  .tw{overflow-x:auto;border:1px solid var(--rule);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;min-width:620px;font-size:.92rem}
+  th,td{text-align:left;padding:11px 15px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{font-family:var(--f-mono);font-size:.62rem;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--ink-3);background:var(--surface-2);font-weight:700;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:0}
+  td.mono,th.mono{font-family:var(--f-mono);font-size:.81rem}
+  .nowrap{white-space:nowrap}
+  table.dense{font-size:.86rem;min-width:680px}
+  table.dense th,table.dense td{padding:8px 13px}
+
+  /* ============ LAYER PANELS ============ */
+  .layer{background:var(--surface);border:1px solid var(--rule);border-radius:10px;
+    overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+  .layer-top{padding:18px 20px 16px;border-bottom:1px solid var(--rule);display:flex;flex-direction:column;gap:9px}
+  .layer-top.a{border-top:3px solid var(--lane-a)}
+  .layer-top.b{border-top:3px solid var(--lane-b)}
+  .layer-top.c{border-top:3px solid var(--lane-c)}
+  .layer-body{padding:16px 20px 20px;display:flex;flex-direction:column;gap:12px;flex:1}
+  .kv{display:flex;flex-direction:column;gap:3px}
+  .kv .k{font-family:var(--f-mono);font-size:.61rem;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3)}
+  .kv .v{font-size:.93rem;color:var(--ink-2)}
+  .kv .v.mono{font-family:var(--f-mono);font-size:.8rem;color:var(--ink)}
+  .wbar{display:flex;height:9px;border-radius:5px;overflow:hidden;border:1px solid var(--rule)}
+  .wlegend{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--f-mono);font-size:.67rem;color:var(--ink-2)}
+  .wlegend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
+
+  /* ============ FINDINGS ============ */
+  .find{background:var(--surface);border:1px solid var(--rule);border-left:4px solid var(--rule-2);
+    border-radius:8px;padding:18px 20px;display:flex;flex-direction:column;gap:9px;box-shadow:var(--shadow)}
+  .find.crit{border-left-color:var(--crit)}
+  .find.partial{border-left-color:var(--partial)}
+  .find.info{border-left-color:var(--accent)}
+  .find.good{border-left-color:var(--ok)}
+  .find-h{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}
+  .find-h h3{flex:1;min-width:230px}
+  .find p{font-size:.96rem;color:var(--ink-2)}
+  .find .where{font-family:var(--f-mono);font-size:.73rem;color:var(--ink-3)}
+
+  pre{font-family:var(--f-mono);font-size:.77rem;line-height:1.6;margin:0;
+    background:var(--surface-2);border:1px solid var(--rule);border-radius:7px;
+    padding:13px 15px;overflow-x:auto;color:var(--ink-2)}
+  pre b{color:var(--crit);font-weight:700}
+  pre i{color:var(--ok);font-style:normal;font-weight:700}
+
+  ul.tight{margin:0;padding-left:19px;display:flex;flex-direction:column;gap:6px;font-size:.95rem;color:var(--ink-2)}
+  ul.tight strong{color:var(--ink);font-weight:600}
+  ul.tight code{font-size:.78em}
+
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:0;
+    border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+  .split > div{padding:24px;display:flex;flex-direction:column;gap:13px}
+  .split > div + div{border-left:1px solid var(--rule)}
+  @media (max-width:719px){.split > div + div{border-left:0;border-top:1px solid var(--rule)}}
+
+  footer{margin-top:84px;padding-top:26px;border-top:1px solid var(--rule);
+    font-family:var(--f-mono);font-size:.71rem;color:var(--ink-3);
+    display:flex;flex-wrap:wrap;gap:8px 22px;justify-content:space-between}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+
+<header class="mast">
+  <div class="mast-in">
+    <div class="mast-id">
+      <span><b>R26-SE-025</b></span>
+      <span>Herath B.K.H.M.B.L · IT22557056</span>
+      <span>SLIIT</span>
+      <span>Supervisor: Ms. Sanjeevi Chandrasiri</span>
+      <span>Line-by-line audit · updated 24 Aug 2026</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <h1>The viva grading stack,<br>read line by line</h1>
+      <p class="dek">Complete coverage of the AI viva evaluation system — all four design documents, every engine module, the server, and the client — measured against what the code actually does today.</p>
+    </div>
+
+    <svg class="trace" viewBox="0 0 1200 44" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <path d="M0,22 L120,22 L128,10 L136,34 L144,16 L152,28 L160,22 L300,22 L308,6 L316,38 L324,14 L332,30 L340,22 L520,22 L528,12 L536,32 L544,18 L552,26 L560,22 L760,22 L768,8 L776,36 L784,15 L792,29 L800,22 L980,22 L988,13 L996,31 L1004,19 L1012,25 L1020,22 L1200,22"
+            fill="none" stroke="var(--accent)" stroke-width="1.5" opacity=".8"/>
+      <path d="M0,22 L1200,22" fill="none" stroke="var(--rule-2)" stroke-width="1" stroke-dasharray="2 5" opacity=".7"/>
+    </svg>
+
+    <div class="vitals">
+      <div class="vital"><span class="n">19.3k</span><span class="l">Lines reviewed</span></div>
+      <div class="vital"><span class="n">4 / 4</span><span class="l">Design docs</span></div>
+      <div class="vital"><span class="n">37</span><span class="l">Engine modules</span></div>
+      <div class="vital good"><span class="n">169</span><span class="l">Engine tests pass</span></div>
+      <div class="vital good"><span class="n">41</span><span class="l">Server tests pass</span></div>
+      <div class="vital good"><span class="n">5 / 5</span><span class="l">Aug 15 criticals fixed</span></div>
+      <div class="vital good"><span class="n">5 / 5</span><span class="l">Audit items closed</span></div>
+      <div class="vital"><span class="n">1</span><span class="l">Deferred by design</span></div>
+      <div class="vital"><span class="n">9</span><span class="l">Validity gates</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <!-- ================= 1. HEADLINE ================= -->
+  <section id="headline">
+    <div class="s-head">
+      <span class="eyebrow">Verdict</span>
+      <h2>Every critical scoring defect from the last audit is fixed</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="stack-lg">
+      <p class="measure">An architecture audit dated <strong>15 August 2026</strong> sits in <code>docs/VIVA_ENGINE_ARCHITECTURE_AUDIT.md</code>. Its verdict was blunt: <em>"What you do not yet have is a trustworthy viva grader."</em> It listed five critical defects that systematically mis-ranked candidates, and told you not to treat engine scores as final until they were fixed.</p>
+
+      <p class="measure">I checked each one against the code as it stands today. <strong>All five are fixed</strong>, along with most of the high and medium findings. This is the single most important thing to know about the current state of the system, and it is the strongest evidence in the project that the engineering process works.</p>
+
+      <div class="tw">
+        <table class="dense">
+          <thead><tr><th>Defect from the 15 Aug audit</th><th>Status</th><th>How it was fixed</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Taxonomy bug</strong> — model emits <code>anger</code>, scoring maps <code>angry</code>, so anger scored as unknown (0.5) and skipped the negative penalty</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td><code>EMOTION_ALIASES</code> maps <code>anger→angry</code>; every consumer calls <code>canonical_emotion_label</code>; <code>assert_emotion_classes_covered</code> now fails at import if any class cannot reach a scoring bucket. <code>contempt</code> was also added to both emotion maps.</td>
+            </tr>
+            <tr>
+              <td><strong>Missing measurements paid full marks</strong> — failed Praat returned zeros, which the articulation formula read as a perfect voice; unmeasured blinks scored full credit</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td><code>_safe_voice_quality</code> now returns <code>None</code> plus <code>voice_quality_measured: False</code>; blinks return <code>status: unavailable</code> with a <code>None</code> rate. <code>weighted_mean_available</code> drops absent parts and renormalizes rather than substituting a default.</td>
+            </tr>
+            <tr>
+              <td><strong>Dead engagement blend</strong> — the CNN's confidence-blended score was computed then discarded by the wrapper, leaving a coarse 4-level lookup</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td><code>EngagementDetector._parse_prediction</code> now reads the third tuple element, and that blended value is what feeds <code>average_engagement_score</code> — the sole input to the official engagement family.</td>
+            </tr>
+            <tr>
+              <td><strong>Heuristic speech emotion reported with model-like confidence</strong></td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td>A real model now runs (wav2vec2 in an isolated subprocess). The pitch/RMS fallback is capped at <code>0.4</code> confidence, tagged <code>source: heuristic</code>, excluded from <code>audio_grade</code>, and passed to the LLM as <code>excluded_from_scoring</code>.</td>
+            </tr>
+            <tr>
+              <td><strong>Silent degradation still returned <code>status: "success"</code></strong></td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td>Status is now <code>success / degraded / insufficient_audio / failed</code> with an explicit <code>degraded_reasons</code> list, surfaced in the UI.</td>
+            </tr>
+            <tr>
+              <td><strong>CLI ran video only</strong> — <code>main.py</code> never merged the audio pipeline</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td>Now runs video → audio → LLM judge → Q&amp;A → assessment, matching the server path.</td>
+            </tr>
+            <tr>
+              <td><strong>Sync handler blocked the event loop</strong></td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td><code>asyncio.to_thread</code> plus <code>asyncio.wait_for</code> with a 600 s timeout → 504.</td>
+            </tr>
+            <tr>
+              <td><strong>Client faked the grade</strong> — <code>finalGrade</code> defaulted to <code>"A"</code>; publish only showed a toast</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td>Grade derives from the score and shows <code>—</code> when null; publish is a real <code>PATCH</code> that recomputes server-side.</td>
+            </tr>
+            <tr>
+              <td><strong>Gender-biased 180 Hz pitch target and length-as-skill</strong> both moved the grade</td>
+              <td><span class="chip ok">Fixed for the mark</span></td>
+              <td>Both are named in the Stage-1 exclusion list and cannot affect the official score. They survive only inside the legacy <code>audio_grade</code>, which is now advisory.</td>
+            </tr>
+            <tr>
+              <td><strong>Head pose was a cheek-width proxy called "yaw"</strong></td>
+              <td><span class="chip partial">Improved, not solved</span></td>
+              <td>Still a landmark proxy rather than <code>solvePnP</code> Euler angles, and still labelled honestly (<code>not_euler_degrees: true</code>, <code>validated: false</code>) — but as of the 24 Aug commit below, it's now divided by inter-ocular distance, so a subject moving toward/away from the camera no longer reads identically to a head turn.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 1B. SECOND AUDIT ALSO CLOSED ================= -->
+  <section id="second-audit">
+    <div class="s-head">
+      <span class="eyebrow">A second, earlier audit</span>
+      <h2>The original 9 August findings were also worked through</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="stack-lg">
+      <p class="measure">Before the 15 August audit above, a first-pass review on 9 August found 19 defects against an earlier commit — sharper in places, since it reproduced several scores by hand against a committed sample output. It was never formally tracked as an open list against the current codebase (the 15 August audit superseded it as the working reference), so its surviving items sat unaddressed. A commit made after this report was last published — <code>fc0ee11</code>, "Refactor import paths and enhance emotion scoring logic with time-aware smoothing" — closes five of them, with four new characterisation tests proving it rather than just asserting it.</p>
+
+      <div class="tw">
+        <table class="dense">
+          <thead><tr><th>9 Aug finding</th><th>Status</th><th>What changed</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Confidence scoring ignored the model's own certainty</strong> — a 0.26-confidence frame counted exactly as much as a 0.99 one</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td><code>compute_confidence_score</code> now weights each frame's vote by its <code>emotion_confidence</code>. Tests prove both the ordering (<code>test_confidence_score_weights_by_model_certainty</code>) and the magnitude (a 0.01-confidence frame scores under 5/100 on its own).</td>
+            </tr>
+            <tr>
+              <td><strong>Smoothing bridged across time gaps</strong> — array-adjacent frames minutes apart could outvote each other, and averaged confidence could belong to a different emotion than the one reported</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td><code>smooth_emotions</code> now walks outward from each frame only while the gap to its neighbour stays under ~2× the session's median frame spacing, and averages confidence only over the frames that actually share the winning label. <code>test_smoothing_does_not_bridge_a_time_gap</code> constructs exactly this scenario — four "happy" frames, a five-minute gap, two "sad" frames — and asserts the sad frames survive smoothing as sad.</td>
+            </tr>
+            <tr>
+              <td><strong>Configuration fields that silently did nothing</strong> — <code>AppConfig.positive_emotions</code> / <code>neutral_emotions</code> / <code>surprise_emotions</code> and <code>NEUTRAL_WEIGHT</code> were never read; overriding them had no effect</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td>All four removed from <code>config.py</code>. A config knob that appeared to work and didn't is now simply gone rather than a live footgun.</td>
+            </tr>
+            <tr>
+              <td><strong>Bare failures were indistinguishable from real zeros</strong> — a crashed Praat/librosa extraction and a genuine zero measurement produced the identical silent value</td>
+              <td><span class="chip partial">Improved</span></td>
+              <td>Every <code>except Exception:</code> in <code>extract_features.py</code> (pitch, voice quality, tempo, MFCC) and the SER fallback in <code>extract_emotion.py</code> now logs a <code>logger.warning</code> with the real exception before degrading — observable in server logs even though the returned value is still the same documented default (<code>None</code>/<code>0.0</code> per field, per the fixes already covered above).</td>
+            </tr>
+            <tr>
+              <td><strong>The package couldn't be imported as a package</strong> — internal absolute imports meant callers had to inject the engine directory onto <code>sys.path</code> themselves, and default paths (<code>output_path</code>, model paths) broke under a different working directory</td>
+              <td><span class="chip ok">Fixed</span></td>
+              <td>A new <code>VivaEvaluationEngine/__init__.py</code> registers the engine's own directory on <code>sys.path</code> as a side effect of import, so <code>viva_service.py</code> no longer needs its own workaround for it. <code>AppConfig</code>'s defaults now resolve against the engine's own directory rather than the caller's CWD.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="small muted measure">Not claimed as fixed by this commit: the head-pose proxy is <em>improved</em> (row above), not converted to real Euler angles; the <code>except Exception:</code> blocks still catch broadly rather than the specific library exceptions the 9 Aug audit asked for; and observability is still <code>print()</code> plus scattered <code>logger.warning</code> calls, not a structured logging setup.</p>
+    </div>
+  </section>
+
+  <!-- ================= 2. COVERAGE ================= -->
+  <section id="coverage-note">
+    <div class="s-head">
+      <span class="eyebrow">Audit scope</span>
+      <h2>What was actually read</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-h"><h3>Documents</h3><span class="chip ok">4 of 4</span></div>
+        <ul class="tight">
+          <li>PRD v2.0 — 20 pp</li>
+          <li>Architecture Document — 20 pp</li>
+          <li>Multimodal AI for Viva Examination Evaluation — 10 pp</li>
+          <li>Facial Expression Recognition Guide — 15 pp</li>
+          <li>Plus the internal 15 Aug architecture audit</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Engine</h3><span class="chip ok">11,737 lines</span></div>
+        <ul class="tight">
+          <li>All 37 source modules (8,702) + all test modules (3,035)</li>
+          <li>Both test suites executed, not just read</li>
+          <li>Model checkpoints inspected on disk</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Server &amp; client</h3><span class="chip ok">7,608 lines</span></div>
+        <ul class="tight">
+          <li>All viva routes, persistence, auth, database (3,328) + tests (745)</li>
+          <li>Full Live Copilot backend</li>
+          <li>All 15 viva components + copilot client (3,535)</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="small muted measure" style="margin-top:18px">Not covered, as out of scope for the viva component: <code>analytics_api.py</code>, the diagram-evaluation routes, <code>GradingEngine</code>, and <code>V2_QuestionExamPredictionEngine</code>.</p>
+  </section>
+
+  <!-- ================= 3. TWO PRODUCTS ================= -->
+  <section id="products">
+    <div class="s-head">
+      <span class="eyebrow">Scope boundary</span>
+      <h2>Two products that share only a sidebar</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="split">
+      <div>
+        <span class="chip ok">Grades the student</span>
+        <h3>Viva Assessment</h3>
+        <p class="small muted">Upload or record a viva, get a mark. Full ML pipeline, MongoDB persistence, examiner publish and override.</p>
+        <div class="kv"><span class="k">UI</span><span class="v mono">VivaPage.tsx + 14 components</span></div>
+        <div class="kv"><span class="k">Route</span><span class="v mono">POST /api/viva-analyze</span></div>
+        <div class="kv"><span class="k">Engine</span><span class="v mono">VivaEvaluationEngine + Mongo</span></div>
+        <div class="kv"><span class="k">Limits</span><span class="v mono">1 GB upload · 600 s → 504</span></div>
+      </div>
+      <div>
+        <span class="chip gap">Never scores anyone</span>
+        <h3>Live Interviewer Copilot</h3>
+        <p class="small muted">Transcribes a live viva and suggests follow-up questions to the examiner. The human always decides what to ask — the AI never addresses the student.</p>
+        <div class="kv"><span class="k">UI</span><span class="v mono">viva-copilot/* over WebSocket</span></div>
+        <div class="kv"><span class="k">Route</span><span class="v mono">/api/viva-copilot/* + WS</span></div>
+        <div class="kv"><span class="k">State</span><span class="v mono">RAM only — no Mongo</span></div>
+        <div class="kv"><span class="k">Models</span><span class="v mono">Groq Whisper + gpt-oss-20b</span></div>
+      </div>
+    </div>
+
+    <p class="small muted measure" style="margin-top:16px">The isolation is enforced as a written rule in the copilot's own <code>PROCESS.md</code> — it must not import <code>viva_service.py</code>, <code>VivaEvaluationEngine</code>, or anything under <code>components/viva/</code>. I verified that constraint holds in the code. Everything below concerns Viva Assessment unless stated.</p>
+  </section>
+
+  <!-- ================= 4. PIPELINE ================= -->
+  <section id="pipeline">
+    <div class="s-head">
+      <span class="eyebrow">Execution order</span>
+      <h2>What one uploaded video goes through</h2>
+      <div class="rule"></div>
+    </div>
+
+    <p class="measure" style="margin-bottom:26px">Five stages, strictly sequential in <code>viva_service.py::analyze_video_file</code>. Stages 3 and 4 are network calls to Groq that degrade to deterministic fallbacks when no key is configured.</p>
+
+    <div class="lanes">
+      <div class="lane">
+        <div class="lane-n">01</div>
+        <div class="lane-body">
+          <div class="lane-title"><h4>Video track</h4><span class="src">services/analysis_service.py</span></div>
+          <div class="lane-steps">
+            <span class="step">FaceLandmarker @ 10 fps</span><span class="arrow">→</span>
+            <span class="step">adaptive-EAR blinks</span><span class="arrow">→</span>
+            <span class="step">frames @ 1 fps</span><span class="arrow">→</span>
+            <span class="step">gaze / head / mouth</span><span class="arrow">→</span>
+            <span class="step">denoise · CLAHE · gamma · unsharp</span><span class="arrow">→</span>
+            <span class="step hot">EfficientNet-B0 ×2</span><span class="arrow">→</span>
+            <span class="step">3-frame vote</span>
+          </div>
+          <p class="lane-note">MediaPipe Tasks FaceLandmarker supplies 478 points (468 mesh + iris) at 10 fps for blink counting; scoring frames sample at 1 fps and reuse the nearest landmark set within 0.6 s. Blink detection uses <code>max(0.15, 0.55 × session median EAR)</code> rather than the guide's fixed 0.25, with a documented reason: MediaPipe's 6-point EAR sits lower than the classic pixel EAR. Crops are enhanced before classification and only empty or sub-48 px crops are rejected — on a single-student camera there is no second face to fall back to.</p>
+        </div>
+      </div>
+
+      <div class="lane">
+        <div class="lane-n">02</div>
+        <div class="lane-body">
+          <div class="lane-title"><h4>Audio track</h4><span class="src">services/viva_analysis.py</span></div>
+          <div class="lane-steps">
+            <span class="step">ffmpeg → 16 kHz mono</span><span class="arrow">→</span>
+            <span class="step hot">diarize + pick student</span><span class="arrow">→</span>
+            <span class="step">Whisper on mixed</span><span class="arrow">→</span>
+            <span class="step">filter to student</span><span class="arrow">→</span>
+            <span class="step">collapse examiner gaps</span><span class="arrow">→</span>
+            <span class="step">Praat + librosa</span><span class="arrow">→</span>
+            <span class="step">SER subprocess</span><span class="arrow">→</span>
+            <span class="step hot">transcript features</span>
+          </div>
+          <p class="lane-note">The ordering is the clever part. Whisper runs on the <em>mixed</em> track so word timestamps stay aligned to real time; words are only afterwards filtered to the student's diarized speaker. <code>collapse_excluded_gaps</code> then subtracts examiner intervals from the word timeline, so a long panel question cannot be scored as the student hesitating. Acoustics and speech emotion run on a separately written student-only WAV. Whisper weights are explicitly released before SER loads, to leave RAM headroom.</p>
+        </div>
+      </div>
+
+      <div class="lane">
+        <div class="lane-n">03</div>
+        <div class="lane-body">
+          <div class="lane-title"><h4>LLM judge</h4><span class="src">services/llm_judge.py</span><span class="chip gap">Advisory only</span></div>
+          <div class="lane-steps">
+            <span class="step">assemble feature JSON</span><span class="arrow">→</span>
+            <span class="step">Groq chat, temp 0.2</span><span class="arrow">→</span>
+            <span class="step">schema validate</span><span class="arrow">→</span>
+            <span class="step">retry once</span><span class="arrow">→</span>
+            <span class="step">formula fallback</span>
+          </div>
+          <p class="lane-note">Never sees raw audio or video — only numbers already computed upstream, which keeps the call small and the score reproducible. Returns three criteria 0–10 with citation-style justifications. Heuristic speech emotion is stripped from the payload and replaced with a provenance stub so the model cannot lean on it. Every response ships its deterministic fallback alongside for comparison.</p>
+        </div>
+      </div>
+
+      <div class="lane">
+        <div class="lane-n">04</div>
+        <div class="lane-body">
+          <div class="lane-title"><h4>Conversation &amp; Q&amp;A relevance</h4><span class="src">conversation_understanding.py · qa_relevance.py</span><span class="chip gap">Advisory only</span></div>
+          <div class="lane-steps">
+            <span class="step">turns + IDs</span><span class="arrow">→</span>
+            <span class="step">windowed structure pass</span><span class="arrow">→</span>
+            <span class="step">merge overlaps</span><span class="arrow">→</span>
+            <span class="step">pair Q↔A</span><span class="arrow">→</span>
+            <span class="step hot">relevance per pair, 4 threads</span>
+          </div>
+          <p class="lane-note">Two chained LLM roles. The first classifies the transcript into presentation, panel question, student answer, follow-up, interruption and instruction — using only supplied turn IDs, never inventing timestamps, with 8-minute overlapping windows and recursive splitting to stay inside a 40k-character budget. The second judges each question–answer pair for whether the answer <em>addresses</em> the question. Its prompt explicitly forbids grading, judging intelligence, or assessing technical correctness. Heuristic pairing remains as fallback when Groq is unavailable.</p>
+        </div>
+      </div>
+
+      <div class="lane">
+        <div class="lane-n">05</div>
+        <div class="lane-body">
+          <div class="lane-title"><h4>Assessment &amp; persistence</h4><span class="src">assessment_scoring.py → viva_marks.py</span><span class="chip ok">Authoritative</span></div>
+          <div class="lane-steps">
+            <span class="step">canonical features</span><span class="arrow">→</span>
+            <span class="step hot">validity gates</span><span class="arrow">→</span>
+            <span class="step">3 families → /100</span><span class="arrow">→</span>
+            <span class="step">grade band</span><span class="arrow">→</span>
+            <span class="step">Mongo insert</span><span class="arrow">→</span>
+            <span class="step">auto-publish</span>
+          </div>
+          <p class="lane-note">Everything upstream reduces to one canonical feature vector, gated for validity, then scored. A flat <code>training_features</code> row is emitted alongside — the schema for a future trained model that does not yet exist. The result is written to <code>vivamark.marks</code> and immediately auto-published in presentation-only mode with <code>human_published: false</code>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5. SCORING ================= -->
+  <section id="scoring">
+    <div class="s-head">
+      <span class="eyebrow">Central architecture</span>
+      <h2>Three scoring systems run; one of them counts</h2>
+      <div class="rule"></div>
+    </div>
+
+    <p class="measure" style="margin-bottom:26px">Every analysis produces three independent sets of numbers that disagree by design. Only the first is the mark. This is the easiest thing about the system to misread, and it is worth stating plainly in the dissertation before anyone asks.</p>
+
+    <div class="grid-3">
+      <div class="layer">
+        <div class="layer-top a">
+          <span class="chip ok">Official</span>
+          <h3>Stage-1 assessment</h3>
+          <p class="small muted">The mark of record. Versioned, gated, deliberately narrow.</p>
+        </div>
+        <div class="layer-body">
+          <div class="kv"><span class="k">Module</span><span class="v mono">assessment_scoring.py</span></div>
+          <div class="kv"><span class="k">Version</span><span class="v mono">scoring v1 · schema v1</span></div>
+          <div class="kv"><span class="k">Output</span><span class="v mono">final_score /100 + grade</span></div>
+          <div class="kv">
+            <span class="k">Families — equal weight</span>
+            <div class="wbar" style="margin-top:5px">
+              <span style="flex:1;background:var(--lane-a)"></span>
+              <span style="flex:1;background:var(--lane-b)"></span>
+              <span style="flex:1;background:var(--lane-c)"></span>
+            </div>
+            <div class="wlegend" style="margin-top:7px">
+              <span><i style="background:var(--lane-a)"></i>engagement</span>
+              <span><i style="background:var(--lane-b)"></i>acoustics</span>
+              <span><i style="background:var(--lane-c)"></i>transcript</span>
+            </div>
+          </div>
+          <p class="small muted">Missing families drop out and the rest renormalize, so a recording with no usable audio still scores on what survived — or returns nothing if none did.</p>
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-top b">
+          <span class="chip gap">Diagnostic</span>
+          <h3>Feature-complete baseline</h3>
+          <p class="small muted">A parallel scoring of the same evidence, kept for comparison. Never overwrites the mark.</p>
+        </div>
+        <div class="layer-body">
+          <div class="kv"><span class="k">Module</span><span class="v mono">feature_complete.py</span></div>
+          <div class="kv"><span class="k">Output</span><span class="v mono">3 family scores, 0–1</span></div>
+          <div class="kv"><span class="k">Weights</span><span class="v mono">audio 35/25/25 · transcript 25/20/20/15/10/10</span></div>
+          <p class="small muted">Uses the richer facial-guide engagement mix — gaze, head stability, blink rate, emotion — that Stage-1 refuses. Suppressed when the official assessment is <code>INCOMPLETE</code>, though raw measurements stay attached for inspection.</p>
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-top c">
+          <span class="chip gap">Advisory</span>
+          <h3>LLM judge</h3>
+          <p class="small muted">Explanation layer — the human-readable reasoning the PRD wanted from SHAP.</p>
+        </div>
+        <div class="layer-body">
+          <div class="kv"><span class="k">Module</span><span class="v mono">llm_judge.py</span></div>
+          <div class="kv"><span class="k">Output</span><span class="v mono">3 criteria 0–10 + prose</span></div>
+          <div class="kv"><span class="k">Model</span><span class="v mono">openai/gpt-oss-20b via Groq</span></div>
+          <p class="small muted">Shown to the examiner, stored with the mark, and excluded from the score by name in the Stage-1 docstring.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:26px">
+      <div class="card-h"><h3>What Stage-1 refuses to use</h3><span class="chip acc">Exclusion list</span></div>
+      <p class="small muted" style="margin-bottom:12px">Each exclusion is a defensible research position, written into the module docstring rather than left implicit. Together they are the most publishable thing in the codebase:</p>
+      <ul class="tight">
+        <li><strong>Facial and speech emotion ratios</strong> — carried on the feature vector as evidence, kept out of the mark on the stated principle that <em>emotion ≠ achievement</em>. This also sidesteps the PRD's own documented risk about cultural expression bias, and the SER module's own warning that projected presentation speech is frequently labelled "angry" by IEMOCAP-trained models.</li>
+        <li><strong>Transcript length</strong> — <code>word_count/80</code> and segment count are computed but excluded, because talking more is not talking better.</li>
+        <li><strong>Absolute pitch</strong> — the legacy <code>pitch_score</code> penalised distance from 180 Hz, which scores voices rather than delivery. Only pitch <em>stability</em> survives.</li>
+        <li><strong>RMS loudness</strong> — excluded as a recording-level artefact; only energy consistency (inverse coefficient of variation) is kept, and it is stored rather than scored.</li>
+        <li><strong>Heuristic speech emotion</strong> — capped at 0.4 confidence and flagged out of every scoring path, so a silent model failure cannot masquerade as a genuine neutral reading.</li>
+        <li><strong>LLM scores and UI sliders</strong> — neither the judge nor the examiner's rubric widgets can move the AI performance number.</li>
+      </ul>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <div class="card-h"><h3>Three different numbers all called "engagement"</h3><span class="chip partial">Documented, still confusing</span></div>
+      <p class="small muted" style="margin-bottom:12px">Rather than collapsing them, <code>engagement_metrics</code> publishes all three with explicit provenance. A reasonable answer to a genuinely awkward situation — but three plausible numbers still ship in every response:</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Metric ID</th><th>Scale</th><th>Source</th><th>Used by</th></tr></thead>
+          <tbody>
+            <tr><td class="mono nowrap">stage1_cnn_engagement</td><td class="mono">0–1</td><td>Per-frame CNN blended mean</td><td><span class="chip ok">Official mark</span></td></tr>
+            <tr><td class="mono nowrap">diagnostic_engagement</td><td class="mono">0–100</td><td><code>scoring.compute_engagement_score</code></td><td><span class="chip gap">UI display</span></td></tr>
+            <tr><td class="mono nowrap">feature_complete_engagement</td><td class="mono">0–1</td><td><code>engagement_scoring</code> blend</td><td><span class="chip gap">Diagnostic</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted" style="margin-top:12px">Worth knowing about the official one: the CNN's per-frame score is <code>level × confidence + 0.5 × (1 − confidence)</code>, so an uncertain model is pulled toward 0.5. The official engagement family is therefore confidence-shrunk toward the midpoint and will rarely reach either extreme. Defensible, but it compresses the score range in a way that matters when you calibrate against human marks.</p>
+    </div>
+  </section>
+
+  <!-- ================= 6. GATES ================= -->
+  <section id="gates">
+    <div class="s-head">
+      <span class="eyebrow">Integrity</span>
+      <h2>The gates that refuse to produce a mark</h2>
+      <div class="rule"></div>
+    </div>
+
+    <p class="measure" style="margin-bottom:26px">The strongest engineering in the system is the part that declines to score. Each gate returns <code>INCOMPLETE</code> with a message written for the examiner rather than the developer, and the distinctions between them are carefully drawn.</p>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>Reason</th><th>Trigger</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td class="mono nowrap">insufficient_lip_motion</td><td>Fewer than one visible mouth-motion event per five transcript words</td><td><strong>No PRD equivalent.</strong> Catches speech that did not come from the person on camera — the practical version of the impersonation check the PRD only sketches.</td></tr>
+          <tr><td class="mono nowrap">lip_motion_unavailable</td><td>Speech detected, mouth track unmeasurable</td><td>Separated from an actual failed check, so the examiner is told to fix the camera rather than told the student cheated.</td></tr>
+          <tr><td class="mono nowrap">no_speech_detected</td><td>Zero words, or ≤2 words on a silent track</td><td>Face engagement is still measured and reported; the mark is withheld because there was no verbal presentation.</td></tr>
+          <tr><td class="mono nowrap">audio_pipeline_failed</td><td>Whisper unavailable or audio status failed</td><td>The critical counterpart to the row above. Never records an infrastructure failure as a silent student.</td></tr>
+          <tr><td class="mono nowrap">multiple_faces_detected</td><td>A second face large enough to matter, present across enough frames or consecutive frames</td><td><strong>Added since the first audit.</strong> <code>multi_face_validation.py</code> enforces the single-student camera assumption every scoring path already relied on — face detection picks the <em>largest</em> box, so a second person in frame silently swaps who is being graded. Thresholded on secondary-face area ratio, frame ratio and consecutive run, so a passer-by does not void a session.</td></tr>
+          <tr><td class="mono nowrap">video_insufficient</td><td>Face coverage &lt; 15%, or fewer than 3 face frames</td><td>Hard requirement — engagement cannot be inferred from audio alone, so this short-circuits every other check.</td></tr>
+          <tr><td class="mono nowrap">audio_insufficient</td><td>Empty or unusably short recording</td><td>Refuses to invent a grade from a near-silent track.</td></tr>
+          <tr><td class="mono nowrap">duration_below_engine_minimum</td><td>Under 1 second</td><td>Guards every downstream per-second rate calculation.</td></tr>
+          <tr><td class="mono nowrap">no_scorable_families</td><td>All three evidence families missing</td><td>Backstop for the renormalization logic — prevents an empty weighted mean resolving to a plausible-looking number.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= 7. DOCS VS CODE ================= -->
+  <section id="docs">
+    <div class="s-head">
+      <span class="eyebrow">All four documents</span>
+      <h2>Where the build stands against its own design</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="stack-lg">
+      <p class="measure">The four documents were written in sequence and do not fully agree with each other. The March "Multimodal AI" concept paper is the broadest; the PRD narrows it; the Architecture Document specifies it; the FER Guide drills into the face module. Reading all four together shows the build diverging from the earliest documents in ways that are mostly deliberate.</p>
+
+      <div class="card">
+        <div class="card-h"><h3>Facial Expression Recognition Guide</h3><span class="chip partial">Formulas demoted</span></div>
+        <p class="small muted" style="margin-bottom:12px">This is the most directly implemented document — and the most quietly superseded:</p>
+        <ul class="tight">
+          <li><strong>Its headline engagement formula is now diagnostic only.</strong> The guide's §07 weighted sum — <code>0.30 emotion + 0.30 gaze + 0.20 head + 0.10 blink + 0.10 LSTM</code> — is implemented exactly, in both <code>compute_engagement_score</code> and <code>ENGAGEMENT_FEATURE_WEIGHTS</code>. But Stage-1 ignores it and uses the CNN mean alone. The guide's <code>compute_confidence_from_face</code> is likewise implemented and likewise excluded. <strong>The face module the guide specifies no longer determines the mark.</strong></li>
+          <li><strong>DeepFace was never used.</strong> The guide's §04 lists HSEmotion as the higher-accuracy alternative, so the substitution is sanctioned — but it recommends <code>enet_b2_8</code> (EfficientNet-<em>B2</em>), and the code loads EfficientNet-<em>B0</em>. The checkpoint is named <code>hsemotion_improved.pt</code>, no training script or evaluation report exists in the repo, and the original <code>enet_b0_8_best_afew.pt</code> sits unused beside it. <strong>The ">85% on FER2013" claim cannot currently be substantiated for the model that actually runs.</strong></li>
+          <li><strong>EAR threshold deviates with justification.</strong> The guide specifies 0.25; the code uses an adaptive <code>max(0.15, 0.55 × median)</code> and documents why in a config comment.</li>
+          <li><strong>Head pose was specified as <code>solvePnP</code> Euler angles.</strong> The code uses landmark-distance proxies and says so.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>Multimodal AI for Viva Examination Evaluation (March)</h3><span class="chip gap">Largest divergence</span></div>
+        <ul class="tight">
+          <li><strong>Hand and gesture analysis is absent entirely.</strong> This document treats MediaPipe Hands — 21 keypoints, self-touch detection, fidgeting index, arm-crossing — as a first-class third modality worth 10% of its illustrative contribution pie. Nothing was built. The PRD later moved it to Phase 4, so this is a scope decision rather than a miss, but the earliest document's premise was audio + video + <em>gesture</em>.</li>
+          <li><strong>Its preprocessing instruction "trim silence and interviewer voice" is exactly what diarization now does</strong> — arguably the clearest case of an early design note being properly realised.</li>
+          <li><strong>Its explainability example</strong> — <em>"Candidate spoke slowly and avoided eye contact, indicating low confidence"</em> — is precisely the output format <code>llm_judge.py</code> produces.</li>
+          <li><strong>Its entire evaluation chapter is unexecuted</strong>: subject-independent splits, K-fold by person, UAR/F1/AUC, calibration, ablation per modality, demographic bias tests. All require a labelled dataset that does not exist.</li>
+        </ul>
+      </div>
+
+      <div class="tw">
+        <table>
+          <thead><tr><th>PRD / Architecture capability</th><th>Status</th><th>What was actually built</th></tr></thead>
+          <tbody>
+            <tr><td>Whisper transcription</td><td><span class="chip ok">Shipped</span></td><td>Now defaults to <code>medium</code> via <code>VIVA_WHISPER_MODEL</code>, with the resolved size reported back as <code>audio_analysis.whisper_model</code>. Still short of <code>large-v3</code>, so the ≤10% WER claim stays unmeasured — but the transcript family is no longer running on the smallest model available.</td></tr>
+            <tr><td>Librosa + Parselmouth acoustics</td><td><span class="chip ok">Shipped</span></td><td>Jitter, shimmer, HNR via Praat; MFCC, RMS, tempo via librosa. Pitch actually uses librosa YIN rather than Praat's "To Pitch" — a small undocumented deviation.</td></tr>
+            <tr><td>Speech emotion recognition</td><td><span class="chip partial">Substituted</span></td><td><code>superb/wav2vec2-base-superb-er</code> in an isolated subprocess, not SpeechBrain/IEMOCAP directly. Excluded from scoring regardless.</td></tr>
+            <tr><td>MediaPipe FaceMesh, gaze, blink</td><td><span class="chip ok">Shipped</span></td><td>478 landmarks via Tasks API, iris-based gaze, adaptive-threshold blink detection.</td></tr>
+            <tr><td>Facial expression recognition</td><td><span class="chip partial">Unverified</span></td><td>Custom EfficientNet-B0, 8 classes. Works; accuracy claim unsubstantiated (see above).</td></tr>
+            <tr><td>Hedge and filler detection</td><td><span class="chip ok">Shipped</span></td><td>Timestamped hedges and fillers, WPM banding, pause statistics at word or segment granularity, sentence completion, fragmentation.</td></tr>
+            <tr><td>Composite scoring model</td><td><span class="chip partial">Substituted</span></td><td>Transparent equal-weight families instead of 50/20/15/15 — the PRD's weights assume a technical-accuracy criterion that does not exist here.</td></tr>
+            <tr><td>Examiner review and override</td><td><span class="chip ok">Shipped</span></td><td>Publish recomputes the mark server-side from the stored feature vector; examiner technical accuracy fuses 50/50.</td></tr>
+            <tr><td>Report generation</td><td><span class="chip ok">Shipped</span></td><td>Print-stylesheet report via the browser's Save-as-PDF, no PDF library added.</td></tr>
+            <tr><td>Technical accuracy vs reference answers</td><td><span class="chip gap">Dropped</span></td><td><strong>Deliberate scope decision.</strong> Maintaining a reference-answer bank per question was judged impractical. The socket remains: <code>WITH_TECHNICAL_ACCURACY</code> accepts a human score.</td></tr>
+            <tr><td>BERT/RoBERTa semantic similarity, WMD</td><td><span class="chip gap">Dropped</span></td><td>Follows from the decision above — with no reference answer there is nothing to compare against.</td></tr>
+            <tr><td>CNN-LSTM temporal engagement</td><td><span class="chip gap">Stubbed</span></td><td><code>temporal_engagement.py</code> loads a checkpoint if one exists and otherwise reports <code>unavailable</code>. Its docstring — "do not randomly initialize an LSTM and treat its output as engagement" — is the correct instinct and worth quoting in the write-up.</td></tr>
+            <tr><td>Random Forest + AdaBoost fusion</td><td><span class="chip gap">Blocked</span></td><td>No labelled dataset. <code>flatten_canonical_features</code> already emits the tabular row it would consume.</td></tr>
+            <tr><td>LIME / SHAP</td><td><span class="chip partial">Substituted</span></td><td>LLM justifications serve the same purpose. Defensible — SHAP needs a trained model to explain.</td></tr>
+            <tr><td>Hand / gesture analysis</td><td><span class="chip gap">Not built</span></td><td>Deferred to Phase 4 by the PRD; central to the March concept paper.</td></tr>
+            <tr><td>PostgreSQL, Docker, K8s, Celery, S3</td><td><span class="chip gap">Not built</span></td><td>MongoDB Atlas, single FastAPI process, local disk. Fine for a prototype; the 50-concurrent-job target is out of reach.</td></tr>
+            <tr><td>Consent, RBAC, audit trail, bias monitoring</td><td><span class="chip gap">Not built</span></td><td>One shared API key, no roles, no consent flow. <strong>Required before real student data is processed</strong> — all three documents treat these as preconditions.</td></tr>
+            <tr><td>Pilot study, Cohen's Kappa ≥ 0.75</td><td><span class="chip gap">Not started</span></td><td>No dual-marked sessions collected. Every accuracy claim across all four documents is unvalidated.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>Built beyond every document</h3><span class="chip ok">Genuine contribution</span></div>
+        <p class="small muted" style="margin-bottom:12px">Four capabilities in the code have no counterpart in any of the four documents. For a research submission these are the most defensible parts of the contribution, because they answer problems the literature-derived design did not anticipate:</p>
+        <ul class="tight">
+          <li><strong>Mouth-correlated speaker assignment.</strong> Every document assumes a clean single-speaker recording. Real vivas have a panel. Identifying the student by lip movement rather than loudness or speaking time is a specific, testable idea — and the code goes further, refusing loudness by name in a comment.</li>
+          <li><strong>Over-clustering collapse.</strong> <code>looks_like_same_voice_overcluster</code> detects when k-means has chopped one talker into fake alternating speakers — rapid A/B/A/B turns, or two clusters with indistinguishable mouth-movement profiles — and merges them back. This is the kind of failure mode you only find by running real recordings.</li>
+          <li><strong>Lip-motion validity checking.</strong> A cheap integrity check that the transcript plausibly came from the visible person.</li>
+          <li><strong>Relevance-without-correctness Q&amp;A analysis.</strong> The middle ground between no question-awareness and a full reference-answer bank — the direct, defensible answer to "why did you drop technical accuracy?"</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 8. FINDINGS ================= -->
+  <section id="findings">
+    <div class="s-head">
+      <span class="eyebrow">Verified against live runs</span>
+      <h2>Open issues</h2>
+      <div class="rule"></div>
+    </div>
+
+    <p class="measure" style="margin-bottom:14px">All suites pass, re-run and verified: <strong>169 engine · 16 viva HTTP · 25 copilot = 210 tests</strong>, and the client builds clean. Four of the five findings below are closed, the fifth (the copilot STT lock) is deliberately deferred rather than fixed — but with the auto-publish item now resolved, there is no open High-severity finding left in this section. Each was checked against the repo rather than taken from a summary. Verifying the fusion fix surfaced a further chain of bugs that hid the fused mark — those are fixed too, and pinned with regression tests. Verifying the auto-publish fix led to redesigning when the assessment-type choice happens, not just relabelling the UI.</p>
+    <p class="measure small muted" style="margin-bottom:26px"><strong>Claim not reproduced:</strong> the handoff reports <code>test_viva_http</code> failing to import for want of <code>pydantic_settings</code>. In this virtualenv <code>pydantic_settings</code> is installed at 2.15.0 and the module runs clean. Likely a different interpreter in that session — worth confirming which Python the failing run used before treating it as a dependency gap.</p>
+
+    <div class="stack">
+
+      <div class="find good">
+        <div class="find-h"><span class="chip ok">Fixed during this audit</span><h3>The server test suite was writing to the live production database</h3></div>
+        <p class="where">Gradex_AI_Server/app/core/database.py:27, 154 · tests/test_viva_http.py:97</p>
+        <p>Two tests injected a fake Mongo collection to exercise persistence in isolation. Before writing, the handler called <code>ensure_marks_collection()</code>, which found no live client and called <code>connect_to_mongo()</code> — <strong>replacing the injected test double with a real connection to the production Atlas cluster</strong>. The tests then inserted live documents into <code>vivamark.marks</code> and failed because they got back a real ObjectId instead of the fixture's.</p>
+        <pre>BEFORE
+test_success_with_mongo_returns_mark_id
+AssertionError: '6a8a9c30b59975cd0df950bb' != '507f1f77bcf86cd799439011'
+                 <b>↑ a real document, written to production</b>
+
+test_success_without_mongo_sets_persistence_error
+AssertionError: 'mark_id' unexpectedly found in {...}
+                 <b>↑ the "no database" test reconnected and wrote anyway</b>
+
+AFTER
+Ran 35 tests in 2.558s — <i>OK</i>
+                 <i>↑ no Atlas dial; 15.2s → 2.6s because the
+                    network round-trips are gone</i></pre>
+        <p><strong>The fix.</strong> <code>Database.allow_autoconnect</code> (defaulting to <code>True</code>) now gates the reconnect: when it is off, <code>ensure_marks_collection()</code> reports whatever collection was injected instead of dialling. <code>AnalyzeHttpTests</code> sets it off and clears the client in <code>setUp</code>, restoring both in <code>tearDown</code>. Forty added lines, nothing deleted, and production behaviour is unchanged because the default keeps the live reconnect intact.</p>
+        <p><strong>What it already wrote — needs a decision.</strong> A read-only count of <code>vivamark.marks</code> found <strong>25 documents, of which 6 are test rows</strong> (<code>video_filename: "clip.mp4"</code>, <code>final_score: null</code>, <code>human_published: false</code>). Their timestamps match the three audit runs of the suite exactly, at two writes per run — so all six were produced by this audit rather than accumulated over time. That leaves 19 genuine documents. The test rows are trivially selectable and should be removed before the collection is used as a training or validation source.</p>
+      </div>
+
+      <div class="find good">
+        <div class="find-h"><span class="chip ok">Fixed</span><h3>Whisper now defaults to <code>medium</code></h3></div>
+        <p class="where">transcribe.py:24 · viva_analysis.py:25 · .env.example:19</p>
+        <p>A third of the official mark comes from the transcript family, so it inherited whatever Whisper's error rate was. <code>resolve_whisper_model_size()</code> now normalises <code>VIVA_WHISPER_MODEL</code> with <code>medium</code> as the default, and the resolved size is echoed back in the response as <code>audio_analysis.whisper_model</code> — so a report can state which model produced its transcript rather than leaving it implicit. Note for anyone restarting the server: the first analyze after this change downloads roughly 1.5 GB of weights once.</p>
+      </div>
+
+      <div class="find good">
+        <div class="find-h"><span class="chip ok">Fixed</span><h3>Fusion weights unified, and the fused mark now actually reaches the screen</h3></div>
+        <p class="where">officialMark.ts · ScoreOverview.tsx · VivaPage.tsx · assessment_scoring.py</p>
+        <p><strong>The consolidation was right, and better than what this audit suggested.</strong> <code>officialMark.ts</code> became a single client rule reading fusion weights from the server rather than hardcoding 50/50, and <code>ReportPrintView</code> stopped recomputing independently. That closed the original finding.</p>
+        <p><strong>Verifying it, though, surfaced a chain of three bugs that made the fused mark invisible</strong> — the stored value was always correct, but nothing on screen or in the printed report ever showed it. All three are now fixed:</p>
+        <ul class="tight">
+          <li><strong>The <code>autoSaved</code> short-circuit.</strong> Every valid analysis auto-publishes, so <code>auto_published</code> was always true and the guard returned the without-technical score, making the live preview unreachable. An examiner moving the slider saw the number sit still. <em>Removed from the disjunct, with a comment explaining why it must not come back.</em></li>
+          <li><strong><code>handlePublish</code> discarded the response.</strong> <code>publishVivaMark()</code> returns the recomputed score and grade; the result was dropped and only <code>setPublished(true)</code> ran, so the stale value survived a successful publish. <em>Now merged into both <code>analysisResult</code> and <code>assessment</code>, and the success toast names the saved mark.</em></li>
+          <li><strong><code>ScoreOverview</code> was never migrated</strong> despite the handoff listing it as done — it still resolved the mark itself and was not passed the mode, technical accuracy, or published flag. <em>Now on the shared rule, and it renders "Preview with technical accuracy — publish to save" while a draft is unsaved.</em></li>
+        </ul>
+        <p><strong>A fourth problem only appeared once the preview became reachable.</strong> Because every analysis auto-publishes in <code>WITHOUT_TECHNICAL_ACCURACY</code>, its fusion block reports the weights it actually applied — <code>weight_ai 1.0, weight_technical 0.0</code>. Previewing with those multiplies technical accuracy by zero, so the slider would still have appeared dead:</p>
+        <pre>analyze response, before
+"fusion": { "weight_ai": 1.0, "weight_technical": <b>0.0</b> }
+preview = 1.0 x 67.0  +  <b>0.0</b> x 90.0  =  <b>67.0</b>   <b>← slider does nothing</b>
+
+analyze response, after
+"fusion": { "weight_ai": 1.0, "weight_technical": 0.0,
+            "with_technical": { "weight_ai": 0.5,
+                                "weight_technical": 0.5 } }
+preview = 0.5 x 67.0  +  0.5 x 90.0  =  <i>78.5</i>   <i>← matches the server exactly</i></pre>
+        <p>The server now publishes <code>fusion.with_technical</code> — the weights a technical publish <em>would</em> apply — so the client previews from scorer constants it never has to hold itself. Verified end to end: a draft preview and a real <code>MODE_WITH</code> publish both produce 78.5 from the same inputs. Two regression tests in <code>test_assessment_scoring.py</code> pin the contract, so a future weight change cannot silently desynchronise the preview from the stored mark.</p>
+      </div>
+
+      <div class="find good">
+        <div class="find-h"><span class="chip ok">Fixed</span><h3>Copilot sessions now expire</h3></div>
+        <p class="where">session_store.py:17 · router.py:117 · events.py:107</p>
+        <p><code>VIVA_COPILOT_SESSION_TTL_SECONDS</code> (default 14400 — four hours idle) with <code>_purge_expired()</code> on both <code>get</code> and <code>create</code>, a 60-second expiry check on the WebSocket loop, a <code>session.expired</code> event, and a client toast. Five tests in <code>test_session_store.py</code> cover it. That closes both halves of the original finding: the unbounded dict growth and the indefinite retention of student transcripts.</p>
+      </div>
+
+      <div class="find good">
+        <div class="find-h"><span class="chip partial">Mitigated</span><h3>Live recorder now has hard limits</h3></div>
+        <p class="where">LiveVivaRecorder.tsx:33</p>
+        <p>Not the streaming-upload redesign, and correctly described as mitigation rather than a fix. Auto-stop at 600 s, warning at 480 s, a live megabyte counter, reduced bitrate caps and 2-second chunks. The practical envelope is now 2–8 minutes comfortable, 10 minutes maximum, with anything longer routed to the upload tab. Worth stating plainly in the dissertation: <strong>the PRD targets 20-minute sessions, and live capture now caps at 10</strong> — so full-length vivas are an upload-only workflow.</p>
+      </div>
+
+      <div class="find partial">
+        <div class="find-h"><span class="chip partial">Open — deferred</span><h3>A single global lock still serialises copilot speech recognition</h3></div>
+        <p class="where">viva_copilot/groq_client.py:83</p>
+        <p>Unchanged and verified as such. <code>_STT_LOCK</code> remains a module-level <code>threading.Lock</code> held across both a <code>time.sleep()</code> of up to 4 seconds and the HTTP request, so the gap is enforced process-wide rather than per session. Correctly deferred: it needs a per-session queue with a shared token budget, not a patch. It affects the copilot only and cannot touch a graded viva.</p>
+      </div>
+
+      <div class="find good">
+        <div class="find-h"><span class="chip ok">Fixed</span><h3>Auto-publish no longer contradicts the integrity rule — it's now structurally impossible for the vivas that need review</h3></div>
+        <p class="where">main.py::viva_analyze · VivaPage.tsx · EvaluationPanel.tsx · ReportPrintView.tsx</p>
+        <p>The prior fix was going to be "make the provisional state visible" — cosmetic. The actual fix changes when the assessment type is decided: the examiner now picks <strong>Non-technical</strong> or <strong>Technical</strong> from a tab pair <em>before</em> uploading or recording, not after seeing a score. That single ordering change closes the contradiction by construction rather than by disclosure:</p>
+        <ul class="tight">
+          <li><strong>Server</strong> — <code>/api/viva-analyze</code> takes the choice as a form field. Only <code>WITHOUT_TECHNICAL_ACCURACY</code> auto-publishes; <code>WITH_TECHNICAL_ACCURACY</code> never does — the mark sits as an unpublished draft until an examiner enters a technical score and hits publish. Pinned with a new test, <code>test_technical_mode_never_auto_publishes</code>.</li>
+          <li><strong>Client</strong> — the old post-hoc radio switcher in <code>EvaluationPanel</code> (which let the mode be flipped <em>after</em> the AI score was already visible — a softer version of the same problem) is gone, replaced by a locked, read-only badge.</li>
+          <li><strong>The exact sentence this audit flagged</strong> — the printed report's footer claiming every score was "reviewed by the evaluator prior to publishing" — is no longer a blanket claim. It now states the true, mode-specific fact per report: technical reports say the score was human-reviewed and fused; non-technical reports say plainly that it was automatic and disclosed as such.</li>
+        </ul>
+        <p><strong>Not yet committed</strong> — this fix (5 files: <code>main.py</code>, <code>test_viva_http.py</code>, <code>VivaPage.tsx</code>, <code>EvaluationPanel.tsx</code>, <code>ReportPrintView.tsx</code>) is verified (all 210 tests pass, client builds clean) but sits in the working tree, not yet staged.</p>
+      </div>
+
+      <div class="find info">
+        <div class="find-h"><span class="chip acc">Medium</span><h3>Engine documentation describes a system that no longer exists</h3></div>
+        <p class="where">VivaEvaluationEngine/CLAUDE.md · docs/plan.md · docs/implementation-notes.md</p>
+        <p>The engine's CLAUDE.md documents seven modules against thirty-seven in the tree, describes <code>BlinkSampler().count_blinks</code> as the blink path, and presents <code>confidence_score</code>, <code>engagement_score</code> and <code>audio_grade</code> as the pipeline's outputs — none of which feed the official mark. The two planning documents are fully superseded: everything proposed in them shipped. Both the 9 Aug and 15 Aug audits are now historical rather than actionable, though worth keeping as evidence of the fixes — this report and <code>saved_resource.html</code> are what should be treated as current.</p>
+      </div>
+
+      <div class="find info">
+        <div class="find-h"><span class="chip acc">Low</span><h3>Smaller defects worth a cleanup pass</h3></div>
+        <ul class="tight">
+          <li><strong>Missing confidence becomes maximum confidence.</strong> <code>_normalize_confidence(None)</code> returns <code>1.0</code> in both detectors, so an unparseable model output is recorded as fully certain rather than unknown.</li>
+          <li><strong>Technical accuracy cannot be set to 0.</strong> The slider renders <code>technicalAccuracy ?? 0</code>, so it sits visually at zero while the state is null and publish stays blocked; dragging to 0 may not fire a change. An examiner who genuinely wants 0/10 has to move the slider away and back.</li>
+          <li><strong>Blob URL leak on one path.</strong> The pre-analysis "Remove" button clears <code>videoPreview</code> without <code>URL.revokeObjectURL</code>; the post-analysis one revokes correctly.</li>
+          <li><strong>API key accepted as a query parameter on REST.</strong> Necessary for the WebSocket, unnecessary for <code>require_api_key</code>, and query strings land in access logs.</li>
+          <li><strong><code>tempo_bpm</code> is beat-tracking run on speech</strong> — a music feature with no meaning here. Harmless (unused in scoring) but it appears in the UI's advanced metrics.</li>
+          <li><strong>Stale references.</strong> <code>requirements.txt</code> names a different default SER model than the code uses; <code>face_landmarker.py</code> annotates <code>np.ndarray</code> without importing numpy (safe only because of <code>from __future__ import annotations</code>); <code>enet_b0_8_best_afew.pt</code> is 16 MB of unused checkpoint, and all three <code>.pt</code> files are committed to git rather than LFS.</li>
+          <li><strong>The printed report includes the full student and panel transcript</strong> with no consent notice, and that document is what would be filed.</li>
+        </ul>
+      </div>
+
+      <div class="find good">
+        <div class="find-h"><span class="chip ok">Strength</span><h3>The code tells the truth about its own weaknesses</h3></div>
+        <p>Worth recording explicitly, because it is unusual and it is defensible in a viva of your own. The engine self-reports uncertainty rather than hiding it: gaze and head pose both carry <code>"validated": false</code> with named reasons (<code>no_looking_away_recording</code>, <code>no_turn_tilt_recording</code>) because no ground-truth recording exists to validate them against. The SER module attaches a domain note warning that IEMOCAP-trained models frequently label projected presentation speech as "angry" and that this is not a viva affect diagnosis. <code>sentence_completion_is_heuristic</code> ships with every transcript. The temporal model refuses to emit a number without a trained checkpoint. Speech emotion runs in a subprocess specifically so a native crash cannot take down the server. None of these were required; each one makes the system harder to misread.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= 9. NEXT ================= -->
+  <section id="next">
+    <div class="s-head">
+      <span class="eyebrow">Research position</span>
+      <h2>What the project still needs</h2>
+      <div class="rule"></div>
+    </div>
+
+    <p class="measure" style="margin-bottom:26px">The engineering is now well ahead of the evidence. Every capability claim across all four documents — Kappa ≥ 0.75, ≥85% agreement, ≤10% WER, ≥85% FER accuracy — is a target with no measurement behind it. For a research submission that gap now matters more than any remaining feature.</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-h"><h3>Collect the dual-marked set</h3><span class="chip crit">Blocking everything</span></div>
+        <p class="small muted">Nothing else can be validated without it, and it is the only thing standing between the current system and the trained fusion model all four documents specify. <code>flatten_canonical_features</code> already emits exactly the row a Random Forest would consume — the schema is waiting, the labels are not. Even 30–50 human-scored sessions would convert several unverified claims into measured ones and unblock the Kappa analysis.</p>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Commit the assessment-type fix</h3><span class="chip crit">Uncommitted</span></div>
+        <p class="small muted">Five files (<code>main.py</code>, <code>test_viva_http.py</code>, <code>VivaPage.tsx</code>, <code>EvaluationPanel.tsx</code>, <code>ReportPrintView.tsx</code>) sit modified in the working tree — verified (210 tests, clean build) but not staged. This is what closes the auto-publish finding above; until it's committed, the fix exists only locally.</p>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Purge the 6 test rows</h3><span class="chip partial">One query</span></div>
+        <p class="small muted">The leak itself is fixed, but <code>vivamark.marks</code> still holds six fixture documents among nineteen real ones. Delete them before the collection feeds anything, or the first thing your fusion model learns is a stub with a null score.</p>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Redesign the copilot STT limiter</h3><span class="chip partial">The one deferred item</span></div>
+        <p class="small muted">The last open item from this round. A per-session queue over a shared token budget, replacing the global mutex held across network I/O. Copilot-only and it cannot affect a graded viva, so deferring it is the right call for now — but note it in the write-up as a known concurrency limit rather than leaving it unstated.</p>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Evaluate the emotion model, or stop claiming a number</h3><span class="chip partial">Credibility</span></div>
+        <p class="small muted">FER2013 has a standard held-out split and is a Kaggle download away. A single evaluation run on <code>hsemotion_improved.pt</code> either substantiates the ">85%" claim inherited from the guide or replaces it with the real figure. Right now the checkpoint has no provenance in the repo at all.</p>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Test at target duration</h3><span class="chip partial">Pilot risk</span></div>
+        <p class="small muted">The PRD targets 20-minute sessions and a 5-minute end-to-end budget. Live capture now caps at 10 minutes, so a full-length viva must go through the upload tab — and nothing in the repo shows that path exercised at 20 minutes against the 1 GB cap and 600 s timeout. One honest end-to-end run before students are in front of it.</p>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Write up the exclusions and the fixes</h3><span class="chip acc">Free marks</span></div>
+        <p class="small muted">Two chapters are already written in your codebase. The reasoning behind excluding emotion, length, absolute pitch and loudness is in the docstrings and is genuinely defensible methodology. And the 15 Aug audit paired with the current code is a complete, evidenced defect-to-fix narrative — exactly the kind of engineering rigour a research panel asks for and rarely gets shown.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Line-by-line audit · 19,300 lines (incl. tests) · 4 design documents</span>
+    <span>Verified against commit fc0ee11 (feat/viva-audit) + uncommitted assessment-type fix · 24 Aug 2026</span>
+  </footer>
+
+</div>

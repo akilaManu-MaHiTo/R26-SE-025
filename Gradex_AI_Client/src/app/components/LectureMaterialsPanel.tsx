@@ -30,8 +30,9 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog";
 
-const DEFAULT_API_BASE_URL =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+import { GRADING_API_BASE_URL } from "../api/gradingApiBase";
+
+const DEFAULT_API_BASE_URL = GRADING_API_BASE_URL;
 
 export type CourseItem = {
   _id: string;
@@ -87,7 +88,7 @@ export async function fetchCourses(apiBaseUrl: string): Promise<CourseItem[]> {
 export function formatCourseLabel(course: CourseItem): string {
   const name = (course.name || "").trim();
   if (!name || name === course.code) return course.code;
-  return `${course.code} — ${name}`;
+  return `${course.code} - ${name}`;
 }
 
 export function LectureMaterialsPanel({
@@ -111,6 +112,7 @@ export function LectureMaterialsPanel({
   const [dragOver, setDragOver] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<LectureMaterialItem | null>(null);
   const [pendingCourseDelete, setPendingCourseDelete] = useState<CourseItem | null>(null);
+  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
 
   const loadCourses = useCallback(async () => {
     setCoursesLoading(true);
@@ -258,7 +260,9 @@ export function LectureMaterialsPanel({
       }
 
       const indexed = data.indexed_items ?? data.indexed_pages ?? 0;
-      setSuccess(`Indexed ${indexed} page(s)/slide(s) from ${data.filename ?? file.name} under ${trimmedCourse}.`);
+      setSuccess(
+        `Indexed ${indexed} page(s)/slide(s) from ${data.filename ?? file.name} under ${trimmedCourse}.`,
+      );
       await loadMaterials();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to upload lecture material.");
@@ -270,7 +274,13 @@ export function LectureMaterialsPanel({
 
   const handleFileInput = (fileList: FileList | null) => {
     const file = fileList?.[0];
-    if (file) void uploadFile(file);
+    if (file) setPendingUploadFile(file);
+  };
+
+  const confirmUpload = async () => {
+    const file = pendingUploadFile;
+    setPendingUploadFile(null);
+    if (file) await uploadFile(file);
   };
 
   const confirmDelete = async () => {
@@ -312,7 +322,7 @@ export function LectureMaterialsPanel({
   return (
     <div className="space-y-6">
       {/* Manage courses */}
-      <div className="space-y-3 rounded-xl border border-border bg-muted/80 p-4">
+      <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-sm text-foreground">Manage subjects / courses</div>
@@ -345,7 +355,7 @@ export function LectureMaterialsPanel({
           />
           <Button
             type="button"
-            className="bg-emerald-600 hover:bg-emerald-700"
+           
             onClick={() => void addCourse()}
             disabled={addingCourse}
           >
@@ -384,7 +394,7 @@ export function LectureMaterialsPanel({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                   disabled={deletingCourseCode === course.code}
                   onClick={() => setPendingCourseDelete(course)}
                 >
@@ -461,12 +471,12 @@ export function LectureMaterialsPanel({
           onClick={() => !uploading && courses.length > 0 && fileInputRef.current?.click()}
           className={`border-2 border-dashed rounded-xl p-5 transition-colors ${
             courses.length === 0
-              ? "border-border bg-muted cursor-not-allowed opacity-70"
+              ? "border-border bg-muted/40 cursor-not-allowed opacity-70"
               : uploading
-                ? "border-border bg-muted cursor-wait"
+                ? "border-border bg-muted/40 cursor-wait"
                 : dragOver
-                  ? "border-primary/40 bg-accent cursor-pointer"
-                  : "border-border bg-muted hover:bg-violet-50 hover:border-violet-300 cursor-pointer"
+                  ? "border-primary bg-accent/40 cursor-pointer"
+                  : "border-border bg-muted/40 hover:bg-accent/30 hover:border-primary/40 cursor-pointer"
           }`}
         >
           <div className="flex items-center gap-3">
@@ -518,7 +528,7 @@ export function LectureMaterialsPanel({
             Loading lecture materials...
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-muted px-4 py-5 text-sm text-muted-foreground">
+          <div className="rounded-xl border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
             {showAllCourses
               ? "No lecture materials indexed yet. Upload a PDF or PPTX to enable RAG."
               : `No lecture materials for ${selectedCourse || "this course"} yet. Upload slides or notes above.`}
@@ -551,7 +561,7 @@ export function LectureMaterialsPanel({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                     disabled={isDeleting}
                     onClick={() => setPendingDelete(item)}
                   >
@@ -569,12 +579,44 @@ export function LectureMaterialsPanel({
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 text-sm text-red-600">
+        <div className="flex items-start gap-2 text-sm text-destructive">
           <AlertCircle className="size-4 mt-0.5 shrink-0" />
           <span>{error}</span>
         </div>
       )}
-      {success && <div className="text-sm text-emerald-600">{success}</div>}
+      {success && <div className="text-sm text-emerald-700 dark:text-emerald-400">{success}</div>}
+
+      <AlertDialog
+        open={pendingUploadFile != null}
+        onOpenChange={(open) => {
+          if (!open && !uploading) setPendingUploadFile(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Upload lecture material?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Upload{" "}
+              <span className="font-medium text-foreground">{pendingUploadFile?.name}</span> to course{" "}
+              <span className="font-medium text-foreground">{selectedCourse || "—"}</span> and index it
+              for RAG?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={uploading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              
+              disabled={uploading}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmUpload();
+              }}
+            >
+              {uploading ? "Uploading…" : "Upload"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={pendingDelete != null} onOpenChange={(open) => !open && setPendingDelete(null)}>
         <AlertDialogContent>

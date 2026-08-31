@@ -1,0 +1,10 @@
+{
+  "status_thresholds": [
+    { "min": 0,  "max": 39.99,  "status": "Critical",           "priority": "Critical" },
+    { "min": 40, "max": 59.99,  "status": "Needs Improvement",  "priority": "High" },
+    { "min": 60, "max": 74.99,  "status": "Developing",         "priority": "Medium" },
+    { "min": 75, "max": 100,    "status": "Strong",             "priority": "Low" }
+  ],
+  "low_sample_threshold": 10,
+  "min_attempts": 2
+}

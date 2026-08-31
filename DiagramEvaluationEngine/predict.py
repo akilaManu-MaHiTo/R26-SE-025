@@ -3,7 +3,7 @@ import json
 import os
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import cv2
 import numpy as np
@@ -60,7 +60,15 @@ def _detect_lines(
     )
     if lines is None:
         return []
-    return [tuple(map(int, line[0])) for line in lines]
+
+    normalized_lines = []
+    for line in lines:
+        coords = np.asarray(line).reshape(-1)
+        if coords.size < 4:
+            continue
+        normalized_lines.append(tuple(int(value) for value in coords[:4]))
+
+    return normalized_lines
 
 
 def _bbox_center(box):
@@ -345,7 +353,20 @@ def _encode_image_to_data_uri(image, fmt: str = ".jpg") -> str:
     return f"data:{mime};base64,{encoded}"
 
 
-def run_er_pipeline(image_path: Path, model_path: Optional[Path] = None) -> dict:
+def _emit_progress(progress_callback, payload: dict) -> None:
+    if progress_callback is None:
+        return
+    try:
+        progress_callback(payload)
+    except Exception:
+        pass
+
+
+def run_er_pipeline(
+    image_path: Path,
+    model_path: Optional[Path] = None,
+    progress_callback: Optional[Callable[[dict], None]] = None,
+) -> dict:
     script_dir = Path(__file__).resolve().parent
     _load_dotenv(script_dir / ".env")
 
@@ -357,9 +378,34 @@ def run_er_pipeline(image_path: Path, model_path: Optional[Path] = None) -> dict
     if not resolved_model.is_absolute():
         resolved_model = script_dir / resolved_model
 
+    _emit_progress(
+        progress_callback,
+        {
+            "stage": "starting",
+            "message": "Preparing diagram evaluation...",
+            "progress": 2,
+        },
+    )
+
     _, results = run_detection(str(resolved_model), str(resolved_image))
+    _emit_progress(
+        progress_callback,
+        {
+            "stage": "detecting",
+            "message": "Defining Objects...",
+            "progress": 15,
+        },
+    )
     if not results:
         image = _read_image(resolved_image)
+        _emit_progress(
+            progress_callback,
+            {
+                "stage": "completed",
+                "message": "No objects detected.",
+                "progress": 100,
+            },
+        )
         return {
             "status": "ok",
             "annotated_image": _encode_image_to_data_uri(image),
@@ -376,14 +422,50 @@ def run_er_pipeline(image_path: Path, model_path: Optional[Path] = None) -> dict
     ocr_rows = []
     ocr_error = ""
     try:
-        ocr_rows = run_ocr_on_crops(crops_root)
+        detections = _extract_detections(results, resolved_image, crops_root)
+        label_counts = defaultdict(int)
+        for detection in detections:
+            label_counts[detection.get("label", "")] += 1
+        _emit_progress(
+            progress_callback,
+            {
+                "stage": "objects_defined",
+                "message": (
+                    f"Defined Objects {len(detections)} "
+                    f"(Entities {label_counts.get('Entities', 0)}, "
+                    f"Relationships {label_counts.get('Relationships', 0)}, "
+                    f"Attributes {label_counts.get('Attributes', 0) + label_counts.get('Primary Key', 0)})"
+                ),
+                "progress": 25,
+                "detections": len(detections),
+            },
+        )
+
+        _emit_progress(
+            progress_callback,
+            {
+                "stage": "labels",
+                "message": "Defining Labels...",
+                "progress": 30,
+            },
+        )
+
+        ocr_rows = run_ocr_on_crops(crops_root, progress_callback=progress_callback)
         save_ocr_outputs(save_dir, ocr_rows)
     except Exception as exc:
         ocr_error = str(exc)
 
-    detections = _extract_detections(results, resolved_image, crops_root)
     if ocr_rows:
         _attach_ocr_text(detections, ocr_rows)
+
+    _emit_progress(
+        progress_callback,
+        {
+            "stage": "structuring",
+            "message": "Building ER structure...",
+            "progress": 82,
+        },
+    )
 
     image = _read_image(resolved_image)
     lines = _detect_lines(image)
@@ -406,6 +488,16 @@ def run_er_pipeline(image_path: Path, model_path: Optional[Path] = None) -> dict
     }
     if ocr_error:
         payload["ocr_error"] = ocr_error
+
+    _emit_progress(
+        progress_callback,
+        {
+            "stage": "completed",
+            "message": "Diagram evaluation complete.",
+            "progress": 100,
+            "result": payload,
+        },
+    )
 
     return payload
 

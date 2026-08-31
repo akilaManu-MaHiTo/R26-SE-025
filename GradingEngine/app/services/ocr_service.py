@@ -1,15 +1,21 @@
-import cv2
 import os
+import tempfile
+import uuid
+from pathlib import Path
+
+import cv2
 import asyncio
 import requests
 import numpy as np
 import pypdfium2 as pdfium
 from dotenv import load_dotenv
 
-load_dotenv()
+_GRADING_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(_GRADING_ROOT / ".env")
 
 OCR_TOKEN = os.getenv("OCR_TOKEN")
 OCR_SPACE_URL = "https://api.ocr.space/parse/image"
+
 
 def deskew_image(img):
     """
@@ -79,85 +85,217 @@ def deskew_image(img):
         borderMode=cv2.BORDER_REPLICATE,
     )
 
-def convert_pdf_to_images(pdf_path: str):
+
+def convert_pdf_to_images(pdf_path: str, max_pages: int | None = None, *, work_dir: str | None = None):
     pdf = pdfium.PdfDocument(pdf_path)
     image_paths = []
+    page_count = len(pdf)
+    if max_pages is not None:
+        page_count = min(page_count, max(0, int(max_pages)))
 
-    for idx in range(len(pdf)):
+    out_dir = work_dir or tempfile.mkdtemp(prefix="ocr_pdf_")
+    stem = Path(pdf_path).stem
+    token = uuid.uuid4().hex[:8]
+
+    for idx in range(page_count):
         page = pdf[idx]
         bitmap = page.render(scale=2.0).to_pil()
-        output_path = f"pdf_page_{idx + 1}_{os.path.basename(pdf_path)}.png"
+        output_path = os.path.join(out_dir, f"pdf_page_{idx + 1}_{token}_{stem}.png")
         bitmap.save(output_path)
         image_paths.append(output_path)
 
     return image_paths
 
 
-def _process_image_to_clean_version(image_path: str):
+def _ocr_filetype(path: str) -> str:
+    ext = Path(path).suffix.lower().lstrip(".")
+    if ext in {"jpg", "jpeg"}:
+        return "JPG"
+    if ext == "png":
+        return "PNG"
+    if ext == "gif":
+        return "GIF"
+    if ext in {"tif", "tiff"}:
+        return "TIF"
+    if ext == "bmp":
+        return "BMP"
+    if ext == "pdf":
+        return "PDF"
+    # OpenCV-written temps usually keep the source extension; default JPG.
+    return "JPG"
+
+
+def _process_image_light(image_path: str, *, work_dir: str | None = None) -> str:
+    """Light cleanup: grayscale + mild deskew. Safer for phone photos than hard binarize."""
     img = cv2.imread(image_path)
     if img is None:
         raise RuntimeError(f"Unable to read image: {image_path}")
 
+    # Downscale huge phone photos — OCR.Space often returns blank on oversized uploads.
+    h, w = img.shape[:2]
+    max_side = max(h, w)
+    if max_side > 2200:
+        scale = 2200.0 / max_side
+        img = cv2.resize(
+            img,
+            (max(1, int(w * scale)), max(1, int(h * scale))),
+            interpolation=cv2.INTER_AREA,
+        )
+
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     straightened = deskew_image(gray)
-    denoised = cv2.medianBlur(straightened, 3)
-    processed = cv2.adaptiveThreshold(
-        denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 10
-    )
-    kernel = np.ones((2, 2), np.uint8)
-    healed = cv2.erode(processed, kernel, iterations=1)
+    # Mild denoise only — avoid adaptiveThreshold/erode which wipe WhatsApp handwriting.
+    denoised = cv2.fastNlMeansDenoising(straightened, None, 8, 7, 21)
 
-    processed_filename = f"proc_{os.path.basename(image_path)}"
-    cv2.imwrite(processed_filename, healed)
+    out_dir = work_dir or tempfile.mkdtemp(prefix="ocr_proc_")
+    token = uuid.uuid4().hex[:8]
+    # Always write PNG so OCR.Space gets a real image payload with matching FileType.
+    processed_filename = os.path.join(
+        out_dir, f"proc_{token}_{Path(image_path).stem}.png"
+    )
+    ok = cv2.imwrite(processed_filename, denoised)
+    if not ok:
+        raise RuntimeError(f"Failed to write processed image: {processed_filename}")
     return processed_filename
 
 
-def _query_ocr_space_sync(filename: str):
+def _prepare_original_for_ocr(image_path: str, *, work_dir: str | None = None) -> str:
+    """
+    Send a resized copy of the original when the source is huge.
+    Returns ``image_path`` unchanged when small enough.
+    """
+    try:
+        size = os.path.getsize(image_path)
+    except OSError:
+        return image_path
+
+    img = cv2.imread(image_path)
+    if img is None:
+        return image_path
+
+    h, w = img.shape[:2]
+    max_side = max(h, w)
+    needs_resize = max_side > 2400 or size > 1_200_000
+    if not needs_resize:
+        return image_path
+
+    scale = min(1.0, 2200.0 / max_side)
+    if scale < 1.0:
+        img = cv2.resize(
+            img,
+            (max(1, int(w * scale)), max(1, int(h * scale))),
+            interpolation=cv2.INTER_AREA,
+        )
+
+    out_dir = work_dir or tempfile.mkdtemp(prefix="ocr_orig_")
+    token = uuid.uuid4().hex[:8]
+    out_path = os.path.join(out_dir, f"orig_{token}_{Path(image_path).stem}.jpg")
+    ok = cv2.imwrite(out_path, img, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+    if not ok:
+        return image_path
+    return out_path
+
+
+def _mime_for_filetype(filetype: str) -> str:
+    ft = (filetype or "JPG").upper()
+    if ft == "PNG":
+        return "image/png"
+    if ft in {"TIF", "TIFF"}:
+        return "image/tiff"
+    if ft == "GIF":
+        return "image/gif"
+    if ft == "BMP":
+        return "image/bmp"
+    if ft == "PDF":
+        return "application/pdf"
+    return "image/jpeg"
+
+
+def _query_ocr_space_sync(filename: str, *, engine: int = 3):
     if not OCR_TOKEN:
         raise RuntimeError("OCR_TOKEN is missing in environment.")
 
+    filetype = _ocr_filetype(filename)
     payload = {
         "apikey": OCR_TOKEN,
         "language": "eng",
         "isOverlayRequired": False,
-        "FileType": "JPG",
-        "OCREngine": 3,
+        "filetype": filetype,
+        "OCREngine": str(engine),
+        "scale": "true",
+        "detectOrientation": "true",
     }
 
     with open(filename, "rb") as f:
-        files = {"file": f}
-        response = requests.post(OCR_SPACE_URL, files=files, data=payload, timeout=90)
+        files = {"file": (Path(filename).name, f, _mime_for_filetype(filetype))}
+        response = requests.post(OCR_SPACE_URL, files=files, data=payload, timeout=120)
 
     if response.status_code >= 400:
         raise RuntimeError(f"OCR.Space request failed: HTTP {response.status_code} {response.text}")
 
     result = response.json()
-    if result.get("OCRExitCode") == 1 and result.get("ParsedResults"):
-        return (result["ParsedResults"][0].get("ParsedText", "") or "").strip()
+    parsed_results = result.get("ParsedResults") or []
+    if result.get("OCRExitCode") in (1, 2) and parsed_results:
+        texts = []
+        for page in parsed_results:
+            if not isinstance(page, dict):
+                continue
+            texts.append((page.get("ParsedText") or "").strip())
+        joined = "\n".join(t for t in texts if t).strip()
+        if joined:
+            return joined
+        # Successful envelope but blank text — treat as empty (caller may retry).
+        return ""
 
     error_message = result.get("ErrorMessage") or result.get("ErrorDetails") or "OCR Error"
     if isinstance(error_message, list):
         error_message = " | ".join(str(e) for e in error_message)
-    raise RuntimeError(str(error_message))
+    raise RuntimeError(str(error_message) or "OCR Error")
 
 
-async def query_ocr_space(filename: str):
+async def query_ocr_space(filename: str, *, engine: int = 3) -> str:
     try:
-        loop = asyncio.get_event_loop()
-        extracted_text = await loop.run_in_executor(None, _query_ocr_space_sync, filename)
-        return extracted_text.strip()
+        loop = asyncio.get_running_loop()
+        extracted_text = await loop.run_in_executor(
+            None, lambda: _query_ocr_space_sync(filename, engine=engine)
+        )
+        return (extracted_text or "").strip()
     except Exception as e:
-        return f"OCR Failed: {str(e)}"
+        return f"[OCR_ERROR] {e}"
 
 
-async def process_student_answer(file_path: str):
-    temp_files = []
-    final_results = []
+def _is_usable_ocr(text: str) -> bool:
+    t = (text or "").strip()
+    if not t:
+        return False
+    if t.startswith("[OCR_ERROR]") or t.startswith("OCR Failed:"):
+        return False
+    # Ignore tiny noise-only payloads
+    alnum = sum(1 for ch in t if ch.isalnum())
+    return alnum >= 8
+
+
+async def process_student_answer(file_path: str, *, max_pages: int | None = None):
+    """
+    OCR a student answer file.
+
+    ``max_pages`` limits how many PDF pages are read (e.g. 1 for ID-header scan).
+    Image files are always a single page; ``max_pages`` does not expand them.
+
+    Strategy per page:
+      1) light-processed PNG
+      2) if empty/failed → original image as-is
+    """
+    work_dir = tempfile.mkdtemp(prefix="ocr_job_")
+    temp_files: list[str] = []
+    final_results: list[str] = []
     pages_processed = 0
 
     try:
         if file_path.lower().endswith(".pdf"):
-            image_paths = convert_pdf_to_images(file_path)
+            image_paths = convert_pdf_to_images(
+                file_path, max_pages=max_pages, work_dir=work_dir
+            )
             temp_files.extend(image_paths)
         else:
             image_paths = [file_path]
@@ -165,17 +303,58 @@ async def process_student_answer(file_path: str):
         if not image_paths:
             return "", 0
 
-        for img_path in image_paths:
-            proc_path = _process_image_to_clean_version(img_path)
-            temp_files.append(proc_path)
+        for page_idx, img_path in enumerate(image_paths, start=1):
+            text = ""
+            light_path: str | None = None
+            original_for_ocr = img_path
+            try:
+                resized = _prepare_original_for_ocr(img_path, work_dir=work_dir)
+                if resized != img_path:
+                    temp_files.append(resized)
+                    original_for_ocr = resized
+                light_path = _process_image_light(img_path, work_dir=work_dir)
+                temp_files.append(light_path)
+                text = await query_ocr_space(light_path, engine=3)
+            except Exception as e:
+                text = f"[OCR_ERROR] preprocess: {e}"
 
-            text = await query_ocr_space(proc_path)
-            if text:
-                final_results.append(text.strip())
+            # Fallbacks: original bytes often beat hard filters on WhatsApp photos.
+            if not _is_usable_ocr(text):
+                attempts: list[tuple[str, int]] = [
+                    (original_for_ocr, 3),
+                    (original_for_ocr, 2),
+                ]
+                if light_path:
+                    attempts.append((light_path, 2))
+                for candidate, eng in attempts:
+                    fallback = await query_ocr_space(candidate, engine=eng)
+                    if _is_usable_ocr(fallback):
+                        text = fallback
+                        break
+                    if not _is_usable_ocr(text) and fallback:
+                        text = fallback
+
+            chunk = (text or "").strip()
+            if not chunk:
+                chunk = f"[OCR_EMPTY] page {page_idx} of {Path(file_path).name}"
+            print(
+                f"OCR page {page_idx}/{len(image_paths)} "
+                f"{Path(file_path).name}: {len(chunk)} chars"
+                + (" (weak/empty)" if not _is_usable_ocr(chunk) else "")
+            )
+            final_results.append(chunk)
             pages_processed += 1
 
-        return " ".join(final_results).strip(), pages_processed
+        return "\n\n".join(final_results).strip(), pages_processed
     finally:
         for f in temp_files:
-            if os.path.exists(f) and f != file_path:
-                os.remove(f)
+            if os.path.exists(f) and os.path.abspath(f) != os.path.abspath(file_path):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+        try:
+            if os.path.isdir(work_dir) and not os.listdir(work_dir):
+                os.rmdir(work_dir)
+        except OSError:
+            pass

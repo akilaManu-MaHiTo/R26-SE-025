@@ -3,9 +3,14 @@ import type { LucideIcon } from "lucide-react";
 import { FileText, Workflow, BarChart3, Video } from "lucide-react";
 import type { AIModel } from "./components/AIBrand";
 import { GradingPage } from "./components/GradingPage";
-import { AnalyticsPage } from "./components/AnalyticsPage";
+import { DiagramGrading } from "./components/DiagramGrading";
+import { DiagramReconstructionPage } from "./components/DiagramReconstructionPage";
+import { DiagramGuidelinePage } from "./components/DiagramGuidelinePage";
+import AnalyticsPage from "./components/AnalyticsPage";
 import { ExamCreator } from "./components/ExamCreator";
 import { VivaPage } from "./components/VivaPage";
+import { SubjectContentPage } from "./components/SubjectContentPage";
+import { LiveCopilotPage } from "./components/viva-copilot/LiveCopilotPage";
 
 export type AgentId = "diagram-evaluation" | "grading" | "question-exam" | "viva-evaluation";
 
@@ -37,11 +42,25 @@ export const AGENT_CONFIG: AgentConfig[] = [
     model: "structr",
     features: [
       {
+        path: "/diagram-evaluation/diagram-guideline",
+        label: "Diagram Guideline",
+        title: "Diagram Guideline",
+        subtitle: "Turn a marking scheme into the criteria used to grade diagrams",
+        element: <DiagramGuidelinePage />,
+      },
+      {
         path: "/diagram-evaluation/diagram-grading",
         label: "Diagram Grading",
         title: "Diagram Grading",
         subtitle: "AI-assisted assessment of structured diagrams",
-        element: <GradingPage mode="diagram" />,
+        element: <DiagramGrading mode="diagram" />,
+      },
+      {
+        path: "/diagram-evaluation/diagram-reconstruction",
+        label: "Diagram History",
+        title: "Diagram History",
+        subtitle: "Recreate saved ER structure from server details",
+        element: <DiagramReconstructionPage />,
       },
     ],
   },
@@ -95,11 +114,25 @@ export const AGENT_CONFIG: AgentConfig[] = [
     model: "voca",
     features: [
       {
+        path: "/viva-evaluation/subject-content",
+        label: "Subject Content",
+        title: "Subject Content",
+        subtitle: "Turn lecture material into a concept rubric for technical vivas",
+        element: <SubjectContentPage />,
+      },
+      {
         path: "/viva-evaluation/viva-assessment",
         label: "Viva Assessment",
         title: "Viva Assessment",
         subtitle: "AI-aided viva voce evaluation",
         element: <VivaPage />,
+      },
+      {
+        path: "/viva-evaluation/live-copilot",
+        label: "Live Viva",
+        title: "Live Viva",
+        subtitle: "Follow-up questions from the live student presentation and viva",
+        element: <LiveCopilotPage />,
       },
     ],
   },

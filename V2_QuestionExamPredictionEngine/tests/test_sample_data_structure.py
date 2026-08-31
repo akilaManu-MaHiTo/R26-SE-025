@@ -1,0 +1,72 @@
+import shutil
+from pathlib import Path
+
+import migrate_sample_v2
+from run_sample import load_raw_sample_documents
+
+
+def test_courses_have_v2_shape():
+    courses, _, _ = load_raw_sample_documents()
+    assert len(courses) == 2
+    assert {course["code"] for course in courses} == {"SE3040", "IT2040"}
+    assert all(
+        course.get("code") and course.get("name") and course.get("description")
+        for course in courses
+    )
+
+
+def test_rubric_has_v2_metadata():
+    _, rubrics, _ = load_raw_sample_documents()
+    rubric = rubrics[0]
+    assert rubric["subject_code"] == "IT2040"
+    assert rubric["subject_name"]
+    assert rubric["year"] == 2022
+    assert rubric["month"]
+    assert rubric["semester"]
+    assert rubric["session_name"] == "Final Examination"
+    assert "exam_roster" in rubric
+    assert len(rubric["questions"]) == 4
+
+
+def test_submissions_have_v2_shape_and_graded_status():
+    _, _, submissions = load_raw_sample_documents()
+    assert len(submissions) == 5
+    for sub in submissions:
+        assert sub["status"] == "graded"
+        assert sub["paper_key"]
+        assert sub["subject_code"] == "IT2040"
+        assert sub["subject_name"]
+        assert sub["year"] == 2022
+        assert "month" in sub
+        assert "semester" in sub
+        assert sub["session_name"] == "Final Examination"
+        assert "lecturer_note" in sub
+        for result in sub["evaluation"]["results"]:
+            for criterion in result["criteria_breakdown"]:
+                assert "earned" not in criterion
+                assert "marks" not in criterion
+                assert "point" in criterion
+                assert "awarded_marks" in criterion
+                assert criterion["awarded_marks"] >= 0
+                assert "reason" in criterion
+
+
+def test_migrate_sample_v2_is_idempotent(tmp_path, monkeypatch):
+    dest = tmp_path / "sample_data"
+    src = Path("app/sample_data")
+    if not src.exists():
+        src = Path("V2_QuestionExamPredictionEngine/app/sample_data")
+    shutil.copytree(src, dest)
+    monkeypatch.setattr(migrate_sample_v2, "SAMPLE_DIR", dest)
+
+    def snapshot() -> dict[str, bytes]:
+        return {
+            str(p.relative_to(dest)): p.read_bytes()
+            for p in sorted(dest.rglob("*"))
+            if p.is_file()
+        }
+
+    migrate_sample_v2.main()
+    first = snapshot()
+    migrate_sample_v2.main()
+    assert snapshot() == first

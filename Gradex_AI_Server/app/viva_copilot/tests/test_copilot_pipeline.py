@@ -1,0 +1,594 @@
+"""Unit tests for the isolated copilot pipeline (mocked Groq)."""
+from __future__ import annotations
+
+import json
+import unittest
+
+from Gradex_AI_Server.app.viva_copilot.answer_detector import (
+    answer_hash,
+    detect_final_answer,
+    is_duplicate,
+    is_near_duplicate,
+    normalize_answer,
+)
+from Gradex_AI_Server.app.viva_copilot.context_builder import build_llm_context
+from Gradex_AI_Server.app.viva_copilot.followup_llm import (
+    generate_followups,
+    parse_followup_payload,
+    validate_suggestions,
+)
+from Gradex_AI_Server.app.viva_copilot.groq_client import extract_json_object, friendly_groq_error, is_probable_hallucination
+from Gradex_AI_Server.app.viva_copilot.pipeline import (
+    enter_viva_phase,
+    ingest_audio_chunk,
+    ingest_text,
+    should_refresh_presentation_suggestions,
+    should_refresh_viva_suggestions,
+    _finalize_utterance,
+    _run_followups,
+)
+from Gradex_AI_Server.app.viva_copilot.session_store import CopilotSession
+
+
+class AnswerDetectorTests(unittest.TestCase):
+    def test_normalize_and_hash_stable(self):
+        a = answer_hash("We use JWT authentication.")
+        b = answer_hash("we use jwt authentication!")
+        self.assertEqual(a, b)
+        self.assertTrue(a)
+
+    def test_duplicate_ignored(self):
+        text = "We use JWT authentication with NestJS."
+        digest = answer_hash(text)
+        self.assertTrue(is_duplicate(text, [digest]))
+        self.assertIsNone(detect_final_answer(text, [digest], min_words=5))
+
+    def test_short_utterance_ignored(self):
+        self.assertIsNone(detect_final_answer("Yes okay", [], min_words=5))
+
+    def test_accepts_new_long_answer(self):
+        text = "We use JWT authentication with NestJS for our API."
+        self.assertEqual(detect_final_answer(text, [], min_words=5), text)
+
+
+class FollowupValidationTests(unittest.TestCase):
+    def test_parse_and_rank_top_three(self):
+        raw = json.dumps(
+            {
+                "analysis": {
+                    "topics": ["Authentication"],
+                    "concepts": ["JWT"],
+                    "technologies": ["NestJS"],
+                    "claims": ["JWT is used"],
+                    "gaps": ["Token expiration"],
+                },
+                "main_points": ["JWT access tokens"],
+                "suggestions": [
+                    {
+                        "question": "How do you handle JWT token expiration?",
+                        "reason": "Lifetime was not explained.",
+                        "difficulty": "intermediate",
+                        "priority": "high",
+                    },
+                    {
+                        "question": "Where do you store the JWT on the client side and why?",
+                        "reason": "Client storage is unexplored.",
+                        "difficulty": "intermediate",
+                        "priority": "medium",
+                    },
+                    {
+                        "question": "How would you revoke a JWT before it expires?",
+                        "reason": "Revocation is a common JWT challenge.",
+                        "difficulty": "advanced",
+                        "priority": "medium",
+                    },
+                    {
+                        "question": "What is REST?",
+                        "reason": "Unrelated extra.",
+                        "difficulty": "basic",
+                        "priority": "low",
+                    },
+                ],
+            }
+        )
+        parsed = parse_followup_payload(raw, asked=[])
+        self.assertEqual(len(parsed["suggestions"]), 3)
+        self.assertEqual(parsed["suggestions"][0]["priority"], "high")
+        self.assertEqual(parsed["analysis"]["topics"], ["Authentication"])
+        self.assertEqual(parsed["main_points"], ["JWT access tokens"])
+
+    def test_drops_asked_duplicates(self):
+        suggestions = validate_suggestions(
+            [
+                {
+                    "question": "How do you handle JWT token expiration?",
+                    "reason": "Gap.",
+                    "difficulty": "intermediate",
+                    "priority": "high",
+                }
+            ],
+            asked=["How do you handle JWT token expiration?"],
+        )
+        self.assertEqual(suggestions, [])
+
+    def test_invalid_json_yields_empty(self):
+        parsed = parse_followup_payload("not-json", asked=[])
+        self.assertEqual(parsed["suggestions"], [])
+        self.assertEqual(parsed["analysis"]["topics"], [])
+
+    def test_generate_uses_injected_chat(self):
+        def fake_chat(_system, payload):
+            self.assertIn("sessionId", payload)
+            return json.dumps(
+                {
+                    "analysis": {
+                        "topics": ["Auth"],
+                        "concepts": [],
+                        "technologies": [],
+                        "claims": [],
+                        "gaps": ["expiry"],
+                    },
+                    "main_points": ["tokens"],
+                    "suggestions": [
+                        {
+                            "question": "How do you handle JWT token expiration?",
+                            "reason": "Not mentioned.",
+                            "difficulty": "intermediate",
+                            "priority": "high",
+                        }
+                    ],
+                }
+            )
+
+        result = generate_followups({"sessionId": "session_001"}, asked=[], chat=fake_chat)
+        self.assertEqual(len(result["suggestions"]), 1)
+        self.assertEqual(result["main_points"], ["tokens"])
+
+    def test_generate_streams_first_suggestion_before_full_response(self):
+        """The on_partial_suggestion callback should fire with the first
+        valid suggestion as soon as it appears in the (simulated) token
+        stream, before the full JSON payload is complete."""
+        full_payload = json.dumps(
+            {
+                "analysis": {"topics": ["Auth"], "concepts": [], "technologies": [], "claims": [], "gaps": []},
+                "main_points": ["tokens"],
+                "suggestions": [
+                    {
+                        "question": "How do you handle JWT token expiration?",
+                        "reason": "Not mentioned.",
+                        "difficulty": "intermediate",
+                        "priority": "high",
+                    },
+                    {
+                        "question": "Where is the JWT stored client-side?",
+                        "reason": "Unclear.",
+                        "difficulty": "basic",
+                        "priority": "medium",
+                    },
+                ],
+            }
+        )
+
+        def fake_chat(_system, _payload, *, on_delta=None):
+            # Simulate token-by-token streaming by feeding small slices.
+            if on_delta:
+                for i in range(0, len(full_payload), 7):
+                    on_delta(full_payload[i : i + 7])
+            return full_payload
+
+        seen: list = []
+        result = generate_followups(
+            {"sessionId": "session_001"},
+            asked=[],
+            chat=fake_chat,
+            on_partial_suggestion=seen.append,
+        )
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(seen[0]["question"], "How do you handle JWT token expiration?")
+        self.assertEqual(len(result["suggestions"]), 2)
+
+
+class ContextBuilderTests(unittest.TestCase):
+    def test_sliding_window_keeps_last_pairs(self):
+        pairs = [{"question": f"Q{i}", "answer": f"A{i}"} for i in range(8)]
+        ctx = build_llm_context(
+            session_id="session_001",
+            current_question="Latest Q",
+            candidate_answer="Latest A",
+            recent_qa=pairs,
+            presentation_points=["JWT"],
+        )
+        speakers = [row["speaker"] for row in ctx["recentConversation"]]
+        self.assertEqual(ctx["currentQuestion"]["text"], "Latest Q")
+        self.assertLessEqual(len(ctx["recentConversation"]), 10)
+        self.assertIn("interviewer", speakers)
+        self.assertEqual(ctx["presentationPoints"], ["JWT"])
+
+
+class GroqClientHelpersTests(unittest.TestCase):
+    def test_extract_json_from_fences(self):
+        parsed = extract_json_object('```json\n{"a": 1}\n```')
+        self.assertEqual(parsed, {"a": 1})
+
+    def test_hallucination_filter(self):
+        self.assertTrue(is_probable_hallucination("Thank you."))
+        self.assertFalse(is_probable_hallucination("We use JWT authentication with NestJS."))
+
+    def test_normalize_answer(self):
+        self.assertEqual(normalize_answer("  Hello, World! "), "hello world")
+
+    def test_friendly_credentials_missing_message(self):
+        raw = '{"error":{"message":"No credentials for provider: openai","type":"invalid_request_error","code":"bad_request"}}'
+        msg = friendly_groq_error(raw, kind="Speech recognition")
+        self.assertIn("gateway does not have credentials", msg.lower())
+
+    def test_friendly_rate_limit_message(self):
+        raw = '{"error":{"message":"Rate limit reached for model whisper-large-v3-turbo","code":"rate_limit_exceeded"}}'
+        self.assertIn("rate limit", friendly_groq_error(raw, kind="Speech recognition").lower())
+
+    def test_friendly_model_missing_message(self):
+        raw = '{"error":{"message":"The model llama-3.3-70b-versatile does not exist","code":"model_not_found"}}'
+        self.assertIn("not available", friendly_groq_error(raw, kind="Follow-up generation").lower())
+
+
+class PipelineFlowTests(unittest.IsolatedAsyncioTestCase):
+    def test_presentation_refresh_needs_bulk_new_words(self):
+        self.assertFalse(
+            should_refresh_presentation_suggestions(
+                word_count_value=4, last_word_count=0, last_at=0, now=100
+            )
+        )
+        self.assertTrue(
+            should_refresh_presentation_suggestions(
+                word_count_value=40, last_word_count=0, last_at=0, now=100
+            )
+        )
+        self.assertFalse(
+            should_refresh_presentation_suggestions(
+                word_count_value=40, last_word_count=35, last_at=95, now=100, min_seconds=40
+            )
+        )
+
+
+    async def test_presentation_bulk_suggestions_after_enough_words(self):
+        session = CopilotSession(session_id="session_test")
+        session.phase = "presentation"
+        called = []
+
+        def fake_generate(context, _asked):
+            called.append(context["candidateAnswer"]["text"])
+            return {
+                "analysis": {"topics": ["Auth"], "concepts": [], "technologies": [], "claims": [], "gaps": []},
+                "main_points": ["JWT"],
+                "suggestions": [
+                    {
+                        "question": "How do you expire tokens?",
+                        "reason": "Not covered yet.",
+                        "difficulty": "intermediate",
+                        "priority": "high",
+                    }
+                ],
+            }
+
+        await _finalize_utterance(
+            session,
+            "We use JWT auth. ",
+            generate=fake_generate,
+        )
+        self.assertEqual(called, [])
+
+        long_talk = (
+            "We use JWT authentication with NestJS for our API. "
+            "The client stores the access token after login and sends it on each request. "
+            "Guards validate the token before controllers run."
+        )
+        await _finalize_utterance(session, long_talk, generate=fake_generate)
+        self.assertEqual(len(called), 1)
+        self.assertEqual(len(session.suggestions), 1)
+    async def test_panel_enter_generates_from_presentation(self):
+        session = CopilotSession(session_id="session_test")
+        session.presentation_parts = ["We use JWT authentication with NestJS for our API."]
+
+        def fake_generate(context, _asked):
+            self.assertIn("JWT", context["candidateAnswer"]["text"])
+            return {
+                "analysis": {
+                    "topics": ["Authentication"],
+                    "concepts": ["JWT"],
+                    "technologies": ["NestJS"],
+                    "claims": [],
+                    "gaps": ["expiration"],
+                },
+                "main_points": ["JWT access tokens"],
+                "suggestions": [
+                    {
+                        "question": "How do you handle JWT token expiration?",
+                        "reason": "Lifetime was not explained.",
+                        "difficulty": "intermediate",
+                        "priority": "high",
+                    }
+                ],
+            }
+
+        await enter_viva_phase(session, generate=fake_generate)
+        self.assertEqual(session.phase, "viva")
+        self.assertEqual(session.main_points, ["JWT access tokens"])
+        self.assertEqual(len(session.suggestions), 1)
+
+    async def test_silence_after_speech_finalizes_presentation(self):
+        session = CopilotSession(session_id="session_test")
+        session.phase = "presentation"
+
+        def transcribe_speech_sync(data, filename="chunk.webm", content_type="audio/webm"):
+            # Long enough to clear MIN_ANSWER_WORDS; this test is about silence
+            # finalizing an utterance, not about the length threshold.
+            return (
+                "We use JWT authentication with NestJS for our API, and the "
+                "client stores the access token after login."
+            )
+
+        def transcribe_silence_sync(data, filename="chunk.webm", content_type="audio/webm"):
+            return ""
+
+        await ingest_audio_chunk(session, b"abc" * 400, transcribe=transcribe_speech_sync)
+        self.assertTrue(session.utterance_buffer)
+        await ingest_audio_chunk(session, b"abc" * 400, transcribe=transcribe_silence_sync)
+        self.assertEqual(session.utterance_buffer, "")
+        self.assertEqual(len(session.presentation_parts), 1)
+
+    async def test_busy_stt_queues_chunks_fifo(self):
+        session = CopilotSession(session_id="session_test")
+        session.phase = "presentation"
+        order: list[str] = []
+
+        def transcribe(data, filename="chunk.webm", content_type="audio/webm"):
+            order.append(data.decode())
+            return ""
+
+        session.stt_busy = True
+        await ingest_audio_chunk(session, b"one", transcribe=transcribe)
+        await ingest_audio_chunk(session, b"two", transcribe=transcribe)
+        self.assertEqual(len(session.pending_audio), 2)
+        session.stt_busy = False
+        await ingest_audio_chunk(session, b"three", transcribe=transcribe)
+        self.assertEqual(order, ["three", "one", "two"])
+        self.assertEqual(len(session.pending_audio), 0)
+
+    async def test_busy_llm_queues_followup(self):
+        session = CopilotSession(session_id="session_test")
+        session.phase = "viva"
+        session.current_question = "What is JWT?"
+        called: list[str] = []
+
+        def fake_generate(context, _asked):
+            called.append(context["candidateAnswer"]["text"])
+            return {
+                "analysis": {"topics": [], "concepts": [], "technologies": [], "claims": [], "gaps": []},
+                "main_points": [],
+                "suggestions": [
+                    {
+                        "question": "How do you expire tokens?",
+                        "reason": "Not covered.",
+                        "difficulty": "intermediate",
+                        "priority": "high",
+                    }
+                ],
+            }
+
+        session.busy_llm = True
+        await _finalize_utterance(
+            session,
+            "We use JWT authentication with NestJS for our API, and the client stores the access token after login then sends it on every request, while guards validate each token before any controller method is allowed to run at all.",
+            generate=fake_generate,
+        )
+        self.assertEqual(called, [])
+        self.assertEqual(len(session.pending_followups), 1)
+        session.busy_llm = False
+        await _run_followups(
+            session,
+            "answer_flush",
+            candidate_answer="Flush queued follow-up from the first answer now.",
+            generate=fake_generate,
+        )
+        self.assertGreaterEqual(len(called), 2)
+
+    async def test_ingest_text_partial_updates_transcript_buffer(self):
+        session = CopilotSession(session_id="session_test")
+        session.phase = "viva"
+        await ingest_text(session, "We use JWT auth", is_final=False)
+        self.assertEqual(session.utterance_buffer, "We use JWT auth")
+
+    async def test_ingest_text_final_bypasses_stt_and_triggers_followups(self):
+        """Browser Web Speech final results should reach the LLM follow-up
+        pipeline directly, without invoking Groq Whisper STT at all."""
+        session = CopilotSession(session_id="session_test")
+        session.phase = "viva"
+        session.current_question = "What is JWT?"
+        called: list[str] = []
+
+        def fake_generate(context, _asked):
+            called.append(context["candidateAnswer"]["text"])
+            return {
+                "analysis": {"topics": [], "concepts": [], "technologies": [], "claims": [], "gaps": []},
+                "main_points": [],
+                "suggestions": [
+                    {
+                        "question": "How do you expire tokens?",
+                        "reason": "Not covered.",
+                        "difficulty": "intermediate",
+                        "priority": "high",
+                    }
+                ],
+            }
+
+        answer = (
+            "We use JWT authentication with NestJS for our API, and the client "
+            "stores the access token after login then sends it on every request, "
+            "while guards validate each token before any controller runs at all."
+        )
+        await ingest_text(session, answer, is_final=True, generate=fake_generate)
+        self.assertEqual(called, [answer])
+        self.assertEqual(session.utterance_buffer, "")
+
+    async def test_ingest_text_ignored_outside_active_phase(self):
+        session = CopilotSession(session_id="session_test")
+        session.phase = "idle"
+        await ingest_text(session, "Hello there, this is a test.", is_final=True)
+        self.assertEqual(session.transcript_log, [])
+
+
+class ProviderChainTests(unittest.TestCase):
+    """Tests for the multi-provider chat chain (Groq -> Gemini -> OpenRouter)."""
+
+    def test_providers_returns_three_providers(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import _providers
+        providers = _providers()
+        names = [p.name for p in providers]
+        self.assertEqual(names, ["Groq", "Gemini", "OpenRouter"])
+
+    def test_groq_provider_has_openai_kind(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import _providers
+        groq = _providers()[0]
+        self.assertEqual(groq.kind, "openai")
+        self.assertIn("groq.com", groq.base_url)
+
+    def test_gemini_provider_has_gemini_kind(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import _providers
+        gemini = _providers()[1]
+        self.assertEqual(gemini.kind, "gemini")
+        self.assertIn("generativelanguage.googleapis.com", gemini.base_url)
+
+    def test_openrouter_provider_has_extra_headers(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import _providers
+        openrouter = _providers()[2]
+        self.assertIn("HTTP-Referer", openrouter.extra_headers)
+        self.assertIn("X-Title", openrouter.extra_headers)
+
+    def test_no_keys_raises_descriptive_error(self):
+        import os
+        from unittest.mock import patch
+        from Gradex_AI_Server.app.viva_copilot.groq_client import groq_chat
+
+        # Clear all provider keys so no provider is tried.
+        env_overrides = {
+            k: "" for k in (
+                "VIVA_COPILOT_API_KEY", "VIVA_LLM_API_KEY", "GROQ_API_KEY",
+                "AI_API_KEY", "BACKUP_API_KEY", "GEMINI_API_KEY",
+                "GOOGLE_API_KEY", "OPENROUTER_API_KEY",
+            )
+        }
+        with patch.dict(os.environ, env_overrides, clear=False):
+            with self.assertRaises(RuntimeError) as ctx:
+                groq_chat("system", {"test": True})
+            self.assertIn("No AI provider configured", str(ctx.exception))
+
+    def test_dedupe_removes_empty_and_duplicates(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import _dedupe
+        result = _dedupe(["a", "", "b", "a", "c", ""])
+        self.assertEqual(result, ["a", "b", "c"])
+
+    def test_chat_model_fallbacks_returns_groq_models(self):
+        from Gradex_AI_Server.app.viva_copilot.groq_client import chat_model_fallbacks
+        fallbacks = chat_model_fallbacks()
+        self.assertIsInstance(fallbacks, list)
+        self.assertGreater(len(fallbacks), 0)
+        self.assertIn("openai/gpt-oss-20b", fallbacks)
+
+
+class NearDuplicateTests(unittest.TestCase):
+    def test_growing_utterance_is_near_duplicate(self):
+        # The two STT paths finalize the same speech at different lengths.
+        self.assertTrue(is_near_duplicate("Eat him I said and", ["Eat him I said"]))
+
+    def test_prefix_in_either_direction(self):
+        self.assertTrue(is_near_duplicate("We use JWT", ["We use JWT auth for the API"]))
+
+    def test_distinct_answers_are_not_near_duplicates(self):
+        self.assertFalse(
+            is_near_duplicate(
+                "Guards validate the token before controllers run",
+                ["The client stores the access token after login"],
+            )
+        )
+
+    def test_detect_final_answer_rejects_near_duplicate(self):
+        self.assertIsNone(
+            detect_final_answer(
+                "Guards validate the token before controllers run now",
+                [],
+                min_words=5,
+                recent_texts=["Guards validate the token before controllers run"],
+            )
+        )
+
+
+class VivaSuggestionGateTests(unittest.TestCase):
+    def test_first_answer_passes_without_prior_timestamp(self):
+        self.assertTrue(
+            should_refresh_viva_suggestions(pending_words=40, last_at=0.0, now=1000.0)
+        )
+
+    def test_blocked_when_too_soon(self):
+        self.assertFalse(
+            should_refresh_viva_suggestions(pending_words=40, last_at=995.0, now=1000.0)
+        )
+
+    def test_blocked_when_too_few_words(self):
+        self.assertFalse(
+            should_refresh_viva_suggestions(pending_words=8, last_at=940.0, now=1000.0)
+        )
+
+    def test_first_batch_needs_fifteen_words(self):
+        self.assertFalse(
+            should_refresh_viva_suggestions(pending_words=14, last_at=0.0, now=1000.0)
+        )
+        self.assertTrue(
+            should_refresh_viva_suggestions(pending_words=15, last_at=0.0, now=1000.0)
+        )
+
+    def test_passes_when_both_gates_clear(self):
+        self.assertTrue(
+            should_refresh_viva_suggestions(pending_words=40, last_at=984.0, now=1000.0)
+        )
+
+
+class NoisyVivaTranscriptTests(unittest.IsolatedAsyncioTestCase):
+    """Regression: a burst of short fragments must not each fire the LLM."""
+
+    async def test_fragment_burst_yields_one_call_and_drops_noise(self):
+        session = CopilotSession(session_id="session_noise")
+        session.phase = "viva"
+        calls: list[str] = []
+
+        def fake_generate(context, history=None):
+            calls.append(context.get("candidate_answer", ""))
+            return {
+                "analysis": {"topics": [], "concepts": [], "technologies": [], "claims": [], "gaps": []},
+                "main_points": [],
+                "suggestions": [
+                    {"question": "q", "reason": "r", "difficulty": "intermediate", "priority": "high"}
+                ],
+            }
+
+        fragments = [
+            "Uh so the localist is hosted on Azure so apart from that our client "
+            "side then talks back in through the gateway and we keep the session "
+            "state in Redis for now while we finish the rest of it",
+            "Uh having 100",
+            "Energy practical professional",
+            "He doesn't",
+            "Eat him I said",
+            "Eat him I said and",
+        ]
+        for fragment in fragments:
+            await _finalize_utterance(session, fragment, generate=fake_generate)
+
+        # One substantive utterance cleared the gate; the 3-4 word noise did not.
+        self.assertEqual(len(calls), 1)
+        kept = [entry["text"] for entry in session.transcript_log]
+        self.assertNotIn("He doesn't", kept)
+        self.assertNotIn("Eat him I said and", kept)
+
+
+if __name__ == "__main__":
+    unittest.main()
