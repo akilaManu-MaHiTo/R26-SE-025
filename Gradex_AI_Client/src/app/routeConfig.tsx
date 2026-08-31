@@ -57,8 +57,8 @@ export const AGENT_CONFIG: AgentConfig[] = [
       },
       {
         path: "/diagram-evaluation/diagram-reconstruction",
-        label: "Diagram Reconstruction",
-        title: "Diagram Reconstruction",
+        label: "Diagram History",
+        title: "Diagram History",
         subtitle: "Recreate saved ER structure from server details",
         element: <DiagramReconstructionPage />,
       },
