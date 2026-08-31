@@ -1,0 +1,652 @@
+[
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd5d"
+    },
+    "student_id": "IT22263551",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Outstanding architecture diagram with every required layer, component, data store, and interaction shown clearly.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:00:00+05:30",
+    "updated_at": "2026-08-31T13:00:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd5e"
+    },
+    "student_id": "IT22263552",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Excellent diagram with complete components and only one minor omission in the labelled interaction flow.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:01:00+05:30",
+    "updated_at": "2026-08-31T13:01:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd5f"
+    },
+    "student_id": "IT22263553",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 17,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Good diagram with correct schema and query-processing structure; some storage, recovery, security, and flow detail is missing.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:02:00+05:30",
+    "updated_at": "2026-08-31T13:02:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd60"
+    },
+    "student_id": "IT22263554",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 16,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Good overall architecture, but several query-processing and service labels and some directional links are incomplete.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:03:00+05:30",
+    "updated_at": "2026-08-31T13:03:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd61"
+    },
+    "student_id": "IT22263555",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 14,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Satisfactory diagram showing the main request path; catalog, mappings, security, and connection detail need improvement.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:04:00+05:30",
+    "updated_at": "2026-08-31T13:04:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd62"
+    },
+    "student_id": "IT22263556",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 12,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Basic architecture is recognizable, but internal schema, catalog, storage services, and recovery flow are only partly shown.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:05:00+05:30",
+    "updated_at": "2026-08-31T13:05:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd63"
+    },
+    "student_id": "IT22263557",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 10,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Partial diagram with the central processing path but limited schema, transaction, security, and logging detail.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:06:00+05:30",
+    "updated_at": "2026-08-31T13:06:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd64"
+    },
+    "student_id": "IT22263558",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 8,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        }
+      ],
+      "overall_feedback": "Weak diagram containing only a basic query-to-storage path and several missing architecture sections.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:07:00+05:30",
+    "updated_at": "2026-08-31T13:07:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd65"
+    },
+    "student_id": "IT22263559",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 6,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        }
+      ],
+      "overall_feedback": "Very limited diagram; schema architecture, catalog, transaction services, security, and most links are absent.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:08:00+05:30",
+    "updated_at": "2026-08-31T13:08:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd66"
+    },
+    "student_id": "IT22263560",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 4,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Minimal attempt showing only a parser and database files, without the required DBMS architecture or flow.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:09:00+05:30",
+    "updated_at": "2026-08-31T13:09:00+05:30"
+  }
+]

@@ -23,10 +23,7 @@ from app.ingestion.student_data import NormalizedStudentInput, normalize_student
 from app.llm.ollama import OllamaUnavailable
 from app.llm.roles.student_analysis import QuestionSemantics, StudentInsightResponse
 from app.schemas.student import StudentAnalyticsDocument
-from app.services.llm_service import (
-    classify_question_semantics,
-    generate_student_insights,
-)
+from app.services.llm_service import generate_student_insights
 
 
 @dataclass(frozen=True)
@@ -44,28 +41,58 @@ class MaterializationResult:
     failures: list[MaterializationFailure] = field(default_factory=list)
 
 
-_RULE_CONFIDENCE = {"high": 0.85, "medium": 0.65, "low": 0.4}
+def _try_bloom_semantics(question_text: str) -> QuestionSemantics:
+    """Bloom ModernBERT ONLY: mandatory ModernBERT prediction for Bloom level, topic from rules (without double bloom inference)."""
+    from app.classifier.bloom_classifier import is_bloom_model_available, predict_bloom
+
+    if not is_bloom_model_available():
+        raise RuntimeError(
+            f"Bloom ModernBERT not available at {settings.bloom_model_dir} — "
+            "ensure models/bloom_modernbert/bloom.safetensors + tokenizer exist"
+        )
+    print(f"[Bloom] Classify Q: \"{question_text[:80].replace(chr(10), ' ')}\" ...", flush=True)
+    bloom = predict_bloom(question_text)
+    print(f"[Bloom] -> {bloom['label']} {bloom['level']} conf={bloom['confidence']:.4f}", flush=True)
+    # Topic from rules WITHOUT triggering second bloom inference: compute hits directly
+    from app.analytics.taxonomy import TOPICS
+    from app.classifier.rules import TOPIC_KEYWORDS
+    import re
+
+    lower = question_text.lower()
+    hits: dict[str, int] = {}
+    for topic in TOPICS:
+        kws = TOPIC_KEYWORDS.get(topic)
+        if kws is None:
+            norm = topic.replace("&", "and")
+            kws = TOPIC_KEYWORDS.get(norm)
+        if kws is None and "SQL" in topic:
+            kws = TOPIC_KEYWORDS.get("SQL")
+        if not kws:
+            continue
+        count = 0
+        for kw in kws:
+            count += len(re.findall(re.escape(kw), lower))
+        if count > 0:
+            hits[topic] = count
+    if not hits:
+        dominant_topic = TOPICS[0] if TOPICS else "General"
+        subtopic = dominant_topic
+    else:
+        dominant_topic = max(hits, key=lambda t: hits[t])
+        subtopic = dominant_topic
+    return QuestionSemantics(
+        level=bloom["level"],
+        topic=dominant_topic,
+        subtopic=subtopic,
+        confidence=float(bloom["confidence"]),
+        reason=f"modernbert {bloom['label']} {bloom['confidence']:.3f}",
+    )
 
 
 def _rule_semantics(question_text: str, degraded_reason: str) -> QuestionSemantics:
-    rules = classify_by_rules(question_text)
-    dominant_topic = (
-        max(rules.topic_assignments, key=lambda assignment: assignment.weight).topic
-        if rules.topic_assignments
-        else "General"
-    )
-    subtopic = next(
-        (str(concept).strip() for concept in rules.key_concepts if str(concept).strip()),
-        dominant_topic,
-    )
-    confidence = _RULE_CONFIDENCE.get(rules.confidence, 0.4)
-    return QuestionSemantics(
-        level=rules.bloom_level,
-        topic=dominant_topic,
-        subtopic=subtopic,
-        confidence=confidence,
-        reason=f"rule-based fallback ({degraded_reason})",
-    )
+    """Deprecated fallback — now also uses ModernBERT only (no rule bloom)."""
+    # degraded_reason kept for signature compatibility but ignored for Bloom level
+    return _try_bloom_semantics(question_text)
 
 
 async def _classify_questions(
@@ -73,12 +100,10 @@ async def _classify_questions(
     cache: dict[tuple[str, str], QuestionSemantics],
     progress: StepCallback | None = None,
 ) -> dict[str, QuestionSemantics]:
-    import asyncio
-
+    """Classify questions using ONLY bloom_modernbert for Bloom level (topic from rules)."""
     semantics_by_question: dict[str, QuestionSemantics] = {}
-    course = {"code": normalized.course_code, "name": normalized.course_name}
 
-    # Collect uncached questions — LLM is primary, rule fallback is last resort
+    # Collect uncached questions — BloomModernBERT is the ONLY method for Bloom
     uncached: list = []
     for question in sorted(normalized.questions, key=lambda item: item.question_no):
         cache_key = (normalized.rubric_ref, question.question_no)
@@ -93,36 +118,13 @@ async def _classify_questions(
     if not uncached:
         return semantics_by_question
 
-    async def classify_one(q) -> tuple[str, QuestionSemantics]:
-        try:
-            response = await classify_question_semantics(
-                course,
-                q.question_text,
-                [criterion.criterion for criterion in q.criteria],
-            )
-        except OllamaUnavailable:
-            response = {"status": "degraded", "reason": "ollama_unavailable"}
-
-        if response.get("status") == "ok":
-            try:
-                semantics = QuestionSemantics.model_validate(response.get("semantics"))
-            except ValidationError:
-                semantics = _rule_semantics(q.question_text, "schema_failure")
-        else:
-            semantics = _rule_semantics(
-                q.question_text,
-                str(response.get("reason") or "model_degraded"),
-            )
+    for q in uncached:
+        # Mandatory ModernBERT — no LLM, no rule fallback for Bloom
+        semantics = _try_bloom_semantics(q.question_text)
         if progress is not None:
-            progress(f"classify q{q.question_no}")
-        return q.question_no, semantics
-
-    # Concurrent LLM calls — 1 batch for this submission (typically 4 Qs) → ~30s total, not 4×30s
-    # Rule fallback remains strictly last: only on OllamaUnavailable / schema failure
-    results = await asyncio.gather(*(classify_one(q) for q in uncached))
-    for q_no, semantics in results:
-        cache[(normalized.rubric_ref, q_no)] = semantics
-        semantics_by_question[q_no] = semantics
+            progress(f"classify q{q.question_no} (bloom_model)")
+        cache[(normalized.rubric_ref, q.question_no)] = semantics
+        semantics_by_question[q.question_no] = semantics
 
     return semantics_by_question
 

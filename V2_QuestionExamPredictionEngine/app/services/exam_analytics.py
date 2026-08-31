@@ -4,11 +4,14 @@ from datetime import datetime, timezone
 
 from collections.abc import Callable
 
+from app.analytics.diagram_analysis import compute_diagram_analysis
 from app.analytics.exam_analytics import compute_exam_analytics_stats
 from app.analytics.student_document import build_numeric_analysis
 from app.analytics.weakness import compute_weakness_scores
 from app.db.repository import (
     find_course_for_submission,
+    find_diagram_evaluations_for_exam,
+    find_diagram_markings_for_exam,
     find_graded_submissions_for_exam,
     find_rubric_for_submission,
     upsert_exam_analytics,
@@ -28,6 +31,8 @@ async def compute_exam_analytics(
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict:
     def _progress(msg: str):
+        # Real-time server terminal log for exam analyze (Bloom)
+        print(f"[ExamAnalyze] {msg}", flush=True)
         if progress_callback:
             try:
                 progress_callback(msg)
@@ -129,6 +134,18 @@ async def compute_exam_analytics(
             semester = int((rubric or {}).get("semester") or 0)
     except (TypeError, ValueError) as exc:
         raise ExamNotFound(f"invalid rubric session identity for {course_code} {session_name}") from exc
+    # Merge diagram analysis if diagram_evaluation data exists for this exam
+    diagram_analysis = None
+    try:
+        diagram_evals = await find_diagram_evaluations_for_exam(db, course_code, session_name, year, month, semester)
+        diagram_marks = await find_diagram_markings_for_exam(db, course_code, session_name, year, month, semester)
+        if diagram_evals:
+            diagram_analysis = compute_diagram_analysis(diagram_evals, diagram_marks)
+            if diagram_analysis:
+                _progress(f"PULSE·AI — Diagram analysis: {diagram_analysis['statistics']['total_students']} students, avg {diagram_analysis['statistics']['average_percentage']:.1f}%")
+    except Exception:
+        pass
+
     document = {
         "subject_code": course_code,
         "subject_name": subject_name,
@@ -138,6 +155,7 @@ async def compute_exam_analytics(
         "session_name": session_name,
         "exam": {"session_name": session_name, "total_marks": total_marks, "question_count": question_count},
         **stats,
+        "diagram_analysis": diagram_analysis,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "analytics_version": "1.0",
     }

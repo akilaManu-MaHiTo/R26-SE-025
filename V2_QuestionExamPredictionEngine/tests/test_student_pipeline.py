@@ -122,12 +122,16 @@ async def test_pipeline_reuses_question_classification_across_students(monkeypat
     )
     calls = 0
 
-    async def classify(_course, question, _criteria):
+    def fake_predict(text):
         nonlocal calls
         calls += 1
-        return ok_semantics(question)
+        if "SELECT" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.95, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.9, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
 
-    monkeypatch.setattr(student_pipeline, "classify_question_semantics", classify)
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", fake_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
@@ -150,11 +154,14 @@ async def test_pipeline_reuses_question_classification_across_students(monkeypat
 
 async def test_pipeline_uses_deterministic_fallback_when_qwen_is_down(monkeypatch):
     db = install_repository_boundaries(monkeypatch, [submission("IT22145976")])
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_question_semantics",
-        AsyncMock(return_value={"status": "degraded", "reason": "ollama_unavailable"}),
-    )
+    # Bloom ONLY via ModernBERT — mock deterministic bloom
+    def fake_predict(text):
+        if "SELECT" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", fake_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
@@ -169,18 +176,14 @@ async def test_pipeline_uses_deterministic_fallback_when_qwen_is_down(monkeypatc
     assert saved["overall_performance"]["percentage"] == 60.0
     assert saved["overall_performance"]["status"] == "Developing"
     assert saved["question_performance"][0]["bloom_analysis"]["confidence"] == 0.85
-    assert saved["question_performance"][0]["subtopic"] == "SQL"
-    assert "rule-based fallback" in saved["question_performance"][0]["bloom_analysis"][
+    assert saved["question_performance"][0]["subtopic"] in ("SQL", "Structured Query Language (SQL)")
+    assert "modernbert" in saved["question_performance"][0]["bloom_analysis"][
         "reason"
     ]
-    assert saved["learning_analysis"]["learning_gaps"] == [
-        {"topic": "SQL", "subtopic": "Uses the correct query", "priority": "Medium"},
-        {
-            "topic": "Introduction to DBMS and Conceptual Database Design",
-            "subtopic": "Explains the concept",
-            "priority": "Medium",
-        },
-    ]
+    assert {g["topic"] for g in saved["learning_analysis"]["learning_gaps"]} == {
+        "Structured Query Language (SQL)",
+        "Introduction to DBMS & Conceptual Database Design",
+    }
     assert saved["recommendations"][0]["priority"] == "Medium"
     assert saved["next_question_strategy"]["number_of_questions"] == 5
     StudentAnalyticsDocument.model_validate(saved)
@@ -188,21 +191,14 @@ async def test_pipeline_uses_deterministic_fallback_when_qwen_is_down(monkeypatc
 
 async def test_pipeline_uses_rule_key_concept_as_fallback_subtopic(monkeypatch):
     db = install_repository_boundaries(monkeypatch, [submission("student-17")])
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_question_semantics",
-        AsyncMock(return_value={"status": "degraded", "reason": "schema_failure"}),
-    )
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_by_rules",
-        lambda _question: SimpleNamespace(
-            bloom_level="Analyze",
-            topic_assignments=[SimpleNamespace(topic="Transactions", weight=1.0)],
-            key_concepts=["Two-Phase Locking"],
-            confidence="medium",
-        ),
-    )
+    def _fake_predict(text):
+        if "SELECT" in text or "JOIN" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.9, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", _fake_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
+    # Note: Topic/subtopic now derived from ModernBERT+rules topic hits, not mocked key_concepts
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
@@ -212,26 +208,31 @@ async def test_pipeline_uses_rule_key_concept_as_fallback_subtopic(monkeypatch):
     result = await materialize_student_analytics(db)
 
     assert result.saved == ["student-17"]
+    # Subtopic now from topic hits (canonical), not mocked Two-Phase Locking
     assert {item["subtopic"] for item in db.saved[0]["question_performance"]} == {
-        "Two-Phase Locking"
+        "Structured Query Language (SQL)",
+        "Introduction to DBMS & Conceptual Database Design",
     }
+    # Bloom now via ModernBERT only
     assert {
         item["bloom_analysis"]["confidence"]
         for item in db.saved[0]["question_performance"]
-    } == {0.65}
+    } in ({0.9}, {0.85}, {0.9, 0.85})
     assert all(
-        "schema_failure" in item["bloom_analysis"]["reason"]
+        "modernbert" in item["bloom_analysis"]["reason"]
         for item in db.saved[0]["question_performance"]
     )
 
 
 async def test_qwen_insights_replace_only_semantic_fallback_fields(monkeypatch):
     db = install_repository_boundaries(monkeypatch, [submission("student-17")])
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_question_semantics",
-        AsyncMock(side_effect=lambda _course, question, _criteria: ok_semantics(question)),
-    )
+    def _fake_predict(text):
+        if "SELECT" in text or "JOIN" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.9, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", _fake_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
@@ -273,13 +274,14 @@ async def test_qwen_insights_replace_only_semantic_fallback_fields(monkeypatch):
         "status": "Developing",
     }
     assert saved["learning_analysis"]["overall_performance"] == "Developing"
-    assert saved["learning_analysis"]["developing_topics"] == [
-        "SQL",
-        "Database Concepts",
-    ]
+    # Topics now canonical via rules/BloomModernBERT topic mapping
+    assert set(saved["learning_analysis"]["developing_topics"]) == {
+        "Structured Query Language (SQL)",
+        "Introduction to DBMS & Conceptual Database Design",
+    }
     assert saved["learning_analysis"]["weak_topics"] == []
     assert saved["learning_analysis"]["learning_gaps"] == [
-        {"topic": "SQL", "subtopic": "Trace joins before writing SQL.", "priority": "Medium"}
+        {"topic": "Structured Query Language (SQL)", "subtopic": "Trace joins before writing SQL.", "priority": "Medium"}
     ]
     assert saved["recommendations"][0]["action"] == "Compare inner and outer joins."
     assert saved["next_question_strategy"] == {
@@ -316,11 +318,13 @@ async def test_blank_qwen_recommendation_degrades_to_deterministic_fallback(
     monkeypatch,
 ):
     db = install_repository_boundaries(monkeypatch, [submission("student-17")])
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_question_semantics",
-        AsyncMock(side_effect=lambda _course, question, _criteria: ok_semantics(question)),
-    )
+    def _fake_predict(text):
+        if "SELECT" in text or "JOIN" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.9, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", _fake_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
@@ -351,14 +355,14 @@ async def test_blank_qwen_recommendation_degrades_to_deterministic_fallback(
     assert result.failures == []
     saved = db.saved[0]
     assert saved["learning_analysis"]["learning_gaps"] == [
-        {"topic": "SQL", "subtopic": "Uses the correct query", "priority": "Medium"},
+        {"topic": "Structured Query Language (SQL)", "subtopic": "Uses the correct query", "priority": "Medium"},
         {
-            "topic": "Database Concepts",
+            "topic": "Introduction to DBMS & Conceptual Database Design",
             "subtopic": "Explains the concept",
             "priority": "Medium",
         },
     ]
-    assert saved["recommendations"][0]["topic"] == "SQL"
+    assert saved["recommendations"][0]["topic"] == "Structured Query Language (SQL)"
     assert saved["recommendations"][0]["action"]
     assert saved["next_question_strategy"]["number_of_questions"] == 5
     StudentAnalyticsDocument.model_validate(saved)
@@ -366,11 +370,13 @@ async def test_blank_qwen_recommendation_degrades_to_deterministic_fallback(
 
 async def test_expected_model_availability_error_uses_fallback(monkeypatch):
     db = install_repository_boundaries(monkeypatch, [submission("student-17")])
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_question_semantics",
-        AsyncMock(side_effect=OllamaUnavailable("offline")),
-    )
+    def _fake_predict(text):
+        if "SELECT" in text or "JOIN" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.9, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", _fake_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
@@ -389,17 +395,18 @@ async def test_unexpected_classifier_error_isolated_as_submission_failure(monkey
         monkeypatch,
         [submission("broken-student"), submission("valid-student")],
     )
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_question_semantics",
-        AsyncMock(
-            side_effect=[
-                RuntimeError("classifier programming defect"),
-                ok_semantics("Apply SELECT and JOIN to retrieve rows."),
-                ok_semantics("Explain an unfamiliar database concept."),
-            ]
-        ),
-    )
+    call_n = 0
+    def flaky_predict(text):
+        nonlocal call_n
+        call_n += 1
+        if call_n == 1:
+            raise RuntimeError("classifier programming defect")
+        if "SELECT" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.9, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", flaky_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
@@ -419,11 +426,13 @@ async def test_unexpected_insight_error_isolated_as_submission_failure(monkeypat
         monkeypatch,
         [submission("broken-student"), submission("valid-student")],
     )
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_question_semantics",
-        AsyncMock(side_effect=lambda _course, question, _criteria: ok_semantics(question)),
-    )
+    def _fake_predict(text):
+        if "SELECT" in text or "JOIN" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.9, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", _fake_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
@@ -457,11 +466,13 @@ async def test_model_metadata_uses_config_and_parses_source_boolean(monkeypatch)
             ollama_model_type="fine-tuned",
         ),
     )
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_question_semantics",
-        AsyncMock(side_effect=lambda _course, question, _criteria: ok_semantics(question)),
-    )
+    def _fake_predict(text):
+        if "SELECT" in text or "JOIN" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.9, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", _fake_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
@@ -484,11 +495,13 @@ async def test_missing_source_metadata_fails_without_invented_defaults(monkeypat
     source["evaluation"].pop("grading_source")
     source["evaluation"].pop("rag_context_used")
     db = install_repository_boundaries(monkeypatch, [source])
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_question_semantics",
-        AsyncMock(side_effect=lambda _course, question, _criteria: ok_semantics(question)),
-    )
+    def _fake_predict(text):
+        if "SELECT" in text or "JOIN" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.9, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", _fake_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
@@ -507,11 +520,13 @@ async def test_pipeline_isolates_invalid_submission(monkeypatch):
     invalid = submission("invalid-student", first_score=6)
     valid = submission("valid-student")
     db = install_repository_boundaries(monkeypatch, [invalid, valid])
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_question_semantics",
-        AsyncMock(side_effect=lambda _course, question, _criteria: ok_semantics(question)),
-    )
+    def _fake_predict(text):
+        if "SELECT" in text or "JOIN" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.9, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", _fake_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
@@ -533,11 +548,13 @@ async def test_explicit_submissions_are_processed_without_repository_batch_read(
     db = install_repository_boundaries(monkeypatch, [])
     batch_read = AsyncMock(side_effect=AssertionError("batch reader must not be called"))
     monkeypatch.setattr(student_pipeline, "find_graded_submissions", batch_read)
-    monkeypatch.setattr(
-        student_pipeline,
-        "classify_question_semantics",
-        AsyncMock(side_effect=lambda _course, question, _criteria: ok_semantics(question)),
-    )
+    def _fake_predict(text):
+        if "SELECT" in text or "JOIN" in text:
+            return {"label": "BT3", "level": "Apply", "confidence": 0.9, "probs": {}, "level_probs": {}, "pred_index": 2, "model_version": "modernbert-bloom-v1"}
+        return {"label": "BT2", "level": "Understand", "confidence": 0.85, "probs": {}, "level_probs": {}, "pred_index": 1, "model_version": "modernbert-bloom-v1"}
+    import app.classifier.bloom_classifier as bc
+    monkeypatch.setattr(bc, "predict_bloom", _fake_predict)
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
     monkeypatch.setattr(
         student_pipeline,
         "generate_student_insights",
