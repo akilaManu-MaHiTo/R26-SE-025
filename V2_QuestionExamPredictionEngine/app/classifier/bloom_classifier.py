@@ -154,7 +154,7 @@ def predict_bloom_batch(texts: list[str], max_length: int | None = None) -> list
     id2label = {int(k): v for k, v in id2label.items()}
 
     results: list[dict[str, Any]] = []
-    for row in probs:
+    for idx, row in enumerate(probs):
         pred_idx = int(row.argmax().item())
         label = id2label.get(pred_idx, f"BT{pred_idx+1}")
         level = BLOOM_ID2LEVEL.get(label, label)
@@ -162,6 +162,10 @@ def predict_bloom_batch(texts: list[str], max_length: int | None = None) -> list
         prob_dict = {id2label[i]: round(float(s), 6) for i, s in enumerate(row)}
         # also map to level names for convenience
         level_probs = {BLOOM_ID2LEVEL.get(k, k): v for k, v in prob_dict.items()}
+        text_preview = texts[idx][:80].replace("\n", " ") if idx < len(texts) else ""
+        # Real-time terminal log for exam analyze
+        print(f"[Bloom ModernBERT] \"{text_preview}\" -> {label} {level} conf={conf:.4f} probs={level_probs}", flush=True)
+        logger.info("Bloom %s %s %.4f for %r", label, level, conf, text_preview)
         results.append(
             {
                 "label": label,
