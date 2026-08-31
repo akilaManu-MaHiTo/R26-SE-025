@@ -1,211 +1,919 @@
-import { Upload, Play, CheckCircle2, Mic, FileDown, Sparkles, Pause } from "lucide-react";
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import {
+  Upload,
+  CheckCircle2,
+  FileDown,
+  Loader2,
+  AlertCircle,
+  RotateCcw,
+  Clock3,
+} from "lucide-react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Progress } from "./ui/progress";
 import { Input } from "./ui/input";
-import { Checkbox } from "./ui/checkbox";
+import { Skeleton } from "./ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import { AIPageBanner, AIBadgePill } from "./AIBrand";
+import { VivaVideoPlayer, VivaVideoPlayerHandle } from "./viva/VivaVideoPlayer";
+import { ScoreOverview } from "./viva/ScoreOverview";
+import { AISummary } from "./viva/AISummary";
+import { KeyMoments } from "./viva/KeyMoments";
+import { EmotionDistribution } from "./viva/EmotionDistribution";
+import { EngagementTimeline } from "./viva/EngagementTimeline";
+import { TranscriptPanel } from "./viva/TranscriptPanel";
+import { AudioAnalysisPanel } from "./viva/AudioAnalysisPanel";
+import { LlmJudgePanel } from "./viva/LlmJudgePanel";
+import { QaRelevancePanel } from "./viva/QaRelevancePanel";
+import { LiveVivaRecorder } from "./viva/LiveVivaRecorder";
+import {
+  fetchVivaAnalyzeProgress,
+  subscribeVivaAnalyzeProgress,
+  VivaAnalyzeProgress,
+  VivaProgressSnapshot,
+} from "./viva/VivaAnalyzeProgress";
+import { EvaluationPanel } from "./viva/EvaluationPanel";
+import { ReportPrintView } from "./viva/ReportPrintView";
+import { publishVivaMark } from "./viva/vivaMarksApi";
+import {
+  SubjectRubricSummary,
+  listSubjectContent,
+} from "./viva/subjectContentApi";
+import {
+  AnalysisResult,
+  AssessmentMode,
+  buildAIInterpretation,
+  buildKeyMoments,
+  formatTime,
+} from "./viva/types";
 
-const criteria = [
-  { name: "Communication Skills", score: 8, max: 10 },
-  { name: "Technical Knowledge", score: 7, max: 10 },
-  { name: "Problem-Solving", score: 9, max: 10 },
-  { name: "Presentation Quality", score: 7, max: 10 },
-];
-
-const moments = [
-  { t: "00:42", label: "Introduction & background", tone: "neutral" },
-  { t: "02:15", label: "Strong explanation of B+ trees", tone: "good" },
-  { t: "05:08", label: "Hesitation on isolation levels", tone: "warn" },
-  { t: "08:27", label: "Excellent example with real-world case", tone: "good" },
-  { t: "11:54", label: "Closing summary", tone: "neutral" },
-];
-
-const toneColor: Record<string, string> = {
-  good: "bg-emerald-500",
-  warn: "bg-amber-500",
-  neutral: "bg-accent0",
-};
+/** Radix Select rejects an empty string as an item value, so "no subject" needs
+ *  a sentinel that is mapped back to "" before the code reaches the server. */
+const NO_SUBJECT = "__none__";
 
 export function VivaPage() {
-  const total = criteria.reduce((a, b) => a + b.score, 0);
-  const max = criteria.reduce((a, b) => a + b.max, 0);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string>("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState<string>("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [displayProgress, setDisplayProgress] = useState(0);
+  const [uploadStartTime, setUploadStartTime] = useState<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [analysisPhase, setAnalysisPhase] = useState<"idle" | "uploading" | "processing" | "complete">("idle");
+  const [progressSnapshot, setProgressSnapshot] = useState<VivaProgressSnapshot | null>(null);
+  const progressIdRef = useRef<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
+
+  const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>("WITHOUT_TECHNICAL_ACCURACY");
+  const [technicalAccuracy, setTechnicalAccuracy] = useState<number | null>(null);
+  // Optional link to a subject's concept rubric (see /api/subject-content) so
+  // the server can attach an AI-suggested technical_accuracy_ai score. Only
+  // meaningful in WITH_TECHNICAL_ACCURACY mode; never auto-published either way.
+  const [subjectCode, setSubjectCode] = useState("");
+  // Picked from a list rather than typed: the server matches subject_code
+  // exactly, so a typo silently yields no rubric instead of an error.
+  const [subjectOptions, setSubjectOptions] = useState<SubjectRubricSummary[]>([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
+  const [subjectsFailed, setSubjectsFailed] = useState(false);
+  const [studentId, setStudentId] = useState("");
+  const [published, setPublished] = useState(false);
+  const [autoPublishedWithoutTech, setAutoPublishedWithoutTech] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [sourceTab, setSourceTab] = useState<"upload" | "live">("upload");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoPlayerRef = useRef<VivaVideoPlayerHandle>(null);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const backendBaseUrl =
+    ((import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL) ??
+    "http://localhost:8000";
+  const apiKey =
+    ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env?.VITE_GRADEX_API_KEY) ??
+    "";
+
+  // Deliberately does NOT reset assessmentMode: the examiner picks it upfront,
+  // before choosing upload/live or selecting a file, via the selector below —
+  // not afterward per recording. It stays sticky across "Remove"/re-record so a
+  // lecturer grading several same-type vivas back to back isn't re-asked each time.
+  const resetAssessmentState = () => {
+    setTechnicalAccuracy(null);
+    setStudentId("");
+    setPublished(false);
+    setAutoPublishedWithoutTech(false);
+    setPublishing(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      xhrRef.current?.abort();
+    };
+  }, []);
+
+  // Fetched only in technical mode — a presentation viva never uses a rubric.
+  useEffect(() => {
+    if (assessmentMode !== "WITH_TECHNICAL_ACCURACY") return;
+    let cancelled = false;
+    setSubjectsLoading(true);
+    listSubjectContent()
+      .then((rows) => {
+        if (cancelled) return;
+        setSubjectOptions(rows);
+        setSubjectsFailed(false);
+        // A code held from an earlier session may no longer exist; leaving it
+        // set would show an empty trigger and silently send a dead code.
+        setSubjectCode((current) =>
+          current && !rows.some((row) => row.subject_code === current) ? "" : current,
+        );
+      })
+      .catch(() => {
+        // Non-fatal: the subject link is optional, so a failed lookup must not
+        // block the viva. The field falls back to free text below.
+        if (!cancelled) setSubjectsFailed(true);
+      })
+      .finally(() => {
+        if (!cancelled) setSubjectsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [assessmentMode]);
+
+  const handlePublish = async () => {
+    const markId = analysisResult?.mark_id;
+    if (!markId) {
+      toast.error("Cannot publish", {
+        description:
+          analysisResult?.persistence_error ||
+          "No saved mark_id from analysis — Mongo may be offline.",
+      });
+      return;
+    }
+    if (assessmentMode !== "WITH_TECHNICAL_ACCURACY") {
+      return;
+    }
+    if (published || publishing) return;
+
+    setPublishing(true);
+    try {
+      const saved = await publishVivaMark(markId, {
+        assessment_mode: assessmentMode,
+        technical_accuracy: technicalAccuracy,
+        student_id: studentId.trim() || null,
+        published: true,
+      });
+      // The server recomputes the fused mark on publish. Merge it back, or the
+      // panel and the printed report keep showing the pre-fusion score.
+      setAnalysisResult((previous) => {
+        if (!previous) return previous;
+        const merged: AnalysisResult = {
+          ...previous,
+          final_score: saved.final_score ?? previous.final_score,
+          final_grade: saved.final_grade ?? previous.final_grade,
+          assessment_mode: assessmentMode,
+        };
+        if (previous.assessment) {
+          merged.assessment = {
+            ...previous.assessment,
+            final_score: saved.final_score ?? previous.assessment.final_score,
+            grade: saved.final_grade ?? previous.assessment.grade,
+            technical_accuracy: technicalAccuracy,
+            assessment_mode: assessmentMode,
+          };
+        }
+        return merged;
+      });
+      setPublished(true);
+      toast.success("Assessment published", {
+        description: `Final mark ${
+          saved.final_score != null ? saved.final_score.toFixed(1) : "—"
+        }/100 (grade ${saved.final_grade ?? "—"}) saved.`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to publish";
+      toast.error("Publish failed", { description: message });
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const uploadProgressRef = useRef(0);
+  useEffect(() => {
+    uploadProgressRef.current = uploadProgress;
+  }, [uploadProgress]);
+
+  // Eases the displayed percentage toward the real XHR progress instead of snapping
+  // straight to 100% when a small file uploads to localhost almost instantly.
+  useEffect(() => {
+    if (!isAnalyzing) {
+      setDisplayProgress(0);
+      return;
+    }
+    let rafId: number;
+    const step = () => {
+      setDisplayProgress((prev) => {
+        const target = uploadProgressRef.current;
+        const next = prev + (target - prev) * 0.15;
+        return Math.abs(target - next) < 0.4 ? target : next;
+      });
+      rafId = requestAnimationFrame(step);
+    };
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [isAnalyzing]);
+
+  // Ticks the elapsed-time readout live rather than only on the rare XHR progress events.
+  useEffect(() => {
+    if (!isAnalyzing || uploadStartTime == null) return;
+    const id = setInterval(() => setElapsedMs(Date.now() - uploadStartTime), 100);
+    return () => clearInterval(id);
+  }, [isAnalyzing, uploadStartTime]);
+
+  // Analyze progress arrives over a single SSE connection for the whole run.
+  // The server pushes each stage as it happens, so there is no polling timer
+  // here; the slow interval below is only a fallback for a failed stream.
+  useEffect(() => {
+    if (!isAnalyzing || analysisPhase !== "processing") return;
+    const progressId = progressIdRef.current;
+    if (!progressId) return;
+
+    let cancelled = false;
+    let fallbackId: number | null = null;
+
+    const startFallbackPolling = () => {
+      if (cancelled || fallbackId !== null) return;
+      const poll = async () => {
+        const next = await fetchVivaAnalyzeProgress(backendBaseUrl, progressId, apiKey);
+        if (!cancelled && next) setProgressSnapshot(next);
+      };
+      void poll();
+      // Deliberately slow: this path only runs when streaming is unavailable,
+      // and stage changes are seconds apart at best.
+      fallbackId = window.setInterval(() => void poll(), 3000);
+    };
+
+    const unsubscribe = subscribeVivaAnalyzeProgress(
+      backendBaseUrl,
+      progressId,
+      apiKey,
+      (next) => {
+        if (!cancelled) setProgressSnapshot(next);
+      },
+      startFallbackPolling,
+    );
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      if (fallbackId !== null) window.clearInterval(fallbackId);
+    };
+  }, [isAnalyzing, analysisPhase, backendBaseUrl, apiKey]);
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileSelect(files[0]);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFileSelect(e.target.files[0]);
+    }
+  };
+
+  const handleFileSelect = (file: File, options?: { autoAnalyze?: boolean }) => {
+    const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|avi|mkv)$/i.test(file.name);
+    if (!isVideo) {
+      setError("Please upload a valid video file (MP4, WEBM, AVI, MOV, etc.)");
+      return;
+    }
+
+    const maxSize = 1024 * 1024 * 1024; // 1 GB
+    if (file.size > maxSize) {
+      setError("File size must be less than 1 GB");
+      return;
+    }
+
+    setError("");
+    setUploadedFile(file);
+    setAnalysisResult(null);
+    setVideoDuration(null);
+    resetAssessmentState();
+
+    setVideoPreview((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return URL.createObjectURL(file);
+    });
+    if (options?.autoAnalyze) {
+      void analyzeVideo(file);
+    }
+  };
+
+  const analyzeVideo = async (file: File) => {
+    if (!file) return;
+
+    setIsAnalyzing(true);
+    setError("");
+    setUploadProgress(0);
+    setDisplayProgress(0);
+    setElapsedMs(0);
+    setUploadStartTime(Date.now());
+    setAnalysisPhase("uploading");
+    setProgressSnapshot(null);
+    const progressId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `prog_${Date.now()}`;
+    progressIdRef.current = progressId;
+    const formData = new FormData();
+    formData.append("video", file);
+    formData.append("progress_id", progressId);
+    // Chosen upfront via the selector below, before this file was ever picked —
+    // the server uses this to decide whether the mark may auto-publish (see
+    // main.py::viva_analyze). Technical vivas never auto-publish.
+    formData.append("assessment_mode", assessmentMode);
+    if (assessmentMode === "WITH_TECHNICAL_ACCURACY" && subjectCode.trim()) {
+      formData.append("subject_code", subjectCode.trim());
+    }
+
+    try {
+      const apiUrl = `${backendBaseUrl}/api/viva-analyze`;
+
+      const response = await new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener("progress", (e: ProgressEvent) => {
+          if (e.lengthComputable) {
+            const progress = (e.loaded / e.total) * 100;
+            setUploadProgress(Math.round(progress));
+          }
+        });
+
+        // The bytes finish transferring well before the server responds (it runs the
+        // full analysis inside this same request), so flip to "processing" as soon as
+        // the upload itself completes rather than waiting for the whole response.
+        xhr.upload.addEventListener("load", () => {
+          setUploadProgress(100);
+          setAnalysisPhase("processing");
+        });
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status === 200) {
+            resolve(xhr.responseText);
+          } else {
+            let backendDetail = "";
+            try {
+              const errorPayload = JSON.parse(xhr.responseText || "{}");
+              if (typeof errorPayload?.detail === "string" && errorPayload.detail.trim()) {
+                backendDetail = errorPayload.detail.trim();
+              }
+            } catch {
+              // Ignore JSON parse errors and fallback to status text.
+            }
+
+            const fallback = `HTTP ${xhr.status}: ${xhr.statusText || "Request failed"}`;
+            reject(new Error(backendDetail || fallback));
+          }
+        });
+
+        xhr.addEventListener("error", () => reject(new Error("Upload failed")));
+        xhr.addEventListener("abort", () => reject(new Error("Upload aborted")));
+        xhr.addEventListener("timeout", () =>
+          reject(new Error("Analysis timed out. Try a shorter recording.")),
+        );
+
+        xhr.open("POST", apiUrl, true);
+        xhr.timeout = 600000;
+        if (apiKey) xhr.setRequestHeader("X-API-Key", apiKey);
+        xhrRef.current = xhr;
+        xhr.send(formData);
+      });
+
+      const data = JSON.parse(response) as AnalysisResult;
+      setAnalysisResult(data);
+      setAnalysisPhase("complete");
+      // Pre-fill from the AI suggestion when available; the examiner can still
+      // adjust it before publishing — see EvaluationPanel's Technical accuracy slider.
+      const suggested = data.technical_accuracy_ai?.overall_score;
+      setTechnicalAccuracy(suggested != null ? Math.round(suggested) : null);
+      const wasAutoPublished = Boolean(data.auto_published && data.published);
+      setAutoPublishedWithoutTech(wasAutoPublished);
+      setPublished(wasAutoPublished);
+      setPublishing(false);
+      if (data.persistence_error) {
+        toast.warning("Analysis complete — mark not saved", {
+          description: data.persistence_error,
+        });
+      } else if (wasAutoPublished) {
+        toast.success("Analysis complete — score saved", {
+          description: `Final mark ${data.final_score?.toFixed(1) ?? data.assessment?.final_score ?? "—"}/100 (grade ${data.final_grade ?? data.assessment?.grade ?? "—"}) saved.`,
+        });
+      } else if (data.mark_id) {
+        toast.success("Analysis complete", {
+          description:
+            data.assessment?.status === "INCOMPLETE"
+              ? "Recording is incomplete — no official grade saved."
+              : assessmentMode === "WITH_TECHNICAL_ACCURACY"
+                ? "Draft saved — enter a technical accuracy score and publish when ready."
+                : "Draft saved.",
+        });
+      } else if (data.assessment) {
+        toast.success("Analysis complete", {
+          description:
+            data.assessment.status === "INCOMPLETE"
+              ? "Recording is incomplete — no official grade."
+              : `AI performance ${data.assessment.ai_performance?.score ?? "—"} / 100.`,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to analyze video";
+      setError(message);
+      setAnalysisPhase("idle");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const seekVideo = (seconds: number) => videoPlayerRef.current?.seekTo(seconds);
+
+  const keyMoments = useMemo(
+    () => (analysisResult ? buildKeyMoments(analysisResult.timeline) : []),
+    [analysisResult]
+  );
+
+  const aiInterpretation = useMemo(
+    () => (analysisResult ? buildAIInterpretation(analysisResult) : []),
+    [analysisResult]
+  );
+
+  const aiRecommendation = analysisResult
+    ? aiInterpretation[0] ?? "Analysis complete — review the recording to finalize scoring."
+    : "Upload a video to see AI-generated recommendations.";
+
+  const audioAnalysis = analysisResult?.audio_analysis;
 
   return (
-    <div className="p-8 space-y-6">
-      {/* AI Page Banner */}
+    <>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 print:hidden">
       <AIPageBanner model="voca" />
 
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="tracking-tight text-foreground">Viva Assessment</h2>
-          <p className="text-sm text-muted-foreground mt-1">Upload, transcribe and score viva voce sessions with AI assistance.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Upload a recording or run a live webcam viva, then transcribe and score with AI.
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <AIBadgePill model="voca" />
-          <Button className="bg-primary hover:bg-primary/90"><FileDown className="size-4 mr-2" />Export report</Button>
+          <Button disabled={!analysisResult} onClick={() => window.print()}>
+            <FileDown className="size-4" />
+            Export report
+          </Button>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Upload */}
-          <Card className="p-6 border-border">
-            <div className="flex items-center justify-between">
-              <div className="text-foreground">Recording</div>
-              <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-0 hover:bg-emerald-50">
-                <CheckCircle2 className="size-3 mr-1" /> Uploaded
-              </Badge>
+      {error && (
+        <Card className="p-4 border-destructive/30 bg-destructive/5">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="size-5 text-destructive mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-destructive">Analysis Error</div>
+              <div className="text-sm text-destructive/90 mt-1">{error}</div>
             </div>
+            {uploadedFile && (
+              <Button size="sm" variant="outline" onClick={() => analyzeVideo(uploadedFile)}>
+                <RotateCcw className="size-3.5" />
+                Retry
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
 
-            <div className="mt-4 rounded-xl border-2 border-dashed border-border bg-muted/40 p-6 hover:border-primary/50 hover:bg-accent/40 transition-colors cursor-pointer text-center">
-              <div className="size-12 rounded-full bg-accent mx-auto flex items-center justify-center text-primary">
-                <Upload className="size-6" />
+      {!videoPreview && (
+        <Card className="p-6">
+          <div className="mb-5">
+            <div className="text-sm font-medium text-foreground mb-2">Assessment type</div>
+            <Tabs
+              value={assessmentMode}
+              onValueChange={(value) => setAssessmentMode(value as AssessmentMode)}
+            >
+              <TabsList>
+                <TabsTrigger value="WITHOUT_TECHNICAL_ACCURACY">Non-technical</TabsTrigger>
+                <TabsTrigger value="WITH_TECHNICAL_ACCURACY">Technical</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <p className="text-xs text-muted-foreground mt-2">
+              {assessmentMode === "WITH_TECHNICAL_ACCURACY"
+                ? "Technical modules — the mark stays a draft until an examiner enters a technical accuracy score and publishes. Chosen once, before uploading or recording."
+                : "Communication / presentation vivas — the AI performance score saves automatically once analysis completes. Chosen once, before uploading or recording."}
+            </p>
+            {assessmentMode === "WITH_TECHNICAL_ACCURACY" && (
+              <div className="mt-3">
+                <label className="text-xs text-muted-foreground" htmlFor="viva-subject-code">
+                  Subject (optional — links to an uploaded concept rubric for an AI-suggested score)
+                </label>
+                {subjectsFailed ? (
+                  <>
+                    <Input
+                      id="viva-subject-code"
+                      className="mt-1 max-w-xs"
+                      value={subjectCode}
+                      onChange={(e) => setSubjectCode(e.target.value)}
+                      placeholder="e.g. CS3021"
+                    />
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                      Could not load the subject list — type the code exactly as saved.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Select
+                      value={subjectCode || NO_SUBJECT}
+                      onValueChange={(value) =>
+                        setSubjectCode(value === NO_SUBJECT ? "" : value)
+                      }
+                      disabled={subjectsLoading && subjectOptions.length === 0}
+                    >
+                      <SelectTrigger id="viva-subject-code" className="mt-1 max-w-xs">
+                        <SelectValue
+                          placeholder={
+                            subjectsLoading
+                              ? "Loading subjects…"
+                              : subjectOptions.length
+                                ? "No subject linked"
+                                : "No subjects uploaded yet"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_SUBJECT}>No subject linked</SelectItem>
+                        {subjectOptions.map((subject) => (
+                          <SelectItem key={subject.subject_code} value={subject.subject_code}>
+                            {subject.subject_code} · {subject.subject_name} (
+                            {subject.concept_count} concepts)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!subjectsLoading && subjectOptions.length === 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Upload lecture material under Subject Content to enable AI-suggested
+                        technical accuracy.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
-              <div className="text-sm text-foreground mt-3">Drag & drop a viva recording</div>
-              <div className="text-xs text-muted-foreground mt-1">Supports MP4, AVI, MOV · up to 1 GB</div>
-            </div>
+            )}
+          </div>
 
-            {/* Mock player */}
-            <div className="mt-5 rounded-xl bg-slate-900 aspect-video relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black flex items-center justify-center">
-                <div className="size-16 rounded-full bg-white/10 backdrop-blur flex items-center justify-center cursor-pointer hover:bg-white/20">
-                  <Play className="size-7 text-white ml-0.5" fill="white" />
+          <Tabs value={sourceTab} onValueChange={(value) => setSourceTab(value as "upload" | "live")}>
+            <TabsList>
+              <TabsTrigger value="upload">Upload recording</TabsTrigger>
+              <TabsTrigger value="live">Live viva</TabsTrigger>
+            </TabsList>
+            <TabsContent value="upload" className="mt-4">
+              <div
+                className={`rounded-xl border-2 border-dashed p-10 text-center cursor-pointer transition-colors ${
+                  isDragging
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-muted/30 hover:border-primary/40 hover:bg-muted/50"
+                }`}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+                }}
+                aria-label="Upload a viva recording"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <div className="size-14 rounded-full bg-primary/10 mx-auto flex items-center justify-center text-primary">
+                  <Upload className="size-6" />
                 </div>
+                <div className="text-sm text-foreground mt-4">Drag & drop a viva recording, or click to browse</div>
+                <div className="text-xs text-muted-foreground mt-1">Supports MP4, WEBM, AVI, MOV · up to 1 GB</div>
               </div>
-              <div className="absolute top-3 left-3 flex items-center gap-2">
-                <span className="size-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-white/80 text-xs">viva_session_24.mp4</span>
-              </div>
-              <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-                <div className="flex items-center gap-3 text-white">
-                  <Pause className="size-4" />
-                  <span className="text-xs">04:32 / 12:48</span>
-                  <div className="flex-1 h-1 rounded-full bg-white/20">
-                    <div className="h-full w-1/3 rounded-full bg-primary/70" />
-                  </div>
-                  <Mic className="size-4" />
-                </div>
-              </div>
-            </div>
+            </TabsContent>
+            <TabsContent value="live" className="mt-4">
+              {sourceTab === "live" ? (
+                <LiveVivaRecorder
+                  disabled={isAnalyzing}
+                  onRecorded={(file) => handleFileSelect(file, { autoAnalyze: true })}
+                />
+              ) : null}
+            </TabsContent>
+          </Tabs>
+        </Card>
+      )}
 
-            {/* Timeline of moments */}
-            <div className="mt-5">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-foreground">Key moments</div>
-                <div className="text-xs text-muted-foreground">AI-detected</div>
-              </div>
-              <div className="space-y-1.5">
-                {moments.map((m) => (
-                  <div key={m.t} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted cursor-pointer">
-                    <span className={`size-2 rounded-full ${toneColor[m.tone]}`} />
-                    <span className="text-xs font-mono text-muted-foreground w-12">{m.t}</span>
-                    <span className="text-sm text-foreground flex-1">{m.label}</span>
-                    <Play className="size-3.5 text-muted-foreground" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
+      {videoPreview && !analysisResult && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-foreground font-medium">Recording</div>
+            <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-0">
+              <CheckCircle2 className="size-3 mr-1" />
+              {uploadedFile?.name.startsWith("viva-live-") ? "Recorded" : "Uploaded"}
+            </Badge>
+          </div>
 
-          {/* Transcript */}
-          <Card className="p-6 border-border">
-            <div className="flex items-center justify-between">
-              <div className="text-foreground">Transcript</div>
-              <Badge variant="secondary" className="bg-accent text-primary border-0">
-                <Sparkles className="size-3 mr-1" /> AI generated
-              </Badge>
+          <div className="mx-auto w-full max-w-xl">
+            <VivaVideoPlayer
+              ref={videoPlayerRef}
+              src={videoPreview}
+              durationLabel={videoDuration != null ? formatTime(videoDuration) : undefined}
+              onDurationChange={setVideoDuration}
+            />
+
+            <div className="mt-3 flex items-center gap-3">
+              <Button onClick={() => uploadedFile && analyzeVideo(uploadedFile)} disabled={isAnalyzing}>
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Analyzing…
+                  </>
+                ) : (
+                  "Analyze"
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={isAnalyzing}
+                onClick={() => {
+                  setUploadedFile(null);
+                  setVideoPreview("");
+                  setAnalysisResult(null);
+                  setError("");
+                  resetAssessmentState();
+                }}
+              >
+                Remove
+              </Button>
+              {uploadedFile && (
+                <span className="text-xs text-muted-foreground ml-auto truncate max-w-[40%]">
+                  {uploadedFile.name}
+                </span>
+              )}
             </div>
-            <div className="mt-4 space-y-4 max-h-72 overflow-y-auto pr-2">
-              {[
-                { who: "Examiner", t: "00:12", text: "Could you walk us through the architecture of your database project?" },
-                { who: "Student", t: "00:24", text: "Sure. The system uses a normalized schema with five core entities. The user table stores authentication data, while the activities table…" },
-                { who: "Examiner", t: "02:08", text: "How did you decide between B+ trees and hash indexing?" },
-                { who: "Student", t: "02:15", text: "I chose B+ trees for the user_id column because we run a lot of range queries on creation date, and B+ trees keep keys sorted on disk pages…", highlight: true },
-                { who: "Examiner", t: "05:00", text: "What about your isolation level — are you comfortable with the trade-offs?" },
-                { who: "Student", t: "05:08", text: "I think... I used the default level. I'm not entirely sure what each level guarantees…", flag: true },
-              ].map((m, i) => (
-                <div key={i} className="flex gap-3">
-                  <div className="text-xs font-mono text-muted-foreground w-12 shrink-0 mt-0.5">{m.t}</div>
-                  <div className="flex-1">
-                    <div className="text-xs text-muted-foreground">{m.who}</div>
-                    <div className={
-                      "text-sm mt-0.5 " +
-                      (m.highlight ? "text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/15 px-2 py-1 rounded" :
-                       m.flag ? "text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/15 px-2 py-1 rounded" :
-                       "text-foreground")
-                    }>
-                      {m.text}
+          </div>
+
+          {isAnalyzing && (
+            <div className="mt-5 space-y-3">
+              {analysisPhase === "uploading" && (
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Loader2 className="size-5 text-primary animate-spin" />
+                    <div className="text-sm font-medium text-foreground tabular-nums">
+                      Uploading video ({Math.round(displayProgress)}%)
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          {/* Guidelines */}
-          <Card className="p-5 border-border">
-            <div className="text-foreground">Recording checklist</div>
-            <div className="mt-3 space-y-2.5">
-              {[
-                "Audio is clear & free of noise",
-                "Both examiner and student visible",
-                "Session ≥ 10 minutes",
-                "Slides/notes shared on screen",
-                "Consent acknowledged",
-              ].map((g, i) => (
-                <label key={g} className="flex items-center gap-2.5 text-sm text-foreground">
-                  <Checkbox defaultChecked={i < 4} /> {g}
-                </label>
-              ))}
-            </div>
-          </Card>
-
-          {/* Criteria */}
-          <Card className="p-5 border-border">
-            <div className="flex items-center justify-between">
-              <div className="text-foreground">Evaluation rubric</div>
-              <Badge className="bg-accent text-primary border-0 hover:bg-accent">AI scored</Badge>
-            </div>
-            <div className="mt-4 space-y-4">
-              {criteria.map((c) => (
-                <div key={c.name}>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-foreground">{c.name}</span>
-                    <span className="text-foreground">{c.score}/{c.max}</span>
+                  <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-primary"
+                      style={{ width: `${displayProgress}%` }}
+                    />
                   </div>
-                  <Progress value={(c.score / c.max) * 100} className="h-1.5 mt-1.5" />
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-5 pt-4 border-t border-border">
-              <div className="flex items-end justify-between">
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wide">Total</div>
-                  <div className="tracking-tight text-foreground mt-0.5">
-                    <span className="text-3xl">{total}</span><span className="text-muted-foreground">/{max}</span>
+                  <div className="text-xs text-muted-foreground mt-2 tabular-nums">
+                    {uploadedFile ? `${(uploadedFile.size / 1024 / 1024).toFixed(2)} MB` : ""}
+                    {uploadStartTime ? ` · Elapsed ${(elapsedMs / 1000).toFixed(1)}s` : ""}
                   </div>
                 </div>
-                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-0 hover:bg-emerald-50">Distinction</Badge>
-              </div>
+              )}
+
+              {analysisPhase === "processing" && (
+                <div className="space-y-3">
+                  <VivaAnalyzeProgress
+                    snapshot={progressSnapshot}
+                    elapsedSeconds={elapsedMs / 1000}
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Skeleton className="h-20" />
+                    <Skeleton className="h-20" />
+                    <Skeleton className="h-20" />
+                  </div>
+                  <Skeleton className="h-32" />
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {analysisResult && (
+        <>
+          <ScoreOverview
+            assessment={analysisResult.assessment}
+            analysisResult={analysisResult}
+            assessmentMode={assessmentMode}
+            technicalAccuracy={technicalAccuracy}
+            published={published}
+            confidenceScore={analysisResult.confidence_score}
+            engagementScore={analysisResult.engagement_score}
+            audioGrade={audioAnalysis?.audio_grade}
+            videoStatus={analysisResult.video_status}
+            faceCoverageRatio={analysisResult.coverage?.face_coverage_ratio}
+          />
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-foreground font-medium">Recording</div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Clock3 className="size-3.5" />
+                    {videoDuration != null ? formatTime(videoDuration) : "—"}
+                  </div>
+                </div>
+                <div className="mx-auto w-full max-w-xl">
+                  <VivaVideoPlayer
+                    ref={videoPlayerRef}
+                    src={videoPreview}
+                    durationLabel={videoDuration != null ? formatTime(videoDuration) : undefined}
+                    onDurationChange={setVideoDuration}
+                    enablePictureInPicture
+                  />
+                  <div className="mt-3 flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => uploadedFile && analyzeVideo(uploadedFile)}
+                      disabled={isAnalyzing}
+                    >
+                      {isAnalyzing ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+                      Re-analyze
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isAnalyzing}
+                      onClick={() => {
+                        xhrRef.current?.abort();
+                        if (videoPreview) URL.revokeObjectURL(videoPreview);
+                        setUploadedFile(null);
+                        setVideoPreview("");
+                        setAnalysisResult(null);
+                        setError("");
+                        resetAssessmentState();
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              <AISummary notes={aiInterpretation} />
+
+              <Card className="p-4 sm:p-6">
+                <Tabs defaultValue="overview">
+                  <TabsList>
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="transcript">Transcript</TabsTrigger>
+                    <TabsTrigger value="engagement">Engagement</TabsTrigger>
+                    <TabsTrigger value="audio">Audio</TabsTrigger>
+                    <TabsTrigger value="qa">Q&A</TabsTrigger>
+                    <TabsTrigger value="llm">Interpretation</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="overview" className="mt-4 space-y-6">
+                    <div>
+                      <div className="text-sm font-medium text-foreground mb-2">Emotional distribution</div>
+                      <EmotionDistribution summary={analysisResult.summary} />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-medium text-foreground">Key moments</div>
+                        <span className="text-xs text-muted-foreground">AI-detected</span>
+                      </div>
+                      <KeyMoments moments={keyMoments} onSeek={seekVideo} />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="transcript" className="mt-4">
+                    <TranscriptPanel audioAnalysis={audioAnalysis} onSeek={seekVideo} />
+                  </TabsContent>
+
+                  <TabsContent value="engagement" className="mt-4 space-y-4">
+                    <EngagementTimeline timeline={analysisResult.timeline} onSeek={seekVideo} />
+                    <p className="text-xs text-muted-foreground">
+                      {analysisResult.timeline.filter((f) => f.valid).length} frames analyzed · click a bar to jump
+                      the recording to that moment.
+                    </p>
+                  </TabsContent>
+
+                  <TabsContent value="audio" className="mt-4">
+                    <AudioAnalysisPanel audioAnalysis={audioAnalysis} />
+                  </TabsContent>
+
+                  <TabsContent value="qa" className="mt-4">
+                    <QaRelevancePanel
+                      qaAnalysis={analysisResult.qa_analysis}
+                      turns={audioAnalysis?.conversation?.turns}
+                      structure={audioAnalysis?.conversation?.structure}
+                      onSeek={seekVideo}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="llm" className="mt-4 space-y-4">
+                    <LlmJudgePanel
+                      evaluation={analysisResult.llm_evaluation}
+                      transcriptFeatures={audioAnalysis?.transcript_features}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </Card>
             </div>
 
-            <div className="mt-4 p-3 rounded-lg bg-accent border border-border text-xs text-foreground">
-              <span className="text-primary">AI recommendation:</span> Strong technical clarity. Consider deeper questions on isolation levels in next viva.
+            <div className="lg:sticky lg:top-6 self-start">
+              <Card className="p-5">
+                <EvaluationPanel
+                  assessment={analysisResult.assessment}
+                  assessmentMode={assessmentMode}
+                  technicalAccuracy={technicalAccuracy}
+                  onChangeTechnicalAccuracy={setTechnicalAccuracy}
+                  technicalAccuracyAI={analysisResult.technical_accuracy_ai}
+                  studentId={studentId}
+                  onChangeStudentId={setStudentId}
+                  aiRecommendation={aiRecommendation}
+                  markId={analysisResult.mark_id}
+                  persistenceError={analysisResult.persistence_error}
+                  autoPublishedWithoutTech={autoPublishedWithoutTech}
+                  published={published}
+                  publishing={publishing}
+                  onPublish={handlePublish}
+                  analysisResult={{
+                    final_score: analysisResult.final_score,
+                    final_grade: analysisResult.final_grade,
+                    auto_published: analysisResult.auto_published,
+                  }}
+                />
+              </Card>
             </div>
-
-            <div className="mt-4">
-              <label className="text-sm text-foreground">Final grade (override)</label>
-              <Input className="mt-1.5" defaultValue="A" />
-            </div>
-            <Button className="w-full mt-4 bg-primary hover:bg-primary/90">Save & publish</Button>
-          </Card>
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
+
+    {analysisResult && (
+      <div className="hidden print:block">
+        <ReportPrintView
+          videoFileName={uploadedFile?.name}
+          generatedAt={new Date()}
+          analysisResult={analysisResult}
+          assessmentMode={assessmentMode}
+          technicalAccuracy={technicalAccuracy}
+          published={published}
+          aiInterpretation={aiInterpretation}
+          keyMoments={keyMoments}
+        />
+      </div>
+    )}
+    </>
   );
 }

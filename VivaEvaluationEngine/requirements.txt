@@ -1,10 +1,24 @@
-opencv-python
-mediapipe
-hsemotion-onnx
-numpy
-fastapi
-uvicorn
-python-multipart
-timm
-torch
-torchvision
+# VivaEvaluationEngine — all Python packages for video/audio analyze + Stage-1 marks.
+# From repo root (same venv as Gradex_AI_Server):
+#   pip install -r VivaEvaluationEngine/requirements.txt
+# Then: python VivaEvaluationEngine/download_models.py
+# System (not pip): ffmpeg on PATH. See README.md.
+
+numpy>=1.26,<2.3
+opencv-python>=4.10,<5
+mediapipe>=0.10,<0.11
+timm>=1.0,<2
+torch>=2.4,<3
+torchvision>=0.19,<1
+torchaudio>=2.4,<3
+librosa>=0.10,<0.12
+soundfile>=0.12,<1
+praat-parselmouth>=0.4,<0.5
+scipy>=1.13,<2
+openai-whisper>=20240930
+transformers>=4.44,<5
+huggingface_hub>=0.23,<1
+
+# Optional — only if you change env away from the defaults:
+#   pip install speechbrain          # VIVA_SER_BACKEND=speechbrain
+#   pip install pyannote.audio       # VIVA_DIARIZATION_BACKEND=pyannote (+ HUGGINGFACE_TOKEN)
