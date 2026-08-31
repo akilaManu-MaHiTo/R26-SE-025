@@ -1103,6 +1103,55 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
         </div>
       </div>
       <div>
+        {/* Parent component: marking guidelines display card. */}
+        {selectedGuideline?.guideLines && selectedGuideline.guideLines.length > 0 && (
+          <Card className="p-5 border-border mb-6">
+            <div>
+              <div className="text-sm font-medium text-foreground">
+                Marking Guidelines - {selectedGuidelineCode}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Review the criteria and expected marks for this diagram evaluation.
+              </p>
+            </div>
+            <Separator className="my-4" />
+            <div className="space-y-3 max-h-[400px] overflow-auto pr-2">
+              {selectedGuideline.guideLines.map((guideline) => (
+                <div
+                  key={guideline.id}
+                  className="flex gap-4 rounded-lg bg-muted/40 p-3 border border-border/50"
+                >
+                  <div className="flex-shrink-0">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary text-sm font-semibold">
+                      {guideline.id}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="font-medium text-foreground text-sm">
+                        {guideline.criterion}
+                      </div>
+                      <Badge className="bg-primary/10 text-primary border-0 text-xs font-semibold flex-shrink-0">
+                        {guideline.marks} {guideline.marks === 1 ? "mark" : "marks"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {guideline.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Separator className="my-4" />
+            <div className="flex items-center justify-between text-sm">
+              <div className="font-medium text-foreground">Total Marks</div>
+              <div className="font-semibold text-primary text-lg">
+                {selectedGuideline.totalMarks ?? 0}
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Parent component: evaluation summary card. */}
         <Card className="p-5 border-border">
           <div className="flex items-center justify-between gap-3">
@@ -1190,7 +1239,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
                 </div>
               </div>
               <div className="rounded-xl bg-muted/40 px-3 py-2">
-                <div className="uppercase tracking-wide">Agent marks</div>
+                <div className="uppercase tracking-wide">Final Marks</div>
                 <div className="mt-1 text-foreground">
                   {typeof result?.agent_marks === "number"
                     ? `${result.agent_marks}/${result.agent_grading?.max_marks ?? selectedGuideline?.totalMarks ?? "--"}`
@@ -1244,7 +1293,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
               {result.agent_grading?.feedback && (
                 <div className="rounded-xl bg-muted/40 p-3">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Agent feedback
+                    Feedback
                   </div>
                   <div className="mt-1 text-foreground">
                     {result.agent_grading.feedback}

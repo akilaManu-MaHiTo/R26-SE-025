@@ -162,7 +162,7 @@ def grade_diagram_with_ollama(
     if progress_callback:
         progress_callback({
             "stage": "ollama_preparing",
-            "message": "Preparing rubric and diagram structure for Qwen...",
+            "message": "Preparing rubric and diagram structure for Grading...",
             "progress": 86,
         })
 
@@ -199,7 +199,7 @@ EXTRACTED DIAGRAM STRUCTURE:
     if progress_callback:
         progress_callback({
             "stage": "ollama_grading",
-            "message": "Qwen is grading the diagram against the guideline...",
+            "message": "Grading the diagram against the guideline...",
             "progress": 92,
         })
 
@@ -301,7 +301,7 @@ EXTRACTED DIAGRAM STRUCTURE:
     if progress_callback:
         progress_callback({
             "stage": "ollama_completed",
-            "message": "Qwen grading complete.",
+            "message": "Grading complete.",
             "progress": 100,
         })
     logger.info(
