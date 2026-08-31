@@ -9,7 +9,7 @@
     "month": 7,
     "semester": 1,
     "session_name": "Final Examination",
-    "filename": "IT2040_2024_final_exam.pdf",
+    "filename": "IT2040_2024_theory_final_exam.pdf",
     "parsed_at": 1720000000.124,
     "exam_roster": [
       "IT22262551",
@@ -26,130 +26,95 @@
     "questions": [
       {
         "question_no": "02",
-        "question_text": "Consider a relation R(A,B,C,D,E), with the following set of functional dependencies over R: F={A→BC, BC→E, E→DA}.\na) Find all the keys that follow from the given FDs using Armstrong's axioms, showing how you found them. (9 marks)\nb) Is R in 3NF? Give reasons for your conclusion. (3 marks)\nc) Is R in BCNF? Give reasons for your conclusion. If R is not in BCNF, convert it to a set of BCNF relations. (3 marks)",
-        "max_marks": 15,
+        "question_text": "A university stores registration data in ENROLMENT(student_id, student_name, programme, module_code, module_title, lecturer_id, lecturer_name, semester, grade). The functional dependencies are student_id -> student_name, programme; module_code -> module_title, lecturer_id; lecturer_id -> lecturer_name; and (student_id, module_code, semester) -> grade. Prepare a complete normalization analysis that identifies the candidate key and the relation's current normal form, explains the redundancy and anomalies, produces a dependency-preserving decomposition in 3NF or BCNF with primary and foreign keys, and justifies that the decomposition is lossless. (20 marks)",
+        "max_marks": 20,
         "criteria": [
           {
-            "point": "Correctly computes attribute closures to find candidate keys",
-            "marks": 3
+            "point": "Candidate key and attribute-closure analysis",
+            "marks": 4
           },
           {
-            "point": "Identifies all candidate keys (A, BC, BE)",
-            "marks": 3
+            "point": "Current normal form and dependency violations",
+            "marks": 4
           },
           {
-            "point": "Shows step-by-step closure computation",
-            "marks": 3
+            "point": "Correct 3NF or BCNF decomposition",
+            "marks": 4
           },
           {
-            "point": "Correctly determines 3NF with reasoning",
-            "marks": 3
+            "point": "Primary-key and foreign-key identification",
+            "marks": 4
           },
           {
-            "point": "Correctly determines BCNF violation and decomposes",
-            "marks": 3
+            "point": "Lossless join, dependency preservation, and anomaly justification",
+            "marks": 4
           }
         ],
-        "model_answer": "Candidate keys: A, BC, BE. R is in 3NF (E→DA has prime RHS). R is not in BCNF (E→DA violates). BCNF decomposition: R1(E,D,A), R2(A,B,C), R3(B,C,E)."
+        "model_answer": "The candidate key is (student_id, module_code, semester). Its closure contains every attribute: student_id determines student_name and programme; module_code determines module_title and lecturer_id; lecturer_id determines lecturer_name; and the complete key determines grade. The relation is in 1NF but not 2NF because student details depend only on student_id and module details depend only on module_code. It also contains the transitive dependency module_code -> lecturer_id -> lecturer_name. A BCNF decomposition is STUDENT(student_id PK, student_name, programme), LECTURER(lecturer_id PK, lecturer_name), MODULE(module_code PK, module_title, lecturer_id FK), and ENROLMENT(student_id FK, module_code FK, semester, grade, PK(student_id, module_code, semester)). Every determinant is a key in its relation. Each original dependency can be enforced in one relation, so the decomposition is dependency preserving. Successive joins use a referenced key, making it lossless, and the decomposition removes repeated student, module, and lecturer data and their update, insertion, and deletion anomalies."
       },
       {
         "question_no": "03",
-        "question_text": "Consider the database of a department store that includes the following tables:\nITEM(ino, iname, dept, price, availableQty, cost)\nEMP(eno, ename, salary, comm, dept)\nDEPT(dno, dname, mgrEno)\nSALES(ido, eNo, soldTime, soldQty, soldPrice)\n\nWrite relational algebra statements to answer the following queries:\na) Display the name and salary of all managers. (2 marks)\nb) Display the names, prices and quantities available of items that are not sold. (4 marks)\nc) Display the names of employees who had sold both computers and cameras. (5 marks)\nd) Display the names of items which has more than 1000 pieces sold. (6 marks)\ne) Display the name of the items which are sold the most. (8 marks)",
+        "question_text": "Consider MEMBER(member_id, member_name), BOOK(book_id, title, category), and LOAN(loan_id, member_id, book_id, borrowed_on, due_on, returned_on). Formulate one relational-algebra solution that returns the identifiers and names of members who have borrowed at least one book from every category represented in BOOK and who have never returned a book late and do not currently hold an overdue loan. Define any intermediate relations you use and explain how the expression enforces both conditions. (25 marks)",
         "max_marks": 25,
         "criteria": [
           {
-            "point": "Correct relational algebra for manager names/salary",
-            "marks": 2
-          },
-          {
-            "point": "Correct set difference for unsold items",
-            "marks": 4
-          },
-          {
-            "point": "Correct intersection for employees selling both",
+            "point": "Member-category relation constructed with correct joins and projection",
             "marks": 5
           },
           {
-            "point": "Correct aggregation/grouping for items >1000 sold",
-            "marks": 6
+            "point": "All-category condition expressed correctly using division or an equivalent",
+            "marks": 5
           },
           {
-            "point": "Correct ordering and limiting for most sold item",
-            "marks": 8
+            "point": "Late and currently overdue members identified correctly",
+            "marks": 5
+          },
+          {
+            "point": "Set difference, final join, and projection applied correctly",
+            "marks": 5
+          },
+          {
+            "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+            "marks": 5
           }
         ],
-        "model_answer": "a) π_ename,salary(DEPT ⨝ mgrEno=eNo EMP) b) π_iname,price,availableQty(ITEM) \\ π_iname,price,availableQty(ITEM ⨝ itemNo=itemNo SALES) c) π_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM)) ∩ π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM)) d) π_iname(ITEM ⨝ SALES) grouped with γ_sum(soldQty)>1000 e) π_iname(ITEM ⨝ SALES) grouped, ordered by sum(soldQty) DESC, LIMIT 1"
+        "model_answer": "Let MC = pi_member_id,category(LOAN join_{LOAN.book_id=BOOK.book_id} BOOK) and C = pi_category(BOOK). Let ALLCAT = MC divide C. Let LATE = pi_member_id(sigma_{returned_on > due_on OR (returned_on IS NULL AND due_on < CURRENT_DATE)}(LOAN)). Then ELIGIBLE = ALLCAT - LATE, and the required result is pi_member_id,member_name(MEMBER join_{MEMBER.member_id=ELIGIBLE.member_id} ELIGIBLE). Division keeps exactly the members paired with every category in C. LATE contains both completed late loans and open overdue loans; subtracting it before the final join enforces the second condition."
       },
       {
         "question_no": "04",
-        "question_text": "Consider the following relations in a database created for an online store:\nCustomers(cid, name, phone, country)\nEmployees(eid, ename, phone, hiredate)\nOrders(oid, eid, cid, orderDate, requiredDate, shippedDate)\nOrderDetails(oid, productId, quantity, discount)\nProducts(productId, productName, UnitPrice, unitsInStock, ROL)\n\na) Use SQL queries to answer following questions.\ni. Display the name and address of customers who had ordered products which cost over Rs.500. (4 marks)\nii. Find the names and unit prices of all products which has not been ordered by customers from 'Germany'. (5 marks)\niii. Find the customer ids and names of the customers who have obtained more than 5% discount for every product in every order they have placed. (6 marks)\nb) Create a view named incompleteOrders that contains customer name, country and number of times an order is not completed. (7 marks)\nc) Create a function named calc_lost to calculate and return the total cost of an order given the order id and the discount. (8 marks)\nd) Create a trigger named updateCost to update the cost column when order details are added. (10 marks)",
-        "max_marks": 40,
+        "question_text": "An online shop uses CUSTOMER(customer_id, status), PRODUCT(product_id, unit_price, stock_qty), ORDERS(order_id, customer_id, ordered_at, total_amount, status), and ORDER_ITEM(order_id, product_id, quantity, unit_price, discount). Implement a single PostgreSQL PL/pgSQL function named place_order that accepts a customer id, product id, quantity, and discount, then safely creates the order and returns its id. The function must reject inactive or missing customers and invalid inputs, prevent overselling under concurrent requests, preserve the selling price in ORDER_ITEM, calculate the discounted total, update stock, and leave no partial changes after an error. Explain how the design supports atomicity, consistency, isolation, and durability. (35 marks)",
+        "max_marks": 35,
         "criteria": [
           {
-            "point": "Correct SQL for customers ordering products >500",
-            "marks": 4
-          },
-          {
-            "point": "Correct SQL for products not ordered by German customers",
+            "point": "Function interface and customer/input validation",
             "marks": 5
           },
           {
-            "point": "Correct SQL for customers with >5% discount on all products",
+            "point": "Product lookup and row locking prevent overselling",
+            "marks": 5
+          },
+          {
+            "point": "Discounted total and preserved selling price calculated correctly",
             "marks": 6
           },
           {
-            "point": "Correct VIEW creation with proper JOIN and filtering",
-            "marks": 7
+            "point": "Order, order-item, and stock changes implemented atomically",
+            "marks": 6
           },
           {
-            "point": "Correct FUNCTION with loop/aggregation and discount calc",
-            "marks": 8
+            "point": "Error handling prevents partial changes",
+            "marks": 5
           },
           {
-            "point": "Correct TRIGGER that updates cost using the function",
-            "marks": 10
+            "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
+            "marks": 4
+          },
+          {
+            "point": "ACID and concurrency reasoning is accurate",
+            "marks": 4
           }
         ],
-        "model_answer": "a) i) SELECT c.name, c.phone FROM Customers c JOIN Orders o ON c.cid=o.cid JOIN OrderDetails od ON o.oid=od.oid JOIN Products p ON od.productId=p.productId WHERE p.UnitPrice>500; ii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (...German orders...); iii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (...discount<=0.05...); b) CREATE VIEW incompleteOrders AS ...; c) CREATE FUNCTION calc_lost ...; d) CREATE TRIGGER updateCost ..."
-      }
-    ],
-    "examCode": "EER-001",
-    "guideLines": [
-      {
-        "id": 1,
-        "criterion": "Person entity identification",
-        "description": "Correctly identifies Person as superclass with attributes SSN (PK), Name, Address.",
-        "marks": 3
-      },
-      {
-        "id": 2,
-        "criterion": "Instructor subclass mapping",
-        "description": "Correctly maps Instructor subclass with attributes Rank and Salary, with appropriate FK to Person.",
-        "marks": 4
-      },
-      {
-        "id": 3,
-        "criterion": "Researcher subclass mapping",
-        "description": "Correctly maps Researcher subclass with attributes GrantAmount and Publications, with appropriate FK to Person.",
-        "marks": 4
-      },
-      {
-        "id": 4,
-        "criterion": "Superclass/subclass strategy",
-        "description": "Uses appropriate mapping strategy for superclass/subclass (single relation, multiple relations, or shared PK).",
-        "marks": 4
-      },
-      {
-        "id": 5,
-        "criterion": "Correct ER notation",
-        "description": "Entities use rectangles, attributes use ellipses, relationships use correct notation, PK underlined.",
-        "marks": 3
-      },
-      {
-        "id": 6,
-        "criterion": "Correct connections and keys",
-        "description": "All attributes connected to correct entities, PKs clearly indicated, FKs reference correct relations.",
-        "marks": 2
+        "model_answer": "CREATE OR REPLACE FUNCTION place_order(p_customer_id bigint, p_product_id bigint, p_quantity integer, p_discount numeric) RETURNS bigint LANGUAGE plpgsql AS $$ DECLARE v_order_id bigint; v_price numeric(12,2); v_stock integer; BEGIN IF p_quantity <= 0 OR p_discount < 0 OR p_discount > 1 THEN RAISE EXCEPTION 'invalid quantity or discount'; END IF; PERFORM 1 FROM customer WHERE customer_id=p_customer_id AND status='ACTIVE'; IF NOT FOUND THEN RAISE EXCEPTION 'inactive or missing customer'; END IF; SELECT unit_price, stock_qty INTO v_price, v_stock FROM product WHERE product_id=p_product_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'missing product'; END IF; IF v_stock < p_quantity THEN RAISE EXCEPTION 'insufficient stock'; END IF; INSERT INTO orders(customer_id, ordered_at, total_amount, status) VALUES (p_customer_id, CURRENT_TIMESTAMP, v_price*p_quantity*(1-p_discount), 'PLACED') RETURNING order_id INTO v_order_id; INSERT INTO order_item(order_id, product_id, quantity, unit_price, discount) VALUES (v_order_id,p_product_id,p_quantity,v_price,p_discount); UPDATE product SET stock_qty=stock_qty-p_quantity WHERE product_id=p_product_id; RETURN v_order_id; END; $$;. The caller invokes the function inside a transaction. PostgreSQL rolls back the statement/transaction on an uncaught exception, so no partial order remains. FOR UPDATE serializes changes to the product row, constraints maintain valid values, WAL provides durability after commit, and the single transaction provides atomicity and a consistent result."
       }
     ]
   }

@@ -71,6 +71,10 @@ VivaEvaluationEngine/docs/
 **/videos/
 **/outputs/
 **/models/
+!V2_QuestionExamPredictionEngine/models/
+!V2_QuestionExamPredictionEngine/models/bloom_modernbert/
+!V2_QuestionExamPredictionEngine/models/bloom_modernbert/**
+V2_QuestionExamPredictionEngine/models/cognitive_bloom/
 **/data/
 **/output/
 **/checkpoints/

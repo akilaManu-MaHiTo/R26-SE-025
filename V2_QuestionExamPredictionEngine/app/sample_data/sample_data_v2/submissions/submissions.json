@@ -16,7 +16,7 @@
     "max_marks_per_question": [
       {
         "question_no": "02",
-        "max_marks": 15.0
+        "max_marks": 20.0
       },
       {
         "question_no": "03",
@@ -24,47 +24,47 @@
       },
       {
         "question_no": "04",
-        "max_marks": 40.0
+        "max_marks": 35.0
       }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262551\n\nQuestion 2\na) Given FDs: A→BC, BC→E, E→DA\n\nA⁺: Start with {A}. A→BC adds {B,C}. BC→E adds {E}. E→DA adds {D,A}. So A⁺ = {A,B,C,D,E} = R. A is a candidate key.\n\nBC⁺: Start with {B,C}. BC→E adds {E}. E→DA adds {D,A}. Now we have {A,B,C,D,E} = R. BC is a candidate key.\n\nCD⁺: Start with {C,D}. No FD starts with C alone or D alone or CD. CD⁺ = {C,D}. Not a superkey.\n\nBE⁺: Start with {B,E}. BC→E is satisfied. E→DA adds {D,A}. Now {A,B,D,E}. A→BC adds {C}. BE⁺ = {A,B,C,D,E} = R. BE is a candidate key.\n\nCandidate keys: A, BC, BE.\n\nb) Is R in 3NF?\nFor 3NF, for every non-trivial FD X→Y, either X is a superkey or Y is a prime attribute.\nA→BC: A is superkey ✓\nBC→E: BC is superkey ✓\nE→DA: E is not a superkey. D and A are prime (part of keys A and BE). So DA contains prime attributes. ✓\nR is in 3NF.\n\nc) Is R in BCNF?\nFor BCNF, every determinant must be a superkey.\nE→DA: E is not a superkey (E⁺ = {A,D,E} ≠ R). So R is NOT in BCNF.\n\nBCNF decomposition:\nR1(E, D, A) with FD E→DA, E is PK\nR2(A, B, C) with FD A→BC, A is PK\nR3(B, C, E) with FD BC→E, BC is PK\n\nQuestion 3\na) π_ename, salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) π_iname, price, availableQty(ITEM) \\ π_iname, price, availableQty(ITEM ⨝ itemNo=itemNo SALES)\n\nc) (π_ename(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM))) ∩ (π_ename(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM)))\n\nd) π_iname(ITEM ⨝ SALES) grouped by iname with γ_sum(soldQty) > 1000\n\ne) π_iname(ITEM ⨝ SALES) grouped by iname, ordered by sum(soldQty) DESC, LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c, Orders o, OrderDetails od, Products p WHERE c.cid = o.cid AND o.oid = od.oid AND od.productId = p.productId AND p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od, Orders o, Customers c WHERE od.oid = o.oid AND o.cid = c.cid AND c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o, OrderDetails od WHERE o.oid = od.oid AND od.discount <= 0.05);\n\nb) CREATE VIEW incompleteOrders AS\nSELECT c.name, c.country, COUNT(DISTINCT o.oid) AS incomplete_count\nFROM Customers c\nJOIN Orders o ON c.cid = o.cid\nJOIN OrderDetails od ON o.oid = od.oid\nJOIN Products p ON od.productId = p.productId\nWHERE p.unitsInStock < od.quantity\nGROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_lost(order_id INT, discount REAL)\nRETURNS REAL AS $$\nDECLARE\n    total_cost REAL := 0;\n    rec RECORD;\nBEGIN\n    FOR rec IN SELECT od.quantity, p.UnitPrice\n               FROM OrderDetails od JOIN Products p ON od.productId = p.productId\n               WHERE od.oid = order_id\n    LOOP\n        total_cost := total_cost + (rec.UnitPrice * rec.quantity);\n    END LOOP;\n    RETURN total_cost * (1 - discount);\nEND;\n$$ LANGUAGE plpgsql;\n\nd) CREATE TRIGGER updateCost\nAFTER INSERT ON OrderDetails\nFOR EACH ROW\nBEGIN\n    UPDATE Orders\n    SET cost = calc_lost(NEW.oid, (SELECT discount FROM OrderDetails WHERE oid = NEW.oid))\n    WHERE oid = NEW.oid;\nEND;",
+    "raw_ocr_transcript": "Student ID: IT22262551\n\nQuestion 2\nK = {student_id, module_code, semester}. K+ starts with those three attributes. student_id adds student_name and programme; module_code adds module_title and lecturer_id; lecturer_id adds lecturer_name; the full K adds grade. Therefore K+ is the whole relation and no proper subset determines grade.\n\nAll values are atomic, so it is in 1NF. It is not in 2NF because student_id -> student_name, programme and module_code -> module_title, lecturer_id are partial dependencies on the composite key. lecturer_name is also transitively dependent through lecturer_id. These repetitions cause update, insert and delete anomalies.\n\nSTUDENT(student_id PK, student_name, programme)\nLECTURER(lecturer_id PK, lecturer_name)\nMODULE(module_code PK, module_title, lecturer_id FK references LECTURER)\nENROLMENT(student_id FK references STUDENT, module_code FK references MODULE, semester, grade, PK(student_id,module_code,semester))\n\nEvery determinant is a key in its new table, so all four relations are BCNF. Each given FD is represented directly, hence dependency preserving. Joining ENROLMENT to STUDENT and MODULE on their keys and MODULE to LECTURER on its key is lossless.\n\nQuestion 3\nMC = pi_member_id,category(LOAN join_LOAN.book_id=BOOK.book_id BOOK)\nC = pi_category(BOOK)\nALLCAT = MC divide C\nLATE = pi_member_id(sigma_returned_on>due_on OR (returned_on IS NULL AND due_on<CURRENT_DATE)(LOAN))\nGOOD = ALLCAT - LATE\nANSWER = pi_member_id,member_name(MEMBER join_MEMBER.member_id=GOOD.member_id GOOD)\n\nMC lists the categories each member has actually borrowed. Division requires a member to occur with every value in C. LATE combines past late returns and open overdue loans. The difference removes all such members before names are attached.\n\nQuestion 4\nCREATE OR REPLACE FUNCTION place_order(p_cid bigint, p_pid bigint, p_qty integer, p_discount numeric)\nRETURNS bigint LANGUAGE plpgsql AS $$\nDECLARE v_oid bigint; v_price numeric(12,2); v_stock integer;\nBEGIN\n  IF p_qty <= 0 OR p_discount < 0 OR p_discount > 1 THEN\n    RAISE EXCEPTION 'invalid input';\n  END IF;\n  PERFORM 1 FROM customer WHERE customer_id=p_cid AND status='ACTIVE';\n  IF NOT FOUND THEN RAISE EXCEPTION 'customer not active'; END IF;\n  SELECT unit_price, stock_qty INTO v_price,v_stock\n  FROM product WHERE product_id=p_pid FOR UPDATE;\n  IF NOT FOUND THEN RAISE EXCEPTION 'product not found'; END IF;\n  IF v_stock < p_qty THEN RAISE EXCEPTION 'not enough stock'; END IF;\n  INSERT INTO orders(customer_id,ordered_at,total_amount,status)\n  VALUES(p_cid,CURRENT_TIMESTAMP,v_price*p_qty*(1-p_discount),'PLACED')\n  RETURNING order_id INTO v_oid;\n  INSERT INTO order_item VALUES(v_oid,p_pid,p_qty,v_price,p_discount);\n  UPDATE product SET stock_qty=stock_qty-p_qty WHERE product_id=p_pid;\n  RETURN v_oid;\nEND; $$;\n\nIt is called in one transaction. An uncaught exception rolls the transaction back, so it is atomic. Checks and constraints give consistency. FOR UPDATE makes concurrent orders wait on the product row and prevents both seeing the same stock. PostgreSQL WAL makes committed data durable.",
     "evaluation": {
       "total_score": 80,
       "max_score": 80,
       "results": [
         {
           "question_no": "02",
-          "score": 15,
-          "max_score": 15,
+          "score": 20,
+          "max_score": 20,
           "criteria_breakdown": [
             {
-              "point": "Attribute closures computation",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Candidate key and attribute-closure analysis",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "Candidate key identification",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Current normal form and dependency violations",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "Step-by-step closure",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Correct 3NF or BCNF decomposition",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "3NF determination",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Primary-key and foreign-key identification",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "BCNF decomposition",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Lossless join, dependency preservation, and anomaly justification",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             }
           ]
@@ -75,76 +75,82 @@
           "max_score": 25,
           "criteria_breakdown": [
             {
-              "point": "Manager names/salary",
-              "awarded_marks": 2,
-              "max_marks": 2,
-              "achieved": true
-            },
-            {
-              "point": "Unsold items",
-              "awarded_marks": 4,
-              "max_marks": 4,
-              "achieved": true
-            },
-            {
-              "point": "Employees selling both",
+              "point": "Member-category relation constructed with correct joins and projection",
               "awarded_marks": 5,
               "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "Items >1000 sold",
-              "awarded_marks": 6,
-              "max_marks": 6,
+              "point": "All-category condition expressed correctly using division or an equivalent",
+              "awarded_marks": 5,
+              "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "Most sold item",
-              "awarded_marks": 8,
-              "max_marks": 8,
+              "point": "Late and currently overdue members identified correctly",
+              "awarded_marks": 5,
+              "max_marks": 5,
+              "achieved": true
+            },
+            {
+              "point": "Set difference, final join, and projection applied correctly",
+              "awarded_marks": 5,
+              "max_marks": 5,
+              "achieved": true
+            },
+            {
+              "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+              "awarded_marks": 5,
+              "max_marks": 5,
               "achieved": true
             }
           ]
         },
         {
           "question_no": "04",
-          "score": 40,
-          "max_score": 40,
+          "score": 35,
+          "max_score": 35,
           "criteria_breakdown": [
             {
-              "point": "SQL query i",
-              "awarded_marks": 4,
-              "max_marks": 4,
-              "achieved": true
-            },
-            {
-              "point": "SQL query ii",
+              "point": "Function interface and customer/input validation",
               "awarded_marks": 5,
               "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "SQL query iii",
+              "point": "Product lookup and row locking prevent overselling",
+              "awarded_marks": 5,
+              "max_marks": 5,
+              "achieved": true
+            },
+            {
+              "point": "Discounted total and preserved selling price calculated correctly",
               "awarded_marks": 6,
               "max_marks": 6,
               "achieved": true
             },
             {
-              "point": "VIEW creation",
-              "awarded_marks": 7,
-              "max_marks": 7,
+              "point": "Order, order-item, and stock changes implemented atomically",
+              "awarded_marks": 6,
+              "max_marks": 6,
               "achieved": true
             },
             {
-              "point": "FUNCTION creation",
-              "awarded_marks": 8,
-              "max_marks": 8,
+              "point": "Error handling prevents partial changes",
+              "awarded_marks": 5,
+              "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "TRIGGER creation",
-              "awarded_marks": 10,
-              "max_marks": 10,
+              "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "ACID and concurrency reasoning is accurate",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             }
           ]
@@ -152,9 +158,9 @@
       ]
     },
     "status": "graded",
-    "processed_at": "2026-08-29T04:44:38.317506+00:00",
-    "created_at": "2026-08-29T04:44:38.317506+00:00",
-    "updated_at": "2026-08-29T04:44:38.317506+00:00"
+    "processed_at": "2026-08-31T11:00:00+05:30",
+    "created_at": "2026-08-31T11:00:00+05:30",
+    "updated_at": "2026-08-31T11:00:00+05:30"
   },
   {
     "_id": {
@@ -173,7 +179,7 @@
     "max_marks_per_question": [
       {
         "question_no": "02",
-        "max_marks": 15.0
+        "max_marks": 20.0
       },
       {
         "question_no": "03",
@@ -181,48 +187,48 @@
       },
       {
         "question_no": "04",
-        "max_marks": 40.0
+        "max_marks": 35.0
       }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262552\n\nQuestion 2\na) FDs: A→BC, BC→E, E→DA\n\nA⁺: {A} → {A,B,C} → {A,B,C,E} → {A,B,C,D,E} = R. A is key.\nBC⁺: {B,C} → {B,C,E} → {A,B,C,D,E} = R. BC is key.\nBE⁺: {B,E} → {A,B,D,E} → {A,B,C,D,E} = R. BE is key.\n\nCandidate keys: {A}, {BC}, {BE}\n\nb) 3NF check:\nA→BC: A is superkey ✓\nBC→E: BC is superkey ✓\nE→DA: E is not superkey, but DA contains prime attributes (A is prime) ✓\nR is in 3NF.\n\nc) BCNF check:\nE→DA: E is not superkey (E⁺ = {A,D,E}) → NOT in BCNF\n\nBCNF decomposition:\nR1(A, B, C) - FD: A→BC\nR2(B, C, E) - FD: BC→E\nR3(E, D, A) - FD: E→DA\n\nQuestion 3\na) π_eName, salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) π_itemName, price, availableQty(ITEM) \\ π_itemName, price, availableQty(ITEM ⨝ itemNo=itemNo SALES)\n\nc) (π_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM))) ∩ (π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM)))\n\nd) π_itemName(ITEM ⨝ SALES) grouped by itemName with γ_sum(soldQty) > 1000\n\ne) π_itemName(ITEM ⨝ SALES) grouped by itemName, ordered by sum(soldQty) DESC, LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c, Orders o, OrderDetails od, Products p WHERE c.cid = o.cid AND o.oid = od.oid AND od.productId = p.productId AND p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od, Orders o, Customers c WHERE od.oid = o.oid AND o.cid = c.cid AND c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o, OrderDetails od WHERE o.oid = od.oid AND od.discount <= 0.05);\n\nb) CREATE VIEW incompleteOrders AS\nSELECT c.name, c.country, COUNT(DISTINCT o.oid) AS incomplete_count\nFROM Customers c\nJOIN Orders o ON c.cid = o.cid\nJOIN OrderDetails od ON o.oid = od.oid\nJOIN Products p ON od.productId = p.productId\nWHERE p.unitsInStock < od.quantity\nGROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_lost(order_id INT, discount REAL)\nRETURNS REAL AS $$\nDECLARE total REAL := 0;\nBEGIN\n    SELECT SUM(p.UnitPrice * od.quantity) INTO total\n    FROM OrderDetails od JOIN Products p ON od.productId = p.productId\n    WHERE od.oid = order_id;\n    RETURN total * (1 - discount);\nEND;\n$$ LANGUAGE plpgsql;\n\nd) CREATE TRIGGER updateCost\nAFTER INSERT ON OrderDetails\nFOR EACH ROW\nBEGIN\n    UPDATE Orders SET cost = calc_lost(NEW.oid, 0) WHERE oid = NEW.oid;\nEND;",
+    "raw_ocr_transcript": "Student ID: IT22262552\n\nQuestion 2\nThe candidate key is (student_id,module_code,semester). Its closure gets student data from student_id, module and lecturer data from module_code and lecturer_id, and grade from the whole key. The table is only 1NF because student and module facts depend on parts of the key. lecturer_name is a transitive dependency.\n\nI decomposed it as STUDENT(student_id PK, student_name, programme), LECTURER(lecturer_id PK, lecturer_name), MODULE(module_code PK, module_title, lecturer_id FK), and ENROLMENT(student_id FK, module_code FK, semester, grade) with the three first columns as its PK. This is BCNF and removes most duplicated data. The original FDs stay inside the tables. The joins should be lossless because the shared attributes are keys, although I have not shown a formal chase.\n\nQuestion 3\nMC = pi member_id,category (LOAN join BOOK)\nC = pi category (BOOK)\nEveryCat = MC / C\nBad = pi member_id (sigma returned_on > due_on OR (returned_on is null AND due_on < today) (LOAN))\nWanted = pi member_id,member_name (MEMBER join (EveryCat - Bad))\n\nThe division selects the IDs related to every existing category and the subtraction removes overdue IDs. Natural joins use book_id and member_id.\n\nQuestion 4\nCREATE FUNCTION place_order(cid bigint,pid bigint,qty int,disc numeric) RETURNS bigint AS $$\nDECLARE oid bigint; price numeric; available int;\nBEGIN\n IF qty<=0 OR disc<0 OR disc>1 THEN RAISE EXCEPTION 'bad input'; END IF;\n PERFORM 1 FROM customer WHERE customer_id=cid AND status='ACTIVE';\n IF NOT FOUND THEN RAISE EXCEPTION 'bad customer'; END IF;\n SELECT unit_price,stock_qty INTO price,available FROM product WHERE product_id=pid FOR UPDATE;\n IF available<qty THEN RAISE EXCEPTION 'no stock'; END IF;\n INSERT INTO orders(customer_id,ordered_at,total_amount,status)\n VALUES(cid,now(),price*qty*(1-disc),'PLACED') RETURNING order_id INTO oid;\n INSERT INTO order_item VALUES(oid,pid,qty,price,disc);\n UPDATE product SET stock_qty=stock_qty-qty WHERE product_id=pid;\n RETURN oid;\nEND $$ LANGUAGE plpgsql;\n\nThe row lock stops two buyers using the same quantity and PostgreSQL rolls back on an error. This gives atomicity and isolation, the checks help consistency, and commit/WAL gives durability. I should also explicitly test NOT FOUND after selecting the product.",
     "evaluation": {
-      "total_score": 74,
+      "total_score": 73,
       "max_score": 80,
       "results": [
         {
           "question_no": "02",
-          "score": 14,
-          "max_score": 15,
+          "score": 18,
+          "max_score": 20,
           "criteria_breakdown": [
             {
-              "point": "Attribute closures computation",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Candidate key and attribute-closure analysis",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "Candidate key identification",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Current normal form and dependency violations",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "Step-by-step closure",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Correct 3NF or BCNF decomposition",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "3NF determination",
+              "point": "Primary-key and foreign-key identification",
               "awarded_marks": 3,
-              "max_marks": 3,
-              "achieved": true
+              "max_marks": 4,
+              "achieved": false
             },
             {
-              "point": "BCNF decomposition",
+              "point": "Lossless join, dependency preservation, and anomaly justification",
               "awarded_marks": 3,
-              "max_marks": 3,
-              "achieved": true
+              "max_marks": 4,
+              "achieved": false
             }
           ]
         },
@@ -232,86 +238,92 @@
           "max_score": 25,
           "criteria_breakdown": [
             {
-              "point": "Manager names/salary",
-              "awarded_marks": 2,
-              "max_marks": 2,
-              "achieved": true
-            },
-            {
-              "point": "Unsold items",
-              "awarded_marks": 4,
-              "max_marks": 4,
-              "achieved": true
-            },
-            {
-              "point": "Employees selling both",
+              "point": "Member-category relation constructed with correct joins and projection",
               "awarded_marks": 5,
               "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "Items >1000 sold",
+              "point": "All-category condition expressed correctly using division or an equivalent",
               "awarded_marks": 5,
-              "max_marks": 6,
+              "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "Most sold item",
-              "awarded_marks": 7,
-              "max_marks": 8,
+              "point": "Late and currently overdue members identified correctly",
+              "awarded_marks": 4,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Set difference, final join, and projection applied correctly",
+              "awarded_marks": 5,
+              "max_marks": 5,
               "achieved": true
+            },
+            {
+              "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+              "awarded_marks": 4,
+              "max_marks": 5,
+              "achieved": false
             }
           ]
         },
         {
           "question_no": "04",
-          "score": 37,
-          "max_score": 40,
+          "score": 32,
+          "max_score": 35,
           "criteria_breakdown": [
             {
-              "point": "SQL query i",
-              "awarded_marks": 4,
-              "max_marks": 4,
-              "achieved": true
-            },
-            {
-              "point": "SQL query ii",
+              "point": "Function interface and customer/input validation",
               "awarded_marks": 5,
               "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "SQL query iii",
+              "point": "Product lookup and row locking prevent overselling",
               "awarded_marks": 5,
+              "max_marks": 5,
+              "achieved": true
+            },
+            {
+              "point": "Discounted total and preserved selling price calculated correctly",
+              "awarded_marks": 6,
               "max_marks": 6,
               "achieved": true
             },
             {
-              "point": "VIEW creation",
+              "point": "Order, order-item, and stock changes implemented atomically",
               "awarded_marks": 6,
-              "max_marks": 7,
+              "max_marks": 6,
               "achieved": true
             },
             {
-              "point": "FUNCTION creation",
-              "awarded_marks": 8,
-              "max_marks": 8,
+              "point": "Error handling prevents partial changes",
+              "awarded_marks": 3,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "TRIGGER creation",
-              "awarded_marks": 9,
-              "max_marks": 10,
-              "achieved": true
+              "point": "ACID and concurrency reasoning is accurate",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
             }
           ]
         }
       ]
     },
     "status": "graded",
-    "processed_at": "2026-08-29T04:44:38.317536+00:00",
-    "created_at": "2026-08-29T04:44:38.317536+00:00",
-    "updated_at": "2026-08-29T04:44:38.317536+00:00"
+    "processed_at": "2026-08-31T11:01:00+05:30",
+    "created_at": "2026-08-31T11:01:00+05:30",
+    "updated_at": "2026-08-31T11:01:00+05:30"
   },
   {
     "_id": {
@@ -330,7 +342,7 @@
     "max_marks_per_question": [
       {
         "question_no": "02",
-        "max_marks": 15.0
+        "max_marks": 20.0
       },
       {
         "question_no": "03",
@@ -338,137 +350,143 @@
       },
       {
         "question_no": "04",
-        "max_marks": 40.0
+        "max_marks": 35.0
       }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262553\n\nQuestion 2\na) FDs: A→BC, BC→E, E→DA\n\nFinding keys:\nA⁺ = {A,B,C,D,E} = R → A is key\nBC⁺ = {A,B,C,D,E} = R → BC is key\nBE⁺ = {A,B,C,D,E} = R → BE is key\n\nCandidate keys: A, BC, BE\n\nb) R is in 3NF because for every FD X→Y, either X is superkey or Y is prime.\n\nc) R is NOT in BCNF because E→DA violates BCNF (E is not superkey).\nDecomposition: R1(E,D,A), R2(A,B,C), R3(B,C,E)\n\nQuestion 3\na) π_eName,salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) Items not sold:\nπ_iname,price,availableQty(ITEM) \\ π_iname,price,availableQty(ITEM ⨝ itemNo=itemNo SALES)\n\nc) Employees who sold both:\nπ_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM)) ∩ π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM))\n\nd) Items with >1000 sold:\nπ_iname(ITEM ⨝ SALES) grouped by iname with sum(soldQty) > 1000\n\ne) Most sold item:\nπ_iname(ITEM ⨝ SALES) grouped by iname, ordered by sum(soldQty) DESC, LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c JOIN Orders o ON c.cid = o.cid JOIN OrderDetails od ON o.oid = od.oid JOIN Products p ON od.productId = p.productId WHERE p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od JOIN Orders o ON od.oid = o.oid JOIN Customers c ON o.cid = c.cid WHERE c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o JOIN OrderDetails od ON o.oid = od.oid WHERE od.discount <= 0.05);\n\nb) CREATE VIEW incompleteOrders AS SELECT c.name, c.country, COUNT(o.oid) as times_not_completed FROM Customers c JOIN Orders o ON c.cid = o.cid WHERE EXISTS (SELECT 1 FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = o.oid AND p.unitsInStock < od.quantity) GROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_lost(order_id INT, discount REAL) RETURNS REAL AS $$ DECLARE total REAL; BEGIN SELECT SUM(p.UnitPrice * od.quantity) INTO total FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = order_id; RETURN total * (1 - discount); END; $$ LANGUAGE plpgsql;\n\nd) CREATE TRIGGER updateCost AFTER INSERT ON OrderDetails FOR EACH ROW EXECUTE FUNCTION calc_lost(NEW.oid, (SELECT discount FROM OrderDetails WHERE oid = NEW.oid LIMIT 1));",
+    "raw_ocr_transcript": "Student ID: IT22262553\n\nQuestion 2\nKey is student_id + module_code + semester because grade depends on all three. student_id determines the name/programme and module_code determines title and lecturer. It is 1NF but not 2NF due to partial dependencies and therefore not 3NF. There is also module_code -> lecturer_id -> lecturer_name.\n\nSTUDENT(student_id, student_name, programme), MODULE(module_code, module_title, lecturer_id), LECTURER(lecturer_id, lecturer_name), ENROLMENT(student_id,module_code,semester,grade). The first attribute is PK in first three and the first three attributes together are PK in ENROLMENT. student_id and module_code are foreign keys and MODULE.lecturer_id is a foreign key. This reaches BCNF and preserves the listed FDs. Since we join using IDs it should return the original rows, but my lossless proof is incomplete.\n\nQuestion 3\nA = pi member_id,category(LOAN join BOOK)\nB = pi category(BOOK)\nAllMembers = A divide B\nLateMembers = pi member_id(sigma returned_on > due_on(LOAN))\nResult = pi member_id,member_name(MEMBER join (AllMembers - LateMembers))\n\nDivision means the member has a tuple for each category. Difference rejects previously late returns. I forgot that a loan with NULL returned_on can already be overdue, so that condition also needs due_on < current date.\n\nQuestion 4\nCREATE FUNCTION place_order(c bigint,p bigint,q int,d numeric) RETURNS bigint AS $$\nDECLARE id bigint; pr numeric; st int;\nBEGIN\n IF q<=0 OR d<0 OR d>1 THEN RAISE EXCEPTION 'invalid'; END IF;\n IF NOT EXISTS(SELECT 1 FROM customer WHERE customer_id=c AND status='ACTIVE') THEN RAISE EXCEPTION 'customer'; END IF;\n SELECT unit_price,stock_qty INTO pr,st FROM product WHERE product_id=p FOR UPDATE;\n IF st<q THEN RAISE EXCEPTION 'stock'; END IF;\n INSERT INTO orders(customer_id,ordered_at,total_amount,status) VALUES(c,now(),pr*q*(1-d),'PLACED') RETURNING order_id INTO id;\n INSERT INTO order_item(order_id,product_id,quantity,unit_price,discount) VALUES(id,p,q,pr,d);\n UPDATE product SET stock_qty=stock_qty-q WHERE product_id=p;\n RETURN id;\nEND; $$ LANGUAGE plpgsql;\n\nAll statements execute together and errors rollback. The lock prevents lost stock updates. Constraints should also check quantity and discount. WAL handles durability. Missing product handling is not clearly included because st will be null.",
     "evaluation": {
-      "total_score": 64,
+      "total_score": 67,
       "max_score": 80,
       "results": [
         {
           "question_no": "02",
-          "score": 11,
-          "max_score": 15,
+          "score": 17,
+          "max_score": 20,
           "criteria_breakdown": [
             {
-              "point": "Attribute closures computation",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Candidate key and attribute-closure analysis",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "Candidate key identification",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Current normal form and dependency violations",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "Step-by-step closure",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Correct 3NF or BCNF decomposition",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "3NF determination",
+              "point": "Primary-key and foreign-key identification",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Lossless join, dependency preservation, and anomaly justification",
               "awarded_marks": 2,
-              "max_marks": 3,
-              "achieved": true
-            },
-            {
-              "point": "BCNF decomposition",
-              "awarded_marks": 2,
-              "max_marks": 3,
-              "achieved": true
+              "max_marks": 4,
+              "achieved": false
             }
           ]
         },
         {
           "question_no": "03",
-          "score": 20,
+          "score": 21,
           "max_score": 25,
           "criteria_breakdown": [
             {
-              "point": "Manager names/salary",
-              "awarded_marks": 2,
-              "max_marks": 2,
-              "achieved": true
-            },
-            {
-              "point": "Unsold items",
-              "awarded_marks": 3,
-              "max_marks": 4,
-              "achieved": true
-            },
-            {
-              "point": "Employees selling both",
-              "awarded_marks": 4,
+              "point": "Member-category relation constructed with correct joins and projection",
+              "awarded_marks": 5,
               "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "Items >1000 sold",
+              "point": "All-category condition expressed correctly using division or an equivalent",
               "awarded_marks": 5,
-              "max_marks": 6,
+              "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "Most sold item",
-              "awarded_marks": 6,
-              "max_marks": 8,
-              "achieved": true
+              "point": "Late and currently overdue members identified correctly",
+              "awarded_marks": 3,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Set difference, final join, and projection applied correctly",
+              "awarded_marks": 4,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+              "awarded_marks": 4,
+              "max_marks": 5,
+              "achieved": false
             }
           ]
         },
         {
           "question_no": "04",
-          "score": 33,
-          "max_score": 40,
+          "score": 29,
+          "max_score": 35,
           "criteria_breakdown": [
             {
-              "point": "SQL query i",
-              "awarded_marks": 3,
-              "max_marks": 4,
-              "achieved": true
-            },
-            {
-              "point": "SQL query ii",
-              "awarded_marks": 4,
+              "point": "Function interface and customer/input validation",
+              "awarded_marks": 5,
               "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "SQL query iii",
+              "point": "Product lookup and row locking prevent overselling",
+              "awarded_marks": 5,
+              "max_marks": 5,
+              "achieved": true
+            },
+            {
+              "point": "Discounted total and preserved selling price calculated correctly",
               "awarded_marks": 5,
               "max_marks": 6,
-              "achieved": true
+              "achieved": false
             },
             {
-              "point": "VIEW creation",
-              "awarded_marks": 6,
-              "max_marks": 7,
-              "achieved": true
+              "point": "Order, order-item, and stock changes implemented atomically",
+              "awarded_marks": 5,
+              "max_marks": 6,
+              "achieved": false
             },
             {
-              "point": "FUNCTION creation",
-              "awarded_marks": 7,
-              "max_marks": 8,
-              "achieved": true
+              "point": "Error handling prevents partial changes",
+              "awarded_marks": 3,
+              "max_marks": 5,
+              "achieved": false
             },
             {
-              "point": "TRIGGER creation",
-              "awarded_marks": 8,
-              "max_marks": 10,
-              "achieved": true
+              "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "ACID and concurrency reasoning is accurate",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
             }
           ]
         }
       ]
     },
     "status": "graded",
-    "processed_at": "2026-08-29T04:44:38.317548+00:00",
-    "created_at": "2026-08-29T04:44:38.317548+00:00",
-    "updated_at": "2026-08-29T04:44:38.317548+00:00"
+    "processed_at": "2026-08-31T11:02:00+05:30",
+    "created_at": "2026-08-31T11:02:00+05:30",
+    "updated_at": "2026-08-31T11:02:00+05:30"
   },
   {
     "_id": {
@@ -487,7 +505,7 @@
     "max_marks_per_question": [
       {
         "question_no": "02",
-        "max_marks": 15.0
+        "max_marks": 20.0
       },
       {
         "question_no": "03",
@@ -495,48 +513,48 @@
       },
       {
         "question_no": "04",
-        "max_marks": 40.0
+        "max_marks": 35.0
       }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262554\n\nQuestion 2\na) Given FDs: A→BC, BC→E, E→DA\n\nA⁺ = {A,B,C,D,E} = R (A is key)\nBC⁺ = {A,B,C,D,E} = R (BC is key)\nBE⁺ = {A,B,C,D,E} = R (BE is key)\n\nCandidate keys: A, BC, BE\n\nb) R is in 3NF. Every non-trivial FD has a superkey on left side or prime attributes on right side.\n\nc) R is NOT in BCNF because E→DA where E is not a superkey.\nDecompose into: R1(E,D,A), R2(A,B,C), R3(B,C,E)\n\nQuestion 3\na) π_eName,salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) π_iname,price,availableQty(ITEM) - π_iname,price,availableQty(ITEM ⨝ itemNo=itemNo SALES)\n\nc) π_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM)) ∩ π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM))\n\nd) π_iname(ITEM ⨝ SALES) grouped by iname with γ_sum(soldQty) > 1000\n\ne) π_iname(ITEM ⨝ SALES) grouped by iname ORDER BY sum(soldQty) DESC LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c JOIN Orders o ON c.cid = o.cid JOIN OrderDetails od ON o.oid = od.oid JOIN Products p ON od.productId = p.productId WHERE p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od JOIN Orders o ON od.oid = o.oid JOIN Customers c ON o.cid = c.cid WHERE c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o JOIN OrderDetails od ON o.oid = od.oid WHERE od.discount <= 0.05);\n\nb) CREATE VIEW incompleteOrders AS SELECT c.name, c.country, COUNT(o.oid) as not_completed FROM Customers c JOIN Orders o ON c.cid = o.cid WHERE EXISTS (SELECT 1 FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = o.oid AND p.unitsInStock < od.quantity) GROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_lost(order_id INT, discount REAL) RETURNS REAL AS $$ DECLARE total REAL := 0; BEGIN SELECT SUM(p.UnitPrice * od.quantity) INTO total FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = order_id; RETURN total * (1 - discount); END; $$ LANGUAGE plpgsql;\n\nd) CREATE TRIGGER updateCost AFTER INSERT ON OrderDetails FOR EACH ROW BEGIN UPDATE Orders SET cost = calc_lost(NEW.oid, (SELECT discount FROM OrderDetails WHERE oid = NEW.oid)) WHERE oid = NEW.oid; END;",
+    "raw_ocr_transcript": "Student ID: IT22262554\n\nQuestion 2\nThe combined candidate key is (student_id,module_code,semester). The table is in 1NF but has partial dependencies, so not 2NF. There is a transitive dependency for lecturer name.\n\nMy relations are STUDENT(student_id PK,name,programme), LECTURER(lecturer_id PK,name), MODULE(module_code PK,title,lecturer_id FK), and ENROLMENT(student_id,module_code,semester,grade) with a composite primary key. The two IDs in ENROLMENT are FKs. These are 3NF/BCNF. It avoids repeating names. Joining by primary/foreign keys is lossless. I did not explain dependency preservation in detail.\n\nQuestion 3\nBorrowedCategory = pi member_id,category(LOAN join BOOK)\nCategories = pi category(BOOK)\nHasAll = BorrowedCategory / Categories\nLate = pi member_id(sigma returned_on > due_on(LOAN))\nAnswer = pi member_id,member_name(MEMBER join (HasAll - Late))\n\nThis finds all categories with division and removes people who returned late. Open overdue loans need another returned_on NULL condition which I missed.\n\nQuestion 4\nCREATE FUNCTION place_order(c int,p int,q int,d numeric) RETURNS int AS $$\nDECLARE oid int; price numeric; stock int;\nBEGIN\n IF q<=0 THEN RAISE EXCEPTION 'quantity'; END IF;\n IF NOT EXISTS(SELECT 1 FROM customer WHERE customer_id=c AND status='ACTIVE') THEN RAISE EXCEPTION 'customer'; END IF;\n SELECT unit_price,stock_qty INTO price,stock FROM product WHERE product_id=p FOR UPDATE;\n IF stock<q THEN RAISE EXCEPTION 'stock'; END IF;\n INSERT INTO orders(customer_id,ordered_at,total_amount,status) VALUES(c,now(),price*q*(1-d),'PLACED') RETURNING order_id INTO oid;\n INSERT INTO order_item VALUES(oid,p,q,price,d);\n UPDATE product SET stock_qty=stock_qty-q WHERE product_id=p;\n RETURN oid;\nEND; $$ LANGUAGE plpgsql;\n\nThe function statements are atomic if run in a transaction. FOR UPDATE prevents overselling. Database logs make it durable. I did not validate the discount or missing product separately, and I am not sure whether I need an exception block.",
     "evaluation": {
-      "total_score": 59,
+      "total_score": 61,
       "max_score": 80,
       "results": [
         {
           "question_no": "02",
-          "score": 10,
-          "max_score": 15,
+          "score": 15,
+          "max_score": 20,
           "criteria_breakdown": [
             {
-              "point": "Attribute closures computation",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Candidate key and attribute-closure analysis",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "Candidate key identification",
+              "point": "Current normal form and dependency violations",
               "awarded_marks": 3,
-              "max_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Correct 3NF or BCNF decomposition",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "Step-by-step closure",
-              "awarded_marks": 3,
-              "max_marks": 3,
-              "achieved": true
-            },
-            {
-              "point": "3NF determination",
+              "point": "Primary-key and foreign-key identification",
               "awarded_marks": 2,
-              "max_marks": 3,
-              "achieved": true
+              "max_marks": 4,
+              "achieved": false
             },
             {
-              "point": "BCNF decomposition",
+              "point": "Lossless join, dependency preservation, and anomaly justification",
               "awarded_marks": 2,
-              "max_marks": 3,
-              "achieved": true
+              "max_marks": 4,
+              "achieved": false
             }
           ]
         },
@@ -546,86 +564,92 @@
           "max_score": 25,
           "criteria_breakdown": [
             {
-              "point": "Manager names/salary",
-              "awarded_marks": 2,
-              "max_marks": 2,
-              "achieved": true
-            },
-            {
-              "point": "Unsold items",
-              "awarded_marks": 3,
-              "max_marks": 4,
-              "achieved": true
-            },
-            {
-              "point": "Employees selling both",
+              "point": "Member-category relation constructed with correct joins and projection",
               "awarded_marks": 4,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "All-category condition expressed correctly using division or an equivalent",
+              "awarded_marks": 5,
               "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "Items >1000 sold",
-              "awarded_marks": 4,
-              "max_marks": 6,
+              "point": "Late and currently overdue members identified correctly",
+              "awarded_marks": 3,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Most sold item",
-              "awarded_marks": 6,
-              "max_marks": 8,
-              "achieved": true
+              "point": "Set difference, final join, and projection applied correctly",
+              "awarded_marks": 4,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+              "awarded_marks": 3,
+              "max_marks": 5,
+              "achieved": false
             }
           ]
         },
         {
           "question_no": "04",
-          "score": 30,
-          "max_score": 40,
+          "score": 27,
+          "max_score": 35,
           "criteria_breakdown": [
             {
-              "point": "SQL query i",
-              "awarded_marks": 3,
-              "max_marks": 4,
-              "achieved": true
+              "point": "Function interface and customer/input validation",
+              "awarded_marks": 4,
+              "max_marks": 5,
+              "achieved": false
             },
             {
-              "point": "SQL query ii",
-              "awarded_marks": 4,
+              "point": "Product lookup and row locking prevent overselling",
+              "awarded_marks": 5,
               "max_marks": 5,
               "achieved": true
             },
             {
-              "point": "SQL query iii",
-              "awarded_marks": 4,
+              "point": "Discounted total and preserved selling price calculated correctly",
+              "awarded_marks": 5,
               "max_marks": 6,
               "achieved": false
             },
             {
-              "point": "VIEW creation",
+              "point": "Order, order-item, and stock changes implemented atomically",
               "awarded_marks": 5,
-              "max_marks": 7,
+              "max_marks": 6,
               "achieved": false
             },
             {
-              "point": "FUNCTION creation",
-              "awarded_marks": 6,
-              "max_marks": 8,
-              "achieved": true
+              "point": "Error handling prevents partial changes",
+              "awarded_marks": 3,
+              "max_marks": 5,
+              "achieved": false
             },
             {
-              "point": "TRIGGER creation",
-              "awarded_marks": 8,
-              "max_marks": 10,
-              "achieved": true
+              "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "ACID and concurrency reasoning is accurate",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
             }
           ]
         }
       ]
     },
     "status": "graded",
-    "processed_at": "2026-08-29T04:44:38.317563+00:00",
-    "created_at": "2026-08-29T04:44:38.317563+00:00",
-    "updated_at": "2026-08-29T04:44:38.317563+00:00"
+    "processed_at": "2026-08-31T11:03:00+05:30",
+    "created_at": "2026-08-31T11:03:00+05:30",
+    "updated_at": "2026-08-31T11:03:00+05:30"
   },
   {
     "_id": {
@@ -644,7 +668,7 @@
     "max_marks_per_question": [
       {
         "question_no": "02",
-        "max_marks": 15.0
+        "max_marks": 20.0
       },
       {
         "question_no": "03",
@@ -652,127 +676,133 @@
       },
       {
         "question_no": "04",
-        "max_marks": 40.0
+        "max_marks": 35.0
       }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262555\n\nQuestion 2\na) FDs: A→BC, BC→E, E→DA\n\nA⁺ = {A,B,C,D,E} = R → A is key\nBC⁺ = {A,B,C,D,E} = R → BC is key\nBE⁺ = {A,B,C,D,E} = R → BE is key\n\nb) R is in 3NF. For E→DA, E is not superkey but D,A are prime attributes.\n\nc) R is NOT in BCNF. E→DA violates BCNF. Decompose: R1(E,D,A), R2(A,B,C), R3(B,C,E)\n\nQuestion 3\na) π_eName, salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) π_iname, price, availableQty(ITEM) \\ π_iname, price, availableQty(ITEM ⨝ itemNo=itemNo SALES)\n\nc) π_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM)) ∩ π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM))\n\nd) π_iname(ITEM ⨝ SALES) grouped by iname with sum(soldQty) > 1000\n\ne) π_iname(ITEM ⨝ SALES) grouped by iname ORDER BY sum(soldQty) DESC LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c JOIN Orders o ON c.cid = o.cid JOIN OrderDetails od ON o.oid = od.oid JOIN Products p ON od.productId = p.productId WHERE p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od JOIN Orders o ON od.oid = o.oid JOIN Customers c ON o.cid = c.cid WHERE c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o JOIN OrderDetails od ON o.oid = od.oid WHERE od.discount <= 0.05);\n\nb) CREATE VIEW incompleteOrders AS SELECT c.name, c.country, COUNT(o.oid) as not_completed FROM Customers c JOIN Orders o ON c.cid = o.cid WHERE EXISTS (SELECT 1 FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = o.oid AND p.unitsInStock < od.quantity) GROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_lost(order_id INT, discount REAL) RETURNS REAL AS $$ DECLARE total REAL; BEGIN SELECT SUM(p.UnitPrice * od.quantity) INTO total FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = order_id; RETURN total * (1 - discount); END; $$ LANGUAGE plpgsql;\n\nd) CREATE TRIGGER updateCost AFTER INSERT ON OrderDetails FOR EACH ROW BEGIN UPDATE Orders SET cost = calc_lost(NEW.oid, 0) WHERE oid = NEW.oid; END;",
+    "raw_ocr_transcript": "Student ID: IT22262555\n\nQuestion 2\nI found the key as student_id,module_code,semester. It is 1NF because fields are atomic but partial dependencies mean it is not 2NF. I would make STUDENT(student_id,name,programme), MODULE(module_code,title,lecturer_id,lecturer_name), and ENROLMENT(student_id,module_code,semester,grade). Keys are student_id, module_code, and the three-column enrolment key. This removes student and module repetition, but lecturer details are still repeated for modules taught by the same lecturer. The joins use the IDs so I think it is lossless.\n\nQuestion 3\nMC = pi member_id,category(LOAN join BOOK)\nAllCategories = pi category(BOOK)\nAllBorrowers = MC / AllCategories\nLate = pi member_id(sigma returned_on > due_on(LOAN))\npi member_id,member_name(MEMBER join (AllBorrowers - Late))\n\nDivision checks every category. The late expression does not cover books not returned after due date.\n\nQuestion 4\nCREATE FUNCTION place_order(c int,p int,q int,d numeric) RETURNS int AS $$\nDECLARE oid int; price numeric; stock int;\nBEGIN\n IF q<=0 THEN RAISE EXCEPTION 'bad qty'; END IF;\n SELECT unit_price,stock_qty INTO price,stock FROM product WHERE product_id=p;\n IF stock<q THEN RAISE EXCEPTION 'not enough'; END IF;\n INSERT INTO orders(customer_id,ordered_at,total_amount,status) VALUES(c,now(),price*q*(1-d),'PLACED') RETURNING order_id INTO oid;\n INSERT INTO order_item VALUES(oid,p,q,price,d);\n UPDATE product SET stock_qty=stock_qty-q WHERE product_id=p;\n RETURN oid;\nEND; $$ LANGUAGE plpgsql;\n\nThe selling price is copied to the item and the total includes the discount. An error should rollback. I forgot to check active customer and discount range. Also there is no FOR UPDATE, so concurrent users could both pass the stock test.",
     "evaluation": {
-      "total_score": 50,
+      "total_score": 53,
       "max_score": 80,
       "results": [
         {
           "question_no": "02",
-          "score": 9,
-          "max_score": 15,
+          "score": 13,
+          "max_score": 20,
           "criteria_breakdown": [
             {
-              "point": "Attribute closures computation",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Candidate key and attribute-closure analysis",
+              "awarded_marks": 4,
+              "max_marks": 4,
               "achieved": true
             },
             {
-              "point": "Candidate key identification",
+              "point": "Current normal form and dependency violations",
               "awarded_marks": 3,
-              "max_marks": 3,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "Step-by-step closure",
-              "awarded_marks": 2,
-              "max_marks": 3,
+              "point": "Correct 3NF or BCNF decomposition",
+              "awarded_marks": 3,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "3NF determination",
-              "awarded_marks": 2,
-              "max_marks": 3,
-              "achieved": true
+              "point": "Primary-key and foreign-key identification",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
             },
             {
-              "point": "BCNF decomposition",
+              "point": "Lossless join, dependency preservation, and anomaly justification",
               "awarded_marks": 2,
-              "max_marks": 3,
-              "achieved": true
+              "max_marks": 4,
+              "achieved": false
             }
           ]
         },
         {
           "question_no": "03",
-          "score": 15,
+          "score": 16,
           "max_score": 25,
           "criteria_breakdown": [
             {
-              "point": "Manager names/salary",
-              "awarded_marks": 1,
-              "max_marks": 2,
+              "point": "Member-category relation constructed with correct joins and projection",
+              "awarded_marks": 4,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Unsold items",
-              "awarded_marks": 2,
-              "max_marks": 4,
-              "achieved": false
-            },
-            {
-              "point": "Employees selling both",
+              "point": "All-category condition expressed correctly using division or an equivalent",
               "awarded_marks": 3,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Items >1000 sold",
-              "awarded_marks": 4,
-              "max_marks": 6,
+              "point": "Late and currently overdue members identified correctly",
+              "awarded_marks": 2,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Most sold item",
-              "awarded_marks": 5,
-              "max_marks": 8,
+              "point": "Set difference, final join, and projection applied correctly",
+              "awarded_marks": 4,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+              "awarded_marks": 3,
+              "max_marks": 5,
               "achieved": false
             }
           ]
         },
         {
           "question_no": "04",
-          "score": 26,
-          "max_score": 40,
+          "score": 24,
+          "max_score": 35,
           "criteria_breakdown": [
             {
-              "point": "SQL query i",
-              "awarded_marks": 2,
-              "max_marks": 4,
-              "achieved": false
-            },
-            {
-              "point": "SQL query ii",
-              "awarded_marks": 3,
+              "point": "Function interface and customer/input validation",
+              "awarded_marks": 4,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "SQL query iii",
-              "awarded_marks": 4,
+              "point": "Product lookup and row locking prevent overselling",
+              "awarded_marks": 2,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Discounted total and preserved selling price calculated correctly",
+              "awarded_marks": 5,
               "max_marks": 6,
               "achieved": false
             },
             {
-              "point": "VIEW creation",
+              "point": "Order, order-item, and stock changes implemented atomically",
               "awarded_marks": 5,
-              "max_marks": 7,
+              "max_marks": 6,
               "achieved": false
             },
             {
-              "point": "FUNCTION creation",
-              "awarded_marks": 5,
-              "max_marks": 8,
+              "point": "Error handling prevents partial changes",
+              "awarded_marks": 2,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "TRIGGER creation",
-              "awarded_marks": 7,
-              "max_marks": 10,
+              "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "ACID and concurrency reasoning is accurate",
+              "awarded_marks": 3,
+              "max_marks": 4,
               "achieved": false
             }
           ]
@@ -780,9 +810,9 @@
       ]
     },
     "status": "graded",
-    "processed_at": "2026-08-29T04:44:38.317575+00:00",
-    "created_at": "2026-08-29T04:44:38.317575+00:00",
-    "updated_at": "2026-08-29T04:44:38.317575+00:00"
+    "processed_at": "2026-08-31T11:04:00+05:30",
+    "created_at": "2026-08-31T11:04:00+05:30",
+    "updated_at": "2026-08-31T11:04:00+05:30"
   },
   {
     "_id": {
@@ -801,7 +831,7 @@
     "max_marks_per_question": [
       {
         "question_no": "02",
-        "max_marks": 15.0
+        "max_marks": 20.0
       },
       {
         "question_no": "03",
@@ -809,127 +839,133 @@
       },
       {
         "question_no": "04",
-        "max_marks": 40.0
+        "max_marks": 35.0
       }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262556\n\nQuestion 2\na) Given FDs: A→BC, BC→E, E→DA\n\nA⁺: Start with {A}. A→BC adds {B,C}. BC→E adds {E}. E→DA adds {D,A}. So A⁺ = {A,B,C,D,E} = R. A is a candidate key.\n\nBC⁺: Start with {B,C}. BC→E adds {E}. E→DA adds {D,A}. Now we have {A,B,C,D,E} = R. BC is a candidate key.\n\nCD⁺: Start with {C,D}. No FD starts with C alone or D alone or CD. CD⁺ = {C,D}. Not a superkey.\n\nBE⁺: Start with {B,E}. BC→E is satisfied. E→DA adds {D,A}. Now {A,B,D,E}. A→BC adds {C}. BE⁺ = {A,B,C,D,E} = R. BE is a candidate key.\n\nCandidate keys: A, BC, BE.\n\nb) Is R in 3NF?\nFor 3NF, for every non-trivial FD X→Y, either X is a superkey or Y is a prime attribute.\nA→BC: A is superkey ✓\nBC→E: BC is superkey ✓\nE→DA: E is not a superkey. D and A are prime (part of keys A and BE). So DA contains prime attributes. ✓\nR is in 3NF.\n\nc) Is R in BCNF?\nFor BCNF, every determinant must be a superkey.\nE→DA: E is not a superkey (E⁺ = {A,D,E} ≠ R). So R is NOT in BCNF.\n\nBCNF decomposition:\nR1(E, D, A) with FD E→DA, E is PK\nR2(A, B, C) with FD A→BC, A is PK\nR3(B, C, E) with FD BC→E, BC is PK\n\nQuestion 3\na) π_ename, salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) π_iname, price, availableQty(ITEM) \\ π_iname, price, availableQty(ITEM ⨝ itemNo=itemNo SALES)\n\nc) (π_ename(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM))) ∩ (π_ename(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM)))\n\nd) π_iname(ITEM ⨝ SALES) grouped by iname with γ_sum(soldQty) > 1000\n\ne) π_iname(ITEM ⨝ SALES) grouped by iname, ordered by sum(soldQty) DESC, LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c, Orders o, OrderDetails od, Products p WHERE c.cid = o.cid AND o.oid = od.oid AND od.productId = p.productId AND p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od, Orders o, Customers c WHERE od.oid = o.oid AND o.cid = c.cid AND c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o, OrderDetails od WHERE o.oid = od.oid AND od.discount <= 0.05);\n\nb) CREATE VIEW incompleteOrders AS\nSELECT c.name, c.country, COUNT(DISTINCT o.oid) AS incomplete_count\nFROM Customers c\nJOIN Orders o ON c.cid = o.cid\nJOIN OrderDetails od ON o.oid = od.oid\nJOIN Products p ON od.productId = p.productId\nWHERE p.unitsInStock < od.quantity\nGROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_lost(order_id INT, discount REAL)\nRETURNS REAL AS $$\nDECLARE\n    total_cost REAL := 0;\n    rec RECORD;\nBEGIN\n    FOR rec IN SELECT od.quantity, p.UnitPrice\n               FROM OrderDetails od JOIN Products p ON od.productId = p.productId\n               WHERE od.oid = order_id\n    LOOP\n        total_cost := total_cost + (rec.UnitPrice * rec.quantity);\n    END LOOP;\n    RETURN total_cost * (1 - discount);\nEND;\n$$ LANGUAGE plpgsql;\n\nd) CREATE TRIGGER updateCost\nAFTER INSERT ON OrderDetails\nFOR EACH ROW\nBEGIN\n    UPDATE Orders\n    SET cost = calc_lost(NEW.oid, (SELECT discount FROM OrderDetails WHERE oid = NEW.oid))\n    WHERE oid = NEW.oid;\nEND;",
+    "raw_ocr_transcript": "Student ID: IT22262556\n\nQuestion 2\nThe key should be student_id,module_code,semester. Student information depends only on student_id and module information depends on module_code, so the large table is not properly normalized. I split STUDENT, MODULE and ENROLMENT. I also wrote LECTURER separately but was not sure where its foreign key goes. This reduces update anomaly. All tables have their ID as key; ENROLMENT has a combined key. I think it is 3NF.\n\nQuestion 3\nR = pi member_id,category(LOAN join BOOK)\nC = pi category(BOOK)\nX = R / C\nBad = pi member_id(sigma returned_on>due_on(LOAN))\nAnswer = pi member_id,member_name(MEMBER join (X-Bad))\n\nThe slash is division for all categories. It removes late returns, but I did not handle open overdue records and my join conditions are assumed.\n\nQuestion 4\nCREATE FUNCTION place_order(c int,p int,q int,d numeric) RETURNS int AS $$\nDECLARE oid int; pr numeric;\nBEGIN\n IF q<=0 THEN RAISE EXCEPTION 'bad'; END IF;\n SELECT unit_price INTO pr FROM product WHERE product_id=p;\n IF (SELECT stock_qty FROM product WHERE product_id=p)<q THEN RAISE EXCEPTION 'stock'; END IF;\n INSERT INTO orders(customer_id,total_amount,status) VALUES(c,pr*q*(1-d),'PLACED') RETURNING order_id INTO oid;\n INSERT INTO order_item VALUES(oid,p,q,pr,d);\n UPDATE product SET stock_qty=stock_qty-q WHERE product_id=p;\n RETURN oid;\nEND; $$ LANGUAGE plpgsql;\n\nIt should run as one transaction and rollback on an exception. I have not locked the product, checked customer status, checked discount, or included ordered_at. Logging makes committed records permanent.",
     "evaluation": {
-      "total_score": 40,
+      "total_score": 45,
       "max_score": 80,
       "results": [
         {
           "question_no": "02",
-          "score": 6,
-          "max_score": 15,
+          "score": 11,
+          "max_score": 20,
           "criteria_breakdown": [
             {
-              "point": "Attribute closures computation",
+              "point": "Candidate key and attribute-closure analysis",
               "awarded_marks": 3,
-              "max_marks": 3,
-              "achieved": true
+              "max_marks": 4,
+              "achieved": false
             },
             {
-              "point": "Candidate key identification",
+              "point": "Current normal form and dependency violations",
               "awarded_marks": 3,
-              "max_marks": 3,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "Step-by-step closure",
-              "awarded_marks": 1,
-              "max_marks": 3,
+              "point": "Correct 3NF or BCNF decomposition",
+              "awarded_marks": 2,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "3NF determination",
+              "point": "Primary-key and foreign-key identification",
               "awarded_marks": 1,
-              "max_marks": 3,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "BCNF decomposition",
-              "awarded_marks": 1,
-              "max_marks": 3,
+              "point": "Lossless join, dependency preservation, and anomaly justification",
+              "awarded_marks": 2,
+              "max_marks": 4,
               "achieved": false
             }
           ]
         },
         {
           "question_no": "03",
-          "score": 12,
+          "score": 14,
           "max_score": 25,
           "criteria_breakdown": [
             {
-              "point": "Manager names/salary",
-              "awarded_marks": 1,
-              "max_marks": 2,
+              "point": "Member-category relation constructed with correct joins and projection",
+              "awarded_marks": 4,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Unsold items",
-              "awarded_marks": 2,
-              "max_marks": 4,
-              "achieved": false
-            },
-            {
-              "point": "Employees selling both",
+              "point": "All-category condition expressed correctly using division or an equivalent",
               "awarded_marks": 2,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Items >1000 sold",
-              "awarded_marks": 3,
-              "max_marks": 6,
+              "point": "Late and currently overdue members identified correctly",
+              "awarded_marks": 2,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Most sold item",
-              "awarded_marks": 4,
-              "max_marks": 8,
+              "point": "Set difference, final join, and projection applied correctly",
+              "awarded_marks": 3,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+              "awarded_marks": 3,
+              "max_marks": 5,
               "achieved": false
             }
           ]
         },
         {
           "question_no": "04",
-          "score": 22,
-          "max_score": 40,
+          "score": 20,
+          "max_score": 35,
           "criteria_breakdown": [
             {
-              "point": "SQL query i",
-              "awarded_marks": 2,
-              "max_marks": 4,
+              "point": "Function interface and customer/input validation",
+              "awarded_marks": 4,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "SQL query ii",
+              "point": "Product lookup and row locking prevent overselling",
+              "awarded_marks": 1,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Discounted total and preserved selling price calculated correctly",
+              "awarded_marks": 4,
+              "max_marks": 6,
+              "achieved": false
+            },
+            {
+              "point": "Order, order-item, and stock changes implemented atomically",
+              "awarded_marks": 4,
+              "max_marks": 6,
+              "achieved": false
+            },
+            {
+              "point": "Error handling prevents partial changes",
               "awarded_marks": 2,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "SQL query iii",
+              "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
               "awarded_marks": 3,
-              "max_marks": 6,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "VIEW creation",
-              "awarded_marks": 4,
-              "max_marks": 7,
-              "achieved": false
-            },
-            {
-              "point": "FUNCTION creation",
-              "awarded_marks": 5,
-              "max_marks": 8,
-              "achieved": false
-            },
-            {
-              "point": "TRIGGER creation",
-              "awarded_marks": 6,
-              "max_marks": 10,
+              "point": "ACID and concurrency reasoning is accurate",
+              "awarded_marks": 2,
+              "max_marks": 4,
               "achieved": false
             }
           ]
@@ -937,9 +973,9 @@
       ]
     },
     "status": "graded",
-    "processed_at": "2026-08-29T04:44:38.317584+00:00",
-    "created_at": "2026-08-29T04:44:38.317584+00:00",
-    "updated_at": "2026-08-29T04:44:38.317584+00:00"
+    "processed_at": "2026-08-31T11:05:00+05:30",
+    "created_at": "2026-08-31T11:05:00+05:30",
+    "updated_at": "2026-08-31T11:05:00+05:30"
   },
   {
     "_id": {
@@ -958,7 +994,7 @@
     "max_marks_per_question": [
       {
         "question_no": "02",
-        "max_marks": 15.0
+        "max_marks": 20.0
       },
       {
         "question_no": "03",
@@ -966,84 +1002,84 @@
       },
       {
         "question_no": "04",
-        "max_marks": 40.0
+        "max_marks": 35.0
       }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262557\n\nQuestion 2\na) FDs: A→BC, BC→E, E→DA\n\nA⁺: {A} → {A,B,C} → {A,B,C,E} → {A,B,C,D,E} = R. A is key.\nBC⁺: {B,C} → {B,C,E} → {A,B,C,D,E} = R. BC is key.\nBE⁺: {B,E} → {A,B,D,E} → {A,B,C,D,E} = R. BE is key.\n\nCandidate keys: {A}, {BC}, {BE}\n\nb) 3NF check:\nA→BC: A is superkey ✓\nBC→E: BC is superkey ✓\nE→DA: E is not superkey, but DA contains prime attributes (A is prime) ✓\nR is in 3NF.\n\nc) BCNF check:\nE→DA: E is not superkey (E⁺ = {A,D,E}) → NOT in BCNF\n\nBCNF decomposition:\nR1(A, B, C) - FD: A→BC\nR2(B, C, E) - FD: BC→E\nR3(E, D, A) - FD: E→DA\n\nQuestion 3\na) π_eName, salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) π_itemName, price, availableQty(ITEM) \\ π_itemName, price, availableQty(ITEM ⨝ itemNo=itemNo SALES)\n\nc) (π_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM))) ∩ (π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM)))\n\nd) π_itemName(ITEM ⨝ SALES) grouped by itemName with γ_sum(soldQty) > 1000\n\ne) π_itemName(ITEM ⨝ SALES) grouped by itemName, ordered by sum(soldQty) DESC, LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c, Orders o, OrderDetails od, Products p WHERE c.cid = o.cid AND o.oid = od.oid AND od.productId = p.productId AND p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od, Orders o, Customers c WHERE od.oid = o.oid AND o.cid = c.cid AND c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o, OrderDetails od WHERE o.oid = od.oid AND od.discount <= 0.05);\n\nb) CREATE VIEW incompleteOrders AS\nSELECT c.name, c.country, COUNT(DISTINCT o.oid) AS incomplete_count\nFROM Customers c\nJOIN Orders o ON c.cid = o.cid\nJOIN OrderDetails od ON o.oid = od.oid\nJOIN Products p ON od.productId = p.productId\nWHERE p.unitsInStock < od.quantity\nGROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_lost(order_id INT, discount REAL)\nRETURNS REAL AS $$\nDECLARE total REAL := 0;\nBEGIN\n    SELECT SUM(p.UnitPrice * od.quantity) INTO total\n    FROM OrderDetails od JOIN Products p ON od.productId = p.productId\n    WHERE od.oid = order_id;\n    RETURN total * (1 - discount);\nEND;\n$$ LANGUAGE plpgsql;\n\nd) CREATE TRIGGER updateCost\nAFTER INSERT ON OrderDetails\nFOR EACH ROW\nBEGIN\n    UPDATE Orders SET cost = calc_lost(NEW.oid, 0) WHERE oid = NEW.oid;\nEND;",
+    "raw_ocr_transcript": "Student ID: IT22262557\n\nQuestion 2\nCandidate key: student_id,module_code. Semester might also be needed because the same student can repeat a module, so maybe the full key has semester. It is not 2NF because names depend on IDs. I made STUDENT, MODULE and ENROLMENT tables. LECTURER could be another table. Primary keys are the IDs. Foreign keys connect enrolment to student and module. This stops some duplicated data.\n\nQuestion 3\nFirst join LOAN and BOOK and project member_id and category. Then divide by all book categories. I wrote:\nX = pi member_id,category(LOAN join BOOK) / pi category(BOOK)\nLate = pi member_id(sigma returned_on>due_on(LOAN))\nResult = pi member_id,member_name(MEMBER join (X-Late))\nThis finds every category and removes late members. I did not include currently overdue loans.\n\nQuestion 4\nCREATE FUNCTION place_order(c int,p int,q int,d numeric) RETURNS int AS $$\nDECLARE oid int; price numeric;\nBEGIN\n SELECT unit_price INTO price FROM product WHERE product_id=p;\n IF q<=0 THEN RAISE EXCEPTION 'quantity'; END IF;\n INSERT INTO orders(customer_id,total_amount,status) VALUES(c,price*q*(1-d),'PLACED') RETURNING order_id INTO oid;\n INSERT INTO order_item VALUES(oid,p,q,price,d);\n UPDATE product SET stock_qty=stock_qty-q WHERE product_id=p AND stock_qty>=q;\n RETURN oid;\nEND; $$ LANGUAGE plpgsql;\n\nThe WHERE condition tries to stop negative stock, but I do not test whether the update changed a row. I also did not lock, validate customer/discount, or explicitly deal with errors. A transaction is atomic and durable after commit.",
     "evaluation": {
-      "total_score": 32,
+      "total_score": 37,
       "max_score": 80,
       "results": [
         {
           "question_no": "02",
-          "score": 5,
-          "max_score": 15,
+          "score": 9,
+          "max_score": 20,
           "criteria_breakdown": [
             {
-              "point": "Attribute closures computation",
-              "awarded_marks": 3,
-              "max_marks": 3,
-              "achieved": true
-            },
-            {
-              "point": "Candidate key identification",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Candidate key and attribute-closure analysis",
+              "awarded_marks": 2,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "Step-by-step closure",
-              "awarded_marks": 0,
-              "max_marks": 3,
+              "point": "Current normal form and dependency violations",
+              "awarded_marks": 2,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "3NF determination",
+              "point": "Correct 3NF or BCNF decomposition",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Primary-key and foreign-key identification",
               "awarded_marks": 1,
-              "max_marks": 3,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "BCNF decomposition",
-              "awarded_marks": 1,
-              "max_marks": 3,
+              "point": "Lossless join, dependency preservation, and anomaly justification",
+              "awarded_marks": 2,
+              "max_marks": 4,
               "achieved": false
             }
           ]
         },
         {
           "question_no": "03",
-          "score": 10,
+          "score": 11,
           "max_score": 25,
           "criteria_breakdown": [
             {
-              "point": "Manager names/salary",
-              "awarded_marks": 1,
-              "max_marks": 2,
+              "point": "Member-category relation constructed with correct joins and projection",
+              "awarded_marks": 3,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Unsold items",
+              "point": "All-category condition expressed correctly using division or an equivalent",
               "awarded_marks": 1,
-              "max_marks": 4,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Employees selling both",
+              "point": "Late and currently overdue members identified correctly",
               "awarded_marks": 2,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Items >1000 sold",
+              "point": "Set difference, final join, and projection applied correctly",
               "awarded_marks": 3,
-              "max_marks": 6,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Most sold item",
-              "awarded_marks": 3,
-              "max_marks": 8,
+              "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+              "awarded_marks": 2,
+              "max_marks": 5,
               "achieved": false
             }
           ]
@@ -1051,42 +1087,48 @@
         {
           "question_no": "04",
           "score": 17,
-          "max_score": 40,
+          "max_score": 35,
           "criteria_breakdown": [
             {
-              "point": "SQL query i",
-              "awarded_marks": 1,
-              "max_marks": 4,
-              "achieved": false
-            },
-            {
-              "point": "SQL query ii",
-              "awarded_marks": 2,
+              "point": "Function interface and customer/input validation",
+              "awarded_marks": 3,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "SQL query iii",
-              "awarded_marks": 2,
+              "point": "Product lookup and row locking prevent overselling",
+              "awarded_marks": 1,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Discounted total and preserved selling price calculated correctly",
+              "awarded_marks": 3,
               "max_marks": 6,
               "achieved": false
             },
             {
-              "point": "VIEW creation",
-              "awarded_marks": 3,
-              "max_marks": 7,
-              "achieved": false
-            },
-            {
-              "point": "FUNCTION creation",
+              "point": "Order, order-item, and stock changes implemented atomically",
               "awarded_marks": 4,
-              "max_marks": 8,
+              "max_marks": 6,
               "achieved": false
             },
             {
-              "point": "TRIGGER creation",
-              "awarded_marks": 5,
-              "max_marks": 10,
+              "point": "Error handling prevents partial changes",
+              "awarded_marks": 1,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "ACID and concurrency reasoning is accurate",
+              "awarded_marks": 2,
+              "max_marks": 4,
               "achieved": false
             }
           ]
@@ -1094,9 +1136,9 @@
       ]
     },
     "status": "graded",
-    "processed_at": "2026-08-29T04:44:38.317594+00:00",
-    "created_at": "2026-08-29T04:44:38.317594+00:00",
-    "updated_at": "2026-08-29T04:44:38.317594+00:00"
+    "processed_at": "2026-08-31T11:06:00+05:30",
+    "created_at": "2026-08-31T11:06:00+05:30",
+    "updated_at": "2026-08-31T11:06:00+05:30"
   },
   {
     "_id": {
@@ -1115,7 +1157,7 @@
     "max_marks_per_question": [
       {
         "question_no": "02",
-        "max_marks": 15.0
+        "max_marks": 20.0
       },
       {
         "question_no": "03",
@@ -1123,47 +1165,47 @@
       },
       {
         "question_no": "04",
-        "max_marks": 40.0
+        "max_marks": 35.0
       }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262558\n\nQuestion 2\na) FDs: A→BC, BC→E, E→DA\n\nFinding keys:\nA⁺ = {A,B,C,D,E} = R → A is key\nBC⁺ = {A,B,C,D,E} = R → BC is key\nBE⁺ = {A,B,C,D,E} = R → BE is key\n\nCandidate keys: A, BC, BE\n\nb) R is in 3NF because for every FD X→Y, either X is superkey or Y is prime.\n\nc) R is NOT in BCNF because E→DA violates BCNF (E is not superkey).\nDecomposition: R1(E,D,A), R2(A,B,C), R3(B,C,E)\n\nQuestion 3\na) π_eName,salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) Items not sold:\nπ_iname,price,availableQty(ITEM) \\ π_iname,price,availableQty(ITEM ⨝ itemNo=itemNo SALES)\n\nc) Employees who sold both:\nπ_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM)) ∩ π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM))\n\nd) Items with >1000 sold:\nπ_iname(ITEM ⨝ SALES) grouped by iname with sum(soldQty) > 1000\n\ne) Most sold item:\nπ_iname(ITEM ⨝ SALES) grouped by iname, ordered by sum(soldQty) DESC, LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c JOIN Orders o ON c.cid = o.cid JOIN OrderDetails od ON o.oid = od.oid JOIN Products p ON od.productId = p.productId WHERE p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od JOIN Orders o ON od.oid = o.oid JOIN Customers c ON o.cid = c.cid WHERE c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o JOIN OrderDetails od ON o.oid = od.oid WHERE od.discount <= 0.05);\n\nb) CREATE VIEW incompleteOrders AS SELECT c.name, c.country, COUNT(o.oid) as times_not_completed FROM Customers c JOIN Orders o ON c.cid = o.cid WHERE EXISTS (SELECT 1 FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = o.oid AND p.unitsInStock < od.quantity) GROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_lost(order_id INT, discount REAL) RETURNS REAL AS $$ DECLARE total REAL; BEGIN SELECT SUM(p.UnitPrice * od.quantity) INTO total FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = order_id; RETURN total * (1 - discount); END; $$ LANGUAGE plpgsql;\n\nd) CREATE TRIGGER updateCost AFTER INSERT ON OrderDetails FOR EACH ROW EXECUTE FUNCTION calc_lost(NEW.oid, (SELECT discount FROM OrderDetails WHERE oid = NEW.oid LIMIT 1));",
+    "raw_ocr_transcript": "Student ID: IT22262558\n\nQuestion 2\nI think the key is student_id,module_code,semester because it identifies one grade. The relation has repeated student and module names so it is not 3NF. Split into STUDENT(student_id,name), MODULE(module_code,title), and ENROLMENT(student_id,module_code,semester,grade). Programme and lecturer information can be kept in STUDENT and MODULE. This should reduce update problems. I did not show all keys and lossless proof.\n\nQuestion 3\nJoin MEMBER, LOAN and BOOK. Group by member and count categories. If count equals the count of BOOK categories, they borrowed all. Then remove rows where returned_on > due_on. In extended algebra:\nG = gamma member_id; count(category)->n(LOAN join BOOK)\nThe final selection is n = count(all categories). I am not sure how to express the overdue subtraction, but pi member_id,member_name is needed.\n\nQuestion 4\nCREATE FUNCTION place_order(c int,p int,q int,d numeric) RETURNS int AS $$\nDECLARE id int; price numeric;\nBEGIN\n SELECT unit_price INTO price FROM product WHERE product_id=p;\n IF q<1 THEN RAISE EXCEPTION 'bad'; END IF;\n INSERT INTO orders(customer_id,total_amount) VALUES(c,price*q*(1-d)) RETURNING order_id INTO id;\n INSERT INTO order_item VALUES(id,p,q,price,d);\n UPDATE product SET stock_qty=stock_qty-q WHERE product_id=p;\n RETURN id;\nEND; $$ LANGUAGE plpgsql;\n\nIt stores the price and computes a discounted total. It has no customer check, stock check, row lock or discount validation. I think PostgreSQL cancels the function if insert fails.",
     "evaluation": {
-      "total_score": 27,
+      "total_score": 30,
       "max_score": 80,
       "results": [
         {
           "question_no": "02",
-          "score": 4,
-          "max_score": 15,
+          "score": 7,
+          "max_score": 20,
           "criteria_breakdown": [
             {
-              "point": "Attribute closures computation",
-              "awarded_marks": 3,
-              "max_marks": 3,
-              "achieved": true
-            },
-            {
-              "point": "Candidate key identification",
-              "awarded_marks": 3,
-              "max_marks": 3,
+              "point": "Candidate key and attribute-closure analysis",
+              "awarded_marks": 2,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "Step-by-step closure",
-              "awarded_marks": 0,
-              "max_marks": 3,
+              "point": "Current normal form and dependency violations",
+              "awarded_marks": 2,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "3NF determination",
+              "point": "Correct 3NF or BCNF decomposition",
               "awarded_marks": 1,
-              "max_marks": 3,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "BCNF decomposition",
+              "point": "Primary-key and foreign-key identification",
               "awarded_marks": 0,
-              "max_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Lossless join, dependency preservation, and anomaly justification",
+              "awarded_marks": 2,
+              "max_marks": 4,
               "achieved": false
             }
           ]
@@ -1174,33 +1216,33 @@
           "max_score": 25,
           "criteria_breakdown": [
             {
-              "point": "Manager names/salary",
-              "awarded_marks": 1,
-              "max_marks": 2,
-              "achieved": false
-            },
-            {
-              "point": "Unsold items",
-              "awarded_marks": 1,
-              "max_marks": 4,
-              "achieved": false
-            },
-            {
-              "point": "Employees selling both",
+              "point": "Member-category relation constructed with correct joins and projection",
               "awarded_marks": 2,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Items >1000 sold",
-              "awarded_marks": 2,
-              "max_marks": 6,
+              "point": "All-category condition expressed correctly using division or an equivalent",
+              "awarded_marks": 1,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Most sold item",
-              "awarded_marks": 3,
-              "max_marks": 8,
+              "point": "Late and currently overdue members identified correctly",
+              "awarded_marks": 2,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Set difference, final join, and projection applied correctly",
+              "awarded_marks": 2,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+              "awarded_marks": 2,
+              "max_marks": 5,
               "achieved": false
             }
           ]
@@ -1208,42 +1250,48 @@
         {
           "question_no": "04",
           "score": 14,
-          "max_score": 40,
+          "max_score": 35,
           "criteria_breakdown": [
             {
-              "point": "SQL query i",
-              "awarded_marks": 1,
-              "max_marks": 4,
+              "point": "Function interface and customer/input validation",
+              "awarded_marks": 3,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "SQL query ii",
+              "point": "Product lookup and row locking prevent overselling",
+              "awarded_marks": 0,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Discounted total and preserved selling price calculated correctly",
+              "awarded_marks": 3,
+              "max_marks": 6,
+              "achieved": false
+            },
+            {
+              "point": "Order, order-item, and stock changes implemented atomically",
+              "awarded_marks": 3,
+              "max_marks": 6,
+              "achieved": false
+            },
+            {
+              "point": "Error handling prevents partial changes",
               "awarded_marks": 1,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "SQL query iii",
+              "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
               "awarded_marks": 2,
-              "max_marks": 6,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "VIEW creation",
-              "awarded_marks": 3,
-              "max_marks": 7,
-              "achieved": false
-            },
-            {
-              "point": "FUNCTION creation",
-              "awarded_marks": 3,
-              "max_marks": 8,
-              "achieved": false
-            },
-            {
-              "point": "TRIGGER creation",
-              "awarded_marks": 4,
-              "max_marks": 10,
+              "point": "ACID and concurrency reasoning is accurate",
+              "awarded_marks": 2,
+              "max_marks": 4,
               "achieved": false
             }
           ]
@@ -1251,9 +1299,9 @@
       ]
     },
     "status": "graded",
-    "processed_at": "2026-08-29T04:44:38.317608+00:00",
-    "created_at": "2026-08-29T04:44:38.317608+00:00",
-    "updated_at": "2026-08-29T04:44:38.317608+00:00"
+    "processed_at": "2026-08-31T11:07:00+05:30",
+    "created_at": "2026-08-31T11:07:00+05:30",
+    "updated_at": "2026-08-31T11:07:00+05:30"
   },
   {
     "_id": {
@@ -1272,7 +1320,7 @@
     "max_marks_per_question": [
       {
         "question_no": "02",
-        "max_marks": 15.0
+        "max_marks": 20.0
       },
       {
         "question_no": "03",
@@ -1280,47 +1328,47 @@
       },
       {
         "question_no": "04",
-        "max_marks": 40.0
+        "max_marks": 35.0
       }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262559\n\nQuestion 2\na) Given FDs: A→BC, BC→E, E→DA\n\nA⁺ = {A,B,C,D,E} = R (A is key)\nBC⁺ = {A,B,C,D,E} = R (BC is key)\nBE⁺ = {A,B,C,D,E} = R (BE is key)\n\nCandidate keys: A, BC, BE\n\nb) R is in 3NF. Every non-trivial FD has a superkey on left side or prime attributes on right side.\n\nc) R is NOT in BCNF because E→DA where E is not a superkey.\nDecompose into: R1(E,D,A), R2(A,B,C), R3(B,C,E)\n\nQuestion 3\na) π_eName,salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) π_iname,price,availableQty(ITEM) - π_iname,price,availableQty(ITEM ⨝ itemNo=itemNo SALES)\n\nc) π_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM)) ∩ π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM))\n\nd) π_iname(ITEM ⨝ SALES) grouped by iname with γ_sum(soldQty) > 1000\n\ne) π_iname(ITEM ⨝ SALES) grouped by iname ORDER BY sum(soldQty) DESC LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c JOIN Orders o ON c.cid = o.cid JOIN OrderDetails od ON o.oid = od.oid JOIN Products p ON od.productId = p.productId WHERE p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od JOIN Orders o ON od.oid = o.oid JOIN Customers c ON o.cid = c.cid WHERE c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o JOIN OrderDetails od ON o.oid = od.oid WHERE od.discount <= 0.05);\n\nb) CREATE VIEW incompleteOrders AS SELECT c.name, c.country, COUNT(o.oid) as not_completed FROM Customers c JOIN Orders o ON c.cid = o.cid WHERE EXISTS (SELECT 1 FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = o.oid AND p.unitsInStock < od.quantity) GROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_lost(order_id INT, discount REAL) RETURNS REAL AS $$ DECLARE total REAL := 0; BEGIN SELECT SUM(p.UnitPrice * od.quantity) INTO total FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = order_id; RETURN total * (1 - discount); END; $$ LANGUAGE plpgsql;\n\nd) CREATE TRIGGER updateCost AFTER INSERT ON OrderDetails FOR EACH ROW BEGIN UPDATE Orders SET cost = calc_lost(NEW.oid, (SELECT discount FROM OrderDetails WHERE oid = NEW.oid)) WHERE oid = NEW.oid; END;",
+    "raw_ocr_transcript": "Student ID: IT22262559\n\nQuestion 2\nThe key has student and module ID, possibly semester. The table is not normalized because names repeat. I would separate STUDENT and MODULE and keep grades in ENROLMENT. Primary IDs connect them. This avoids some update anomalies but I have not handled lecturer separately or proved normal form.\n\nQuestion 3\nUse LOAN join BOOK to get categories for each member. Members must have the same number of categories as BOOK. Remove late loans using due_on. My expression is approximately:\npi member_id,member_name(MEMBER join LOAN join BOOK)\nwith count(category)=all categories and returned_on<=due_on.\nThis may wrongly test each row instead of the member's complete history.\n\nQuestion 4\nCREATE FUNCTION place_order(c int,p int,q int,d numeric) RETURNS int AS $$\nDECLARE id int;\nBEGIN\n INSERT INTO orders(customer_id,total_amount) VALUES(c,(SELECT unit_price FROM product WHERE product_id=p)*q) RETURNING order_id INTO id;\n INSERT INTO order_item VALUES(id,p,q,(SELECT unit_price FROM product WHERE product_id=p),d);\n UPDATE product SET stock_qty=stock_qty-q WHERE product_id=p;\n RETURN id;\nEND; $$ LANGUAGE plpgsql;\n\nThis inserts the two records and changes stock. I forgot to apply discount to total. It also has no validation or locking. The DB transaction should help atomicity, but concurrent orders can oversell.",
     "evaluation": {
-      "total_score": 18,
+      "total_score": 21,
       "max_score": 80,
       "results": [
         {
           "question_no": "02",
-          "score": 2,
-          "max_score": 15,
+          "score": 5,
+          "max_score": 20,
           "criteria_breakdown": [
             {
-              "point": "Attribute closures computation",
+              "point": "Candidate key and attribute-closure analysis",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Current normal form and dependency violations",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Correct 3NF or BCNF decomposition",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Primary-key and foreign-key identification",
+              "awarded_marks": 0,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Lossless join, dependency preservation, and anomaly justification",
               "awarded_marks": 2,
-              "max_marks": 3,
-              "achieved": false
-            },
-            {
-              "point": "Candidate key identification",
-              "awarded_marks": 2,
-              "max_marks": 3,
-              "achieved": false
-            },
-            {
-              "point": "Step-by-step closure",
-              "awarded_marks": 0,
-              "max_marks": 3,
-              "achieved": false
-            },
-            {
-              "point": "3NF determination",
-              "awarded_marks": 0,
-              "max_marks": 3,
-              "achieved": false
-            },
-            {
-              "point": "BCNF decomposition",
-              "awarded_marks": 0,
-              "max_marks": 3,
+              "max_marks": 4,
               "achieved": false
             }
           ]
@@ -1331,33 +1379,33 @@
           "max_score": 25,
           "criteria_breakdown": [
             {
-              "point": "Manager names/salary",
+              "point": "Member-category relation constructed with correct joins and projection",
+              "awarded_marks": 2,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "All-category condition expressed correctly using division or an equivalent",
               "awarded_marks": 0,
-              "max_marks": 2,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Unsold items",
-              "awarded_marks": 1,
-              "max_marks": 4,
-              "achieved": false
-            },
-            {
-              "point": "Employees selling both",
+              "point": "Late and currently overdue members identified correctly",
               "awarded_marks": 1,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Items >1000 sold",
+              "point": "Set difference, final join, and projection applied correctly",
               "awarded_marks": 2,
-              "max_marks": 6,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Most sold item",
-              "awarded_marks": 2,
-              "max_marks": 8,
+              "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+              "awarded_marks": 1,
+              "max_marks": 5,
               "achieved": false
             }
           ]
@@ -1365,42 +1413,48 @@
         {
           "question_no": "04",
           "score": 10,
-          "max_score": 40,
+          "max_score": 35,
           "criteria_breakdown": [
             {
-              "point": "SQL query i",
-              "awarded_marks": 1,
-              "max_marks": 4,
+              "point": "Function interface and customer/input validation",
+              "awarded_marks": 2,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "SQL query ii",
+              "point": "Product lookup and row locking prevent overselling",
+              "awarded_marks": 0,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Discounted total and preserved selling price calculated correctly",
+              "awarded_marks": 2,
+              "max_marks": 6,
+              "achieved": false
+            },
+            {
+              "point": "Order, order-item, and stock changes implemented atomically",
+              "awarded_marks": 2,
+              "max_marks": 6,
+              "achieved": false
+            },
+            {
+              "point": "Error handling prevents partial changes",
               "awarded_marks": 1,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "SQL query iii",
+              "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "ACID and concurrency reasoning is accurate",
               "awarded_marks": 1,
-              "max_marks": 6,
-              "achieved": false
-            },
-            {
-              "point": "VIEW creation",
-              "awarded_marks": 2,
-              "max_marks": 7,
-              "achieved": false
-            },
-            {
-              "point": "FUNCTION creation",
-              "awarded_marks": 2,
-              "max_marks": 8,
-              "achieved": false
-            },
-            {
-              "point": "TRIGGER creation",
-              "awarded_marks": 3,
-              "max_marks": 10,
+              "max_marks": 4,
               "achieved": false
             }
           ]
@@ -1408,9 +1462,9 @@
       ]
     },
     "status": "graded",
-    "processed_at": "2026-08-29T04:44:38.317618+00:00",
-    "created_at": "2026-08-29T04:44:38.317618+00:00",
-    "updated_at": "2026-08-29T04:44:38.317618+00:00"
+    "processed_at": "2026-08-31T11:08:00+05:30",
+    "created_at": "2026-08-31T11:08:00+05:30",
+    "updated_at": "2026-08-31T11:08:00+05:30"
   },
   {
     "_id": {
@@ -1429,7 +1483,7 @@
     "max_marks_per_question": [
       {
         "question_no": "02",
-        "max_marks": 15.0
+        "max_marks": 20.0
       },
       {
         "question_no": "03",
@@ -1437,84 +1491,84 @@
       },
       {
         "question_no": "04",
-        "max_marks": 40.0
+        "max_marks": 35.0
       }
     ],
-    "raw_ocr_transcript": "Student ID: IT22262560\n\nQuestion 2\na) FDs: A→BC, BC→E, E→DA\n\nA⁺ = {A,B,C,D,E} = R → A is key\nBC⁺ = {A,B,C,D,E} = R → BC is key\nBE⁺ = {A,B,C,D,E} = R → BE is key\n\nb) R is in 3NF. For E→DA, E is not superkey but D,A are prime attributes.\n\nc) R is NOT in BCNF. E→DA violates BCNF. Decompose: R1(E,D,A), R2(A,B,C), R3(B,C,E)\n\nQuestion 3\na) π_eName, salary(DEPT ⨝ mgrEno=eNo EMP)\n\nb) π_iname, price, availableQty(ITEM) \\ π_iname, price, availableQty(ITEM ⨝ itemNo=itemNo SALES)\n\nc) π_eName(EMP ⨝ SALES ⨝ σ_itemName='computer'(ITEM)) ∩ π_eName(EMP ⨝ SALES ⨝ σ_itemName='camera'(ITEM))\n\nd) π_iname(ITEM ⨝ SALES) grouped by iname with sum(soldQty) > 1000\n\ne) π_iname(ITEM ⨝ SALES) grouped by iname ORDER BY sum(soldQty) DESC LIMIT 1\n\nQuestion 4\na) i) SELECT c.name, c.phone FROM Customers c JOIN Orders o ON c.cid = o.cid JOIN OrderDetails od ON o.oid = od.oid JOIN Products p ON od.productId = p.productId WHERE p.UnitPrice > 500;\n\nii) SELECT p.productName, p.UnitPrice FROM Products p WHERE p.productId NOT IN (SELECT od.productId FROM OrderDetails od JOIN Orders o ON od.oid = o.oid JOIN Customers c ON o.cid = c.cid WHERE c.country = 'Germany');\n\niii) SELECT c.cid, c.name FROM Customers c WHERE c.cid NOT IN (SELECT o.cid FROM Orders o JOIN OrderDetails od ON o.oid = od.oid WHERE od.discount <= 0.05);\n\nb) CREATE VIEW incompleteOrders AS SELECT c.name, c.country, COUNT(o.oid) as not_completed FROM Customers c JOIN Orders o ON c.cid = o.cid WHERE EXISTS (SELECT 1 FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = o.oid AND p.unitsInStock < od.quantity) GROUP BY c.name, c.country;\n\nc) CREATE FUNCTION calc_lost(order_id INT, discount REAL) RETURNS REAL AS $$ DECLARE total REAL; BEGIN SELECT SUM(p.UnitPrice * od.quantity) INTO total FROM OrderDetails od JOIN Products p ON od.productId = p.productId WHERE od.oid = order_id; RETURN total * (1 - discount); END; $$ LANGUAGE plpgsql;\n\nd) CREATE TRIGGER updateCost AFTER INSERT ON OrderDetails FOR EACH ROW BEGIN UPDATE Orders SET cost = calc_lost(NEW.oid, 0) WHERE oid = NEW.oid; END;",
+    "raw_ocr_transcript": "Student ID: IT22262560\n\nQuestion 2\nstudent_id and module_code identify the row. Normalization means removing duplicate data. I would create a student table and module table. ENROLMENT keeps the grade. I am not sure about semester and the lecturer dependency.\n\nQuestion 3\nRelational division is used for the words every category. We join loan and book first. Late loans are when return date is bigger than due date. I could subtract late member IDs, then join MEMBER, but I could not finish the algebra.\n\nQuestion 4\nCREATE FUNCTION place_order(c int,p int,q int,d numeric) RETURNS int AS $$\nBEGIN\n INSERT INTO orders(customer_id,status) VALUES(c,'PLACED');\n UPDATE product SET stock_qty=stock_qty-q WHERE product_id=p;\n RETURN 1;\nEND; $$ LANGUAGE plpgsql;\n\nThe function makes an order and updates stock. Transactions give ACID. It is missing the order item, price calculation and most checks.",
     "evaluation": {
-      "total_score": 10,
+      "total_score": 13,
       "max_score": 80,
       "results": [
         {
           "question_no": "02",
-          "score": 1,
-          "max_score": 15,
+          "score": 3,
+          "max_score": 20,
           "criteria_breakdown": [
             {
-              "point": "Attribute closures computation",
+              "point": "Candidate key and attribute-closure analysis",
               "awarded_marks": 1,
-              "max_marks": 3,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "Candidate key identification",
+              "point": "Current normal form and dependency violations",
               "awarded_marks": 1,
-              "max_marks": 3,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "Step-by-step closure",
+              "point": "Correct 3NF or BCNF decomposition",
               "awarded_marks": 0,
-              "max_marks": 3,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "3NF determination",
+              "point": "Primary-key and foreign-key identification",
               "awarded_marks": 0,
-              "max_marks": 3,
+              "max_marks": 4,
               "achieved": false
             },
             {
-              "point": "BCNF decomposition",
-              "awarded_marks": 0,
-              "max_marks": 3,
+              "point": "Lossless join, dependency preservation, and anomaly justification",
+              "awarded_marks": 1,
+              "max_marks": 4,
               "achieved": false
             }
           ]
         },
         {
           "question_no": "03",
-          "score": 3,
+          "score": 4,
           "max_score": 25,
           "criteria_breakdown": [
             {
-              "point": "Manager names/salary",
-              "awarded_marks": 0,
-              "max_marks": 2,
-              "achieved": false
-            },
-            {
-              "point": "Unsold items",
-              "awarded_marks": 0,
-              "max_marks": 4,
-              "achieved": false
-            },
-            {
-              "point": "Employees selling both",
+              "point": "Member-category relation constructed with correct joins and projection",
               "awarded_marks": 1,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Items >1000 sold",
-              "awarded_marks": 1,
-              "max_marks": 6,
+              "point": "All-category condition expressed correctly using division or an equivalent",
+              "awarded_marks": 0,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "Most sold item",
+              "point": "Late and currently overdue members identified correctly",
               "awarded_marks": 1,
-              "max_marks": 8,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Set difference, final join, and projection applied correctly",
+              "awarded_marks": 1,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Intermediate relations and relational-algebra reasoning explained clearly",
+              "awarded_marks": 1,
+              "max_marks": 5,
               "achieved": false
             }
           ]
@@ -1522,42 +1576,48 @@
         {
           "question_no": "04",
           "score": 6,
-          "max_score": 40,
+          "max_score": 35,
           "criteria_breakdown": [
             {
-              "point": "SQL query i",
-              "awarded_marks": 0,
-              "max_marks": 4,
-              "achieved": false
-            },
-            {
-              "point": "SQL query ii",
+              "point": "Function interface and customer/input validation",
               "awarded_marks": 1,
               "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "SQL query iii",
+              "point": "Product lookup and row locking prevent overselling",
+              "awarded_marks": 0,
+              "max_marks": 5,
+              "achieved": false
+            },
+            {
+              "point": "Discounted total and preserved selling price calculated correctly",
               "awarded_marks": 1,
               "max_marks": 6,
               "achieved": false
             },
             {
-              "point": "VIEW creation",
+              "point": "Order, order-item, and stock changes implemented atomically",
               "awarded_marks": 1,
-              "max_marks": 7,
+              "max_marks": 6,
               "achieved": false
             },
             {
-              "point": "FUNCTION creation",
-              "awarded_marks": 1,
-              "max_marks": 8,
+              "point": "Error handling prevents partial changes",
+              "awarded_marks": 0,
+              "max_marks": 5,
               "achieved": false
             },
             {
-              "point": "TRIGGER creation",
+              "point": "Constraints, types, and PL/pgSQL syntax are appropriate",
               "awarded_marks": 2,
-              "max_marks": 10,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "ACID and concurrency reasoning is accurate",
+              "awarded_marks": 1,
+              "max_marks": 4,
               "achieved": false
             }
           ]
@@ -1565,8 +1625,8 @@
       ]
     },
     "status": "graded",
-    "processed_at": "2026-08-29T04:44:38.317628+00:00",
-    "created_at": "2026-08-29T04:44:38.317628+00:00",
-    "updated_at": "2026-08-29T04:44:38.317628+00:00"
+    "processed_at": "2026-08-31T11:09:00+05:30",
+    "created_at": "2026-08-31T11:09:00+05:30",
+    "updated_at": "2026-08-31T11:09:00+05:30"
   }
 ]

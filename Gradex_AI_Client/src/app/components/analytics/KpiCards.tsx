@@ -1,7 +1,14 @@
 import React from "react";
 import { Users, TrendingUp, Target, Award, BarChart3, Sigma, Activity, Scale } from "lucide-react";
 import { Card } from "../ui/card";
-import { Badge } from "../ui/badge";
+
+const GRADE_COLORS: Record<string, string> = {
+  A: "#22c55e",
+  B: "#3b82f6",
+  C: "#eab308",
+  D: "#f97316",
+  F: "#ef4444",
+};
 
 interface KpiCardsProps {
   statistics: {
@@ -78,9 +85,13 @@ export function KpiCards({ statistics }: KpiCardsProps) {
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-muted-foreground">Grade distribution:</span>
           {Object.entries(statistics.grade_distribution).map(([grade, count]) => (
-            <Badge key={grade} variant="outline" className="text-xs">
+            <span
+              key={grade}
+              className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full"
+              style={{ backgroundColor: GRADE_COLORS[grade] ?? "#3b82f6", color: "#fff" }}
+            >
               {grade}: {count}
-            </Badge>
+            </span>
           ))}
         </div>
       )}

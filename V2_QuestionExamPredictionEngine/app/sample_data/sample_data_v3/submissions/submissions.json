@@ -1,0 +1,1922 @@
+[
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd71"
+    },
+    "student_id": "IT22263551",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "paper_key": "script_01",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      {
+        "question_no": "01",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "02",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "03",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "04",
+        "max_marks": 20.0
+      }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22263551\n\nQuestion 1\nA DBMS is usually explained with the three-schema architecture. The external level contains different user views, the conceptual level is the complete logical schema, and the internal level describes files, pages and indexes. Mappings provide logical and physical data independence.\n\nThe query processor includes the DDL interpreter, SQL parser and semantic checker, DML compiler, cost-based optimizer and execution engine. It consults the system catalog for table, constraint and statistics information. The storage manager contains the file/index manager and buffer manager, which move pages between disk and memory. It also coordinates the authorization/integrity manager and transaction manager. Persistent storage includes data files, indexes, catalog and log.\n\nFor transactions, locking or MVCC provides isolation, the recovery manager uses WAL, checkpoints, redo and undo, and authorization and constraints protect valid data. When SQL arrives, it is parsed and checked, optimized into a physical plan, and executed. Operators request pages through the buffer manager while locks/versions and log records are maintained. Commit makes the work durable and the result is returned through the user's external view. Caching, indexes, optimization and controlled concurrency make this efficient.\n\nQuestion 2\nThe hierarchical model organizes records as a tree with one parent per child. Path navigation is fast and integrity is simple for fixed one-to-many data, so it suits file systems and legacy IMS-style applications. It is rigid, duplicates data for many-to-many relationships and is difficult to reorganize.\n\nThe network model forms a graph using record types and set/pointer links. A record can have several parents, so many-to-many relationships and navigational performance are better than hierarchical. Its schema and procedural access paths are complex and create program-data dependence. It was used in telecom and legacy manufacturing systems.\n\nThe relational model uses tables, rows, columns, primary/foreign keys and declarative SQL. It supports normalization, constraints, ad-hoc queries and strong standards, making it suitable for banking, education and business systems. Complex joins can be costly and rich objects may require mapping.\n\nThe object-oriented model persists objects with identity, classes, methods, inheritance and complex values. It fits CAD, multimedia and scientific systems but has fewer standards, tools and trained users. Therefore fixed tree navigation favors hierarchical, graph-like legacy navigation favors network, ordinary transactional data favors relational, and behavior-rich complex objects favor object-oriented.\n\nQuestion 3\nSQL is a declarative relational language: users state the required result or change, while the DBMS chooses the execution plan. It covers schema definition, data change, retrieval, security and transaction control.\n\nDDL defines database objects: CREATE TABLE Student(id INT PRIMARY KEY, name VARCHAR(80)); ALTER TABLE Student ADD email VARCHAR(120) UNIQUE; TRUNCATE removes all rows and DROP removes the object. DML changes rows, for example INSERT INTO Student VALUES(1,'Asha'), UPDATE Student SET name='Ashi' WHERE id=1, and DELETE FROM Student WHERE id=1. DQL usually refers to SELECT, such as SELECT department, COUNT(*) FROM Employee WHERE active=true GROUP BY department HAVING COUNT(*)>5 ORDER BY department.\n\nDCL controls privileges: GRANT SELECT ON Student TO lecturer_role and REVOKE UPDATE ON Student FROM assistant_role. TCL manages a unit of work with BEGIN, SAVEPOINT s1, COMMIT and ROLLBACK [TO s1]. A typical lifecycle is CREATE constrained tables, GRANT suitable rights, start a transaction, perform INSERT/UPDATE and SELECT, then COMMIT if all operations succeed or ROLLBACK on error. Thus SQL supports structure, integrity, querying, updates, security and reliable transactions.\n\nQuestion 4\nA join combines rows from two relation sources according to an ON predicate, normally matching a foreign key with a primary key. For Employee(employee_id,name,dept_id,manager_id) and Department(dept_id,dept_name), INNER JOIN returns only matches: SELECT e.name,d.dept_name FROM Employee e INNER JOIN Department d ON e.dept_id=d.dept_id.\n\nLEFT JOIN keeps every Employee and places NULL in department columns when there is no match. RIGHT JOIN keeps every Department, including departments without employees. FULL OUTER JOIN preserves unmatched rows from both sides. Filters on the optional table usually belong in ON; putting them in WHERE can remove NULL-extended rows and turn an outer join effectively into an inner join.\n\nCROSS JOIN returns every employee-department combination and needs no predicate, so its size is m*n. A SELF JOIN aliases one table twice, for example SELECT e.name,m.name AS manager FROM Employee e LEFT JOIN Employee m ON e.manager_id=m.employee_id. Equi and non-equi predicates may be used. One-to-many matches legitimately repeat the parent row, while a missing or incomplete predicate produces an accidental Cartesian product. Join type is chosen according to whether unmatched rows must be retained.",
+    "evaluation": {
+      "total_score": 80,
+      "max_score": 80,
+      "results": [
+        {
+          "question_no": "01",
+          "score": 20,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Three-schema architecture and data independence",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Query processor components and responsibilities",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Storage manager components and responsibilities",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Transaction, concurrency, authorization, and recovery services",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Component interaction and efficient request flow",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            }
+          ]
+        },
+        {
+          "question_no": "02",
+          "score": 20,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Hierarchical model structure, strengths, limitations, and uses",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Network model structure, strengths, limitations, and uses",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Relational model structure, strengths, limitations, and uses",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Object-oriented model structure, strengths, limitations, and uses",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Accurate comparison and appropriate application selection",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            }
+          ]
+        },
+        {
+          "question_no": "03",
+          "score": 20,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "SQL purpose, declarative nature, and relational role",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "DDL commands and schema-definition examples",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "DML and DQL commands with correct examples",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "DCL commands and access-control role",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "TCL commands and coherent command-lifecycle explanation",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            }
+          ]
+        },
+        {
+          "question_no": "04",
+          "score": 20,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Join purpose, keys, predicates, and general syntax",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "INNER JOIN behavior and suitable example",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "LEFT, RIGHT, and FULL OUTER JOIN comparison",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "CROSS JOIN and SELF JOIN behavior and uses",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Correct result-set differences, NULL handling, and examples",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            }
+          ]
+        }
+      ]
+    },
+    "status": "graded",
+    "processed_at": "2026-08-31T12:00:00+05:30",
+    "created_at": "2026-08-31T12:00:00+05:30",
+    "updated_at": "2026-08-31T12:00:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd72"
+    },
+    "student_id": "IT22263552",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "paper_key": "script_02",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      {
+        "question_no": "01",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "02",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "03",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "04",
+        "max_marks": 20.0
+      }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22263552\n\nQuestion 1\nThe external, conceptual and internal levels separate user views, the logical database and physical files. Their mappings give data independence, so storage changes need not change applications.\n\nSQL first goes to the query processor. The parser checks syntax and names, the compiler translates it, the optimizer chooses scans, indexes and join order, and the execution engine runs the plan. DDL is recorded in the catalog. The storage manager has file, index and buffer managers and accesses data files, indexes and metadata. Transaction services include concurrency control, recovery, authorization and integrity checking.\n\nA SELECT is parsed using catalog metadata, optimized, then its operators request pages from the buffer pool. The transaction manager obtains locks or an MVCC snapshot. Updates are logged before changed pages reach disk. COMMIT and recovery give durability and atomicity. I explained the flow, although I did not discuss every internal catalog component separately.\n\nQuestion 2\nHierarchical databases are trees: one parent may have many children but a child normally has one parent. They are fast for known paths and suit organization charts or legacy records, but structural change and many-to-many data are awkward.\n\nNetwork databases use records connected as a graph and allow several parents. They model many-to-many links and navigate efficiently, but pointer-based design and queries are complicated. Relational databases use tables and keys with SQL. They are simple, normalized, standardized and flexible for business applications; many joins and object mapping can add cost.\n\nObject-oriented databases store objects, object identity, inheritance and methods. They suit engineering, multimedia and complex data, but have less standard query support and a smaller ecosystem. Model choice depends on relationship shape, access pattern, complexity and required standards. I gave fewer concrete network applications.\n\nQuestion 3\nSQL is declarative because we specify what data is required rather than the file-access algorithm. It is based on relational tables and is used by applications and administrators.\n\nDDL includes CREATE, ALTER, TRUNCATE and DROP for schemas and constraints. Example: CREATE TABLE Course(code VARCHAR(8) PRIMARY KEY,title TEXT). DML includes INSERT, UPDATE and DELETE. DQL is SELECT with WHERE, JOIN, GROUP BY, HAVING and ORDER BY. DCL uses GRANT and REVOKE to assign or remove privileges. TCL uses BEGIN, COMMIT, ROLLBACK and SAVEPOINT for transactions.\n\nAn administrator creates a table and grants access. An application begins a transaction, inserts an enrolment, updates a seat count, queries the result and commits; it rolls back if either change fails. I did not explain vendor differences around whether SELECT is classified separately as DQL.\n\nQuestion 4\nJoins retrieve related columns by comparing keys in an ON condition. INNER JOIN Employee to Department on dept_id returns only employees whose department exists.\n\nLEFT OUTER JOIN returns all employees plus matching department data, using NULL for an unmatched department. RIGHT JOIN keeps all departments, and FULL OUTER JOIN keeps unmatched rows from both tables. CROSS JOIN produces all possible row pairs. SELF JOIN uses aliases of the same table, such as Employee e joined to Employee m on e.manager_id=m.employee_id.\n\nAn ON predicate is important to prevent an unwanted Cartesian product. Also, a WHERE condition on the nullable side of an outer join can remove its unmatched rows. I explained the result differences, although I gave complete SQL only for INNER and SELF joins.",
+    "evaluation": {
+      "total_score": 74,
+      "max_score": 80,
+      "results": [
+        {
+          "question_no": "01",
+          "score": 19,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Three-schema architecture and data independence",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Query processor components and responsibilities",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Storage manager components and responsibilities",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Transaction, concurrency, authorization, and recovery services",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Component interaction and efficient request flow",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "02",
+          "score": 18,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Hierarchical model structure, strengths, limitations, and uses",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Network model structure, strengths, limitations, and uses",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Relational model structure, strengths, limitations, and uses",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Object-oriented model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Accurate comparison and appropriate application selection",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "03",
+          "score": 19,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "SQL purpose, declarative nature, and relational role",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "DDL commands and schema-definition examples",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "DML and DQL commands with correct examples",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "DCL commands and access-control role",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "TCL commands and coherent command-lifecycle explanation",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "04",
+          "score": 18,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Join purpose, keys, predicates, and general syntax",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "INNER JOIN behavior and suitable example",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "LEFT, RIGHT, and FULL OUTER JOIN comparison",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "CROSS JOIN and SELF JOIN behavior and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Correct result-set differences, NULL handling, and examples",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        }
+      ]
+    },
+    "status": "graded",
+    "processed_at": "2026-08-31T12:01:00+05:30",
+    "created_at": "2026-08-31T12:01:00+05:30",
+    "updated_at": "2026-08-31T12:01:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd73"
+    },
+    "student_id": "IT22263553",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "paper_key": "script_03",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      {
+        "question_no": "01",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "02",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "03",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "04",
+        "max_marks": 20.0
+      }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22263553\n\nQuestion 1\nDBMS architecture has external views, one conceptual schema and an internal physical schema. This separation provides logical and physical data independence.\n\nThe query processor contains a parser, DDL/DML compiler, optimizer and query executor. It validates SQL and selects a low-cost execution plan. The storage manager includes file/index management and a buffer manager for RAM pages. The transaction manager controls concurrent transactions; recovery uses log records to undo or redo; security checks privileges; constraints protect consistency.\n\nFor a query the parser reads catalog definitions, the optimizer may choose an index, and the executor asks the buffer manager for pages. Updates are logged and locked until commit. This allows multiple users and protects data after failures. I have not clearly separated the authorization manager from the storage manager or described checkpoints in detail.\n\nQuestion 2\nHierarchical is a tree with parent-child links. It is simple and quick when access follows the tree, but each child having one parent makes many-to-many relationships difficult. Network is a graph where a child may have many parents. It is more flexible and fast through pointers, but designers and programmers must know the paths.\n\nRelational stores rows in tables and uses primary and foreign keys. SQL allows ad-hoc queries and normalization reduces duplication. It is best for most transaction systems, though many joins can be expensive. Object-oriented stores persistent objects with classes, inheritance and methods, useful for CAD or multimedia, but it has fewer common standards.\n\nHierarchical suits fixed one-to-many data, network suits strongly connected legacy data, relational suits business records, and OO suits complex application objects. I did not discuss tool maturity in much depth.\n\nQuestion 3\nSQL works with relational tables and is mainly declarative. The optimizer decides how to run the command.\n\nDDL defines structure: CREATE TABLE, ALTER TABLE and DROP TABLE. Constraints such as PRIMARY KEY and FOREIGN KEY can be included. DML changes data using INSERT, UPDATE and DELETE. SELECT is DQL and retrieves rows, optionally using WHERE, JOIN, GROUP BY and ORDER BY. DCL is GRANT and REVOKE for user permissions. TCL is COMMIT, ROLLBACK and SAVEPOINT.\n\nFor example, CREATE TABLE makes Employee, INSERT adds a row, SELECT reads it, GRANT SELECT allows a role, and COMMIT permanently ends the transaction. ROLLBACK cancels uncommitted work. My examples are correct but the complete command lifecycle and transaction boundaries are only briefly described.\n\nQuestion 4\nA join connects tables, usually foreign key to primary key. Example: SELECT e.name,d.name FROM Employee e JOIN Department d ON e.dept_id=d.id. This inner join returns matching employees only.\n\nLEFT JOIN keeps every row from the left and gives NULL for missing right values. RIGHT JOIN does the reverse. FULL OUTER JOIN keeps all rows on both sides. CROSS JOIN makes every possible pair. A self join aliases one table twice, such as employees joined to their managers.\n\nOuter joins are useful when missing relationships must still appear. One department with many employees produces repeated department values. If ON is omitted the result becomes a Cartesian product. I did not show a detailed FULL JOIN example or discuss filter placement clearly.",
+    "evaluation": {
+      "total_score": 68,
+      "max_score": 80,
+      "results": [
+        {
+          "question_no": "01",
+          "score": 17,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Three-schema architecture and data independence",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Query processor components and responsibilities",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Storage manager components and responsibilities",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Transaction, concurrency, authorization, and recovery services",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Component interaction and efficient request flow",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "02",
+          "score": 17,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Hierarchical model structure, strengths, limitations, and uses",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Network model structure, strengths, limitations, and uses",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Relational model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Object-oriented model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Accurate comparison and appropriate application selection",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "03",
+          "score": 17,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "SQL purpose, declarative nature, and relational role",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "DDL commands and schema-definition examples",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "DML and DQL commands with correct examples",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "DCL commands and access-control role",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "TCL commands and coherent command-lifecycle explanation",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "04",
+          "score": 17,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Join purpose, keys, predicates, and general syntax",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "INNER JOIN behavior and suitable example",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "LEFT, RIGHT, and FULL OUTER JOIN comparison",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "CROSS JOIN and SELF JOIN behavior and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Correct result-set differences, NULL handling, and examples",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        }
+      ]
+    },
+    "status": "graded",
+    "processed_at": "2026-08-31T12:02:00+05:30",
+    "created_at": "2026-08-31T12:02:00+05:30",
+    "updated_at": "2026-08-31T12:02:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd74"
+    },
+    "student_id": "IT22263554",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "paper_key": "script_04",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      {
+        "question_no": "01",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "02",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "03",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "04",
+        "max_marks": 20.0
+      }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22263554\n\nQuestion 1\nThere are three main levels: external views for users, conceptual design for the whole logical database and internal storage for files and indexes. This gives some data independence.\n\nThe query processor parses SQL, checks it, optimizes it and executes a plan. A storage manager handles files, indexes and buffers. A transaction manager handles simultaneous users, while logging and recovery restore data after crashes. The catalog keeps schema and statistics and the security part checks permissions.\n\nThe request travels from SQL parser to optimizer to executor. The executor gets pages from the buffer manager and the transaction is committed after logging. Indexes, buffering and query optimization reduce disk work. My answer does not describe the DDL interpreter and detailed recovery phases.\n\nQuestion 2\nA hierarchical database stores data as a tree. It is efficient for fixed paths but rigid and not good for many-to-many data. A network database uses a graph and allows multiple parents. This is more flexible, but pointer navigation is difficult to design and maintain.\n\nThe relational model stores tables joined by keys. Advantages are SQL, integrity constraints and easy ad-hoc queries. Disadvantages include join cost and converting program objects into tables. It is common in banks and shops. Object-oriented databases store objects and inheritance, making them useful for drawings and multimedia, but standards and tools are limited.\n\nSo the correct model depends on how connected and complex the data is. My applications for hierarchical and network models are only general legacy systems.\n\nQuestion 3\nSQL means Structured Query Language and lets a user define and work with relational data without saying how pages are read.\n\nDDL commands CREATE, ALTER and DROP define tables. Example: CREATE TABLE Book(id INT PRIMARY KEY,title VARCHAR(100)). DML commands INSERT, UPDATE and DELETE change the records. DQL SELECT reads records with WHERE or JOIN. DCL GRANT and REVOKE provide permissions. TCL COMMIT, ROLLBACK and SAVEPOINT control transactions.\n\nNormally the DBA creates tables and grants rights; the application inserts or updates and commits. On an error it rolls back. I have not shown detailed GROUP BY/HAVING querying or a full multi-command transaction.\n\nQuestion 4\nSQL joins combine related records. INNER JOIN returns records satisfying the ON condition, for example Employee e INNER JOIN Department d ON e.dept_id=d.dept_id.\n\nLEFT JOIN returns all left rows and matching right rows, with NULL if none. RIGHT JOIN is the opposite. FULL JOIN returns all matches and unmatched rows from both. CROSS JOIN returns all combinations. SELF JOIN joins a table to itself with aliases and can show an employee's manager.\n\nPrimary and foreign keys are normally used. A bad join condition can duplicate many records. I did not provide full SQL for every type or explain WHERE conditions on outer joins.",
+    "evaluation": {
+      "total_score": 62,
+      "max_score": 80,
+      "results": [
+        {
+          "question_no": "01",
+          "score": 16,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Three-schema architecture and data independence",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "Query processor components and responsibilities",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Storage manager components and responsibilities",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Transaction, concurrency, authorization, and recovery services",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Component interaction and efficient request flow",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "02",
+          "score": 15,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Hierarchical model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Network model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Relational model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Object-oriented model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Accurate comparison and appropriate application selection",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "03",
+          "score": 16,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "SQL purpose, declarative nature, and relational role",
+              "awarded_marks": 4,
+              "max_marks": 4,
+              "achieved": true
+            },
+            {
+              "point": "DDL commands and schema-definition examples",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DML and DQL commands with correct examples",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DCL commands and access-control role",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "TCL commands and coherent command-lifecycle explanation",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "04",
+          "score": 15,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Join purpose, keys, predicates, and general syntax",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "INNER JOIN behavior and suitable example",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "LEFT, RIGHT, and FULL OUTER JOIN comparison",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "CROSS JOIN and SELF JOIN behavior and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Correct result-set differences, NULL handling, and examples",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        }
+      ]
+    },
+    "status": "graded",
+    "processed_at": "2026-08-31T12:03:00+05:30",
+    "created_at": "2026-08-31T12:03:00+05:30",
+    "updated_at": "2026-08-31T12:03:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd75"
+    },
+    "student_id": "IT22263555",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "paper_key": "script_05",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      {
+        "question_no": "01",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "02",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "03",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "04",
+        "max_marks": 20.0
+      }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22263555\n\nQuestion 1\nA DBMS sits between users/applications and stored data. External views show selected data, a conceptual schema describes tables and relationships, and an internal schema describes physical storage.\n\nMain parts are the query parser, optimizer and execution engine, plus file and buffer managers. The catalog stores table information. A transaction manager uses locks so users do not damage each other's changes. A recovery manager keeps a log, and authorization checks users.\n\nThe parser checks a query, the optimizer picks an index or scan, and execution requests disk pages through the buffer. Updates are logged before commit. These components improve speed and reliability, although I have not fully explained data independence or integrity enforcement.\n\nQuestion 2\nHierarchical model: tree structure, one parent and many children. It is fast and simple for a fixed hierarchy but inflexible. Network model: graph structure with multiple parents. It supports many-to-many data but uses complicated links.\n\nRelational model: tables with rows, columns and keys. SQL and normalization make it easy for business databases, although joins may take time. Object-oriented model: stores objects, classes and inheritance. It handles complex multimedia data but is not as widely standardized.\n\nRelational is normally chosen for payroll or sales, OO for CAD, and hierarchical/network for older systems. I have not compared transaction support and schema changes thoroughly.\n\nQuestion 3\nSQL is used to create tables, store data, retrieve data and control database access. It is declarative.\n\nDDL: CREATE, ALTER, DROP. For example CREATE TABLE Student(id INT PRIMARY KEY,name TEXT). DML: INSERT, UPDATE, DELETE. DQL: SELECT * FROM Student WHERE id=1. DCL: GRANT and REVOKE user permissions. TCL: COMMIT and ROLLBACK, with SAVEPOINT for partly returning a transaction.\n\nThe commands work together because tables are created first, permissions are granted, users change/query rows, and then changes are committed. I did not discuss constraints, grouping, or transaction error handling in much detail.\n\nQuestion 4\nA join gets related information from tables. INNER JOIN returns only matching rows. LEFT JOIN returns every row from the first table and NULL when the second table has no match. RIGHT JOIN keeps the second table and FULL JOIN keeps both.\n\nExample: SELECT s.name,c.title FROM Student s INNER JOIN Enrolment e ON s.id=e.student_id INNER JOIN Course c ON e.course_id=c.id. CROSS JOIN makes every combination. SELF JOIN is joining Employee to Employee to find managers.\n\nJoins normally compare keys. I understand the result differences but did not show examples for all outer joins or discuss duplicate rows and filter placement.",
+    "evaluation": {
+      "total_score": 55,
+      "max_score": 80,
+      "results": [
+        {
+          "question_no": "01",
+          "score": 14,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Three-schema architecture and data independence",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Query processor components and responsibilities",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Storage manager components and responsibilities",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Transaction, concurrency, authorization, and recovery services",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Component interaction and efficient request flow",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "02",
+          "score": 14,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Hierarchical model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Network model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Relational model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Object-oriented model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Accurate comparison and appropriate application selection",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "03",
+          "score": 14,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "SQL purpose, declarative nature, and relational role",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DDL commands and schema-definition examples",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DML and DQL commands with correct examples",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DCL commands and access-control role",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "TCL commands and coherent command-lifecycle explanation",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "04",
+          "score": 13,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Join purpose, keys, predicates, and general syntax",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "INNER JOIN behavior and suitable example",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "LEFT, RIGHT, and FULL OUTER JOIN comparison",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "CROSS JOIN and SELF JOIN behavior and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Correct result-set differences, NULL handling, and examples",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        }
+      ]
+    },
+    "status": "graded",
+    "processed_at": "2026-08-31T12:04:00+05:30",
+    "created_at": "2026-08-31T12:04:00+05:30",
+    "updated_at": "2026-08-31T12:04:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd76"
+    },
+    "student_id": "IT22263556",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "paper_key": "script_06",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      {
+        "question_no": "01",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "02",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "03",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "04",
+        "max_marks": 20.0
+      }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22263556\n\nQuestion 1\nThe architecture has a query processor and storage manager. The query processor parses SQL, makes a plan and executes it. The storage side manages files, indexes and memory buffers. Metadata is stored in a data dictionary.\n\nThere are external, conceptual and physical levels, which mean a user does not need to know how disk pages are stored. Transactions use locks, and recovery uses a log if the system crashes. Security allows only permitted users.\n\nA query is checked then sent to storage and results come back. Optimization and buffering improve performance. I did not explain schema mappings, MVCC, or exactly how commit and recovery interact.\n\nQuestion 2\nThe hierarchical model is like a tree and follows parent to child. It is fast but one child cannot easily have many parents. Network model is like a graph and solves that problem, though its pointers make it hard to use.\n\nRelational databases store data in tables and connect them with keys. They use SQL, are easy to understand and good for business, but joins can be expensive. Object-oriented databases store objects and inheritance and are useful for complicated engineering data. They have fewer tools.\n\nThese models differ mainly in how relationships are represented. I gave only brief advantages and applications.\n\nQuestion 3\nSQL is a language for relational databases. It says what result is wanted and the DBMS decides the method.\n\nDDL creates or changes schema using CREATE, ALTER and DROP. DML inserts, updates and deletes rows. SELECT is used to query data. DCL has GRANT and REVOKE for security. TCL has COMMIT and ROLLBACK for saving or cancelling a transaction.\n\nExample: CREATE TABLE Product(...); INSERT a product; SELECT it; COMMIT. A rollback cancels changes after the last commit. I omitted SAVEPOINT and gave limited examples of constraints and complex queries.\n\nQuestion 4\nJoins combine rows with a related column. INNER JOIN only shows matches. LEFT JOIN also shows unmatched left rows as NULL, RIGHT JOIN shows unmatched right rows and FULL JOIN shows unmatched rows from both.\n\nSELECT e.name,d.name FROM Employee e JOIN Department d ON e.dept_id=d.id is an inner join. CROSS JOIN gives all combinations. SELF JOIN uses the same table twice, for example employee and manager.\n\nThe ON condition avoids a Cartesian product. I have not explained outer join filters, duplicates or detailed use cases.",
+    "evaluation": {
+      "total_score": 48,
+      "max_score": 80,
+      "results": [
+        {
+          "question_no": "01",
+          "score": 12,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Three-schema architecture and data independence",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Query processor components and responsibilities",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Storage manager components and responsibilities",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Transaction, concurrency, authorization, and recovery services",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Component interaction and efficient request flow",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "02",
+          "score": 12,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Hierarchical model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Network model structure, strengths, limitations, and uses",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Relational model structure, strengths, limitations, and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Object-oriented model structure, strengths, limitations, and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Accurate comparison and appropriate application selection",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "03",
+          "score": 13,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "SQL purpose, declarative nature, and relational role",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DDL commands and schema-definition examples",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DML and DQL commands with correct examples",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DCL commands and access-control role",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "TCL commands and coherent command-lifecycle explanation",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "04",
+          "score": 11,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Join purpose, keys, predicates, and general syntax",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "INNER JOIN behavior and suitable example",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "LEFT, RIGHT, and FULL OUTER JOIN comparison",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "CROSS JOIN and SELF JOIN behavior and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Correct result-set differences, NULL handling, and examples",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        }
+      ]
+    },
+    "status": "graded",
+    "processed_at": "2026-08-31T12:05:00+05:30",
+    "created_at": "2026-08-31T12:05:00+05:30",
+    "updated_at": "2026-08-31T12:05:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd77"
+    },
+    "student_id": "IT22263557",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "paper_key": "script_07",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      {
+        "question_no": "01",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "02",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "03",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "04",
+        "max_marks": 20.0
+      }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22263557\n\nQuestion 1\nA DBMS contains a query processor, storage manager, transaction manager and data dictionary. The parser checks SQL and the optimizer chooses a faster plan. File and buffer managers read data from disk.\n\nUsers see views, while the database has a logical schema and physical files. Locks help concurrency, the log helps crash recovery and permissions provide security. The parts work together by taking SQL, reading pages and returning results. This is a general description and I am missing detailed components and data independence.\n\nQuestion 2\nHierarchical means tree, network means graph, relational means tables, and object-oriented means objects and classes. Tree databases are fast for parent-child information but rigid. Network supports more links but is complicated. Relational uses keys and SQL and is popular for companies. OO handles multimedia and program objects but is less common.\n\nFor a bank I would use relational, for a file tree hierarchical, and for CAD object-oriented. I am not sure of a good network example or its exact pointer rules.\n\nQuestion 3\nSQL is used for tables and has several groups. DDL includes CREATE, ALTER and DROP. DML includes INSERT, UPDATE and DELETE. DQL is SELECT. DCL means GRANT and REVOKE. TCL means COMMIT and ROLLBACK.\n\nFor example SELECT name FROM Student WHERE mark>50 queries records. GRANT SELECT gives reading permission. COMMIT saves the transaction. SQL is declarative, but I have not explained schemas, constraints, grouping, savepoints or how all categories form one workflow.\n\nQuestion 4\nINNER JOIN returns matching rows between two tables. LEFT JOIN keeps all left rows, RIGHT JOIN keeps all right rows, and FULL JOIN keeps both. CROSS JOIN makes combinations. SELF JOIN joins a table with itself.\n\nExample: SELECT Student.name,Course.title FROM Student JOIN Enrolment ON Student.id=Enrolment.student_id JOIN Course ON Course.id=Enrolment.course_id. Keys connect the records. Unmatched outer join columns become NULL. My syntax and explanations for CROSS and SELF joins are brief.",
+    "evaluation": {
+      "total_score": 41,
+      "max_score": 80,
+      "results": [
+        {
+          "question_no": "01",
+          "score": 10,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Three-schema architecture and data independence",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Query processor components and responsibilities",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Storage manager components and responsibilities",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Transaction, concurrency, authorization, and recovery services",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Component interaction and efficient request flow",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "02",
+          "score": 10,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Hierarchical model structure, strengths, limitations, and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Network model structure, strengths, limitations, and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Relational model structure, strengths, limitations, and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Object-oriented model structure, strengths, limitations, and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Accurate comparison and appropriate application selection",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "03",
+          "score": 11,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "SQL purpose, declarative nature, and relational role",
+              "awarded_marks": 3,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DDL commands and schema-definition examples",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DML and DQL commands with correct examples",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DCL commands and access-control role",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "TCL commands and coherent command-lifecycle explanation",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "04",
+          "score": 10,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Join purpose, keys, predicates, and general syntax",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "INNER JOIN behavior and suitable example",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "LEFT, RIGHT, and FULL OUTER JOIN comparison",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "CROSS JOIN and SELF JOIN behavior and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Correct result-set differences, NULL handling, and examples",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        }
+      ]
+    },
+    "status": "graded",
+    "processed_at": "2026-08-31T12:06:00+05:30",
+    "created_at": "2026-08-31T12:06:00+05:30",
+    "updated_at": "2026-08-31T12:06:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd78"
+    },
+    "student_id": "IT22263558",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "paper_key": "script_08",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      {
+        "question_no": "01",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "02",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "03",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "04",
+        "max_marks": 20.0
+      }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22263558\n\nQuestion 1\nUsers send queries to the DBMS. A parser checks the command and an optimizer decides how to run it. The storage manager reads tables and indexes, with a buffer in memory.\n\nThe system also has a transaction manager for many users and a recovery log for failures. There are view, logical and physical levels, but I am not certain about their mappings. The result is read from disk and returned. Indexes and cache make it faster.\n\nQuestion 2\nHierarchical data has a root and child records. Network data has many connections. Relational data is stored in tables and object databases store objects.\n\nHierarchical is simple but cannot easily represent many parents. Network is flexible but complex. Relational is easy to query with SQL but can need joins. Object-oriented supports inheritance but is less standardized. Relational is suitable for most company systems; OO is suitable for graphics. The applications and comparisons are incomplete.\n\nQuestion 3\nSQL communicates with a relational database. CREATE TABLE and DROP TABLE are DDL. INSERT and UPDATE are DML. SELECT reads data. GRANT gives access. COMMIT makes a change permanent and ROLLBACK cancels it.\n\nExample: INSERT INTO Student VALUES(1,'Nimal'); SELECT * FROM Student. I forgot ALTER, DELETE, REVOKE and SAVEPOINT, and I did not explain a complete transaction.\n\nQuestion 4\nA join connects two tables by IDs. INNER JOIN gives common records. LEFT JOIN includes every record from the left and NULL for no match. RIGHT JOIN is the reverse and FULL JOIN includes all.\n\nExample: Employee JOIN Department ON Employee.dept_id=Department.id. CROSS JOIN gives every combination. A table can also join to itself for managers. I did not provide proper alias syntax or explain duplicates and WHERE filtering.",
+    "evaluation": {
+      "total_score": 34,
+      "max_score": 80,
+      "results": [
+        {
+          "question_no": "01",
+          "score": 8,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Three-schema architecture and data independence",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Query processor components and responsibilities",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Storage manager components and responsibilities",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Transaction, concurrency, authorization, and recovery services",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Component interaction and efficient request flow",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "02",
+          "score": 8,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Hierarchical model structure, strengths, limitations, and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Network model structure, strengths, limitations, and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Relational model structure, strengths, limitations, and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Object-oriented model structure, strengths, limitations, and uses",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Accurate comparison and appropriate application selection",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "03",
+          "score": 9,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "SQL purpose, declarative nature, and relational role",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DDL commands and schema-definition examples",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DML and DQL commands with correct examples",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DCL commands and access-control role",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "TCL commands and coherent command-lifecycle explanation",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "04",
+          "score": 9,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Join purpose, keys, predicates, and general syntax",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "INNER JOIN behavior and suitable example",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "LEFT, RIGHT, and FULL OUTER JOIN comparison",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "CROSS JOIN and SELF JOIN behavior and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Correct result-set differences, NULL handling, and examples",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        }
+      ]
+    },
+    "status": "graded",
+    "processed_at": "2026-08-31T12:07:00+05:30",
+    "created_at": "2026-08-31T12:07:00+05:30",
+    "updated_at": "2026-08-31T12:07:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd79"
+    },
+    "student_id": "IT22263559",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "paper_key": "script_09",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      {
+        "question_no": "01",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "02",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "03",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "04",
+        "max_marks": 20.0
+      }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22263559\n\nQuestion 1\nDBMS architecture includes users, a query processor and database files. The processor parses SQL and executes it. A buffer keeps common data in memory and indexes make searches faster.\n\nTransactions should be safe, so locks are used and a log restores failed work. There are also logical and physical levels. I did not explain external schemas, catalog, authorization or the full interaction.\n\nQuestion 2\nThe four models are hierarchical, network, relational and object-oriented. Hierarchical is a tree and network is a graph. Relational uses tables and SQL. Object-oriented uses objects.\n\nTrees are simple but rigid. Tables are easy to query. Objects can store complex data. I think network is used when there are many relationships, but it is difficult. I did not give detailed limitations or applications.\n\nQuestion 3\nSQL is Structured Query Language. DDL creates structure, such as CREATE TABLE. DML changes rows, such as INSERT. SELECT displays rows. DCL is permissions and TCL saves work.\n\nExamples are UPDATE Student SET name='A' and COMMIT. DROP deletes a table. I cannot clearly distinguish GRANT/REVOKE from COMMIT/ROLLBACK and did not describe constraints or query clauses.\n\nQuestion 4\nINNER join shows rows that match. LEFT join shows all left rows. RIGHT join shows all right rows. FULL join shows all rows. A join uses a common ID, for example Student.id = Enrolment.student_id.\n\nCROSS join makes many combinations and self join uses the same table. Missing values may be NULL. I did not give full SQL examples or clearly explain predicates and duplicate results.",
+    "evaluation": {
+      "total_score": 25,
+      "max_score": 80,
+      "results": [
+        {
+          "question_no": "01",
+          "score": 6,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Three-schema architecture and data independence",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Query processor components and responsibilities",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Storage manager components and responsibilities",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Transaction, concurrency, authorization, and recovery services",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Component interaction and efficient request flow",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "02",
+          "score": 6,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Hierarchical model structure, strengths, limitations, and uses",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Network model structure, strengths, limitations, and uses",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Relational model structure, strengths, limitations, and uses",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Object-oriented model structure, strengths, limitations, and uses",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Accurate comparison and appropriate application selection",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "03",
+          "score": 7,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "SQL purpose, declarative nature, and relational role",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DDL commands and schema-definition examples",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DML and DQL commands with correct examples",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DCL commands and access-control role",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "TCL commands and coherent command-lifecycle explanation",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "04",
+          "score": 6,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Join purpose, keys, predicates, and general syntax",
+              "awarded_marks": 2,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "INNER JOIN behavior and suitable example",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "LEFT, RIGHT, and FULL OUTER JOIN comparison",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "CROSS JOIN and SELF JOIN behavior and uses",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Correct result-set differences, NULL handling, and examples",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        }
+      ]
+    },
+    "status": "graded",
+    "processed_at": "2026-08-31T12:08:00+05:30",
+    "created_at": "2026-08-31T12:08:00+05:30",
+    "updated_at": "2026-08-31T12:08:00+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd7a"
+    },
+    "student_id": "IT22263560",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "paper_key": "script_10",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "max_marks_paper_total": 80.0,
+    "max_marks_per_question": [
+      {
+        "question_no": "01",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "02",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "03",
+        "max_marks": 20.0
+      },
+      {
+        "question_no": "04",
+        "max_marks": 20.0
+      }
+    ],
+    "raw_ocr_transcript": "Student ID: IT22263560\n\nQuestion 1\nA DBMS receives SQL from a user and stores data in files. It has a parser, storage manager, transaction part and recovery part. The parser checks SQL, storage reads data, locks stop some conflicts and backup/logging helps after a crash. I cannot explain the three-schema levels or detailed request flow.\n\nQuestion 2\nHierarchical uses parent and child. Network has links. Relational has tables. Object-oriented has classes. Relational is most common because SQL is easy. Hierarchical is used for tree data and object databases for images. I do not know the detailed advantages, disadvantages, or network applications.\n\nQuestion 3\nSQL is used to query tables. SELECT shows data, INSERT adds data, UPDATE changes it and DELETE removes it. CREATE makes a table and COMMIT saves changes. There are also DDL, DML and DCL groups, but I do not remember the other commands or transaction control details.\n\nQuestion 4\nA join combines tables. INNER JOIN returns matching values and LEFT JOIN returns the left table even if there is no match. Example: SELECT * FROM Student JOIN Course ON Student.course=Course.id. Other types are right, full and cross joins, but I cannot explain their exact results or self joins.",
+    "evaluation": {
+      "total_score": 16,
+      "max_score": 80,
+      "results": [
+        {
+          "question_no": "01",
+          "score": 4,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Three-schema architecture and data independence",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Query processor components and responsibilities",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Storage manager components and responsibilities",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Transaction, concurrency, authorization, and recovery services",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Component interaction and efficient request flow",
+              "awarded_marks": 0,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "02",
+          "score": 4,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Hierarchical model structure, strengths, limitations, and uses",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Network model structure, strengths, limitations, and uses",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Relational model structure, strengths, limitations, and uses",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Object-oriented model structure, strengths, limitations, and uses",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Accurate comparison and appropriate application selection",
+              "awarded_marks": 0,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "03",
+          "score": 4,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "SQL purpose, declarative nature, and relational role",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DDL commands and schema-definition examples",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DML and DQL commands with correct examples",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "DCL commands and access-control role",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "TCL commands and coherent command-lifecycle explanation",
+              "awarded_marks": 0,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        },
+        {
+          "question_no": "04",
+          "score": 4,
+          "max_score": 20,
+          "criteria_breakdown": [
+            {
+              "point": "Join purpose, keys, predicates, and general syntax",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "INNER JOIN behavior and suitable example",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "LEFT, RIGHT, and FULL OUTER JOIN comparison",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "CROSS JOIN and SELF JOIN behavior and uses",
+              "awarded_marks": 1,
+              "max_marks": 4,
+              "achieved": false
+            },
+            {
+              "point": "Correct result-set differences, NULL handling, and examples",
+              "awarded_marks": 0,
+              "max_marks": 4,
+              "achieved": false
+            }
+          ]
+        }
+      ]
+    },
+    "status": "graded",
+    "processed_at": "2026-08-31T12:09:00+05:30",
+    "created_at": "2026-08-31T12:09:00+05:30",
+    "updated_at": "2026-08-31T12:09:00+05:30"
+  }
+]

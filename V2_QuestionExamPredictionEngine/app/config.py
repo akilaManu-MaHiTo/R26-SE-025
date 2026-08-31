@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     embedding_available: bool = True
     candidate_similarity_threshold: float = 0.85
 
+    # Bloom ModernBERT (standalone safetensors) - Option B hybrid
+    bloom_enabled: bool = True
+    bloom_model_dir: str = "models/bloom_modernbert"
+    bloom_model_threshold: float = 0.6
+    bloom_max_length: int = 512
+    bloom_device: str = "cpu"
+
     model_config = SettingsConfigDict(env_file=_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     @property
