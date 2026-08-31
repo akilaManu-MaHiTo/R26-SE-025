@@ -35,6 +35,54 @@ async def llm_health():
     return await check_llm_detailed_health()
 
 
+@router.get("/bloom-health")
+async def bloom_health():
+    """Bloom model health: local ModernBERT safetensors availability."""
+    from app.config import settings
+    from app.classifier.bloom_classifier import is_bloom_model_available
+
+    available = is_bloom_model_available()
+    return {
+        "enabled": bool(settings.bloom_enabled),
+        "available": available,
+        "model_dir": settings.bloom_model_dir,
+        "threshold": float(settings.bloom_model_threshold),
+        "max_length": int(settings.bloom_max_length),
+        "device": settings.bloom_device,
+        "online": available,
+        "detail": "ok" if available else "model not found or disabled",
+    }
+
+
+@router.post("/bloom-predict")
+async def bloom_predict(payload: dict):
+    """Direct Bloom prediction: ONLY ModernBERT (models/bloom_modernbert), no rules/LLM fallback."""
+    text = str(payload.get("text") or payload.get("question_text") or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text/question_text required")
+    from app.classifier.bloom_classifier import is_bloom_model_available, predict_bloom
+    from app.classifier.rules import classify_by_rules
+
+    if not is_bloom_model_available():
+        raise HTTPException(
+            status_code=503,
+            detail="Bloom ModernBERT not available — ensure models/bloom_modernbert/bloom.safetensors + tokenizer exist",
+        )
+    rules = classify_by_rules(text)
+    try:
+        b = predict_bloom(text)
+        bloom = b
+        status = "bloom_model"
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Bloom inference failed: {exc}") from exc
+    return {
+        "text": text,
+        "status": status,
+        "bloom": bloom,
+        "topic_hint": [a.topic for a in rules.topic_assignments[:3]],
+    }
+
+
 @router.get("/exams")
 async def list_exams(db=Depends(get_db)):
     """List all available exams with basic stats."""

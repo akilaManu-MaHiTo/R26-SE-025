@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { ProgressLoader, type LoadStep } from "./ProgressLoader";
 import { AIPageBanner } from "./AIBrand";
+import { toast } from "sonner";
 import {
   fetchExams,
   fetchExamAnalytics,
@@ -18,6 +19,7 @@ import {
   fetchExamStudents,
   fetchLecturerStudentDetail,
   fetchLecturerStudentDetailStream,
+  fetchLlmHealth,
   type ExamListItem,
   type ExamAnalytics,
   type CanonicalTopic,
@@ -122,6 +124,20 @@ export default function AnalyticsPage() {
   }, []);
 
   const handleSelectExam = useCallback(async (exam: ExamListItem) => {
+    // If exam not yet analyzed, require model to be online — else toast and abort
+    if (!exam.analyzed) {
+      try {
+        const health = await fetchLlmHealth();
+        if (!health.online || !health.model_available) {
+          toast.error("Model unavailable, please retry when model comes online.");
+          return;
+        }
+      } catch {
+        toast.error("Model unavailable, please retry when model comes online.");
+        return;
+      }
+    }
+
     setSelectedExam(exam);
     setLoadingAnalytics(true);
     setAnalytics(null);
@@ -184,6 +200,18 @@ export default function AnalyticsPage() {
     } catch (err) {
       console.error(err);
       setLiveModelMessage("PULSE·AI — Analysis failed");
+      // Fallback: if pending exam failed and model is actually down, surface toast
+      if (!exam.analyzed) {
+        try {
+          const h = await fetchLlmHealth();
+          if (!h.online || !h.model_available) {
+            toast.error("Model unavailable, please retry when model comes online.");
+          }
+        } catch {
+          // health itself failed — treat as model unavailable
+          toast.error("Model unavailable, please retry when model comes online.");
+        }
+      }
     } finally {
       setLoadingAnalytics(false);
     }
@@ -191,6 +219,22 @@ export default function AnalyticsPage() {
 
   const handleSelectStudent = useCallback(async (studentId: string) => {
     if (!selectedExam) return;
+    // If student not yet analyzed, require model — else toast and abort
+    const targetRow = students.find((r) => r.student_id === studentId);
+    const needsAnalysis = !targetRow || targetRow.analysis_status !== "generated";
+    if (needsAnalysis) {
+      try {
+        const health = await fetchLlmHealth();
+        if (!health.online || !health.model_available) {
+          toast.error("Model unavailable, please retry when model comes online.");
+          return;
+        }
+      } catch {
+        toast.error("Model unavailable, please retry when model comes online.");
+        return;
+      }
+    }
+
     setSelectedStudentId(studentId);
     setLoadingStudentDetail(true);
     setStudentDetail(null);
@@ -233,13 +277,28 @@ export default function AnalyticsPage() {
       setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: "generated" } : r));
       setTimeout(() => dispatchTopbar(false), 2500);
     } catch (e) {
-      setStudentDetailError(e instanceof Error ? e.message : "Failed to load student detail");
+      const msg = e instanceof Error ? e.message : "Failed to load student detail";
+      setStudentDetailError(msg);
       dispatchTopbar(true, `Analysis failed for ${studentId}`, 0);
       setTimeout(() => dispatchTopbar(false), 3000);
+      // Fallback: if pending student failed due to model down, toast
+      if (needsAnalysis) {
+        const lower = msg.toLowerCase();
+        if (lower.includes("model") || lower.includes("ollama") || lower.includes("unavailable")) {
+          toast.error("Model unavailable, please retry when model comes online.");
+        } else {
+          try {
+            const h = await fetchLlmHealth();
+            if (!h.online || !h.model_available) toast.error("Model unavailable, please retry when model comes online.");
+          } catch {
+            // ignore — already showed detail error
+          }
+        }
+      }
     } finally {
       setLoadingStudentDetail(false);
     }
-  }, [selectedExam]);
+  }, [selectedExam, students]);
 
   // Exam Selection — dense, scannable table with filters
   if (!selectedExam) {

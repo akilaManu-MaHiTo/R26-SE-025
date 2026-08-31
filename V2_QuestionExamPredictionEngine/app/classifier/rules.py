@@ -5,6 +5,8 @@ from app.analytics.taxonomy import TOPICS
 from app.schemas.catalog import TopicAssignment
 
 BLOOM_VERBS: dict[str, set[str]] = {
+    # DEPRECATED: kept for backwards compatibility but NO LONGER USED for Bloom detection.
+    # Bloom is now ONLY via models/bloom_modernbert (ModernBERT). See _bloom_level() below.
     "Remember": {"list", "define", "state", "name", "identify", "recall", "label", "match"},
     "Understand": {"explain", "describe", "summarize", "discuss", "distinguish", "classify", "relate"},
     "Apply": {"apply", "use", "calculate", "compute", "solve", "implement", "write", "execute", "find"},
@@ -69,11 +71,17 @@ class RuleClassification:
 
 
 def _bloom_level(text: str) -> str:
-    lower = text.lower()
-    for level in ("Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"):
-        if any(re.search(rf"\b{v}\b", lower) for v in BLOOM_VERBS[level]):
-            return level
-    return "Understand"
+    """Bloom level ONLY via ModernBERT models/bloom_modernbert — no verb/Qwen fallback."""
+    from app.classifier.bloom_classifier import is_bloom_model_available, predict_bloom
+    from app.config import settings
+
+    if not is_bloom_model_available():
+        raise RuntimeError(
+            f"Bloom ModernBERT not available at {settings.bloom_model_dir} — "
+            "ensure models/bloom_modernbert/bloom.safetensors + tokenizer exist"
+        )
+    bloom = predict_bloom(text)
+    return bloom["level"]
 
 
 def _topic_hits(text: str) -> dict[str, int]:
