@@ -1,0 +1,6 @@
+*
+!.gitignore
+!config.json
+!bloom.safetensors
+!tokenizer/
+
