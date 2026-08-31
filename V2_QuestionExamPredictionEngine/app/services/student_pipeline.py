@@ -50,7 +50,9 @@ def _try_bloom_semantics(question_text: str) -> QuestionSemantics:
             f"Bloom ModernBERT not available at {settings.bloom_model_dir} — "
             "ensure models/bloom_modernbert/bloom.safetensors + tokenizer exist"
         )
+    print(f"[Bloom] Classify Q: \"{question_text[:80].replace(chr(10), ' ')}\" ...", flush=True)
     bloom = predict_bloom(question_text)
+    print(f"[Bloom] -> {bloom['label']} {bloom['level']} conf={bloom['confidence']:.4f}", flush=True)
     # Topic from rules WITHOUT triggering second bloom inference: compute hits directly
     from app.analytics.taxonomy import TOPICS
     from app.classifier.rules import TOPIC_KEYWORDS

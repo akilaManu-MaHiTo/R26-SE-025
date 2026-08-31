@@ -1,0 +1,210 @@
+[
+  {
+    "text": "Define normalization and list its forms.",
+    "prediction": {
+      "label": "BT1",
+      "level": "Remember",
+      "confidence": 0.87116,
+      "probs": {
+        "BT1": 0.87116,
+        "BT2": 0.11362,
+        "BT3": 0.009636,
+        "BT4": 0.004924,
+        "BT5": 0.000449,
+        "BT6": 0.000211
+      },
+      "level_probs": {
+        "Remember": 0.87116,
+        "Understand": 0.11362,
+        "Apply": 0.009636,
+        "Analyze": 0.004924,
+        "Evaluate": 0.000449,
+        "Create": 0.000211
+      },
+      "pred_index": 0,
+      "model_version": "modernbert-bloom-v1"
+    }
+  },
+  {
+    "text": "Explain the concept of normalization in DBMS.",
+    "prediction": {
+      "label": "BT2",
+      "level": "Understand",
+      "confidence": 0.497818,
+      "probs": {
+        "BT1": 0.373736,
+        "BT2": 0.497818,
+        "BT3": 0.028281,
+        "BT4": 0.096571,
+        "BT5": 0.002553,
+        "BT6": 0.00104
+      },
+      "level_probs": {
+        "Remember": 0.373736,
+        "Understand": 0.497818,
+        "Apply": 0.028281,
+        "Analyze": 0.096571,
+        "Evaluate": 0.002553,
+        "Create": 0.00104
+      },
+      "pred_index": 1,
+      "model_version": "modernbert-bloom-v1"
+    }
+  },
+  {
+    "text": "Write a SQL SELECT query that joins two tables and filters by age.",
+    "prediction": {
+      "label": "BT3",
+      "level": "Apply",
+      "confidence": 0.831681,
+      "probs": {
+        "BT1": 0.01061,
+        "BT2": 0.005011,
+        "BT3": 0.831681,
+        "BT4": 0.006121,
+        "BT5": 0.000267,
+        "BT6": 0.146309
+      },
+      "level_probs": {
+        "Remember": 0.01061,
+        "Understand": 0.005011,
+        "Apply": 0.831681,
+        "Analyze": 0.006121,
+        "Evaluate": 0.000267,
+        "Create": 0.146309
+      },
+      "pred_index": 2,
+      "model_version": "modernbert-bloom-v1"
+    }
+  },
+  {
+    "text": "Compare BCNF and 3NF and analyze anomalies.",
+    "prediction": {
+      "label": "BT4",
+      "level": "Analyze",
+      "confidence": 0.811503,
+      "probs": {
+        "BT1": 0.021275,
+        "BT2": 0.046831,
+        "BT3": 0.118261,
+        "BT4": 0.811503,
+        "BT5": 0.001168,
+        "BT6": 0.000961
+      },
+      "level_probs": {
+        "Remember": 0.021275,
+        "Understand": 0.046831,
+        "Apply": 0.118261,
+        "Analyze": 0.811503,
+        "Evaluate": 0.001168,
+        "Create": 0.000961
+      },
+      "pred_index": 3,
+      "model_version": "modernbert-bloom-v1"
+    }
+  },
+  {
+    "text": "Evaluate the performance of two indexing strategies and justify the choice.",
+    "prediction": {
+      "label": "BT5",
+      "level": "Evaluate",
+      "confidence": 0.939578,
+      "probs": {
+        "BT1": 9.8e-05,
+        "BT2": 0.001783,
+        "BT3": 0.038787,
+        "BT4": 0.019565,
+        "BT5": 0.939578,
+        "BT6": 0.000189
+      },
+      "level_probs": {
+        "Remember": 9.8e-05,
+        "Understand": 0.001783,
+        "Apply": 0.038787,
+        "Analyze": 0.019565,
+        "Evaluate": 0.939578,
+        "Create": 0.000189
+      },
+      "pred_index": 4,
+      "model_version": "modernbert-bloom-v1"
+    }
+  },
+  {
+    "text": "Design a distributed database schema for an e-commerce platform.",
+    "prediction": {
+      "label": "BT6",
+      "level": "Create",
+      "confidence": 0.999286,
+      "probs": {
+        "BT1": 1e-06,
+        "BT2": 0.0,
+        "BT3": 0.000703,
+        "BT4": 0.0,
+        "BT5": 8e-06,
+        "BT6": 0.999286
+      },
+      "level_probs": {
+        "Remember": 1e-06,
+        "Understand": 0.0,
+        "Apply": 0.000703,
+        "Analyze": 0.0,
+        "Evaluate": 8e-06,
+        "Create": 0.999286
+      },
+      "pred_index": 5,
+      "model_version": "modernbert-bloom-v1"
+    }
+  },
+  {
+    "text": "Calculate the closure of attribute set {A,B} given functional dependencies.",
+    "prediction": {
+      "label": "BT3",
+      "level": "Apply",
+      "confidence": 0.979284,
+      "probs": {
+        "BT1": 0.003255,
+        "BT2": 0.004397,
+        "BT3": 0.979284,
+        "BT4": 0.012191,
+        "BT5": 0.000247,
+        "BT6": 0.000626
+      },
+      "level_probs": {
+        "Remember": 0.003255,
+        "Understand": 0.004397,
+        "Apply": 0.979284,
+        "Analyze": 0.012191,
+        "Evaluate": 0.000247,
+        "Create": 0.000626
+      },
+      "pred_index": 2,
+      "model_version": "modernbert-bloom-v1"
+    }
+  },
+  {
+    "text": "Discuss the history of computing.",
+    "prediction": {
+      "label": "BT1",
+      "level": "Remember",
+      "confidence": 0.499778,
+      "probs": {
+        "BT1": 0.499778,
+        "BT2": 0.437311,
+        "BT3": 0.011635,
+        "BT4": 0.049288,
+        "BT5": 0.00099,
+        "BT6": 0.000998
+      },
+      "level_probs": {
+        "Remember": 0.499778,
+        "Understand": 0.437311,
+        "Apply": 0.011635,
+        "Analyze": 0.049288,
+        "Evaluate": 0.00099,
+        "Create": 0.000998
+      },
+      "pred_index": 0,
+      "model_version": "modernbert-bloom-v1"
+    }
+  }
+]

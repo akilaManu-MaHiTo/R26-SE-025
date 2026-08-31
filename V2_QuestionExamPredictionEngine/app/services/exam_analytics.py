@@ -31,6 +31,8 @@ async def compute_exam_analytics(
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict:
     def _progress(msg: str):
+        # Real-time server terminal log for exam analyze (Bloom)
+        print(f"[ExamAnalyze] {msg}", flush=True)
         if progress_callback:
             try:
                 progress_callback(msg)
