@@ -3,10 +3,12 @@ import json
 import asyncio
 import re
 import fitz
+from pathlib import Path
 from groq import Groq
 from dotenv import load_dotenv
 
-load_dotenv()
+_GRADING_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(_GRADING_ROOT / ".env")
 AI_API_KEY = os.getenv("AI_API_KEY")
 MODEL_NAME = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 client = Groq(api_key=AI_API_KEY) if AI_API_KEY else None

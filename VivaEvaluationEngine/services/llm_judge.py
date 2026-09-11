@@ -239,10 +239,19 @@ def _extract_json_object(text: str) -> Optional[Dict[str, Any]]:
     return parsed if isinstance(parsed, dict) else None
 
 
+def _chat_url() -> str:
+    _load_env_files()
+    base = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or os.getenv("VIVA_LLM_BASE_URL") or "https://api.groq.com/openai/v1").rstrip("/")
+    if base.endswith("/chat/completions"):
+        return base
+    return f"{base}/chat/completions"
+
+
 def _call_groq_chat_once(payload: Dict[str, Any], api_key: str, model: str) -> str:
     body = {
         "model": model,
         "temperature": 0.2,
+        "stream": False,
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": _SYSTEM_PROMPT},
@@ -256,7 +265,7 @@ def _call_groq_chat_once(payload: Dict[str, Any], api_key: str, model: str) -> s
         ],
     }
     request = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
+        _chat_url(),
         data=json.dumps(body).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {api_key}",
@@ -269,6 +278,7 @@ def _call_groq_chat_once(payload: Dict[str, Any], api_key: str, model: str) -> s
     with urllib.request.urlopen(request, timeout=45) as response:
         raw = json.loads(response.read().decode("utf-8"))
     return str(raw["choices"][0]["message"]["content"])
+
 
 
 def _call_groq_chat(payload: Dict[str, Any], api_key: str, model: str) -> str:
@@ -410,6 +420,9 @@ def run_llm_judge(result: Dict[str, Any], debug: bool = False) -> Dict[str, Any]
 
 def attach_llm_evaluation(result: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
     """Mutate+return merged pipeline result with llm_evaluation attached."""
+    from services.pipeline_progress import emit
+
+    emit("llm_judge", "Scoring delivery")
     enriched = dict(result)
     enriched["llm_evaluation"] = run_llm_judge(enriched, debug=debug)
     return enriched

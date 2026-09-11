@@ -470,12 +470,21 @@ def _refresh_counts(conversation: Dict[str, Any]) -> Dict[str, Any]:
     return conversation
 
 
+def _chat_url() -> str:
+    _load_env_files()
+    base = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or os.getenv("VIVA_LLM_BASE_URL") or "https://api.groq.com/openai/v1").rstrip("/")
+    if base.endswith("/chat/completions"):
+        return base
+    return f"{base}/chat/completions"
+
+
 def _call_groq_structure(transcript: str, api_key: str, model: str) -> str:
     last_error: Optional[BaseException] = None
     for candidate in _model_candidates(model):
         body = {
             "model": candidate,
             "temperature": 0.1,
+            "stream": False,
             "response_format": {"type": "json_object"},
             "messages": [
                 {"role": "system", "content": _SYSTEM_PROMPT},
@@ -489,7 +498,7 @@ def _call_groq_structure(transcript: str, api_key: str, model: str) -> str:
             ],
         }
         request = urllib.request.Request(
-            "https://api.groq.com/openai/v1/chat/completions",
+            _chat_url(),
             data=json.dumps(body).encode("utf-8"),
             headers={
                 "Authorization": f"Bearer {api_key}",
@@ -499,6 +508,7 @@ def _call_groq_structure(transcript: str, api_key: str, model: str) -> str:
             },
             method="POST",
         )
+
         try:
             with urllib.request.urlopen(request, timeout=90) as response:
                 raw = json.loads(response.read().decode("utf-8"))

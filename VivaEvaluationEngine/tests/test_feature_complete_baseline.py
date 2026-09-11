@@ -427,7 +427,7 @@ class IntegrationAndRegressionTests(unittest.TestCase):
         attached = attach_assessment(result)
         fc = attached["feature_complete"]
         self.assertEqual(attached["assessment"]["final_score"], baseline["final_score"])
-        self.assertEqual(baseline["final_score"], 73.76)
+        self.assertEqual(baseline["final_score"], 72.09)
         self.assertEqual(baseline["grade"], "B+")
         self.assertIn("derived_features", fc)
         self.assertIn("raw_measurements", fc["layers"])

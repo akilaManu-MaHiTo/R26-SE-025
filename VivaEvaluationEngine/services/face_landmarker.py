@@ -11,6 +11,7 @@ from typing import Iterator, Optional, Sequence
 from urllib.request import urlretrieve
 
 import cv2
+import numpy as np
 import mediapipe as mp
 
 from config import BLINK_SAMPLE_FPS
@@ -28,6 +29,32 @@ class LandmarkSample:
     time_sec: float
     frame_index: int
     landmarks: Optional[Sequence]
+    yaw_degrees: Optional[float] = None
+    pitch_degrees: Optional[float] = None
+    roll_degrees: Optional[float] = None
+
+
+def euler_angles_from_transformation_matrix(matrix) -> Optional[tuple]:
+    """Real yaw/pitch/roll (degrees) from a FaceLandmarker 4x4 pose matrix.
+
+    Standard rotation-matrix-to-Euler decomposition (matches solvePnP-style
+    conventions): yaw is rotation about the vertical axis, i.e. exactly the
+    "is the head turned toward profile" signal — unlike the landmark-distance
+    proxies in gaze_head_analyser.py, this isn't confounded by camera distance.
+    """
+    if matrix is None:
+        return None
+    r = np.asarray(matrix)[:3, :3]
+    sy = float((r[0, 0] ** 2 + r[1, 0] ** 2) ** 0.5)
+    if sy < 1e-6:
+        yaw = np.degrees(np.arctan2(-r[2, 0], sy))
+        pitch = np.degrees(np.arctan2(-r[1, 2], r[1, 1]))
+        roll = 0.0
+    else:
+        yaw = np.degrees(np.arctan2(-r[2, 0], sy))
+        pitch = np.degrees(np.arctan2(r[2, 1], r[2, 2]))
+        roll = np.degrees(np.arctan2(r[1, 0], r[0, 0]))
+    return float(yaw), float(pitch), float(roll)
 
 
 def landmarker_model_path() -> Optional[str]:
@@ -59,6 +86,7 @@ def create_face_landmarker():
             num_faces=1,
             min_face_detection_confidence=0.5,
             min_face_presence_confidence=0.5,
+            output_facial_transformation_matrixes=True,
         )
         return FaceLandmarker.create_from_options(options)
     except Exception:
@@ -66,15 +94,23 @@ def create_face_landmarker():
 
 
 def detect_landmarks(landmarker, frame_bgr: np.ndarray) -> Optional[Sequence]:
+    return detect_landmarks_and_pose(landmarker, frame_bgr)[0]
+
+
+def detect_landmarks_and_pose(
+    landmarker, frame_bgr: np.ndarray
+) -> "tuple[Optional[Sequence], Optional[tuple]]":
     if landmarker is None or frame_bgr is None:
-        return None
+        return None, None
     rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
     result = landmarker.detect(mp_image)
     faces = result.face_landmarks or []
     if not faces:
-        return None
-    return faces[0]
+        return None, None
+    matrices = result.facial_transformation_matrixes or []
+    pose = euler_angles_from_transformation_matrix(matrices[0]) if matrices else None
+    return faces[0], pose
 
 
 def iter_landmark_samples(
@@ -99,10 +135,15 @@ def iter_landmark_samples(
             if not ok:
                 break
             if frame_index % frame_step == 0:
+                landmarks, pose = detect_landmarks_and_pose(landmarker, frame)
+                yaw, pitch, roll = pose if pose is not None else (None, None, None)
                 yield LandmarkSample(
                     time_sec=round(frame_index / source_fps, 3),
                     frame_index=frame_index,
-                    landmarks=detect_landmarks(landmarker, frame),
+                    landmarks=landmarks,
+                    yaw_degrees=yaw,
+                    pitch_degrees=pitch,
+                    roll_degrees=roll,
                 )
             frame_index += 1
     finally:
@@ -111,18 +152,28 @@ def iter_landmark_samples(
             landmarker.close()
 
 
+def nearest_sample(
+    samples: Sequence[LandmarkSample],
+    time_sec: float,
+    *,
+    max_dt: float = 0.6,
+) -> Optional[LandmarkSample]:
+    if not samples:
+        return None
+    best = min(samples, key=lambda item: abs(item.time_sec - time_sec))
+    if abs(best.time_sec - time_sec) > max_dt:
+        return None
+    return best
+
+
 def nearest_landmarks(
     samples: Sequence[LandmarkSample],
     time_sec: float,
     *,
     max_dt: float = 0.6,
 ) -> Optional[Sequence]:
-    if not samples:
-        return None
-    best = min(samples, key=lambda item: abs(item.time_sec - time_sec))
-    if abs(best.time_sec - time_sec) > max_dt:
-        return None
-    return best.landmarks
+    sample = nearest_sample(samples, time_sec, max_dt=max_dt)
+    return sample.landmarks if sample is not None else None
 
 
 def video_duration_seconds(video_path: str) -> float:

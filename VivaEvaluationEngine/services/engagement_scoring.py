@@ -49,8 +49,10 @@ def aggregate_gaze(gaze_signals: Sequence[Optional[Dict[str, Any]]]) -> Dict[str
     }
 
 
-def _axis_proxy(signal: Dict[str, Any], axis: str) -> Optional[float]:
-    """Read landmark proxy; accept legacy yaw/pitch/roll keys from stored docs."""
+def _axis_raw_proxy(signal: Dict[str, Any], axis: str) -> Optional[float]:
+    """Raw landmark-distance proxy, conflated with camera distance. Kept
+    only for diagnostic comparison — stability is no longer computed from
+    this. Falls back to legacy yaw/pitch/roll keys from older stored docs."""
     value = signal.get(f"{axis}_proxy")
     if value is None:
         value = signal.get(axis)
@@ -59,20 +61,33 @@ def _axis_proxy(signal: Dict[str, Any], axis: str) -> Optional[float]:
     return float(value)
 
 
+def _axis_normalized(signal: Dict[str, Any], axis: str) -> Optional[float]:
+    """Inter-ocular-distance-normalized proxy — decoupled from camera
+    distance. This is what head-pose stability is actually computed from.
+    Falls back to the raw proxy for older stored docs that predate it."""
+    value = signal.get(f"{axis}_normalized")
+    if value is None:
+        value = _axis_raw_proxy(signal, axis)
+    return value
+
+
 def aggregate_head_pose(gaze_signals: Sequence[Optional[Dict[str, Any]]]) -> Dict[str, Any]:
     valid = [g for g in gaze_signals if g is not None]
-    yaws = [_axis_proxy(g, "yaw") for g in valid]
-    pitches = [_axis_proxy(g, "pitch") for g in valid]
-    rolls = [_axis_proxy(g, "roll") for g in valid]
-    yaws = [value for value in yaws if value is not None]
-    pitches = [value for value in pitches if value is not None]
-    rolls = [value for value in rolls if value is not None]
+    yaws_raw = [v for v in (_axis_raw_proxy(g, "yaw") for g in valid) if v is not None]
+    pitches_raw = [v for v in (_axis_raw_proxy(g, "pitch") for g in valid) if v is not None]
+    rolls_raw = [v for v in (_axis_raw_proxy(g, "roll") for g in valid) if v is not None]
+    yaws = [v for v in (_axis_normalized(g, "yaw") for g in valid) if v is not None]
+    pitches = [v for v in (_axis_normalized(g, "pitch") for g in valid) if v is not None]
+    rolls = [v for v in (_axis_normalized(g, "roll") for g in valid) if v is not None]
     if not yaws and not pitches and not rolls:
         return {
             "status": "unavailable",
             "yaw_proxy_std": None,
             "pitch_proxy_std": None,
             "roll_proxy_std": None,
+            "yaw_normalized_std": None,
+            "pitch_normalized_std": None,
+            "roll_normalized_std": None,
             "yaw_std": None,
             "pitch_std": None,
             "roll_std": None,
@@ -83,15 +98,23 @@ def aggregate_head_pose(gaze_signals: Sequence[Optional[Dict[str, Any]]]) -> Dic
             "validated": False,
             "validation_reason": "no_turn_tilt_recording",
         }
+    yaw_std_raw = _std(yaws_raw)
+    pitch_std_raw = _std(pitches_raw)
+    roll_std_raw = _std(rolls_raw)
     yaw_std = _std(yaws)
     pitch_std = _std(pitches)
     roll_std = _std(rolls)
     stability = head_pose_stability_score(yaw_std, pitch_std, roll_std)
     return {
         "status": "available",
-        "yaw_proxy_std": None if yaw_std is None else round(yaw_std, 4),
-        "pitch_proxy_std": None if pitch_std is None else round(pitch_std, 4),
-        "roll_proxy_std": None if roll_std is None else round(roll_std, 4),
+        # Raw proxy std — diagnostic only, conflated with camera distance.
+        "yaw_proxy_std": None if yaw_std_raw is None else round(yaw_std_raw, 4),
+        "pitch_proxy_std": None if pitch_std_raw is None else round(pitch_std_raw, 4),
+        "roll_proxy_std": None if roll_std_raw is None else round(roll_std_raw, 4),
+        # Inter-ocular-normalized std — what stability_score is computed from.
+        "yaw_normalized_std": None if yaw_std is None else round(yaw_std, 4),
+        "pitch_normalized_std": None if pitch_std is None else round(pitch_std, 4),
+        "roll_normalized_std": None if roll_std is None else round(roll_std, 4),
         "yaw_std": None if yaw_std is None else round(yaw_std, 4),
         "pitch_std": None if pitch_std is None else round(pitch_std, 4),
         "roll_std": None if roll_std is None else round(roll_std, 4),

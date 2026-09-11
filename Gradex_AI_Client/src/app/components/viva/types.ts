@@ -95,6 +95,30 @@ export interface LlmEvaluation {
   formula_fallback?: Record<string, LlmCriterionScore>;
 }
 
+export interface TechnicalAccuracyConcept {
+  concept_id: string;
+  name: string;
+  covered: boolean;
+  correct: boolean | null;
+  evidence_quote: string | null;
+  score: number;
+  weight?: number;
+}
+
+/**
+ * AI-suggested technical-accuracy score, computed by comparing the transcript
+ * against a lecturer-provided subject concept rubric (see /api/subject-content).
+ * Advisory only — distinct from assessment.technical_accuracy, which stays the
+ * examiner-entered value that actually gets published (see EvaluationPanel.tsx).
+ */
+export interface TechnicalAccuracyAI {
+  status?: "success" | "partial" | "skipped" | "unavailable" | string;
+  model?: string | null;
+  overall_score?: number | null;
+  concepts?: TechnicalAccuracyConcept[];
+  error?: string;
+}
+
 export interface DiarizationSpeaker {
   id?: string;
   role?: string;
@@ -309,8 +333,14 @@ export interface AnalysisResult {
   audio_analysis?: AudioAnalysis;
   llm_evaluation?: LlmEvaluation;
   qa_analysis?: QaAnalysis;
+  technical_accuracy_ai?: TechnicalAccuracyAI;
   assessment?: VivaAssessment;
   mark_id?: string;
+  published?: boolean;
+  auto_published?: boolean;
+  assessment_mode?: AssessmentMode;
+  final_score?: number | null;
+  final_grade?: string | null;
   persistence_error?: string;
   video_features?: Record<string, unknown>;
   feature_complete?: Record<string, unknown>;
@@ -346,9 +376,22 @@ export interface VivaAssessment {
     components?: Array<Record<string, unknown>>;
   };
   technical_accuracy?: number | null;
-  fusion?: Record<string, unknown> | null;
+  fusion?: VivaFusion | null;
   final_score?: number | null;
   grade?: string | null;
+}
+
+export interface VivaFusion {
+  mode?: AssessmentMode;
+  /** Weights this assessment actually applied (1.0 / 0.0 in without-technical mode). */
+  weight_ai?: number;
+  weight_technical?: number;
+  /** Weights a with-technical publish would apply — used for the examiner preview. */
+  with_technical?: {
+    weight_ai?: number;
+    weight_technical?: number;
+  };
+  pending?: string;
 }
 
 export function resolveGradeFromPercent(percent: number | null | undefined): string | null {
@@ -394,6 +437,7 @@ export function suggestGrade(totalScore: number, maxScore: number): string {
 /* ─── Formatting helpers ─── */
 
 export function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "—";
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;

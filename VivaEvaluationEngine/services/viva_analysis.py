@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
 import uuid
@@ -18,11 +19,13 @@ from services.diarization import (
 )
 from services.transcript_features import extract_transcript_features
 from services.normalization import energy_consistency_score, pitch_stability_score
-from transcribe import transcribe_audio
+from transcribe import transcribe_audio, resolve_whisper_model_size
+
+logger = logging.getLogger(__name__)
 
 
 ENGINE_ROOT = Path(__file__).resolve().parents[1]
-WHISPER_MODEL_SIZE = os.getenv("VIVA_WHISPER_MODEL", "base")
+WHISPER_MODEL_SIZE = resolve_whisper_model_size(os.getenv("VIVA_WHISPER_MODEL"))
 
 # Healthy-ish voice-quality anchors (Praat local jitter/shimmer as fractions).
 # Below low → near-perfect; above high → near-zero. Tuned to published adult norms.
@@ -327,6 +330,7 @@ def _pack_audio_payload(
     conversation: Optional[Dict[str, Any]] = None,
     whisper_available: Optional[bool] = None,
     whisper_reason: Optional[str] = None,
+    whisper_model: Optional[str] = None,
 ) -> Dict[str, Any]:
     predicted_emotion = str(emotion_features.get("predicted_emotion", "unknown")).strip() or "unknown"
     ser_source = str(emotion_features.get("source", "heuristic"))
@@ -420,6 +424,7 @@ def _pack_audio_payload(
         },
         "whisper_available": True if whisper_available is None else bool(whisper_available),
         "whisper_reason": whisper_reason,
+        "whisper_model": whisper_model or WHISPER_MODEL_SIZE,
     }
     if error:
         payload["error"] = error
@@ -486,6 +491,9 @@ def analyze_audio_from_video(
     }
 
     try:
+        from services.pipeline_progress import emit
+
+        emit("extract_audio", "Extracting audio")
         extract_audio(video_path, temp_audio_path)
 
         diarization: Dict[str, Any] = {}
@@ -520,12 +528,16 @@ def analyze_audio_from_video(
             model_size=WHISPER_MODEL_SIZE,
             output_path=transcription_output,
         )
-        try:
-            from transcribe import release_whisper_models
+        # Keep Whisper in process memory so the next analyze does not reload
+        # weights (medium/small load is a large share of wall time on CPU).
+        # Set VIVA_WHISPER_RELEASE_AFTER=1 to free RAM after each request.
+        if (os.getenv("VIVA_WHISPER_RELEASE_AFTER") or "").strip() in {"1", "true", "yes"}:
+            try:
+                from transcribe import release_whisper_models
 
-            release_whisper_models()
-        except Exception:
-            pass
+                release_whisper_models()
+            except Exception:
+                pass
 
         mixed_transcript = (transcript or "").strip()
         student_id = diarization.get("student_speaker")
@@ -579,15 +591,20 @@ def analyze_audio_from_video(
             whisper_segments=segments,
         )
 
+        from services.pipeline_progress import emit as emit_audio
+
+        emit_audio("acoustics", "Measuring voice quality")
         acoustic_features = extract_acoustic_features(scoring_wav)
 
         emotion_features: Dict[str, Any] = {}
         try:
+            emit_audio("audio_emotion", "Gathering speech emotion")
             emotion_features = extract_speech_emotion(scoring_wav)
             emotion_features["input_track"] = diarization.get("scored_track") or (
                 "student" if scoring_wav == student_audio_path else "mixed"
             )
         except Exception as exc:
+            logger.warning("Audio emotion extraction failed; will fall back to heuristic: %s", exc)
             if debug:
                 print(f"Audio emotion extraction failed: {exc}")
 
@@ -645,6 +662,7 @@ def analyze_audio_from_video(
             conversation=conversation,
             whisper_available=bool(whisper_meta.get("available")),
             whisper_reason=whisper_meta.get("reason"),
+            whisper_model=str(whisper_meta.get("model") or WHISPER_MODEL_SIZE),
         )
 
         if not _audio_is_sufficient(acoustic_features, transcript_text):

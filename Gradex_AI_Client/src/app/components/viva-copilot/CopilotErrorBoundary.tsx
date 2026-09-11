@@ -13,7 +13,7 @@ export class CopilotErrorBoundary extends Component<Props, State> {
   state: State = { message: "" };
 
   static getDerivedStateFromError(error: Error): State {
-    return { message: error?.message || "The copilot page hit an unexpected error." };
+    return { message: error?.message || "The live viva page hit an unexpected error." };
   }
 
   render() {

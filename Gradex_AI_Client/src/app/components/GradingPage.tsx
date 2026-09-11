@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "./ui/select";
 
-const API_BASE_URL = (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+import { GRADING_API_BASE_URL } from "../api/gradingApiBase";
 
 const SESSION_NAME_OPTIONS = [
   "Final Examination",
@@ -859,7 +859,7 @@ function HandwrittenGradingWorkflow() {
   const loadCourses = useCallback(async () => {
     setCoursesLoading(true);
     try {
-      const list = await fetchCourses(API_BASE_URL);
+      const list = await fetchCourses(GRADING_API_BASE_URL);
       setCourses(list);
       setSubject((prev) => {
         if (prev && list.some((c) => c.code === prev)) return prev;
@@ -896,7 +896,7 @@ function HandwrittenGradingWorkflow() {
   const fetchOngoingJobs = useCallback(async (opts?: { quiet?: boolean }) => {
     if (!opts?.quiet) setOngoingJobsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/grading-jobs/ongoing`);
+      const response = await fetch(`${GRADING_API_BASE_URL}/grading-jobs/ongoing`);
       const data = (await readJsonResponse(response)) as { items?: OngoingGradingJob[] };
       if (!response.ok) {
         throw new Error(parseApiError(data, "Failed to load ongoing jobs."));
@@ -936,7 +936,7 @@ function HandwrittenGradingWorkflow() {
   const fetchGradingHistory = useCallback(async (opts?: { quiet?: boolean }) => {
     if (!opts?.quiet) setGradingHistoryLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/grading-history?limit=200`);
+      const response = await fetch(`${GRADING_API_BASE_URL}/grading-history?limit=200`);
       const data = (await readJsonResponse(response)) as { items?: GradingHistoryItem[] };
       if (!response.ok) {
         throw new Error(parseApiError(data, "Failed to load grading history."));
@@ -992,7 +992,7 @@ function HandwrittenGradingWorkflow() {
     setHistoryEditSaving(true);
     setHistoryEditError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/rubric/${historyEditItem._id}/session`, {
+      const response = await fetch(`${GRADING_API_BASE_URL}/rubric/${historyEditItem._id}/session`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1026,7 +1026,7 @@ function HandwrittenGradingWorkflow() {
         params.set("batch_job_id", historyDeleteItem.batch_job_id);
       }
       const response = await fetch(
-        `${API_BASE_URL}/rubric/${encodeURIComponent(historyDeleteItem._id)}?${params.toString()}`,
+        `${GRADING_API_BASE_URL}/rubric/${encodeURIComponent(historyDeleteItem._id)}?${params.toString()}`,
         { method: "DELETE" },
       );
       const data = await readJsonResponse(response);
@@ -1149,7 +1149,7 @@ function HandwrittenGradingWorkflow() {
           ? (opts.batchJobId || "").trim()
           : (activeBatchJobId || "").trim();
       if (jobId) params.set("batch_job_id", jobId);
-      const response = await fetch(`${API_BASE_URL}/submissions?${params.toString()}`);
+      const response = await fetch(`${GRADING_API_BASE_URL}/submissions?${params.toString()}`);
       const data = (await readJsonResponse(response)) as { items?: Record<string, unknown>[] };
       if (!response.ok) {
         throw new Error(parseApiError(data, "Failed to load submissions."));
@@ -1178,7 +1178,7 @@ function HandwrittenGradingWorkflow() {
   const loadRubricsForPicker = async () => {
     setRubricsListLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/rubrics`);
+      const response = await fetch(`${GRADING_API_BASE_URL}/rubrics`);
       const data = (await readJsonResponse(response)) as { items?: RubricListItem[] };
       if (!response.ok) {
         throw new Error(parseApiError(data, "Failed to load rubrics."));
@@ -1271,7 +1271,7 @@ function HandwrittenGradingWorkflow() {
       setRubricFetchLoading(true);
       setRubricError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/rubric/${rubricId}`);
+        const response = await fetch(`${GRADING_API_BASE_URL}/rubric/${rubricId}`);
         const data = (await readJsonResponse(response)) as Record<string, unknown>;
         if (!response.ok) {
           throw new Error(parseApiError(data, "Failed to load rubric."));
@@ -1325,7 +1325,7 @@ function HandwrittenGradingWorkflow() {
       formData.append("month", sessionMonth);
       formData.append("semester", sessionSemester);
 
-      const response = await fetch(`${API_BASE_URL}/upload-rubric`, {
+      const response = await fetch(`${GRADING_API_BASE_URL}/upload-rubric`, {
         method: "POST",
         body: formData,
       });
@@ -1408,7 +1408,7 @@ function HandwrittenGradingWorkflow() {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/rubric/${rubricId}`, {
+      const response = await fetch(`${GRADING_API_BASE_URL}/rubric/${rubricId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1444,7 +1444,7 @@ function HandwrittenGradingWorkflow() {
     try {
       const formData = new FormData();
       formData.append("archive", file);
-      const response = await fetch(`${API_BASE_URL}/upload-student-batch/zip`, {
+      const response = await fetch(`${GRADING_API_BASE_URL}/upload-student-batch/zip`, {
         method: "POST",
         body: formData,
       });
@@ -1485,7 +1485,7 @@ function HandwrittenGradingWorkflow() {
         ),
       );
 
-      const response = await fetch(`${API_BASE_URL}/upload-student-batch/files`, {
+      const response = await fetch(`${GRADING_API_BASE_URL}/upload-student-batch/files`, {
         method: "POST",
         body: formData,
       });
@@ -1517,7 +1517,7 @@ function HandwrittenGradingWorkflow() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await fetch(`${API_BASE_URL}/rubric/${gradingRubricId}/roster`, {
+      const response = await fetch(`${GRADING_API_BASE_URL}/rubric/${gradingRubricId}/roster`, {
         method: "POST",
         body: formData,
       });
@@ -1566,7 +1566,7 @@ function HandwrittenGradingWorkflow() {
     setIdScanning(true);
     setBatchUploadError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/batches/${batchId}/scan-ids`, {
+      const response = await fetch(`${GRADING_API_BASE_URL}/batches/${batchId}/scan-ids`, {
         method: "POST",
       });
       const data = (await readJsonResponse(response)) as {
@@ -1600,7 +1600,7 @@ function HandwrittenGradingWorkflow() {
     setBatchUploadError(null);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/batches/${batchId}/validate-roster?rubric_id=${encodeURIComponent(gradingRubricId)}`,
+        `${GRADING_API_BASE_URL}/batches/${batchId}/validate-roster?rubric_id=${encodeURIComponent(gradingRubricId)}`,
         { method: "POST" },
       );
       const data = (await readJsonResponse(response)) as {
@@ -1643,7 +1643,7 @@ function HandwrittenGradingWorkflow() {
     setSavingManualIds(true);
     setBatchUploadError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/batches/${batchId}/paper-ids`, {
+      const response = await fetch(`${GRADING_API_BASE_URL}/batches/${batchId}/paper-ids`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ overrides: manualIdDrafts }),
@@ -1661,7 +1661,7 @@ function HandwrittenGradingWorkflow() {
   };
 
   const applySessionFieldsToRubric = async (rid: string) => {
-    const response = await fetch(`${API_BASE_URL}/rubric/${rid}/session`, {
+    const response = await fetch(`${GRADING_API_BASE_URL}/rubric/${rid}/session`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1713,7 +1713,7 @@ function HandwrittenGradingWorkflow() {
     setBatchUploadError(null);
     setGradingRunning(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/grade-batch/${gradingRubricId}`, {
+      const response = await fetch(`${GRADING_API_BASE_URL}/grade-batch/${gradingRubricId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1833,7 +1833,7 @@ function HandwrittenGradingWorkflow() {
     setOverrideSaving(true);
     setOverrideMessage(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/submissions/${student.submissionId}`, {
+      const response = await fetch(`${GRADING_API_BASE_URL}/submissions/${student.submissionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1905,7 +1905,7 @@ function HandwrittenGradingWorkflow() {
     setRegradingAll(true);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/submissions/${selectedStudent.submissionId}/regrade`,
+        `${GRADING_API_BASE_URL}/submissions/${selectedStudent.submissionId}/regrade`,
         { method: "POST" },
       );
       const data = (await readJsonResponse(response)) as { item?: Record<string, unknown> };
@@ -1929,7 +1929,7 @@ function HandwrittenGradingWorkflow() {
     setRegradingQuestion(questionNo);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/submissions/${selectedStudent.submissionId}/regrade-question?question_no=${encodeURIComponent(questionNo)}`,
+        `${GRADING_API_BASE_URL}/submissions/${selectedStudent.submissionId}/regrade-question?question_no=${encodeURIComponent(questionNo)}`,
         { method: "POST" },
       );
       const data = (await readJsonResponse(response)) as { item?: Record<string, unknown> };
@@ -1991,7 +1991,7 @@ function HandwrittenGradingWorkflow() {
     setOverrideMessage(null);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/submissions/${selectedStudent.submissionId}`,
+        `${GRADING_API_BASE_URL}/submissions/${selectedStudent.submissionId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -2329,7 +2329,7 @@ function HandwrittenGradingWorkflow() {
               <div className="flex items-start gap-4">
                 <div className="size-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shrink-0">
                   <RefreshCw
-                    className={`size-7 text-white ${ongoingJobs.length > 0 || ongoingJobsLoading ? "animate-spin" : ""}`}
+                    className={`size-7 ${ongoingJobs.length > 0 || ongoingJobsLoading ? "animate-spin" : ""}`}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -2724,7 +2724,7 @@ function HandwrittenGradingWorkflow() {
                   <span className="font-medium text-foreground">Skip to batch grading</span> below and pick an existing rubric on the next screen.
                 </p>
                 <p className="text-xs">
-                  Backend: <span className="font-mono text-foreground">{API_BASE_URL}</span>
+                  Backend: <span className="font-mono text-foreground">{GRADING_API_BASE_URL}</span>
                 </p>
               </div>
             ) : (
@@ -4308,7 +4308,7 @@ function HandwrittenGradingWorkflow() {
           </div>
 
           <Card className="p-6 border-border">
-            <LectureMaterialsPanel apiBaseUrl={API_BASE_URL} />
+            <LectureMaterialsPanel apiBaseUrl={GRADING_API_BASE_URL} />
           </Card>
 
           <Button variant="outline" onClick={() => setPage(1)}>

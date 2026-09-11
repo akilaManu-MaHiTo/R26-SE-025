@@ -24,7 +24,7 @@ from services.llm_judge import (
     build_formula_judge_scores,
     run_llm_judge,
 )
-from services.scoring import compute_confidence_score, compute_engagement_score
+from services.scoring import compute_confidence_score, compute_engagement_score, smooth_emotions
 from services.transcript_features import extract_transcript_features
 from services.viva_analysis import _audio_is_sufficient, _score_audio_grade
 
@@ -154,6 +154,49 @@ class TaxonomyTests(unittest.TestCase):
         anger = [{"emotion": "anger", "emotion_confidence": 0.9}] * 10
         sad = [{"emotion": "sad", "emotion_confidence": 0.9}] * 10
         self.assertEqual(compute_confidence_score(anger), compute_confidence_score(sad))
+
+    def test_confidence_score_weights_by_model_certainty(self):
+        certain = [{"emotion": "happy", "emotion_confidence": 0.99}] * 10
+        uncertain = [{"emotion": "happy", "emotion_confidence": 0.26}] * 10
+        self.assertGreater(compute_confidence_score(certain), compute_confidence_score(uncertain))
+
+    def test_smoothing_does_not_bridge_a_time_gap(self):
+        # A steady run of happy frames, a dropped stretch (invalid frames
+        # already removed upstream), then two sad frames minutes later. With
+        # index-based windowing, the sad frames' happy array-neighbours would
+        # outvote them. Time-aware windowing must leave them alone since
+        # their nearest real neighbour is minutes away.
+        timeline = [
+            {"time": 0.0, "emotion": "happy", "emotion_confidence": 0.9},
+            {"time": 1.0, "emotion": "happy", "emotion_confidence": 0.9},
+            {"time": 2.0, "emotion": "happy", "emotion_confidence": 0.9},
+            {"time": 3.0, "emotion": "happy", "emotion_confidence": 0.9},
+            {"time": 300.0, "emotion": "sad", "emotion_confidence": 0.8},
+            {"time": 301.0, "emotion": "sad", "emotion_confidence": 0.8},
+        ]
+        smoothed = smooth_emotions(timeline, window=3)
+        self.assertEqual(smoothed[4]["emotion"], "sad")
+        self.assertEqual(smoothed[4]["emotion_confidence"], 0.8)
+
+    def test_smoothing_confidence_matches_winning_label(self):
+        # Majority label is happy (2 of 3); the sad frame's confidence must
+        # not leak into the reported confidence for happy.
+        timeline = [
+            {"time": 0.0, "emotion": "happy", "emotion_confidence": 0.6},
+            {"time": 1.0, "emotion": "sad", "emotion_confidence": 0.99},
+            {"time": 2.0, "emotion": "happy", "emotion_confidence": 0.8},
+        ]
+        smoothed = smooth_emotions(timeline, window=3)
+        self.assertEqual(smoothed[1]["emotion"], "happy")
+        self.assertEqual(smoothed[1]["emotion_confidence"], 0.7)
+
+    def test_confidence_score_low_confidence_frame_barely_counts(self):
+        # A near-zero-confidence positive frame should contribute almost
+        # nothing, not a full vote equal to a certain one.
+        one_certain = [{"emotion": "happy", "emotion_confidence": 1.0}]
+        one_uncertain = [{"emotion": "happy", "emotion_confidence": 0.01}]
+        self.assertGreater(compute_confidence_score(one_certain), compute_confidence_score(one_uncertain))
+        self.assertLess(compute_confidence_score(one_uncertain), 5.0)
 
 
 class ScoringIntegrityTests(unittest.TestCase):

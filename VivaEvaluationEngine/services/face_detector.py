@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 from urllib.request import urlretrieve
 
 import cv2
@@ -72,17 +72,23 @@ class FaceDetector:
         )
         return TasksFaceDetector.create_from_options(options)
 
-    def detect_largest_face(self, frame_bgr: np.ndarray) -> Optional[BBox]:
+    @staticmethod
+    def _bbox_area(bbox: BBox) -> int:
+        x1, y1, x2, y2 = bbox
+        width = max(0, x2 - x1)
+        height = max(0, y2 - y1)
+        return width * height
+
+    def detect_faces(self, frame_bgr: np.ndarray) -> List[BBox]:
+        """Return all face boxes in the frame, largest first."""
         h, w = frame_bgr.shape[:2]
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        boxes: List[BBox] = []
+
         if self._mode == "solutions":
             results = self._detector.process(frame_rgb)
-
             if not results.detections:
-                return None
-
-            best_bbox: Optional[BBox] = None
-            best_area = 0
+                return []
 
             for detection in results.detections:
                 rel_bbox = detection.location_data.relative_bounding_box
@@ -103,21 +109,17 @@ class FaceDetector:
                 if x2 <= x1 or y2 <= y1:
                     continue
 
-                area = (x2 - x1) * (y2 - y1)
-                if area > best_area:
-                    best_area = area
-                    best_bbox = (x1, y1, x2, y2)
+                boxes.append((x1, y1, x2, y2))
 
-            return best_bbox
+            boxes.sort(key=self._bbox_area, reverse=True)
+            return boxes
 
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
         results = self._detector.detect(mp_image)
         detections = getattr(results, "detections", None)
         if not detections:
-            return None
+            return []
 
-        best_bbox = None
-        best_area = 0
         for detection in detections:
             box = detection.bounding_box
             x1 = max(int(box.origin_x), 0)
@@ -136,12 +138,14 @@ class FaceDetector:
             if x2 <= x1 or y2 <= y1:
                 continue
 
-            area = (x2 - x1) * (y2 - y1)
-            if area > best_area:
-                best_area = area
-                best_bbox = (x1, y1, x2, y2)
+            boxes.append((x1, y1, x2, y2))
 
-        return best_bbox
+        boxes.sort(key=self._bbox_area, reverse=True)
+        return boxes
+
+    def detect_largest_face(self, frame_bgr: np.ndarray) -> Optional[BBox]:
+        faces = self.detect_faces(frame_bgr)
+        return faces[0] if faces else None
 
     def crop_face(self, frame_bgr: np.ndarray, bbox: BBox) -> Optional[np.ndarray]:
         h, w = frame_bgr.shape[:2]

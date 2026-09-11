@@ -6,10 +6,14 @@ from typing import Any, Dict
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 VIVA_ENGINE_ROOT = PROJECT_ROOT / "VivaEvaluationEngine"
 
-for path in (PROJECT_ROOT, VIVA_ENGINE_ROOT):
-    path_str = str(path)
-    if path_str not in sys.path:
-        sys.path.append(path_str)
+# Only the repo root needs to be on sys.path so `VivaEvaluationEngine` itself
+# is importable as a package. Importing it runs its own __init__.py, which
+# registers the engine's directory for its internal absolute imports
+# (`from services.x import y`, `from config import ...`) — no separate
+# sys.path entry for VIVA_ENGINE_ROOT is needed here any more.
+project_root_str = str(PROJECT_ROOT)
+if project_root_str not in sys.path:
+    sys.path.append(project_root_str)
 
 from VivaEvaluationEngine.config import AppConfig
 from VivaEvaluationEngine.services.analysis_service import analyze_video
@@ -37,11 +41,11 @@ def analyze_video_file(video_path: str, debug: bool = False) -> Dict[str, Any]:
 
     _assert_required_models_exist()
 
+    # output_path / emotion_model_path / engagement_model_path all default to
+    # paths resolved against the engine's own directory (see config.py), so
+    # no override is needed here regardless of this process's CWD.
     config = AppConfig(
         video_path=str(video),
-        output_path=str(VIVA_ENGINE_ROOT / "outputs" / "results.json"),
-        emotion_model_path=str(VIVA_ENGINE_ROOT / "models" / "hsemotion_improved.pt"),
-        engagement_model_path=str(VIVA_ENGINE_ROOT / "models" / "engagement_cnn.pt"),
         debug=debug,
     )
 

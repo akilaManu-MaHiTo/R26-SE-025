@@ -1,5 +1,8 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable, Set
+
+ENGINE_ROOT = Path(__file__).resolve().parent
 
 
 POSITIVE_EMOTIONS: Set[str] = {"happy"}
@@ -52,8 +55,6 @@ ENGAGEMENT_LEVEL_SCORES = {
 }
 
 
-NEUTRAL_WEIGHT: float = 0.5
-
 # Soft ceiling for heuristic (non-model) speech-emotion confidence.
 HEURISTIC_EMOTION_CONFIDENCE_CAP: float = 0.4
 
@@ -61,16 +62,38 @@ HEURISTIC_EMOTION_CONFIDENCE_CAP: float = 0.4
 MIN_FACE_FRAMES: int = 3
 MIN_FACE_COVERAGE_RATIO: float = 0.15
 
+# A frame only counts toward face coverage if the head is roughly frontal —
+# MediaPipe's face detector fires on side profiles too, so coverage alone
+# can't tell a profile shot from a genuine on-camera face. Threshold is the
+# real Euler yaw (degrees) from FaceLandmarker's facial transformation matrix,
+# calibrated against sample footage: frontal/talking clips stayed under ~18°,
+# a deliberate "looking away" clip sat at 35-57°. 30° sits in the gap.
+MAX_FRONTAL_YAW_DEGREES: float = 30.0
+
+# Multi-face gate: viva expects one student on camera. Ignore tiny partial faces
+# (second face area < this fraction of the largest). Fail when a significant
+# second face appears often enough or for several consecutive sampled frames.
+MIN_SECONDARY_FACE_AREA_RATIO: float = 0.20
+MIN_MULTI_FACE_FRAME_RATIO: float = 0.12
+MIN_CONSECUTIVE_MULTI_FACE_FRAMES: int = 3
+
 # --- Feature-complete baseline (does not replace Stage-1 /100) ---
 # Iris offset sum below this → gaze_on_camera. Used only from GazeHeadAnalyser.
 GAZE_ON_CAMERA_THRESHOLD: float = 0.04
 GAZE_DIRECTION_DEADZONE: float = 0.015
 
 # Landmark-proxy head-pose std scales for 1/(1+(std/S)^2) → [0,1].
-# These are FaceMesh normalized distances, not Euler-angle degrees.
-HEAD_POSE_YAW_STD_SCALE: float = 0.04
-HEAD_POSE_PITCH_STD_SCALE: float = 0.04
-HEAD_POSE_ROLL_STD_SCALE: float = 0.03
+# These are FaceMesh normalized distances, not Euler-angle degrees, and are
+# now applied to the inter-ocular-distance-normalized proxies (see
+# gaze_head_analyser.py's yaw/pitch/roll_normalized) rather than the raw
+# ones, so they decouple from how far the subject sits from the camera.
+# Rescaled ~6.3x from the old raw-proxy constants — the empirical ratio
+# between normalized and raw proxy magnitude measured against
+# videos/only boy talking.mp4 — since no ground-truth head-pose dataset
+# exists to calibrate these against directly (see validated: false below).
+HEAD_POSE_YAW_STD_SCALE: float = 0.25
+HEAD_POSE_PITCH_STD_SCALE: float = 0.25
+HEAD_POSE_ROLL_STD_SCALE: float = 0.19
 
 # EAR blink sampler. Rate above this is flagged (neutral wording only).
 # 0.25 is the classic Soukupova pixel-EAR open/close split. MediaPipe 6-point
@@ -177,13 +200,13 @@ def assert_emotion_classes_covered(class_names: Iterable[str]) -> None:
 @dataclass
 class AppConfig:
     video_path: str
-    output_path: str = "outputs/results.json"
+    # Resolved against this file's own directory, not the caller's CWD, so
+    # these defaults work whether the engine is run as a script from inside
+    # this directory or imported as a package from anywhere else.
+    output_path: str = str(ENGINE_ROOT / "outputs" / "results.json")
     target_fps: int = 1
     min_face_confidence: float = 0.5
     gaze_threshold: float = GAZE_ON_CAMERA_THRESHOLD
-    emotion_model_path: str = "models/hsemotion_improved.pt"
-    engagement_model_path: str = "models/engagement_cnn.pt"
-    positive_emotions: Set[str] = field(default_factory=lambda: set(POSITIVE_EMOTIONS))
-    neutral_emotions: Set[str] = field(default_factory=lambda: set(NEUTRAL_EMOTIONS))
-    surprise_emotions: Set[str] = field(default_factory=lambda: set(SURPRISE_EMOTIONS))
+    emotion_model_path: str = str(ENGINE_ROOT / "models" / "hsemotion_improved.pt")
+    engagement_model_path: str = str(ENGINE_ROOT / "models" / "engagement_cnn.pt")
     debug: bool = False
