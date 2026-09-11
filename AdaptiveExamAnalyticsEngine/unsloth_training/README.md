@@ -56,7 +56,7 @@ including GPU checks, Drive persistence, training, export, and inference.
 3. Run these cells, adjusting the path after `%cd`:
 
 ```python
-%cd /content/R26-SE-025/V2_QuestionExamPredictionEngine/unsloth_training
+%cd /content/R26-SE-025/AdaptiveExamAnalyticsEngine/unsloth_training
 !pip install -q -r requirements-colab.txt
 ```
 

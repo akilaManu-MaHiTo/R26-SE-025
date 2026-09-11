@@ -20,8 +20,8 @@
 ### Task 1: Repository — users collection and helpers
 
 **Files:**
-- Modify: `V2_QuestionExamPredictionEngine/app/db/repository.py:1-52`
-- Test: `V2_QuestionExamPredictionEngine/tests/test_repository_users.py` (new)
+- Modify: `AdaptiveExamAnalyticsEngine/app/db/repository.py:1-52`
+- Test: `AdaptiveExamAnalyticsEngine/tests/test_repository_users.py` (new)
 
 **Interfaces:**
 - Consumes: existing `COLLECTIONS`, `_UNIQUE_INDEXES`, `create_indexes`
@@ -64,12 +64,12 @@ async def test_upsert_user_calls_replace():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `python -m pytest V2_QuestionExamPredictionEngine/tests/test_repository_users.py -v`
+Run: `python -m pytest AdaptiveExamAnalyticsEngine/tests/test_repository_users.py -v`
 Expected: FAIL — `users not in COLLECTIONS`, `find_user_by_email not defined`
 
 - [ ] **Step 3: Write minimal implementation in repository.py**
 
-In `V2_QuestionExamPredictionEngine/app/db/repository.py`:
+In `AdaptiveExamAnalyticsEngine/app/db/repository.py`:
 - Add `"users"` to `COLLECTIONS` tuple (after `"exam_drafts"`)
 - Add to `_UNIQUE_INDEXES`: `"users": [("email", 1)]` and also ensure `student_id` unique via separate index? Use two indexes but _UNIQUE_INDEXES only supports one entry per collection; create two separate unique indexes manually in `create_indexes` or store as list with two fields? Simplest: create unique on `email` and also on `student_id` via second index creation. For now add `"users": [("email",1)]` and handle second index separately. Alternatively add two entries: `"users_email": [("email",1)]` — but follow pattern: single unique on email is sufficient for idempotency since email derived from student_id. Add `"users": [("email",1)]` and in `create_indexes` also ensure `student_id` unique via manual call if collection == "users".
 Simpler: set `"users": [("email",1)]` and manually ensure second index.
@@ -100,21 +100,21 @@ if collection == "users":
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `python -m pytest V2_QuestionExamPredictionEngine/tests/test_repository_users.py -v`
+Run: `python -m pytest AdaptiveExamAnalyticsEngine/tests/test_repository_users.py -v`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add V2_QuestionExamPredictionEngine/app/db/repository.py V2_QuestionExamPredictionEngine/tests/test_repository_users.py
+git add AdaptiveExamAnalyticsEngine/app/db/repository.py AdaptiveExamAnalyticsEngine/tests/test_repository_users.py
 git commit -m "feat: add users collection and repo helpers for student provisioning"
 ```
 
 ### Task 2: Student Accounts Service
 
 **Files:**
-- Create: `V2_QuestionExamPredictionEngine/app/services/student_accounts.py`
-- Test: `V2_QuestionExamPredictionEngine/tests/test_student_accounts.py`
+- Create: `AdaptiveExamAnalyticsEngine/app/services/student_accounts.py`
+- Test: `AdaptiveExamAnalyticsEngine/tests/test_student_accounts.py`
 
 **Interfaces:**
 - Consumes: `app/db/repository.py: find_user_by_email, find_user_by_student_id, upsert_user, find_graded_submissions_for_exam`
@@ -177,12 +177,12 @@ async def test_provision_dedups_and_counts(monkeypatch):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `python -m pytest V2_QuestionExamPredictionEngine/tests/test_student_accounts.py -v`
+Run: `python -m pytest AdaptiveExamAnalyticsEngine/tests/test_student_accounts.py -v`
 Expected: FAIL — `module not found` or `function not defined`
 
 - [ ] **Step 3: Write minimal implementation**
 
-Create `V2_QuestionExamPredictionEngine/app/services/student_accounts.py`:
+Create `AdaptiveExamAnalyticsEngine/app/services/student_accounts.py`:
 ```python
 import hashlib, secrets
 from datetime import datetime, timezone
@@ -255,21 +255,21 @@ async def provision_student_accounts(db, course_code: str, session_name: str, ye
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `python -m pytest V2_QuestionExamPredictionEngine/tests/test_student_accounts.py -v`
+Run: `python -m pytest AdaptiveExamAnalyticsEngine/tests/test_student_accounts.py -v`
 Expected: PASS (adjust test to match actual return shape)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add V2_QuestionExamPredictionEngine/app/services/student_accounts.py V2_QuestionExamPredictionEngine/tests/test_student_accounts.py
+git add AdaptiveExamAnalyticsEngine/app/services/student_accounts.py AdaptiveExamAnalyticsEngine/tests/test_student_accounts.py
 git commit -m "feat: add student account provisioning service with pbkdf2 hashing"
 ```
 
 ### Task 3: Hook provisioning into lecturer analytics endpoint
 
 **Files:**
-- Modify: `V2_QuestionExamPredictionEngine/app/api/lecturer.py:31-52`
-- Test: `V2_QuestionExamPredictionEngine/tests/test_lecturer_provision.py` (or extend `tests/test_api_lecturer.py`)
+- Modify: `AdaptiveExamAnalyticsEngine/app/api/lecturer.py:31-52`
+- Test: `AdaptiveExamAnalyticsEngine/tests/test_lecturer_provision.py` (or extend `tests/test_api_lecturer.py`)
 
 **Interfaces:**
 - Consumes: `app/services/student_accounts.py: provision_student_accounts`
@@ -316,12 +316,12 @@ async def test_analytics_still_returns_200_when_provision_fails(test_db, monkeyp
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `python -m pytest V2_QuestionExamPredictionEngine/tests/test_lecturer_provision.py -v`
+Run: `python -m pytest AdaptiveExamAnalyticsEngine/tests/test_lecturer_provision.py -v`
 Expected: FAIL — `provision_student_accounts not found`
 
 - [ ] **Step 3: Write minimal implementation**
 
-In `V2_QuestionExamPredictionEngine/app/api/lecturer.py`:
+In `AdaptiveExamAnalyticsEngine/app/api/lecturer.py`:
 - Add import: `from app.services.student_accounts import provision_student_accounts`
 - After obtaining `document` (both cache hit and compute paths, before canonicalize), add:
 ```python
@@ -349,13 +349,13 @@ Full snippet for `lecturer_exam_analytics`:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `python -m pytest V2_QuestionExamPredictionEngine/tests/test_lecturer_provision.py -v` and `python -m pytest V2_QuestionExamPredictionEngine/tests/test_api_lecturer.py -v`
+Run: `python -m pytest AdaptiveExamAnalyticsEngine/tests/test_lecturer_provision.py -v` and `python -m pytest AdaptiveExamAnalyticsEngine/tests/test_api_lecturer.py -v`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add V2_QuestionExamPredictionEngine/app/api/lecturer.py V2_QuestionExamPredictionEngine/tests/test_lecturer_provision.py
+git add AdaptiveExamAnalyticsEngine/app/api/lecturer.py AdaptiveExamAnalyticsEngine/tests/test_lecturer_provision.py
 git commit -m "feat: provision student accounts when lecturer analyzes exam"
 ```
 
@@ -367,11 +367,11 @@ git commit -m "feat: provision student accounts when lecturer analyzes exam"
 
 - [ ] **Step 1: Run full relevant suite**
 
-Run: `python -m pytest V2_QuestionExamPredictionEngine/tests/test_student_accounts.py V2_QuestionExamPredictionEngine/tests/test_repository_users.py V2_QuestionExamPredictionEngine/tests/test_lecturer_provision.py V2_QuestionExamPredictionEngine/tests/test_api_lecturer.py -v`
+Run: `python -m pytest AdaptiveExamAnalyticsEngine/tests/test_student_accounts.py AdaptiveExamAnalyticsEngine/tests/test_repository_users.py AdaptiveExamAnalyticsEngine/tests/test_lecturer_provision.py AdaptiveExamAnalyticsEngine/tests/test_api_lecturer.py -v`
 
 - [ ] **Step 2: Manual check — provision idempotency**
 
-Run: `python -m pytest V2_QuestionExamPredictionEngine/tests/ -k "provision or student_account or repository_users" -v`
+Run: `python -m pytest AdaptiveExamAnalyticsEngine/tests/ -k "provision or student_account or repository_users" -v`
 Expected: all PASS, no duplicate key errors
 
 - [ ] **Step 3: Commit docs if needed**
