@@ -1,0 +1,422 @@
+[
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd5b"
+    },
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "filename": "Explain the architecture of a Database Management System.pdf",
+    "parsed_at": 1788152400.0,
+    "exam_roster": [
+      "IT22263551",
+      "IT22263552",
+      "IT22263553",
+      "IT22263554",
+      "IT22263555",
+      "IT22263556",
+      "IT22263557",
+      "IT22263558",
+      "IT22263559",
+      "IT22263560"
+    ],
+    "questions": [
+      {
+        "question_no": "01",
+        "bloom_level": "Remember",
+        "question_text": "Recall the standard DBMS architecture terminology. List the three schema levels. List the query processor, storage manager, buffer manager, transaction manager, recovery manager, and system catalog. Match each name with its standard function. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Names and defines the three schema levels",
+            "marks": 4
+          },
+          {
+            "point": "Recalls query processor components and functions",
+            "marks": 4
+          },
+          {
+            "point": "Recalls storage, file, index, and buffer management functions",
+            "marks": 4
+          },
+          {
+            "point": "States transaction, concurrency, recovery, and security functions",
+            "marks": 4
+          },
+          {
+            "point": "Identifies the system catalog and persistent database files",
+            "marks": 4
+          }
+        ],
+        "model_answer": "External schemas are user-specific views, the conceptual schema is the complete logical database, and the internal schema describes physical files, pages, and indexes. The query processor parses and validates SQL, optimizes it, and executes a plan. The storage manager controls stored records and indexes; the buffer manager moves pages between disk and main memory. The transaction manager coordinates units of work and concurrency, while the recovery manager uses logs, undo, redo, and checkpoints after failures. Authorization and integrity services enforce permissions and constraints. The system catalog stores schemas, constraints, privileges, and statistics, while data, index, and log files hold persistent data."
+      },
+      {
+        "question_no": "02",
+        "bloom_level": "Understand",
+        "question_text": "Describe in your own words how the hierarchical, network, relational, and object-oriented database models organize data. For each model, explain one advantage, one limitation, and one application for which that model is suitable. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Explains the hierarchical model with an appropriate example",
+            "marks": 4
+          },
+          {
+            "point": "Explains the network model with an appropriate example",
+            "marks": 4
+          },
+          {
+            "point": "Explains the relational model with an appropriate example",
+            "marks": 4
+          },
+          {
+            "point": "Explains the object-oriented model with an appropriate example",
+            "marks": 4
+          },
+          {
+            "point": "Summarizes advantages, limitations, and suitable uses clearly",
+            "marks": 4
+          }
+        ],
+        "model_answer": "The hierarchical model is a parent-child tree. It provides fast fixed-path navigation but is rigid for many-to-many relationships; directories and legacy mainframe data are suitable uses. The network model is a graph of records linked by sets or pointers. It permits multiple parents and efficient navigation but is complex and path-dependent; legacy telecom systems are an example. The relational model stores rows in tables connected by keys and queried with SQL. It is simple, standardized, and flexible, although complex joins or object mapping may be costly; banking and business applications commonly use it. The object-oriented model stores persistent objects with identity, classes, inheritance, and methods. It handles complex data well but has fewer standards and tools; CAD, multimedia, and scientific systems are suitable."
+      },
+      {
+        "question_no": "03",
+        "bloom_level": "Apply",
+        "question_text": "Use SQL to implement the following university requirement for COURSE(module_code, module_name, credits, fee, department): create the table with suitable data types, a primary key, and checks that credits and fee are positive; insert one IT2040 record; increase the fee of every IT department module by 10%; retrieve modules carrying at least three credits in module-name order; grant SELECT to lecturer_role; and demonstrate BEGIN, SAVEPOINT, ROLLBACK TO SAVEPOINT, and COMMIT without losing the required insert and fee update. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Applies DDL with suitable types, primary key, and CHECK constraints",
+            "marks": 4
+          },
+          {
+            "point": "Applies correct INSERT and conditional fee UPDATE statements",
+            "marks": 4
+          },
+          {
+            "point": "Applies SELECT with filtering and ordering correctly",
+            "marks": 4
+          },
+          {
+            "point": "Applies GRANT for the lecturer role correctly",
+            "marks": 4
+          },
+          {
+            "point": "Applies transaction and savepoint commands in a coherent sequence",
+            "marks": 4
+          }
+        ],
+        "model_answer": "BEGIN; CREATE TABLE course(module_code varchar(10) PRIMARY KEY, module_name varchar(100) NOT NULL, credits integer NOT NULL CHECK (credits > 0), fee numeric(10,2) NOT NULL CHECK (fee > 0), department varchar(50) NOT NULL); INSERT INTO course VALUES ('IT2040','Database Management Systems',4,50000,'IT'); UPDATE course SET fee=fee*1.10 WHERE department='IT'; SELECT module_code,module_name,credits,fee FROM course WHERE credits>=3 ORDER BY module_name; GRANT SELECT ON course TO lecturer_role; SAVEPOINT before_optional_change; UPDATE course SET module_name='temporary' WHERE module_code='IT2040'; ROLLBACK TO SAVEPOINT before_optional_change; COMMIT;. Rolling back only the optional change preserves the required insert and fee update."
+      },
+      {
+        "question_no": "04",
+        "bloom_level": "Analyze",
+        "question_text": "Analyze how SQL joins behave for EMPLOYEE(emp_id, name, dept_id, manager_id) and DEPARTMENT(dept_id, dept_name) when some employees have no matching department and some departments have no employees. Determine which rows and NULL values INNER, LEFT OUTER, FULL OUTER, CROSS, and employee-to-manager SELF joins produce; select and justify the correct join for an all-employees report, an all-departments employee-count report, and an employee-manager report; and examine how predicate placement can accidentally remove outer-join rows. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Analyzes INNER JOIN matching and excluded rows",
+            "marks": 4
+          },
+          {
+            "point": "Analyzes LEFT and FULL OUTER JOIN preservation and NULLs",
+            "marks": 4
+          },
+          {
+            "point": "Analyzes SELF JOIN for the employee-manager hierarchy",
+            "marks": 4
+          },
+          {
+            "point": "Analyzes CROSS JOIN size and accidental row multiplication",
+            "marks": 4
+          },
+          {
+            "point": "Justifies report choices and examines ON-versus-WHERE filtering",
+            "marks": 4
+          }
+        ],
+        "model_answer": "INNER JOIN on e.dept_id=d.dept_id returns only employees with matching departments, excluding unassigned employees and empty departments. EMPLOYEE LEFT JOIN DEPARTMENT preserves all employees and supplies NULL department columns for missing matches, so it fits the all-employees report. FULL OUTER JOIN preserves both unmatched employees and empty departments. For department counts, start with DEPARTMENT LEFT JOIN EMPLOYEE and COUNT(e.emp_id), so empty departments receive zero rather than being removed. A SELF LEFT JOIN Employee e to Employee m on e.manager_id=m.emp_id shows every employee and a NULL manager for top-level or missing managers. CROSS JOIN returns employee_count multiplied by department_count combinations and is normally inappropriate here. A condition on the optional side belongs in ON when unmatched rows must remain; placing it in WHERE rejects NULL-extended rows and can turn an outer join effectively into an inner join."
+      },
+      {
+        "question_no": "05",
+        "bloom_level": "Create",
+        "question_text": "Design, construct, and produce a new integrated DBMS architecture diagram that organizes the external, conceptual, and internal schema levels; query-processing components; storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and directional request-result flows into one coherent solution. Use clear labels and add a brief design note. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Three-schema levels, mappings, and data independence",
+            "marks": 4
+          },
+          {
+            "point": "Query processor and its main subcomponents",
+            "marks": 4
+          },
+          {
+            "point": "Storage manager, catalog, and physical data stores",
+            "marks": 4
+          },
+          {
+            "point": "Transaction, concurrency, recovery, and security services",
+            "marks": 4
+          },
+          {
+            "point": "Correct connections, request flow, labels, and diagram clarity",
+            "marks": 4
+          }
+        ],
+        "model_answer": "A strong design places users and external schemas at the top, mapped to the conceptual and internal schemas. Requests enter a query processor containing the DDL interpreter, parser/semantic checker, DML compiler, optimizer, and execution engine. The processor consults a catalog containing schemas, constraints, privileges, and statistics, then sends its plan to a storage manager containing buffer, file, index, and authorization/integrity managers. Storage connects to data and index files. Transaction, concurrency-control, recovery, and log managers coordinate safe page access and WAL. Directed arrows show the SQL request, catalog lookups, physical plan, page and log I/O, and results returning to the view."
+      }
+    ],
+    "examCode": "DBMS-ARCH-005",
+    "guideLines": [
+      {
+        "id": 1,
+        "criterion": "Three-schema levels, mappings, and data independence",
+        "description": "Shows external, conceptual, and internal levels with meaningful mappings or data-independence labels.",
+        "marks": 4
+      },
+      {
+        "id": 2,
+        "criterion": "Query processor and its main subcomponents",
+        "description": "Shows the query processor with parser/checker, compiler or interpreter, optimizer, and execution engine.",
+        "marks": 4
+      },
+      {
+        "id": 3,
+        "criterion": "Storage manager, catalog, and physical data stores",
+        "description": "Shows storage management, catalog metadata, buffer/file/index services, and physical database storage.",
+        "marks": 4
+      },
+      {
+        "id": 4,
+        "criterion": "Transaction, concurrency, recovery, and security services",
+        "description": "Shows transaction management, concurrency control, recovery/logging, and authorization or integrity services.",
+        "marks": 4
+      },
+      {
+        "id": 5,
+        "criterion": "Correct connections, request flow, labels, and diagram clarity",
+        "description": "Uses clear labels and correctly directed links for request, plan, metadata, page, log, and result flow.",
+        "marks": 4
+      }
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "75a500000000000000000001"
+    },
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "filename": "IT2040_2025_final_exam.pdf",
+    "parsed_at": 1814400000.0,
+    "exam_roster": [
+      "IT23274501",
+      "IT23274502",
+      "IT23274503",
+      "IT23274504",
+      "IT23274505",
+      "IT23274506",
+      "IT23274507",
+      "IT23274508",
+      "IT23274509",
+      "IT23274510",
+      "IT23274511",
+      "IT23274512",
+      "IT23274513",
+      "IT23274514",
+      "IT23274515",
+      "IT23274516",
+      "IT23274517",
+      "IT23274518",
+      "IT23274519",
+      "IT23274520"
+    ],
+    "questions": [
+      {
+        "question_no": "01",
+        "bloom_level": "Remember",
+        "question_text": "Recall standard relational database terminology. List the four learned key types. List the learned integrity and constraint terms. List relation, tuple, attribute, schema, view, index, catalog, and transaction. Match each name with its memorized definition. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Recalls candidate, super, primary, and alternate keys",
+            "marks": 4
+          },
+          {
+            "point": "Recalls foreign keys and entity/referential integrity",
+            "marks": 4
+          },
+          {
+            "point": "Recalls domain, CHECK, NOT NULL, and uniqueness constraints",
+            "marks": 4
+          },
+          {
+            "point": "Recalls relation, tuple, attribute, and schema terminology",
+            "marks": 4
+          },
+          {
+            "point": "Recalls view, index, catalog, and transaction definitions",
+            "marks": 4
+          }
+        ],
+        "model_answer": "A superkey uniquely identifies a tuple; a candidate key is a minimal superkey; the selected candidate is the primary key and remaining candidates are alternate keys. A foreign key references a candidate or primary key. Entity integrity forbids NULL primary-key values, while referential integrity requires a foreign-key value to match its referenced key or be NULL when allowed. Domain, CHECK, NOT NULL, and UNIQUE constraints restrict valid values. A relation is a table, tuple a row, attribute a column, and schema its definition. A view is a stored query, an index is an access structure, the catalog stores metadata, and a transaction is one logical unit of work."
+      },
+      {
+        "question_no": "02",
+        "bloom_level": "Understand",
+        "question_text": "Describe in your own words how Atomicity, Consistency, Isolation, and Durability protect a bank transfer that debits one account and credits another. Explain how locking or MVCC and write-ahead logging support these properties during concurrent access and a system failure. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Explains Atomicity using the complete bank transfer",
+            "marks": 4
+          },
+          {
+            "point": "Explains Consistency and preservation of constraints",
+            "marks": 4
+          },
+          {
+            "point": "Explains Isolation using locking or MVCC",
+            "marks": 4
+          },
+          {
+            "point": "Explains Durability using WAL, redo, or stable storage",
+            "marks": 4
+          },
+          {
+            "point": "Relates concurrency and recovery mechanisms to the scenario",
+            "marks": 4
+          }
+        ],
+        "model_answer": "Atomicity means both debit and credit occur or neither occurs, so an error rolls back the complete transfer. Consistency means constraints such as nonnegative balances and conservation of total money hold before and after the transaction. Isolation makes concurrent transfers appear serial: locks can block conflicting access, while MVCC provides consistent versions and detects conflicting writes. Durability means a committed transfer survives a crash. WAL writes log records before dirty data pages; after a crash recovery redoes committed work and undoes incomplete work. Together transaction boundaries, concurrency control, constraint checking, logging, and commit maintain a correct transfer."
+      },
+      {
+        "question_no": "03",
+        "bloom_level": "Apply",
+        "question_text": "Use PostgreSQL SQL to implement a small bookstore database with BOOK(book_id, title, category, unit_price, stock_qty) and SALE(sale_id, book_id, quantity, sold_on). Create both tables with appropriate keys, foreign key, and positive-value checks; insert one book and one sale inside a transaction; safely reduce stock for the sale; retrieve revenue by category with JOIN, SUM, GROUP BY, and HAVING; create a low_stock view for quantities below five; grant SELECT on that view to sales_clerk_role; and commit the work. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Applies DDL with keys, foreign key, types, and CHECK constraints",
+            "marks": 4
+          },
+          {
+            "point": "Applies transaction, inserts, and safe stock reduction",
+            "marks": 4
+          },
+          {
+            "point": "Applies JOIN, SUM, GROUP BY, and HAVING for category revenue",
+            "marks": 4
+          },
+          {
+            "point": "Applies a correct low-stock view",
+            "marks": 4
+          },
+          {
+            "point": "Applies GRANT and commits a coherent script",
+            "marks": 4
+          }
+        ],
+        "model_answer": "BEGIN; CREATE TABLE book(book_id bigint PRIMARY KEY,title text NOT NULL,category text NOT NULL,unit_price numeric(10,2) NOT NULL CHECK(unit_price>0),stock_qty integer NOT NULL CHECK(stock_qty>=0)); CREATE TABLE sale(sale_id bigint PRIMARY KEY,book_id bigint NOT NULL REFERENCES book(book_id),quantity integer NOT NULL CHECK(quantity>0),sold_on date NOT NULL); INSERT INTO book VALUES (1,'Database Design','Computing',2500,10); INSERT INTO sale VALUES(101,1,2,CURRENT_DATE); UPDATE book SET stock_qty=stock_qty-2 WHERE book_id=1 AND stock_qty>=2; the application must verify one row was updated. SELECT b.category,SUM(s.quantity*b.unit_price) AS revenue FROM book b JOIN sale s ON s.book_id=b.book_id GROUP BY b.category HAVING SUM(s.quantity*b.unit_price)>0; CREATE VIEW low_stock AS SELECT book_id,title,stock_qty FROM book WHERE stock_qty<5; GRANT SELECT ON low_stock TO sales_clerk_role; COMMIT;."
+      },
+      {
+        "question_no": "04",
+        "bloom_level": "Analyze",
+        "question_text": "Analyze DELIVERY(order_id, order_date, customer_id, customer_name, product_id, product_name, unit_price, quantity, supplier_id, supplier_name) under these dependencies: order_id determines order_date and customer_id; customer_id determines customer_name; product_id determines product_name, unit_price, and supplier_id; supplier_id determines supplier_name; and (order_id, product_id) determines quantity. Determine the candidate key and current normal form, trace partial and transitive dependencies and anomalies, derive a 3NF or BCNF decomposition with keys, and justify lossless join and dependency preservation. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Analyzes the candidate key using closure",
+            "marks": 4
+          },
+          {
+            "point": "Analyzes partial/transitive dependencies and current normal form",
+            "marks": 4
+          },
+          {
+            "point": "Analyzes update, insertion, and deletion anomalies",
+            "marks": 4
+          },
+          {
+            "point": "Derives a correct 3NF or BCNF decomposition with keys",
+            "marks": 4
+          },
+          {
+            "point": "Justifies lossless join and dependency preservation",
+            "marks": 4
+          }
+        ],
+        "model_answer": "The candidate key is (order_id, product_id). Its closure obtains order and customer facts from order_id, product and supplier facts from product_id, and quantity from the complete key. The relation is in 1NF but not 2NF because order and product facts depend on parts of the composite key; customer_name and supplier_name are also transitive dependencies. Repetition causes all three anomalies. A BCNF decomposition is CUSTOMER(customer_id PK,customer_name), ORDERS(order_id PK,order_date,customer_id FK), SUPPLIER(supplier_id PK,supplier_name), PRODUCT(product_id PK,product_name,unit_price,supplier_id FK), and ORDER_LINE(order_id FK,product_id FK,quantity,PK(order_id,product_id)). Each original FD is enforceable inside one relation, and successive joins on referenced keys are lossless."
+      },
+      {
+        "question_no": "05",
+        "bloom_level": "Create",
+        "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+        "max_marks": 20,
+        "criteria": [
+          {
+            "point": "Creates all required entities with suitable attributes",
+            "marks": 4
+          },
+          {
+            "point": "Creates correct primary and foreign keys",
+            "marks": 4
+          },
+          {
+            "point": "Creates correct relationship cardinalities and optionality",
+            "marks": 4
+          },
+          {
+            "point": "Resolves patient-doctor interaction through APPOINTMENT",
+            "marks": 4
+          },
+          {
+            "point": "Produces clear ER notation, labels, and design justification",
+            "marks": 4
+          }
+        ],
+        "model_answer": "PATIENT(patient_id PK,name,dob,phone), DOCTOR(doctor_id PK,name,specialty), APPOINTMENT(appointment_id PK,patient_id FK,doctor_id FK,appointment_time,status), and PRESCRIPTION(prescription_id PK,appointment_id FK,medicine,dosage). PATIENT has zero-to-many APPOINTMENT rows and every APPOINTMENT has exactly one PATIENT. DOCTOR also has zero-to-many APPOINTMENT rows and every appointment has one doctor. Thus APPOINTMENT is the associative entity resolving the patient-doctor many-to-many relationship and stores date/time and status. An APPOINTMENT may have zero-to-many PRESCRIPTION rows, while every prescription belongs to exactly one appointment. Keys, crow's-foot cardinalities, optionality, and links are labelled."
+      }
+    ],
+    "examCode": "ER-CLINIC-2025",
+    "guideLines": [
+      {
+        "id": 1,
+        "criterion": "Creates all required entities with suitable attributes",
+        "description": "Includes Patient, Doctor, Appointment, and Prescription with relevant attributes.",
+        "marks": 4
+      },
+      {
+        "id": 2,
+        "criterion": "Creates correct primary and foreign keys",
+        "description": "Labels all primary and foreign keys accurately.",
+        "marks": 4
+      },
+      {
+        "id": 3,
+        "criterion": "Creates correct relationship cardinalities and optionality",
+        "description": "Shows correct one-to-many cardinalities and optional participation.",
+        "marks": 4
+      },
+      {
+        "id": 4,
+        "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+        "description": "Uses Appointment as the associative entity between Patient and Doctor.",
+        "marks": 4
+      },
+      {
+        "id": 5,
+        "criterion": "Produces clear ER notation, labels, and design justification",
+        "description": "Uses clear ER notation and provides a coherent design justification.",
+        "marks": 4
+      }
+    ]
+  }
+]

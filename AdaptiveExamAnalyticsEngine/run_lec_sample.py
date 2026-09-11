@@ -4,7 +4,7 @@ Shows how app/api/lecturer.py is built:
 - GET /api/lecturers/exams/{course_code}/{session_name}/analytics
 - GET /api/lecturers/exams/{course_code}/{session_name}/students
 
-Usage (PowerShell, from V2_QuestionExamPredictionEngine):
+Usage (PowerShell, from AdaptiveExamAnalyticsEngine):
     .\\.venv\\Scripts\\python.exe run_lec_sample.py [db_name] [course_code] [session_name]
 
 Defaults: db_name=dbms_analytics_test, course_code=IT2040, session_name="Final Examination"

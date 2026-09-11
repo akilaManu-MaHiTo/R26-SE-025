@@ -1,4 +1,4 @@
-# V2 Question Exam Prediction Engine
+# Adaptive Exam Analytics Engine
 
 DBMS learning analytics pipeline: materializes per-student analytics from graded
 submissions, classifies question semantics (Bloom levels, topics), and serves a

@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Working directory for all commands: `V2_QuestionExamPredictionEngine` (repo root of the engine).
+- Working directory for all commands: `AdaptiveExamAnalyticsEngine` (repo root of the engine).
 - Python: use the checked-in virtualenv: `.venv\Scripts\python.exe`.
 - Do NOT decode Extended JSON inside `migrate_sample_v2.py` — it rewrites JSON with plain `json.dump`, and `ObjectId`/`datetime` are not JSON-serializable.
 - Sample facts: 2 courses (SE3040, IT2040); rubric `subject_code=IT2040`, `year=2022`, `session_name="Final Examination"`, `exam_roster: null`, 4 questions, 20 marks each; 5 graded submissions (`IT22145976`, `IT22145980`, `IT22145984`, `IT22145988`, `IT22145992`), first submission Q01 `score=11.0`, `max_marks=20.0`, first criterion `awarded_marks=2.0`, `max_marks=4.0`.
