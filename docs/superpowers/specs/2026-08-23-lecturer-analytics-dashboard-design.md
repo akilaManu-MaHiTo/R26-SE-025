@@ -157,15 +157,15 @@ status describes performance level. priority describes urgency of lecturer actio
 
 ### New Files
 
-1. `V2_QuestionExamPredictionEngine/app/services/topic_canonicalization.py` - Canonicalization logic
-2. `V2_QuestionExamPredictionEngine/config/topic_taxonomy.json` - Topic aliases config
-3. `V2_QuestionExamPredictionEngine/config/thresholds.json` - Status/priority thresholds
+1. `AdaptiveExamAnalyticsEngine/app/services/topic_canonicalization.py` - Canonicalization logic
+2. `AdaptiveExamAnalyticsEngine/config/topic_taxonomy.json` - Topic aliases config
+3. `AdaptiveExamAnalyticsEngine/config/thresholds.json` - Status/priority thresholds
 
 ### Modified Files
 
-1. `V2_QuestionExamPredictionEngine/app/api/lecturer.py` - Extend analytics endpoint with canonical fields
-2. `V2_QuestionExamPredictionEngine/app/api/lecturer.py` - Add teaching-actions endpoint
-3. `V2_QuestionExamPredictionEngine/app/schemas/exam_analytics.py` - Add canonical fields to schema
+1. `AdaptiveExamAnalyticsEngine/app/api/lecturer.py` - Extend analytics endpoint with canonical fields
+2. `AdaptiveExamAnalyticsEngine/app/api/lecturer.py` - Add teaching-actions endpoint
+3. `AdaptiveExamAnalyticsEngine/app/schemas/exam_analytics.py` - Add canonical fields to schema
 
 ### Canonicalization Service
 

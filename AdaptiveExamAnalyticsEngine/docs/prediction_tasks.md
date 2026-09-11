@@ -1,6 +1,6 @@
 # Prediction Task: Weakness-Aligned Useful Question Recommendation
 
-**Engine:** `V2_QuestionExamPredictionEngine` — helps lecturers generate *useful* questions from student analytics + lecture materials (not next-exam forecasting).
+**Engine:** `AdaptiveExamAnalyticsEngine` — helps lecturers generate *useful* questions from student analytics + lecture materials (not next-exam forecasting).
 
 **Status:** `n=100` judgments (`gold 50 + v3 50`, `κ would_use 0.88`, `NDCG@5 0.89`) `179` bank (`lecture90 tutorial55 generated18 exam16` via `qwen3:8b` `https://dating-blinker-excavate.ngrok-free.dev`)
 

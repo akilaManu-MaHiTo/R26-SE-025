@@ -16,7 +16,7 @@
 - Courses are keyed by `code`; rubric and submissions still carry `subject_code` + `session_name` for repository lookups.
 - All sample JSONs must remain valid JSON parseable by `run_sample.load_raw_sample_documents()`.
 - Preserve existing test expectations: 11 rubric questions; Q01 `score == 6.0`, `max_score == 8.0`, first criterion `awarded_marks == 2.5`; exactly 5 submissions.
-- Run all commands from the repository root (`V2_QuestionExamPredictionEngine`).
+- Run all commands from the repository root (`AdaptiveExamAnalyticsEngine`).
 
 ---
 

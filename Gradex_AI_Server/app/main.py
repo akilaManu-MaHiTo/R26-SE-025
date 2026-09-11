@@ -20,9 +20,9 @@ from bson.errors import InvalidId
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENGINE_ROOT = PROJECT_ROOT / "DiagramEvaluationEngine"
-V2_ROOT = PROJECT_ROOT / "V2_QuestionExamPredictionEngine"
+ANALYTICS_ENGINE_ROOT = PROJECT_ROOT / "AdaptiveExamAnalyticsEngine"
 GRADING_ROOT = PROJECT_ROOT / "GradingEngine"
-for path in (PROJECT_ROOT, ENGINE_ROOT, V2_ROOT):
+for path in (PROJECT_ROOT, ENGINE_ROOT, ANALYTICS_ENGINE_ROOT):
     path_str = str(path)
     if path_str not in sys.path:
         sys.path.append(path_str)
@@ -50,8 +50,8 @@ from Gradex_AI_Server.app.analytics_api import router as analytics_router
 from Gradex_AI_Server.app.auth import configured_api_key, ensure_dev_api_key, require_api_key
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
-from V2_QuestionExamPredictionEngine.app.api.dashboard import router as v2_student_router
-from V2_QuestionExamPredictionEngine.app.api.lecturer import router as v2_lecturer_router
+from AdaptiveExamAnalyticsEngine.app.api.dashboard import router as v2_student_router
+from AdaptiveExamAnalyticsEngine.app.api.lecturer import router as v2_lecturer_router
 
 
 MAX_VIVA_UPLOAD_BYTES = 1024 * 1024 * 1024

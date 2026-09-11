@@ -1,6 +1,6 @@
 """Hybrid Bloom classifier using ModernBERT (safetensors) with confidence threshold.
 
-Mirrors `test_it2040_exam.py` loading but as lazy singleton for V2 engine.
+Mirrors `test_it2040_exam.py` loading but as a lazy singleton for the adaptive analytics engine.
 - Weights: models/bloom_modernbert/bloom.safetensors (or model.safetensors)
 - Tokenizer: models/bloom_modernbert/tokenizer/
 - Config: models/bloom_modernbert/config.json (id2label BT1..BT6)
@@ -46,7 +46,7 @@ def _model_dir() -> Path:
     # settings.bloom_model_dir may be relative to project root
     p = Path(settings.bloom_model_dir)
     if not p.is_absolute():
-        # app/classifier/bloom_classifier.py -> parents[2] = V2_QuestionExamPredictionEngine
+        # app/classifier/bloom_classifier.py -> parents[2] = AdaptiveExamAnalyticsEngine
         project_root = Path(__file__).resolve().parents[2]
         p = project_root / p
     return p
