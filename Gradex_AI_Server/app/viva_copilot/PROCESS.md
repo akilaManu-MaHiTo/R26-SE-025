@@ -5,9 +5,21 @@ Technical click-through for the isolated **Live Interviewer Copilot**. This is *
 | Product | UI | Backend | Engine |
 |---|---|---|---|
 | **Viva Assessment** | `VivaPage.tsx` | `POST /api/viva-analyze` | `VivaEvaluationEngine` + Mongo marks |
-| **Live Interviewer Copilot** | `viva-copilot/*` | `/api/viva-copilot/*` | In-memory session + Groq STT/chat |
+| **Live Interviewer Copilot** | `viva-copilot/*` | `/api/viva-copilot/*` | In-memory session + Groq STT/chat, **plus** `VivaEvaluationEngine` + Mongo marks at end-of-session analyze |
 
-Copilot does **not** write Mongo, does **not** import `viva_service.py`, and does **not** score the student.
+**During the session** the copilot does not write Mongo and does not score the student: the live
+path is STT + follow-up-question suggestion only, held in `SessionStore` in RAM.
+
+**At end of session** that changed. `POST /sessions/{id}/analyze` (`analysis.py::analyze_live_session`)
+runs the **same** scoring chain as an uploaded recording — via `viva_analysis_runner`, which calls
+`viva_service.analyze_video_file` — and persists a mark to Mongo. The only live-specific
+differences are `source="live_copilot"`, the `copilot_session_id`, and the live transcript
+attached as `live_session` / `live_transcript`. Scoring itself is identical, so a live viva and an
+uploaded one are graded on the same basis.
+
+Scoring is still driven by the **recording**, not the live transcript: the Stage-1 families
+(engagement CNN, Praat acoustics, face coverage) are all video/waveform-derived, and the quality
+gates in `assessment_scoring` depend on them, so a transcript-only mark would be voided.
 
 ---
 
@@ -15,13 +27,13 @@ Copilot does **not** write Mongo, does **not** import `viva_service.py`, and doe
 
 | Process | Command | Default |
 |---|---|---|
-| FastAPI | From repo root: `.venv\Scripts\python.exe -m uvicorn Gradex_AI_Server.app.main:app --host 0.0.0.0 --port 8001` | **8001** (do not use `--reload`) |
+| FastAPI | From repo root: `.venv\Scripts\python.exe -m uvicorn Gradex_AI_Server.app.main:app --host 0.0.0.0 --port 8000` | **8000** (do not use `--reload`) |
 | Vite client | `Gradex_AI_Client` → `npm run dev` | **5173** |
 | Open | Lecturer login → **Viva Evaluation → Live Interviewer Copilot** | `http://localhost:5173/viva-evaluation/live-copilot` |
 
 Env:
 
-- Client: `VITE_BACKEND_URL` (fallback `http://localhost:8001`) and `VITE_GRADEX_API_KEY` (must match server `GRADEX_API_KEY`).
+- Client: `VITE_BACKEND_URL` (fallback `http://localhost:8000`) and `VITE_GRADEX_API_KEY` (must match server `GRADEX_API_KEY`).
 - Server: `Gradex_AI_Server/app/.env` — `GRADEX_API_KEY`, `AI_API_KEY` or `GROQ_API_KEY`. Optional `VIVA_COPILOT_LLM_MODEL` (fallback `openai/gpt-oss-20b`; Llama chat ids retired 16 Aug 2026), `VIVA_COPILOT_STT_MODEL`.
 - REST sends `X-API-Key`. WebSocket uses `?api_key=`.
 - STT chunks queue FIFO (cap 8). Follow-up LLM jobs queue (cap 4). Oldest is dropped only if the cap is exceeded.
@@ -38,22 +50,40 @@ Browser (LiveCopilotPage)
   │ REST  (lecturer buttons only)
   │   POST /api/viva-copilot/sessions
   │   POST /sessions/{id}/phase | /finalize | /ask | /context
+  │   POST /sessions/{id}/analyze   (end of session — grades + saves the mark)
+  │   GET  /sessions/{id}/transcript
   │   DELETE /sessions/{id}
   │
   │ WebSocket  (live path — no polling)
   │   WS  /api/viva-copilot/ws/{id}
-  │   → binary audio slices (~12s WebM)
+  │   → binary audio slices (~4s WebM, Groq Whisper accuracy backstop)
+  │   → JSON {"type":"speech", text, isFinal} (Web Speech API, fast path)
   │   ← JSON events (transcript, suggestions, errors)
   │
   ▼
-Gradex_AI_Server  (FastAPI, port 8001)
-  router.py  →  pipeline.py  →  session_store.py  (RAM dict, not Mongo)
-                     │
-                     ├─ stt.py  → Groq Whisper  POST .../audio/transcriptions
-                     └─ followup_llm.py  → Groq Chat  POST .../chat/completions
+Gradex_AI_Server  (FastAPI, port 8000)
+  router.py  →  pipeline.py  →  session_store.py  (RAM dict — live phase only)
+       │             │
+       │             ├─ ingest_text()     → bypasses STT entirely (fast path)
+       │             ├─ stt.py            → Groq Whisper  POST .../audio/transcriptions (pooled httpx client)
+       │             └─ followup_llm.py   → Groq Chat  POST .../chat/completions (streamed, pooled httpx client)
+       │
+       └─ /analyze → analysis.py::analyze_live_session
+                          → viva_analysis_runner.run_analysis
+                              → viva_service.analyze_video_file   (VivaEvaluationEngine)
+                          → attach_subject_technical_accuracy     (optional, advisory)
+                          → persist_and_autopublish               (Mongo: vivamark.marks)
 ```
 
-**Why WebSocket for live work:** the browser never polls. Audio and suggestion delivery stay on one socket. REST is only for explicit lecturer actions (create, phase, ask, end). The “database” for this feature is `SessionStore` in RAM. Mongo used by the rest of Gradex is unused here.
+**Why WebSocket for live work:** the browser never polls. Audio and suggestion delivery stay on one socket. REST is only for explicit lecturer actions (create, phase, ask, end). The “database” for the *live* phase is `SessionStore` in RAM — Mongo is not touched while the session is running. It is written once, at the end, by `POST /sessions/{id}/analyze` (see §2 above).
+
+**Latency optimizations (dual-path transcription + streaming):**
+
+- **Browser Web Speech API (`CopilotCamera.tsx`)** produces interim/final transcripts with near-zero network latency and sends them as JSON text frames (`{"type":"speech", ...}`) over the same WebSocket. `pipeline.ingest_text()` consumes these directly — no Groq Whisper round-trip needed for the fast path. Supported in Chromium-based browsers; unsupported browsers silently fall back to Whisper-only.
+- **Groq Whisper (`stt.py` / `groq_client.py`)** keeps running on 4s audio slices in parallel as an accuracy backstop (technical vocabulary, unclear audio, unsupported browsers). Both paths call the same `detect_final_answer()` de-dupe logic, so whichever finalizes an utterance first "wins" and the other is naturally ignored as a duplicate.
+- **Persistent `httpx.Client`** (module-level, connection-pooled) replaces per-request `urllib.urlopen()` calls for both STT and chat completions, removing repeated TCP/TLS handshake overhead.
+- **Streamed chat completions** (`groq_chat(..., on_delta=...)`) let `followup_llm.generate_followups()` detect and emit the *first* valid suggestion object as soon as it appears in the SSE token stream, broadcast via a new `followup.suggestion.partial` event — well before the full 2-3 suggestion JSON response finishes.
+- **Tuned timers:** `SLICE_MS` (client audio slice) 2500→4000ms, `AUTO_FINALIZE_IDLE_MS` 2200→1200ms, `VIVA_COPILOT_MIN_STT_GAP` 1.2→0.4s, presentation refresh threshold 6 words/5s → 5 words/3s.
 
 ---
 
@@ -81,7 +111,7 @@ Route: `routeConfig.tsx` → path `/viva-evaluation/live-copilot`.
 | `pipeline.py` | STT ingest → pause detect → bulk LLM |
 | `session_store.py` | In-memory `CopilotSession` + `broadcast()` |
 | `stt.py` | Whisper wrapper + hallucination filter |
-| `groq_client.py` | Groq HTTP (isolated; not `llm_judge.py`) |
+| `groq_client.py` | Multi-provider LLM HTTP (Groq/Gemini/OpenRouter chain; not `llm_judge.py`) |
 | `followup_llm.py` | Chat prompt → JSON suggestions (max 3) |
 | `answer_detector.py` | Min words, duplicate hash |
 | `context_builder.py` | Sliding context (last 5 Q/A, 4000-char excerpt) |
@@ -152,9 +182,10 @@ Used later as LLM context. No Groq call.
 | User | **Start presentation** (enabled only when `phase === "idle"`) |
 | Client | `POST /sessions/{id}/phase` `{ "phase": "presentation" }` |
 | Server | `start_presentation()` → `session.phase = "presentation"` → WS `session.phase` |
-| Client | `streaming` becomes true. Camera records **12s** audio slices (`SLICE_MS = 12000`). |
+| Client | `streaming` becomes true. Camera records **4s** audio slices (`SLICE_MS = 4000`) and, in parallel, runs the browser Web Speech API for instant interim/final text. |
 
-Each slice: `MediaRecorder` → `Blob` → `WebSocket.send(ArrayBuffer)` (binary, not JSON).
+Each audio slice: `MediaRecorder` → `Blob` → `WebSocket.send(ArrayBuffer)` (binary, not JSON).
+Each speech result: `WebSocket.send(JSON.stringify({type:"speech", text, isFinal}))` (text frame, fast path — see §2).
 
 ---
 
@@ -193,9 +224,9 @@ Then:
 
 ```
 followup_llm.generate_followups
-  → groq_client.groq_chat
-     POST https://api.groq.com/openai/v1/chat/completions
-     default model openai/gpt-oss-20b
+  → groq_client.groq_chat (provider chain: Groq -> Gemini -> OpenRouter)
+     POST to whichever provider has a configured key and available model
+     default Groq model openai/gpt-oss-20b
      fallbacks: openai/gpt-oss-120b, qwen/qwen3.6-27b
   → JSON { analysis, main_points, suggestions[≤3] }
   → WS presentation.points.extracted
@@ -289,6 +320,7 @@ There is **no** `setInterval` poll of `/sessions/{id}` during the live session. 
 | `transcript.partial` | S→C | Grey in-progress line |
 | `transcript.final` | S→C | Append turn |
 | `presentation.points.extracted` | S→C | Main-points list |
+| `followup.suggestion.partial` | S→C | First suggestion, streamed early (before the full LLM turn finishes) |
 | `followup.suggestions.generated` | S→C | Panel + **top-right toasts** |
 | `candidate.answer.final` | S→C | Answer id (viva) |
 | `interviewer.question.asked` | S→C | Current question banner |
@@ -307,19 +339,35 @@ There is **no** `setInterval` poll of `/sessions/{id}` during the live session. 
 - `current_question`, `asked_questions`, `recent_qa`
 - `ws_clients`, `busy_llm`, `stt_busy`, `pending_audio` (deque), `pending_followups`
 - `last_suggest_at`, `last_suggest_word_count`
+- `created_at`, `last_activity_at` — idle expiry via `VIVA_COPILOT_SESSION_TTL_SECONDS` (default **14400** = 4 h). Set **0** to disable. Purged on `store.get()` / `store.create()` and when WebSocket or STT sees an expired session.
 
 Lost on process restart. Not written to Mongo.
 
 ---
 
-## 8. Groq models and keys
+## 8. LLM providers and keys (multi-provider chain)
+
+Chat completions use a **Groq → Gemini → OpenRouter** free-tier fallback chain.
+No local gateway (`localhost:20128`) is required — all providers are remote APIs.
 
 Loaded from `Gradex_AI_Server/app/.env` by `groq_client._load_env()`.
 
+| Provider | Base URL | Key search order | Default models |
+|---|---|---|---|
+| **Groq** | `https://api.groq.com/openai/v1/chat/completions` | `VIVA_COPILOT_API_KEY`, `VIVA_LLM_API_KEY`, `GROQ_API_KEY`, `AI_API_KEY`, `BACKUP_API_KEY` | `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `qwen/qwen3.6-27b` |
+| **Gemini** | `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | `GEMINI_API_KEY`, `GOOGLE_API_KEY` | `gemini-2.0-flash`, `gemini-1.5-flash` |
+| **OpenRouter** | `https://openrouter.ai/api/v1/chat/completions` | `OPENROUTER_API_KEY` | `meta-llama/llama-3.1-8b-instruct:free`, `google/gemma-2-9b-it:free`, `mistralai/mistral-7b-instruct:free` |
+
+- If a provider has **no key configured**, it is skipped entirely.
+- Within each provider, every model candidate is tried; 404/429/5xx triggers the next candidate.
+- When all models of a provider fail, the chain moves to the next provider.
+- Override default models with `VIVA_COPILOT_LLM_MODEL` (Groq preferred), `GEMINI_MODEL`, `OPENROUTER_MODEL`.
+
+**STT** stays on Groq Whisper only:
+
 | Setting | Default |
 |---|---|
-| Key search order | `VIVA_COPILOT_API_KEY`, `VIVA_LLM_API_KEY`, `GROQ_API_KEY`, `AI_API_KEY`, `BACKUP_API_KEY` |
-| Chat model | `VIVA_COPILOT_LLM_MODEL` or `openai/gpt-oss-20b` |
+| STT key search | `VIVA_COPILOT_STT_API_KEY`, `STT_API_KEY`, `GROQ_API_KEY`, `AI_API_KEY`, ... |
 | STT model | `VIVA_COPILOT_STT_MODEL` or `whisper-large-v3-turbo` |
 
 Copilot **ignores** `GROQ_MODEL` used by other Gradex features.

@@ -87,6 +87,15 @@ def _sample_result(**overrides):
             "confidence": {"score": 9, "justification": "x"},
             "engagement": {"score": 9, "justification": "x"},
         },
+        "face_cues": [
+            {
+                "time": float(i),
+                "valid": True,
+                "mouth_open": 0.42,
+                "talking": True,
+            }
+            for i in range(16)
+        ],
     }
     base.update(overrides)
     return base
@@ -110,11 +119,13 @@ class CanonicalVectorTests(unittest.TestCase):
     def test_excludes_parents_and_llm(self):
         features = extract_canonical_features(_sample_result())
         blob = str(features)
-        self.assertNotIn("confidence_score", blob)
+        # Raw parent key name stays out; facial_confidence is the scored 0–1 form.
+        self.assertNotIn("'confidence_score'", blob)
         self.assertNotIn("audio_grade", blob)
         self.assertNotIn("pitch_score", blob)
         self.assertNotIn("llm", blob.lower())
         self.assertIn("average_engagement_score", features["video"])
+        self.assertAlmostEqual(features["video"]["facial_confidence"], 0.725)
         self.assertNotIn("engagement_score", features["video"])
         self.assertTrue(features["quality"]["duration_seconds"] >= 8)
 
@@ -140,6 +151,34 @@ class ModeAndFusionTests(unittest.TestCase):
         self.assertAlmostEqual(done["final_score"], round(expected, 2))
         self.assertEqual(done["grade"], resolve_grade(done["final_score"]))
 
+    def test_without_mode_publishes_with_technical_preview_weights(self):
+        """Examiner UI previews a fused mark before publishing.
+
+        Every analysis auto-publishes in WITHOUT mode, whose fusion block reports
+        the weights it applied (1.0 / 0.0). Previewing with those would multiply
+        technical accuracy by zero, so the block must also carry the weights a
+        WITH publish would use. The client reads fusion.with_technical.
+        """
+        assessment = build_assessment(_sample_result(), mode=MODE_WITHOUT)
+        fusion = assessment["fusion"]
+        self.assertEqual(fusion["weight_ai"], 1.0)
+        self.assertEqual(fusion["weight_technical"], 0.0)
+
+        preview = fusion["with_technical"]
+        self.assertGreater(preview["weight_technical"], 0.0)
+
+        # Preview weights must reproduce what a real WITH publish computes.
+        ai_score = assessment["ai_performance"]["score"]
+        published = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=8)
+        expected = preview["weight_ai"] * ai_score + preview["weight_technical"] * 80.0
+        self.assertAlmostEqual(published["final_score"], round(expected, 2))
+
+    def test_with_mode_fusion_reports_applied_weights(self):
+        assessment = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=8)
+        fusion = assessment["fusion"]
+        self.assertEqual(fusion["mode"], MODE_WITH)
+        self.assertGreater(fusion["weight_technical"], 0.0)
+
     def test_llm_scores_do_not_change_performance(self):
         a = build_assessment(_sample_result())
         b = build_assessment(
@@ -153,11 +192,14 @@ class ModeAndFusionTests(unittest.TestCase):
         )
         self.assertEqual(a["ai_performance"]["score"], b["ai_performance"]["score"])
 
-    def test_parent_scores_do_not_change_performance(self):
+    def test_parent_diagnostic_scores_do_not_change_performance(self):
+        """UI diagnostic blends (engagement_score, audio_grade) stay out of Stage-1.
+
+        facial confidence (confidence_score) DOES enter the engagement family.
+        """
         a = build_assessment(_sample_result())
         b = build_assessment(
             _sample_result(
-                confidence_score=10.0,
                 engagement_score=10.0,
                 audio_analysis={
                     **_sample_result()["audio_analysis"],
@@ -171,6 +213,18 @@ class ModeAndFusionTests(unittest.TestCase):
             )
         )
         self.assertEqual(a["ai_performance"]["score"], b["ai_performance"]["score"])
+
+    def test_facial_confidence_changes_engagement_family(self):
+        high = build_assessment(_sample_result(confidence_score=90.0))
+        low = build_assessment(_sample_result(confidence_score=10.0))
+        self.assertGreater(high["ai_performance"]["score"], low["ai_performance"]["score"])
+        high_eng = high["ai_performance"]["family_scores"]["engagement"]
+        low_eng = low["ai_performance"]["family_scores"]["engagement"]
+        self.assertGreater(high_eng, low_eng)
+        features = high["ai_performance"]["components"]
+        names = {c["feature"] for c in features}
+        self.assertIn("facial_confidence", names)
+        self.assertIn("average_engagement_score", names)
 
 
 class IncompleteRecordingTests(unittest.TestCase):
@@ -256,9 +310,11 @@ class IncompleteRecordingTests(unittest.TestCase):
     def test_no_scorable_families(self):
         result = _sample_result(
             engagement_summary={"average_engagement_score": None},
+            confidence_score=None,
             video_status="success",
         )
         result["engagement_summary"]["average_engagement_score"] = None
+        result["confidence_score"] = None
         result["audio_analysis"]["acoustic_features"] = {
             "duration_seconds": 8.0,
             "voice_quality_measured": False,
@@ -284,6 +340,7 @@ class ScorerFamilyTests(unittest.TestCase):
         self.assertNotIn("engagement_score", names)
         self.assertNotIn("pitch_score", names)
         self.assertIn("average_engagement_score", names)
+        self.assertIn("facial_confidence", names)
 
 
 if __name__ == "__main__":

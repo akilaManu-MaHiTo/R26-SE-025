@@ -7,6 +7,7 @@ from Gradex_AI_Server.app.viva_copilot.groq_client import (
     api_key,
     groq_transcribe,
     is_probable_hallucination,
+    stt_api_key,
     stt_model,
 )
 
@@ -14,9 +15,9 @@ TranscribeFn = Callable[[bytes, str, str], str]
 
 
 def _default_transcribe(audio_bytes: bytes, filename: str, content_type: str) -> str:
-    key = api_key()
+    key = stt_api_key() or api_key()
     if not key:
-        raise RuntimeError("No STT API key configured (set AI_API_KEY or GROQ_API_KEY)")
+        raise RuntimeError("No STT API key configured (set AI_API_KEY, GROQ_API_KEY, or VIVA_COPILOT_STT_API_KEY)")
     return groq_transcribe(
         audio_bytes,
         filename,

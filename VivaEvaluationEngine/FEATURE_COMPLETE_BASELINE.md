@@ -1,8 +1,9 @@
 # VIVA FEATURE-COMPLETE BASELINE VALIDATION
 
-Date: 2026-08-20  
+Date: 2026-08-20 (baseline established); re-verified 2026-08-30  
 Command: `python -m unittest discover -s VivaEvaluationEngine/tests -q` from repo root  
-Result: **114 tests OK**
+Result: **189 tests OK** (114 at the original 2026-08-20 baseline; the suite has grown since,
+and every row below still holds)
 
 | Feature | Status | Kind |
 |---|---|---|

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -15,6 +16,8 @@ from config import (
     HEURISTIC_EMOTION_CONFIDENCE_CAP,
     canonical_emotion_label,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _clamp(value: float, minimum: float = 0.0, maximum: float = 1.0) -> float:
@@ -281,6 +284,11 @@ def extract_speech_emotion(audio_path: str) -> Dict[str, object]:
             return _predict_speechbrain(audio_path)
         return _predict_huggingface(audio_path)
     except Exception as exc:
+        logger.warning(
+            "Speech emotion model (%s) failed; falling back to pitch/RMS heuristic: %s",
+            backend,
+            exc,
+        )
         fallback = _heuristic_speech_emotion(audio_path)
         fallback["model_error"] = f"{type(exc).__name__}: {exc}"
         fallback["fallback_reason"] = f"{type(exc).__name__}: {exc}"

@@ -34,9 +34,26 @@ def gaze_metrics_from_landmarks(lm, gaze_threshold: float = GAZE_ON_CAMERA_THRES
     gaze_y = (left_dy + right_dy) / 2
     offset = abs(left_dx) + abs(right_dx)
     gaze_ok = offset < gaze_threshold
+    # Raw cheek-to-cheek / nose-to-chin distances in image-normalized coordinates.
+    # These are face-width and face-height proxies, not rotation angles: a
+    # subject moving toward or away from the camera changes them exactly like
+    # a head turn does, because nothing here is normalized against face size.
+    # Real Euler angles would need solvePnP with camera intrinsics + a 3D face
+    # model, which this module deliberately does not attempt (see module docs).
     yaw_proxy = abs(lm[234].x - lm[454].x)
     pitch_proxy = abs(lm[1].y - lm[152].y)
     roll_proxy = (lm[33].y + lm[133].y) / 2 - (lm[362].y + lm[263].y) / 2
+    inter_ocular_distance = float(
+        ((right_eye_cx - left_eye_cx) ** 2 + (right_eye_cy - left_eye_cy) ** 2) ** 0.5
+    )
+    # Scale-invariant versions: dividing by inter-ocular distance cancels out
+    # camera-distance changes (both shrink/grow together), leaving something
+    # closer to an actual orientation signal. Diagnostic only for now — not
+    # yet wired into any scoring path, so introducing it carries no risk to
+    # existing (already-unvalidated) head-stability calibration.
+    yaw_normalized = None if inter_ocular_distance <= 1e-6 else yaw_proxy / inter_ocular_distance
+    pitch_normalized = None if inter_ocular_distance <= 1e-6 else pitch_proxy / inter_ocular_distance
+    roll_normalized = None if inter_ocular_distance <= 1e-6 else roll_proxy / inter_ocular_distance
     return {
         "gaze_x": round(float(gaze_x), 4),
         "gaze_y": round(float(gaze_y), 4),
@@ -45,10 +62,18 @@ def gaze_metrics_from_landmarks(lm, gaze_threshold: float = GAZE_ON_CAMERA_THRES
         "left_dx": round(float(left_dx), 4),
         "right_dx": round(float(right_dx), 4),
         "sum_abs_dx": round(float(offset), 4),
-        # Landmark-normalized distances, not Euler-angle degrees.
+        # Landmark-normalized distances, not Euler-angle degrees, and not yet
+        # decoupled from camera distance. Kept for backward compatibility with
+        # existing scoring formulas calibrated against this exact magnitude.
         "yaw_proxy": yaw_proxy,
         "pitch_proxy": pitch_proxy,
         "roll_proxy": roll_proxy,
+        "face_width_ratio": yaw_proxy,
+        "face_height_ratio": pitch_proxy,
+        "inter_ocular_distance": round(inter_ocular_distance, 4),
+        "yaw_normalized": None if yaw_normalized is None else round(yaw_normalized, 4),
+        "pitch_normalized": None if pitch_normalized is None else round(pitch_normalized, 4),
+        "roll_normalized": None if roll_normalized is None else round(roll_normalized, 4),
         # Aliases for older diagnostic_engagement readers / stored docs.
         "yaw": yaw_proxy,
         "pitch": pitch_proxy,

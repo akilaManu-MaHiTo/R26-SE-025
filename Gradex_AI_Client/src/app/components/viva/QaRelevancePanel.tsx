@@ -56,7 +56,6 @@ export function QaRelevancePanel({ qaAnalysis, turns, structure, onSeek }: QaRel
         <p className="mt-1 text-xs text-muted-foreground">
           Conversation structure first, then semantic relevance of each question–answer pair — not a mark.
           {structure?.source === "llm" ? " · structured by AI" : structure?.source === "heuristic" ? " · heuristic fallback" : ""}
-          {qaAnalysis?.model ? ` · ${qaAnalysis.model}` : ""}
           {qaAnalysis?.pair_count != null ? ` · ${qaAnalysis.pair_count} pair${qaAnalysis.pair_count === 1 ? "" : "s"}` : ""}
         </p>
         {qaAnalysis?.status === "empty" && (
