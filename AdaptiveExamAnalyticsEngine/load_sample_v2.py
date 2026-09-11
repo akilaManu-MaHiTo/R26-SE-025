@@ -1,6 +1,6 @@
 """Load the sample_data_v2 JSON files into a new MongoDB database called gradingv2.
 
-Run from the V2_QuestionExamPredictionEngine directory:
+Run from the AdaptiveExamAnalyticsEngine directory:
     python load_sample_v2.py
 """
 

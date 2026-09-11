@@ -55,7 +55,7 @@ def test_migrate_sample_v2_is_idempotent(tmp_path, monkeypatch):
     dest = tmp_path / "sample_data"
     src = Path("app/sample_data")
     if not src.exists():
-        src = Path("V2_QuestionExamPredictionEngine/app/sample_data")
+        src = Path("AdaptiveExamAnalyticsEngine/app/sample_data")
     shutil.copytree(src, dest)
     monkeypatch.setattr(migrate_sample_v2, "SAMPLE_DIR", dest)
 

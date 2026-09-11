@@ -1,0 +1,2012 @@
+[
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd5d"
+    },
+    "student_id": "IT22263551",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Outstanding architecture diagram with every required layer, component, data store, and interaction shown clearly.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:00:00+05:30",
+    "updated_at": "2026-08-31T14:00:00+05:30",
+    "question_text": "Design, construct, and produce a new integrated DBMS architecture diagram that organizes the external, conceptual, and internal schema levels; query-processing components; storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and directional request-result flows into one coherent solution. Use clear labels and add a brief design note. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd5e"
+    },
+    "student_id": "IT22263552",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Excellent diagram with complete components and only one minor omission in the labelled interaction flow.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:01:00+05:30",
+    "updated_at": "2026-08-31T14:00:00+05:30",
+    "question_text": "Design, construct, and produce a new integrated DBMS architecture diagram that organizes the external, conceptual, and internal schema levels; query-processing components; storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and directional request-result flows into one coherent solution. Use clear labels and add a brief design note. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd5f"
+    },
+    "student_id": "IT22263553",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 17,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Good diagram with correct schema and query-processing structure; some storage, recovery, security, and flow detail is missing.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:02:00+05:30",
+    "updated_at": "2026-08-31T14:00:00+05:30",
+    "question_text": "Design, construct, and produce a new integrated DBMS architecture diagram that organizes the external, conceptual, and internal schema levels; query-processing components; storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and directional request-result flows into one coherent solution. Use clear labels and add a brief design note. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd60"
+    },
+    "student_id": "IT22263554",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 16,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Good overall architecture, but several query-processing and service labels and some directional links are incomplete.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:03:00+05:30",
+    "updated_at": "2026-08-31T14:00:00+05:30",
+    "question_text": "Design, construct, and produce a new integrated DBMS architecture diagram that organizes the external, conceptual, and internal schema levels; query-processing components; storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and directional request-result flows into one coherent solution. Use clear labels and add a brief design note. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd61"
+    },
+    "student_id": "IT22263555",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 14,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Satisfactory diagram showing the main request path; catalog, mappings, security, and connection detail need improvement.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:04:00+05:30",
+    "updated_at": "2026-08-31T14:00:00+05:30",
+    "question_text": "Design, construct, and produce a new integrated DBMS architecture diagram that organizes the external, conceptual, and internal schema levels; query-processing components; storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and directional request-result flows into one coherent solution. Use clear labels and add a brief design note. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd62"
+    },
+    "student_id": "IT22263556",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 12,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Basic architecture is recognizable, but internal schema, catalog, storage services, and recovery flow are only partly shown.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:05:00+05:30",
+    "updated_at": "2026-08-31T14:00:00+05:30",
+    "question_text": "Design, construct, and produce a new integrated DBMS architecture diagram that organizes the external, conceptual, and internal schema levels; query-processing components; storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and directional request-result flows into one coherent solution. Use clear labels and add a brief design note. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd63"
+    },
+    "student_id": "IT22263557",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 10,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Partial diagram with the central processing path but limited schema, transaction, security, and logging detail.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:06:00+05:30",
+    "updated_at": "2026-08-31T14:00:00+05:30",
+    "question_text": "Design, construct, and produce a new integrated DBMS architecture diagram that organizes the external, conceptual, and internal schema levels; query-processing components; storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and directional request-result flows into one coherent solution. Use clear labels and add a brief design note. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd64"
+    },
+    "student_id": "IT22263558",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 8,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        }
+      ],
+      "overall_feedback": "Weak diagram containing only a basic query-to-storage path and several missing architecture sections.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:07:00+05:30",
+    "updated_at": "2026-08-31T14:00:00+05:30",
+    "question_text": "Design, construct, and produce a new integrated DBMS architecture diagram that organizes the external, conceptual, and internal schema levels; query-processing components; storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and directional request-result flows into one coherent solution. Use clear labels and add a brief design note. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd65"
+    },
+    "student_id": "IT22263559",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 6,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        }
+      ],
+      "overall_feedback": "Very limited diagram; schema architecture, catalog, transaction services, security, and most links are absent.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:08:00+05:30",
+    "updated_at": "2026-08-31T14:00:00+05:30",
+    "question_text": "Design, construct, and produce a new integrated DBMS architecture diagram that organizes the external, conceptual, and internal schema levels; query-processing components; storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and directional request-result flows into one coherent solution. Use clear labels and add a brief design note. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6b9263b6c7d058c29fb8bd66"
+    },
+    "student_id": "IT22263560",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "DBMS-ARCH-005",
+    "rubric_ref": "6b9263b6c7d058c29fb8bd5b",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 4,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Three-schema levels, mappings, and data independence",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Query processor and its main subcomponents",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Storage manager, catalog, and physical data stores",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Transaction, concurrency, recovery, and security services",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct connections, request flow, labels, and diagram clarity",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Minimal attempt showing only a parser and database files, without the required DBMS architecture or flow.",
+      "grading_source": "sample-v3-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T13:09:00+05:30",
+    "updated_at": "2026-08-31T14:00:00+05:30",
+    "question_text": "Design, construct, and produce a new integrated DBMS architecture diagram that organizes the external, conceptual, and internal schema levels; query-processing components; storage manager, system catalog, and physical data stores; transaction, concurrency, recovery, and security services; and directional request-result flows into one coherent solution. Use clear labels and add a brief design note. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000001"
+    },
+    "student_id": "IT23274501",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Excellent clinic ER design.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:00:30+05:30",
+    "updated_at": "2026-08-31T15:00:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000002"
+    },
+    "student_id": "IT23274502",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        }
+      ],
+      "overall_feedback": "Excellent clinic ER design.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:01:30+05:30",
+    "updated_at": "2026-08-31T15:01:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000003"
+    },
+    "student_id": "IT23274503",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Excellent clinic ER design.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:02:30+05:30",
+    "updated_at": "2026-08-31T15:02:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000004"
+    },
+    "student_id": "IT23274504",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 18,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Excellent clinic ER design.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:03:30+05:30",
+    "updated_at": "2026-08-31T15:03:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000005"
+    },
+    "student_id": "IT23274505",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 17,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Good clinic ER design with minor omissions.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:04:30+05:30",
+    "updated_at": "2026-08-31T15:04:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000006"
+    },
+    "student_id": "IT23274506",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 17,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Good clinic ER design with minor omissions.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:05:30+05:30",
+    "updated_at": "2026-08-31T15:05:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000007"
+    },
+    "student_id": "IT23274507",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 16,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        }
+      ],
+      "overall_feedback": "Good clinic ER design with minor omissions.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:06:30+05:30",
+    "updated_at": "2026-08-31T15:06:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000008"
+    },
+    "student_id": "IT23274508",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 15,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        }
+      ],
+      "overall_feedback": "Good clinic ER design with minor omissions.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:07:30+05:30",
+    "updated_at": "2026-08-31T15:07:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000009"
+    },
+    "student_id": "IT23274509",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 14,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        }
+      ],
+      "overall_feedback": "Good clinic ER design with minor omissions.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:08:30+05:30",
+    "updated_at": "2026-08-31T15:08:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a52000000000000000000a"
+    },
+    "student_id": "IT23274510",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 14,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        }
+      ],
+      "overall_feedback": "Good clinic ER design with minor omissions.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:09:30+05:30",
+    "updated_at": "2026-08-31T15:09:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a52000000000000000000b"
+    },
+    "student_id": "IT23274511",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 13,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        }
+      ],
+      "overall_feedback": "Recognizable ER design but several keys or cardinalities are incomplete.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:10:30+05:30",
+    "updated_at": "2026-08-31T15:10:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a52000000000000000000c"
+    },
+    "student_id": "IT23274512",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 12,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Recognizable ER design but several keys or cardinalities are incomplete.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:11:30+05:30",
+    "updated_at": "2026-08-31T15:11:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a52000000000000000000d"
+    },
+    "student_id": "IT23274513",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 11,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Recognizable ER design but several keys or cardinalities are incomplete.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:12:30+05:30",
+    "updated_at": "2026-08-31T15:12:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a52000000000000000000e"
+    },
+    "student_id": "IT23274514",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 10,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Recognizable ER design but several keys or cardinalities are incomplete.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:13:30+05:30",
+    "updated_at": "2026-08-31T15:13:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a52000000000000000000f"
+    },
+    "student_id": "IT23274515",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 9,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Weak ER design with missing entities, keys, and relationship detail.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:14:30+05:30",
+    "updated_at": "2026-08-31T15:14:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000010"
+    },
+    "student_id": "IT23274516",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 8,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Weak ER design with missing entities, keys, and relationship detail.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:15:30+05:30",
+    "updated_at": "2026-08-31T15:15:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000011"
+    },
+    "student_id": "IT23274517",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 7,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        }
+      ],
+      "overall_feedback": "Weak ER design with missing entities, keys, and relationship detail.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:16:30+05:30",
+    "updated_at": "2026-08-31T15:16:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000012"
+    },
+    "student_id": "IT23274518",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 6,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        }
+      ],
+      "overall_feedback": "Weak ER design with missing entities, keys, and relationship detail.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:17:30+05:30",
+    "updated_at": "2026-08-31T15:17:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000013"
+    },
+    "student_id": "IT23274519",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 5,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        }
+      ],
+      "overall_feedback": "Minimal ER attempt without a complete clinic data model.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:18:30+05:30",
+    "updated_at": "2026-08-31T15:18:30+05:30"
+  },
+  {
+    "_id": {
+      "$oid": "75a520000000000000000014"
+    },
+    "student_id": "IT23274520",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2025,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "ER-CLINIC-2025",
+    "rubric_ref": "75a500000000000000000001",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce an original ER diagram for a clinic appointment system. Integrate PATIENT, DOCTOR, APPOINTMENT, and PRESCRIPTION with suitable attributes, primary and foreign keys, relationship names, optionality, and cardinalities. Resolve the patient-doctor many-to-many interaction through APPOINTMENT, show how prescriptions belong to appointments, and add a concise design note that justifies your choices. (20 marks)",
+    "bloom_level": "Create",
+    "evaluation_result": {
+      "total_score": 4,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all required entities with suitable attributes",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Creates correct primary and foreign keys",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Creates correct relationship cardinalities and optionality",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Resolves patient-doctor interaction through APPOINTMENT",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear ER notation, labels, and design justification",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Minimal evidence"
+        }
+      ],
+      "overall_feedback": "Minimal ER attempt without a complete clinic data model.",
+      "grading_source": "sample-v3-2025-diagram-evaluator"
+    },
+    "created_at": "2026-08-31T15:19:30+05:30",
+    "updated_at": "2026-08-31T15:19:30+05:30"
+  }
+]
