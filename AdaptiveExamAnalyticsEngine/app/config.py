@@ -6,7 +6,7 @@ _ENV_FILE = str(Path(__file__).resolve().parents[1] / ".env")
 
 
 class Settings(BaseSettings):
-    mongodb_uri: str = "mongodb+srv://admin:harithe2002@cluster0.ynphhn4.mongodb.net/Grading?retryWrites=true&w=majority&appName=Cluster0"
+    mongodb_uri: str = ""
     mongodb_local_uri: str = "mongodb://127.0.0.1:27017"
     mongodb_mode: str = "local"
     mongodb_db: str = "grading"
@@ -51,9 +51,7 @@ class Settings(BaseSettings):
     @property
     def llm_base_url(self) -> str:
         """Ollama endpoint actually used, resolved from ``env``."""
-        if self.env == "colab":
-            return self.ollama_base_url
-        return "http://localhost:11434"
+        return self.ollama_base_url
 
 
 settings = Settings()

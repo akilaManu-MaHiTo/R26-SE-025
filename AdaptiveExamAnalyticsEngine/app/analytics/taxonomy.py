@@ -30,7 +30,7 @@ QUESTION_TYPES: list[str] = [
     "coding",
 ]
 
-DEFAULT_PRIORITY_WEIGHTS: dict[str, float] = {
+DEFAULT_PRIORITY_WEIGHTS: dict[str, float] = {  # deprecated: use analytics.recommendation_score.ScoreWeights
     "weakness": 0.40,
     "coverage_gap": 0.25,
     "bloom_gap": 0.20,

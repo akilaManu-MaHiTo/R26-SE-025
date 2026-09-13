@@ -1,3 +1,9 @@
+"""Legacy sample-data loader — retained for tests/test_loader.py only.
+
+Runtime seeding uses run_sample.load_raw_sample_documents which reimplements this.
+Consider consolidating to ingestion/student_data.normalize_student_submission.
+"""
+
 from pathlib import Path
 
 from bson.json_util import loads

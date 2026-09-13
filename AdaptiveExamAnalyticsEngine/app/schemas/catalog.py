@@ -1,3 +1,8 @@
+"""Legacy catalog schemas — retained for test compatibility; not used by runtime APIs.
+
+Runtime uses app.schemas.student / exam_analytics + repository generatedQuestions directly.
+"""
+
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator

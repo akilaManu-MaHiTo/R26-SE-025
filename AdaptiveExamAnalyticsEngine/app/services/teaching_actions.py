@@ -1,9 +1,9 @@
 """Generate teaching action recommendations using LLM with caching."""
 from __future__ import annotations
-import hashlib, json
+import hashlib
+import json
 from datetime import datetime, timezone
 from typing import Any
-from app.config import settings
 
 async def get_teaching_actions(
     db, course_code: str, session_name: str,
@@ -38,7 +38,8 @@ async def _generate_actions(canonical_topics, question_perf):
         return _template_fallback(priority_topics, lowest_q)
 
 async def _llm_generate(priority_topics, lowest_question):
-    import httpx
+    from app.llm.ollama import OllamaUnavailable, generate
+
     descs = [f"- {t['topic']}: {t['average_percentage']}% ({t['priority']})" for t in priority_topics]
     if lowest_question:
         descs.append(f"- Lowest question: {lowest_question['question_id']} at {lowest_question['average_percentage']}%")
@@ -46,17 +47,20 @@ async def _llm_generate(priority_topics, lowest_question):
 Topics:
 {chr(10).join(descs)}
 Return JSON array: [{{"topic": str, "priority": str, "performance_percentage": float, "actions": [str], "generated_at": str}}]"""
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(f"{settings.ollama_base_url}/api/generate",
-            json={"model": settings.ollama_model, "prompt": prompt, "stream": False, "format": "json"})
-        resp.raise_for_status()
-        parsed = json.loads(resp.json().get("response", "[]"))
-        if isinstance(parsed, list):
-            now = datetime.now(timezone.utc).isoformat()
-            for item in parsed:
-                item.setdefault("generated_at", now)
-            return parsed
-        raise ValueError("non-array")
+    try:
+        parsed = await generate(prompt, temperature=0.2, timeout=30.0)
+    except OllamaUnavailable:
+        raise
+    # generate() already returns parsed JSON; teaching_actions expects a list
+    if isinstance(parsed, list):
+        now = datetime.now(timezone.utc).isoformat()
+        for item in parsed:
+            item.setdefault("generated_at", now)
+        return parsed
+    # Some models wrap the list in a dict — handle gracefully
+    if isinstance(parsed, dict) and isinstance(parsed.get("actions"), list):
+        return parsed["actions"]
+    raise ValueError("non-array")
 
 def _template_fallback(priority_topics, lowest_question):
     now = datetime.now(timezone.utc).isoformat()

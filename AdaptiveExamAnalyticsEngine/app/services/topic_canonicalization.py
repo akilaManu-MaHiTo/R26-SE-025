@@ -4,13 +4,12 @@ import json
 from pathlib import Path
 from typing import Any
 from app.analytics.student_document import performance_status
+from app.taxonomy.normalizer import load_taxonomy as _load_norm_taxonomy
 
 _CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config"
 
-def _load_taxonomy() -> dict[str, dict]:
-    # canonical source is config/topic_taxonomy.json, enriched via app.taxonomy.normalizer
-    from app.taxonomy.normalizer import load_taxonomy as _load_norm_taxonomy
 
+def _load_taxonomy() -> dict[str, dict]:
     return _load_norm_taxonomy()
 
 
@@ -18,17 +17,18 @@ def _load_thresholds() -> list[dict]:
     with open(_CONFIG_DIR / "thresholds.json", encoding="utf-8") as f:
         return json.load(f)["status_thresholds"]
 
-def _build_alias_map(taxonomy: dict[str, dict]) -> dict[str, str]:
-    from app.taxonomy.normalizer import normalize_topic  # noqa: F401 - ensure cache built
 
-    # case-insensitive map: alias.casefold -> canonical_id + canonical_topic.casefold
+def _build_alias_map(taxonomy: dict[str, dict]) -> dict[str, str]:
+    # Build directly from taxonomy (mirrors normalizer._alias_map but explicit here for testability)
     alias_map: dict[str, str] = {}
     for canonical_id, entry in taxonomy.items():
         canon = entry.get("canonical_topic", "")
         if canon:
             alias_map[canon.casefold().strip()] = canonical_id
         for alias in entry.get("aliases", []):
-            alias_map[alias.casefold().strip()] = canonical_id
+            key = alias.casefold().strip()
+            if key:
+                alias_map[key] = canonical_id
         alias_map[canonical_id.casefold()] = canonical_id
     return alias_map
 
