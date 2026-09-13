@@ -4,16 +4,7 @@ from dataclasses import dataclass, field
 from app.analytics.taxonomy import TOPICS
 from app.schemas.catalog import TopicAssignment
 
-BLOOM_VERBS: dict[str, set[str]] = {
-    # DEPRECATED: kept for backwards compatibility but NO LONGER USED for Bloom detection.
-    # Bloom is now ONLY via models/bloom_modernbert (ModernBERT). See _bloom_level() below.
-    "Remember": {"list", "define", "state", "name", "identify", "recall", "label", "match"},
-    "Understand": {"explain", "describe", "summarize", "discuss", "distinguish", "classify", "relate"},
-    "Apply": {"apply", "use", "calculate", "compute", "solve", "implement", "write", "execute", "find"},
-    "Analyze": {"analyze", "compare", "contrast", "differentiate", "examine", "trace", "break down", "determine"},
-    "Evaluate": {"evaluate", "justify", "assess", "recommend", "judge", "critique", "prioritize"},
-    "Create": {"design", "create", "construct", "develop", "plan", "propose", "formulate", "compose"},
-}
+BLOOM_VERBS: dict[str, set[str]] = {}  # deprecated: Bloom is ONLY via ModernBERT; kept for import compat
 
 TOPIC_KEYWORDS: dict[str, set[str]] = {
     "Introduction to DBMS and Conceptual Database Design": {

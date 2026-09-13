@@ -1,29 +1,16 @@
-import asyncio
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor
 
 from app.classifier.rules import classify_by_rules
 from app.config import settings
-from app.analytics.taxonomy import TOPICS
 from app.llm.ollama import OllamaUnavailable, validate_with_retry
-from app.llm.roles.classify import ClassificationResponse
 from app.llm.roles.misconceptions import MisconceptionSummary
 from app.llm.roles.student_analysis import QuestionSemantics, StudentInsightResponse
 from app.llm.roles.study_actions import StudyActions
 
 logger = logging.getLogger(__name__)
 
-_LOOP_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="llm-service")
 _EMBEDDER = None
-
-
-def _run_coroutine(coro_factory):
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro_factory())
-    return _LOOP_EXECUTOR.submit(asyncio.run, coro_factory()).result()
 
 
 def _rules_dict(result) -> dict:
