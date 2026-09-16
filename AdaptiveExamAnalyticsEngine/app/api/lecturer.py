@@ -21,12 +21,12 @@ from app.schemas.exam_analytics import ExamAnalyticsDocument
 from app.llm.ollama import check_llm_detailed_health
 from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
 from app.services.recommendation import recommend_for_weak_areas
-from app.services.student_accounts import provision_student_accounts
 from app.services.student_dashboard import StudentNotFound, ensure_student_analytics
 from app.services.teaching_actions import get_teaching_actions
-from app.services.topic_canonicalization import canonicalize_topics
 
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
+
+_analytics_inflight: dict[str, asyncio.Task] = {}
 
 
 # ── helpers (deduplicated from triple copy-paste) ──────────────────────
@@ -80,6 +80,22 @@ def _attach_diagram(target: dict, diagram, diagram_marking) -> dict:
         if diagram_marking is not None:
             target["diagram_marking"] = diagram_marking
     return target
+
+
+def _is_complete_snapshot(doc: dict | None) -> bool:
+    if not doc:
+        return False
+    # Legacy snapshots lack canonical fields or have wrong version
+    if doc.get("analytics_version") != "1.0":
+        return False
+    if not isinstance(doc.get("canonical_topic_performance"), list):
+        return False
+    if not isinstance(doc.get("canonical_insights"), list):
+        return False
+    # Must have statistics
+    if not isinstance(doc.get("statistics"), dict):
+        return False
+    return True
 
 
 @router.get("/llm-health")
@@ -157,7 +173,19 @@ async def lecturer_exam_analytics(
 ):
     try:
         document = await find_exam_analytics(db, course_code, session_name, year, month, semester)
-        if document is None:
+        # Treat legacy/incomplete snapshots as stale and rebuild lazily (no DB deletion)
+        # If rebuild fails, retain last good result (clearly stale) rather than 500
+        if document is not None and not _is_complete_snapshot(document):
+            try:
+                fresh = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
+                document = fresh
+            except ExamNotFound:
+                # No evidence to rebuild; keep cached stale snapshot
+                pass
+            except Exception:
+                # Rebuild failed; keep cached
+                pass
+        elif document is None:
             try:
                 document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
             except ExamNotFound as exc:
@@ -166,17 +194,30 @@ async def lecturer_exam_analytics(
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to compute analytics: {exc}") from exc
-    # Provision student accounts for all graded submissions of this exam (best-effort)
+    # Analytics reads have no account-creation side effect — provisioning moved to dedicated endpoint
+    # (student access no longer depends on opening lecturer dashboard)
     try:
-        await provision_student_accounts(db, course_code, session_name, year, month, semester)
-    except Exception:
-        pass
+        return ExamAnalyticsDocument.model_validate(document)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Analytics document validation failed: {exc}") from exc
+
+
+@router.post("/exams/{course_code}/{session_name}/analytics/reanalyse")
+async def lecturer_exam_reanalyse(
+    course_code: str,
+    session_name: str,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    semester: int | None = Query(None),
+    db=Depends(get_db),
+):
+    """Explicit recomputation — forces fresh analytics ignoring cache, for Reanalyse button."""
     try:
-        canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
-        document.update(canonical)
-    except Exception:
-        # canonicalization is best-effort; return base document if it fails
-        pass
+        document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
+    except ExamNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to reanalyse: {exc}") from exc
     try:
         return ExamAnalyticsDocument.model_validate(document)
     except Exception as exc:
@@ -197,34 +238,43 @@ async def lecturer_exam_analytics_stream(
         def sse(event: str, data: dict) -> str:
             return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
-        # Fast path: cached
+        # Fast path: cached (only if complete snapshot)
         cached = await find_exam_analytics(db, course_code, session_name, year, month, semester)
-        if cached is not None:
+        if cached is not None and _is_complete_snapshot(cached):
             yield sse("progress", {"phase": "cached", "message": "PULSE·AI — Using cached analytics"})
-            try:
-                await provision_student_accounts(db, course_code, session_name, year, month, semester)
-            except Exception:
-                pass
-            try:
-                canonical = await canonicalize_topics(db, cached, course_code, session_name, year, month, semester)
-                cached.update(canonical)
-            except Exception:
-                pass
             yield sse("result", cached)
             return
+        # Stale/incomplete snapshot: fall through to recompute (do not return mixed revision)
+        if cached is not None and not _is_complete_snapshot(cached):
+            yield sse("progress", {"phase": "analyzing", "message": "PULSE·AI — Cached snapshot incomplete, recomputing..."})
 
         queue: asyncio.Queue[str] = asyncio.Queue()
 
         def progress_cb(msg: str):
+            # Thread-safe bridge: schedule put on event loop if called from worker thread
             try:
-                queue.put_nowait(msg)
+                loop = asyncio.get_running_loop()
+                loop.call_soon_threadsafe(queue.put_nowait, msg)
             except Exception:
-                pass
+                try:
+                    queue.put_nowait(msg)
+                except Exception:
+                    pass
 
-        # Run compute in background task
-        compute_task = asyncio.create_task(
-            compute_exam_analytics(db, course_code, session_name, year, month, semester, progress_callback=progress_cb)
-        )
+        # Deduplicate in-flight jobs by full exam identity
+        job_key = f"{course_code}:{session_name}:{year}:{month}:{semester}"
+        existing = _analytics_inflight.get(job_key)
+        if existing and not existing.done():
+            compute_task = existing
+            yield sse("progress", {"phase": "analyzing", "message": "PULSE·AI — Joining existing analysis job..."})
+        else:
+            compute_task = asyncio.create_task(
+                compute_exam_analytics(db, course_code, session_name, year, month, semester, progress_callback=progress_cb)
+            )
+            _analytics_inflight[job_key] = compute_task
+            def _cleanup(fut):
+                _analytics_inflight.pop(job_key, None)
+            compute_task.add_done_callback(_cleanup)
 
         # Stream progress while compute runs
         while not compute_task.done():
@@ -254,21 +304,29 @@ async def lecturer_exam_analytics_stream(
             yield sse("error", {"detail": f"Failed to compute analytics: {exc}"})
             return
 
-        # Post-processing
-        yield sse("progress", {"phase": "finalizing", "message": "PULSE·AI — Provisioning student accounts & canonicalizing topics..."})
-        try:
-            await provision_student_accounts(db, course_code, session_name, year, month, semester)
-        except Exception:
-            pass
-        try:
-            canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
-            document.update(canonical)
-        except Exception:
-            pass
-
+        # Post-processing: document already complete (canonical + weakness included)
+        yield sse("progress", {"phase": "finalizing", "message": "PULSE·AI — Finalizing snapshot..."})
         yield sse("result", document)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@router.post("/exams/{course_code}/{session_name}/provision-accounts")
+async def lecturer_provision_accounts(
+    course_code: str,
+    session_name: str,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    semester: int | None = Query(None),
+    db=Depends(get_db),
+):
+    """Dedicated student account provisioning (idempotent) — replaces analytics-read side effect."""
+    from app.services.student_accounts import provision_student_accounts as _provision
+    try:
+        result = await _provision(db, course_code, session_name, year, month, semester)
+        return {"provisioned": result}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to provision accounts: {exc}") from exc
 
 
 @router.get("/exams/{course_code}/{session_name}/students")
@@ -553,12 +611,18 @@ async def lecturer_teaching_actions(
     document = await find_exam_analytics(db, course_code, session_name, year, month, semester)
     if document is None:
         raise HTTPException(status_code=404, detail="No analytics found")
+    # Ensure we use the same snapshot revision displayed on dashboard
+    fingerprint = document.get("generated_at") or document.get("analytics_version")
     return await get_teaching_actions(
         db,
         course_code,
         session_name,
         document.get("canonical_topic_performance", []),
         document.get("question_performance", []),
+        year=document.get("year") if year is None else year,
+        month=document.get("month") if month is None else month,
+        semester=document.get("semester") if semester is None else semester,
+        evidence_fingerprint=str(fingerprint) if fingerprint else None,
     )
 
 
@@ -680,11 +744,12 @@ async def lecturer_recommendations(
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to compute analytics: {exc}") from exc
-    # enrich with canonical if missing
-    if not document.get("canonical_topic_performance"):
+    # document already contains complete canonical snapshot; legacy fallback removed
+    # If incomplete, the GET analytics path would have rebuilt; here we just validate presence
+    if not document.get("canonical_topic_performance") and not _is_complete_snapshot(document):
+        # lazy rebuild for legacy snapshot
         try:
-            canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
-            document.update(canonical)
+            document = await compute_exam_analytics(db, course_code, session_name, document.get("year") or year, document.get("month") or month, document.get("semester") or semester)
         except Exception:
             pass
     try:

@@ -182,7 +182,7 @@ async def test_pipeline_uses_deterministic_fallback_when_qwen_is_down(monkeypatc
     ]
     assert {g["topic"] for g in saved["learning_analysis"]["learning_gaps"]} == {
         "Structured Query Language (SQL)",
-        "Introduction to DBMS & Conceptual Database Design",
+        "Unclassified",
     }
     assert saved["recommendations"][0]["priority"] == "Medium"
     assert saved["next_question_strategy"]["number_of_questions"] == 5
@@ -208,10 +208,10 @@ async def test_pipeline_uses_rule_key_concept_as_fallback_subtopic(monkeypatch):
     result = await materialize_student_analytics(db)
 
     assert result.saved == ["student-17"]
-    # Subtopic now from topic hits (canonical), not mocked Two-Phase Locking
+    # Subtopic now from topic hits (canonical), Unclassified for no-keyword question
     assert {item["subtopic"] for item in db.saved[0]["question_performance"]} == {
         "Structured Query Language (SQL)",
-        "Introduction to DBMS & Conceptual Database Design",
+        "Unclassified",
     }
     # Bloom now via ModernBERT only
     assert {
@@ -274,10 +274,10 @@ async def test_qwen_insights_replace_only_semantic_fallback_fields(monkeypatch):
         "status": "Developing",
     }
     assert saved["learning_analysis"]["overall_performance"] == "Developing"
-    # Topics now canonical via rules/BloomModernBERT topic mapping
+    # Topics now canonical via rules/BloomModernBERT topic mapping (Unclassified for no-keyword)
     assert set(saved["learning_analysis"]["developing_topics"]) == {
         "Structured Query Language (SQL)",
-        "Introduction to DBMS & Conceptual Database Design",
+        "Unclassified",
     }
     assert saved["learning_analysis"]["weak_topics"] == []
     assert saved["learning_analysis"]["learning_gaps"] == [
@@ -357,7 +357,7 @@ async def test_blank_qwen_recommendation_degrades_to_deterministic_fallback(
     assert saved["learning_analysis"]["learning_gaps"] == [
         {"topic": "Structured Query Language (SQL)", "subtopic": "Uses the correct query", "priority": "Medium"},
         {
-            "topic": "Introduction to DBMS & Conceptual Database Design",
+            "topic": "Unclassified",
             "subtopic": "Explains the concept",
             "priority": "Medium",
         },

@@ -149,9 +149,9 @@ def build_insights(
                         insights.append(f"Pass rate {pr:.0f}% — {total} students (n={total}).")
                     except Exception:
                         pass
-            # bimodal note if std >20
+            # widely spread note if std >20 (do not claim bimodal without modality test)
             if std_f > 20:
-                insights.append(f"Score distribution is bimodal (std {std_f:.1f}%) — consider differentiated review.")
+                insights.append(f"Scores are widely spread (std {std_f:.1f}%) — consider differentiated review.")
             else:
                 # ensure we have enough insights; add std insight if still under 4
                 if len(insights) < 4:
@@ -159,7 +159,7 @@ def build_insights(
         else:
             # fallback when grade_dist missing but std available
             if std_f > 20:
-                insights.append(f"Score distribution is bimodal (std {std_f:.1f}%) — consider differentiated review.")
+                insights.append(f"Scores are widely spread (std {std_f:.1f}%) — consider differentiated review.")
     except Exception:
         pass
     # --- ensure 4-6 insights, deterministic truncate/pad ---
