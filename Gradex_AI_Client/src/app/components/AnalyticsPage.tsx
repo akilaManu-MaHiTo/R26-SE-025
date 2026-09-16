@@ -203,8 +203,10 @@ export default function AnalyticsPage() {
       setLiveModelMessage("PULSE·AI — Analysis complete");
       setCurrentLoadStep(2);
 
+      // C: parallelize optional fetches (students + teaching) — not waterfall
       setLoadingActions(true);
-      fetchTeachingActions(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
+      setLoadingStudents(true);
+      const teachingPromise = fetchTeachingActions(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
         .then((actions) => {
           if ((handleSelectExam as any)._lastRequestId !== requestId) return;
           setTeachingActions(actions);
@@ -213,11 +215,11 @@ export default function AnalyticsPage() {
           if ((handleSelectExam as any)._lastRequestId !== requestId) return;
           setTeachingActions([]);
         })
-        .finally(() => setLoadingActions(false));
+        .finally(() => {
+          if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingActions(false);
+        });
 
-      // Also fetch students for this exam (for lecturer student finder)
-      setLoadingStudents(true);
-      fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
+      const studentsPromise = fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
         .then((rows) => {
           if ((handleSelectExam as any)._lastRequestId !== requestId) return;
           setStudents(rows);
@@ -226,7 +228,12 @@ export default function AnalyticsPage() {
           if ((handleSelectExam as any)._lastRequestId !== requestId) return;
           setStudents([]);
         })
-        .finally(() => setLoadingStudents(false));
+        .finally(() => {
+          if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingStudents(false);
+        });
+
+      // Fire both in parallel, optional — never block KPI render
+      void Promise.allSettled([teachingPromise, studentsPromise]);
     } catch (err) {
       if ((handleSelectExam as any)._lastRequestId !== requestId) return;
       console.error(err);
