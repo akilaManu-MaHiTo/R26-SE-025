@@ -1,4 +1,7 @@
+import json as _json
 from copy import deepcopy
+from datetime import datetime, timezone
+from pathlib import Path as _Path
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -22,6 +25,7 @@ COLLECTIONS = (
     "analyzedExams",
     "exam_drafts",
     "users",
+    "course_taxonomies",
 )
 
 _UNIQUE_INDEXES = {
@@ -50,6 +54,7 @@ _UNIQUE_INDEXES = {
     ],
     "exam_drafts": [("draft_id", 1)],
     "users": [("email", 1)],
+    "course_taxonomies": [("course_code", 1)],
 }
 
 
@@ -799,3 +804,40 @@ async def find_diagram_markings_for_exam(
     for doc in docs:
         doc.pop("_id", None)
     return docs
+
+
+async def get_course_taxonomy(db, course_code: str) -> dict | None:
+    doc = await db["course_taxonomies"].find_one({"course_code": course_code}, {"_id": 0})
+    return doc
+
+
+async def upsert_course_taxonomy(db, course_code: str, topics: dict, updated_by: str = "system") -> dict:
+    now = datetime.now(timezone.utc).isoformat()
+    existing = await db["course_taxonomies"].find_one({"course_code": course_code})
+    version = int(existing["version"]) + 1 if existing and "version" in existing else 1
+    created_at = existing.get("created_at") if existing else now
+    doc = {"course_code": course_code, "topics": topics, "version": version, "created_at": created_at, "updated_at": now, "updated_by": updated_by}
+    await db["course_taxonomies"].replace_one({"course_code": course_code}, doc, upsert=True)
+    await db["courses"].update_one({"code": course_code}, {"$set": {"taxonomy_version": version, "taxonomy_updated_at": now}})
+    return doc
+
+
+async def seed_it2040_if_empty(db) -> dict | None:
+    existing = await db["course_taxonomies"].find_one({"course_code": "IT2040"})
+    if existing:
+        return None
+    path = _Path(__file__).resolve().parents[2] / "config" / "topic_taxonomy.json"
+    if not path.exists():
+        path = _Path(__file__).resolve().parents[2] / "datasets" / "bloom_dataset" / "taxonomy_v2.json"
+    data = _json.loads(path.read_text(encoding="utf-8"))
+    return await upsert_course_taxonomy(db, "IT2040", data, updated_by="system:seed")
+
+
+async def find_taxonomy_usage_count(db, course_code: str, canonical_id: str) -> int:
+    docs = await db["examAnalytics"].find({"subject_code": course_code}).to_list(length=20)
+    cnt = 0
+    for d in docs:
+        for t in d.get("canonical_topic_performance") or []:
+            if t.get("topic", "").casefold() == canonical_id.casefold() or t.get("topic", "") == canonical_id:
+                cnt += 1
+    return cnt
