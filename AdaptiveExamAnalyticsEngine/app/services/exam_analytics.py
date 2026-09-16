@@ -103,10 +103,17 @@ async def compute_exam_analytics(
     import json as _json
     taxonomy = {}
     try:
-        from app.taxonomy.normalizer import load_taxonomy as _load_tax
-        taxonomy = _load_tax()
+        from app.taxonomy.normalizer import load_taxonomy as _load_tax, load_taxonomy_sync
+        try:
+            taxonomy = await _load_tax(db, course_code)
+        except TypeError:
+            taxonomy = load_taxonomy_sync(course_code)
     except Exception:
-        taxonomy = {}
+        try:
+            from app.taxonomy.normalizer import load_taxonomy_sync as _sync2
+            taxonomy = _sync2(course_code)
+        except Exception:
+            taxonomy = {}
     # thresholds for priority
     thresholds_cfg = []
     try:
