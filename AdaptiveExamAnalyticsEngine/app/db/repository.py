@@ -807,11 +807,13 @@ async def find_diagram_markings_for_exam(
 
 
 async def get_course_taxonomy(db, course_code: str) -> dict | None:
+    course_code = course_code.strip().upper()
     doc = await db["course_taxonomies"].find_one({"course_code": course_code}, {"_id": 0})
     return doc
 
 
 async def upsert_course_taxonomy(db, course_code: str, topics: dict, updated_by: str = "system") -> dict:
+    course_code = course_code.strip().upper()
     now = datetime.now(timezone.utc).isoformat()
     existing = await db["course_taxonomies"].find_one({"course_code": course_code})
     version = int(existing["version"]) + 1 if existing and "version" in existing else 1
@@ -834,10 +836,20 @@ async def seed_it2040_if_empty(db) -> dict | None:
 
 
 async def find_taxonomy_usage_count(db, course_code: str, canonical_id: str) -> int:
+    course_code = course_code.strip().upper()
+    canonical_norm = canonical_id.strip().casefold() if isinstance(canonical_id, str) else ""
     docs = await db["examAnalytics"].find({"subject_code": course_code}).to_list(length=20)
     cnt = 0
     for d in docs:
-        for t in d.get("canonical_topic_performance") or []:
-            if t.get("topic", "").casefold() == canonical_id.casefold() or t.get("topic", "") == canonical_id:
+        topics = d.get("canonical_topic_performance") or []
+        if not isinstance(topics, list):
+            continue
+        for t in topics:
+            if not isinstance(t, dict):
+                continue
+            topic_val = t.get("topic")
+            if not isinstance(topic_val, str):
+                continue
+            if topic_val.strip().casefold() == canonical_norm:
                 cnt += 1
     return cnt
