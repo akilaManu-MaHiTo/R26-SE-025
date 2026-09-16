@@ -18,7 +18,7 @@ from app.db.repository import (
     upsert_exam_analysis_status,
 )
 from app.ingestion.student_data import normalize_student_submission
-from app.services.student_pipeline import _classify_questions
+from app.services import student_pipeline as _student_pipeline
 
 
 class ExamNotFound(Exception):
@@ -43,15 +43,16 @@ async def compute_exam_analytics(
         raise ExamNotFound(f"no graded submissions for {course_code} {session_name}")
 
     _progress(f"PULSE·AI — Ingesting {len(submissions)} submissions for {course_code} {session_name}...")
-    course = None
-    rubric = None
+    _progress(f"PULSE·AI — Resolving course/rubric once for {course_code} {session_name}...")
+    # A: reuse course/rubric — N+1 query fan-out → 1 query (same exam identity)
+    first_ref = submissions[0] if submissions else {}
+    course = await find_course_for_submission(db, first_ref)
+    rubric = await find_rubric_for_submission(db, first_ref)
     students: list[dict] = []
     classification_cache: dict = {}
     total_q = 0
     for idx, submission in enumerate(submissions):
         _progress(f"Analyzing student {submission.get('student_id', 'unknown')} ({idx+1}/{len(submissions)}) — normalizing...")
-        course = await find_course_for_submission(db, submission)
-        rubric = await find_rubric_for_submission(db, submission)
         normalized = normalize_student_submission(course or {}, rubric or {}, submission)
         total_q = len(normalized.questions)
 
@@ -60,7 +61,7 @@ async def compute_exam_analytics(
             # enrich to Bloom/topic after classification
             _progress(f"PULSE·AI — {msg} — checking Bloom level...")
 
-        semantics = await _classify_questions(normalized, classification_cache, progress=_q_progress, db=db)
+        semantics = await _student_pipeline._classify_questions(normalized, classification_cache, progress=_q_progress, db=db)
         # After classify, emit per-question Bloom/topic details
         for q_no in sorted(semantics.keys()):
             sem = semantics[q_no]
