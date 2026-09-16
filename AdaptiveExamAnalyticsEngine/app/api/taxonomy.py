@@ -10,9 +10,9 @@ router = APIRouter(prefix="/api/courses", tags=["taxonomy"])
 
 
 class TopicPayload(BaseModel):
-    canonical_topic: str = Field(min_length=3, max_length=120)
-    aliases: list[str] = Field(default_factory=list, max_length=20)
-    subtopics: list[str] = Field(default_factory=list, max_length=50)
+    canonical_topic: str = Field(...)
+    aliases: list[str] = Field(default_factory=list)
+    subtopics: list[str] = Field(default_factory=list)
 
 
 def _validate_payload(payload: TopicPayload, existing_topics: dict, current_id: str | None):
@@ -57,6 +57,8 @@ def _validate_payload(payload: TopicPayload, existing_topics: dict, current_id: 
                 k2 = al.strip().casefold()
                 if k2:
                     all_aliases[k2] = cid
+    if ct.casefold() in all_aliases:
+        raise HTTPException(status_code=409, detail=f"Topic '{ct}' alias already used in topic '{all_aliases[ct.casefold()]}'")
     for al in cleaned_aliases:
         if al.casefold() in all_aliases:
             raise HTTPException(status_code=409, detail=f"alias '{al}' already used in topic '{all_aliases[al.casefold()]}'")
@@ -155,23 +157,33 @@ async def upsert_topic(
 @router.delete("/{course_code}/taxonomy/{canonical_id}")
 async def delete_topic(course_code: str, canonical_id: str, db=Depends(get_db)):
     course_code = course_code.strip().upper()
+    canonical_id = canonical_id.strip().lower()
+    if not canonical_id or len(canonical_id) < 2 or len(canonical_id) > 64:
+        raise HTTPException(status_code=400, detail="canonical_id 2-64 chars")
     course = await db["courses"].find_one({"code": course_code})
     if not course:
         raise HTTPException(status_code=404, detail=f"Course '{course_code}' not found.")
     from app.db.repository import find_taxonomy_usage_count, get_course_taxonomy, upsert_course_taxonomy
 
     doc = await get_course_taxonomy(db, course_code)
-    if not doc or canonical_id not in (doc.get("topics") or {}):
+    topics_map = doc.get("topics") if doc and isinstance(doc.get("topics"), dict) else {}
+    # case-insensitive lookup
+    actual_key = None
+    for k in topics_map.keys():
+        if k.casefold() == canonical_id.casefold():
+            actual_key = k
+            break
+    if actual_key is None:
         raise HTTPException(status_code=404, detail="topic not found")
-    topics = dict(doc["topics"])
-    topics.pop(canonical_id)
+    topics = dict(topics_map)
+    topics.pop(actual_key)
     warning = None
-    cnt = await find_taxonomy_usage_count(db, course_code, canonical_id)
+    cnt = await find_taxonomy_usage_count(db, course_code, actual_key)
     if cnt and cnt > 0:
         warning = f"Used in {cnt} exam snapshots — will be Stale until Reanalyse"
     new_doc = await upsert_course_taxonomy(db, course_code, topics, updated_by="lecturer")
     await invalidate_taxonomy_cache(course_code)
-    return {"deleted": True, "canonical_id": canonical_id, "version": new_doc["version"], "warning": warning}
+    return {"deleted": True, "canonical_id": actual_key, "version": new_doc["version"], "warning": warning}
 
 
 @router.post("/{course_code}/taxonomy/seed")

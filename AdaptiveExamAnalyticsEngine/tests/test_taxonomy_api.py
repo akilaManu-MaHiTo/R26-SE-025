@@ -34,7 +34,7 @@ async def test_get_upsert_delete_taxonomy():
         "updated_at": "2026-09-16T00:00:00+00:00",
     })), patch("app.db.repository.find_taxonomy_usage_count", new=AsyncMock(return_value=0)), \
          patch("app.db.repository.seed_it2040_if_empty", new=AsyncMock(return_value=None)), \
-         patch("app.taxonomy.normalizer.invalidate_taxonomy_cache", new=AsyncMock(return_value=None)):
+          patch("app.api.taxonomy.invalidate_taxonomy_cache", new=AsyncMock(return_value=None)):
 
         app.dependency_overrides[deps.get_db] = lambda: mock_db
         try:
@@ -95,7 +95,7 @@ async def test_put_version_conflict_409():
         "topics": {},
         "version": 5,
         "updated_at": "2026-09-16T00:00:00+00:00",
-    })), patch("app.taxonomy.normalizer.invalidate_taxonomy_cache", new=AsyncMock()):
+    })), patch("app.api.taxonomy.invalidate_taxonomy_cache", new=AsyncMock()):
         app.dependency_overrides[deps.get_db] = lambda: mock_db
         try:
             transport = ASGITransport(app=app)
@@ -123,7 +123,7 @@ async def test_delete_warns_when_used():
     })), patch("app.db.repository.find_taxonomy_usage_count", new=AsyncMock(return_value=3)), \
          patch("app.db.repository.upsert_course_taxonomy", new=AsyncMock(return_value={
              "course_code": "CS3010", "topics": {}, "version": 2, "updated_at": "2026-09-16T01:00:00+00:00"
-         })), patch("app.taxonomy.normalizer.invalidate_taxonomy_cache", new=AsyncMock()):
+         })), patch("app.api.taxonomy.invalidate_taxonomy_cache", new=AsyncMock()):
         app.dependency_overrides[deps.get_db] = lambda: mock_db
         try:
             transport = ASGITransport(app=app)
