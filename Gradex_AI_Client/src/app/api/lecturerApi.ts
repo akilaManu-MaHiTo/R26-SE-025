@@ -167,9 +167,11 @@ export interface ExamAnalytics {
   canonical_attention_areas: CanonicalAttentionArea[];
   canonical_insights: string[];
   unmapped_topics: string[];
+  unclassified_coverage?: { attempt_count: number; average_percentage: number; total_max: number } | null;
   diagram_analysis?: DiagramAnalysis | null;
   generated_at: string;
   analytics_version: string;
+  provenance?: string;
 }
 
 export interface StudentRow {
@@ -210,6 +212,7 @@ export interface TeachingAction {
   performance_percentage: number;
   actions: string[];
   generated_at: string;
+  provenance?: string;
 }
 
 export interface Recommendation {
@@ -618,5 +621,33 @@ export interface LlmHealth {
 export async function fetchLlmHealth(): Promise<LlmHealth> {
   const res = await fetch(`${API_BASE}/api/lecturers/llm-health`);
   if (!res.ok) throw new Error("Failed to fetch LLM health");
+  return res.json();
+}
+
+export interface BloomHealth {
+  enabled: boolean;
+  available: boolean;
+  model_dir: string;
+  threshold: number;
+  max_length: number;
+  device: string;
+  online: boolean;
+  detail: string;
+}
+
+export async function fetchBloomHealth(): Promise<BloomHealth> {
+  const res = await fetch(`${API_BASE}/api/lecturers/bloom-health`);
+  if (!res.ok) throw new Error("Failed to fetch Bloom health");
+  return res.json();
+}
+
+export async function reanalyseExam(courseCode: string, sessionName: string, year: number, month: number, semester: number): Promise<ExamAnalytics> {
+  const encoded = encodeURIComponent(sessionName);
+  const params = new URLSearchParams({ year: String(year), month: String(month), semester: String(semester) });
+  const res = await fetch(`${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/analytics/reanalyse?${params}`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Failed to reanalyse");
+  }
   return res.json();
 }

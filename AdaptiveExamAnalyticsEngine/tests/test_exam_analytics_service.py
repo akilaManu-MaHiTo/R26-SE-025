@@ -8,9 +8,21 @@ async def test_compute_exam_analytics_persists_and_returns_document(test_db, mon
     from run_sample import seed_raw_samples
     from tests.test_run_sample import _clean_sample_documents, fake_semantics
     from app.services import student_pipeline
+    import app.classifier.bloom_classifier as bc
 
-    monkeypatch.setattr(student_pipeline, "classify_question_semantics", fake_semantics)
+    async def _fake_classify(normalized, cache, progress=None, db=None):
+        # Return Unclassified vs SQL based on question text for sample data
+        from app.llm.roles.student_analysis import QuestionSemantics
+        result = {}
+        for q in normalized.questions:
+            if "SELECT" in q.question_text or "SQL" in q.question_text or "join" in q.question_text.lower():
+                result[q.question_no] = QuestionSemantics(level="Apply", topic="Structured Query Language (SQL)", subtopic="Structured Query Language (SQL)", confidence=0.9, reason="modernbert BT3 0.900 source=rule")
+            else:
+                result[q.question_no] = QuestionSemantics(level="Understand", topic="Unclassified", subtopic="Unclassified", confidence=0.85, reason="modernbert BT2 0.850 source=unclassified_no_match")
+        return result
+    monkeypatch.setattr(student_pipeline, "_classify_questions", _fake_classify)
     monkeypatch.setattr(student_pipeline, "generate_student_insights", lambda *a, **k: {"status": "degraded", "reason": "offline_test"})
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
 
     await _clean_sample_documents(test_db)
     await test_db["analytics_snapshots"].delete_many(

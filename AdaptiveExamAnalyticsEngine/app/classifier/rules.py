@@ -112,16 +112,23 @@ def classify_by_rules(question_text: str) -> RuleClassification:
     bloom = _bloom_level(question_text)
     confidence = "high"
     if not hits:
-        assignments = [TopicAssignment(topic=_TOPIC_ORDER[0], weight=1.0)]
+        # No keyword match -> unclassified, reviewable (never silently use TOPICS[0])
+        assignments = [TopicAssignment(topic="Unclassified", weight=1.0)]
         confidence = "low"
     else:
-        total = sum(hits.values())
-        assignments = [
-            TopicAssignment(topic=topic, weight=hits[topic] / total)
-            for topic in sorted(hits, key=lambda t: hits[t], reverse=True)
-        ]
-        if len(hits) > 1 or max(hits.values()) <= 1:
-            confidence = "medium"
+        # Check for ambiguous tie
+        sorted_hits = sorted(hits.items(), key=lambda kv: kv[1], reverse=True)
+        if len(sorted_hits) > 1 and sorted_hits[0][1] == sorted_hits[1][1]:
+            assignments = [TopicAssignment(topic="Unclassified", weight=1.0)]
+            confidence = "low"
+        else:
+            total = sum(hits.values())
+            assignments = [
+                TopicAssignment(topic=topic, weight=hits[topic] / total)
+                for topic in sorted(hits, key=lambda t: hits[t], reverse=True)
+            ]
+            if len(hits) > 1 or max(hits.values()) <= 1:
+                confidence = "medium"
     return RuleClassification(
         topic_assignments=assignments,
         bloom_level=bloom,
