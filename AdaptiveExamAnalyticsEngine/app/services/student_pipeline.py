@@ -135,6 +135,7 @@ async def _classify_questions(
     cache: dict[tuple[str, str], QuestionSemantics],
     progress: StepCallback | None = None,
     db=None,
+    force_reclassify: bool = False,
 ) -> dict[str, QuestionSemantics]:
     """Classify questions using ONLY bloom_modernbert for Bloom level (topic from approved metadata or rules).
     Bounded inference via semaphore and thread executor; persistent cache by question-text hash + model version."""
@@ -209,9 +210,9 @@ async def _classify_questions(
     if not uncached:
         return semantics_by_question
 
-    # Pre-check persistent DB cache if db provided
+    # Forced reanalysis bypasses saved classifications, but reuses each question within this job.
     persistent_hits: dict[str, QuestionSemantics] = {}
-    if db is not None:
+    if db is not None and not force_reclassify:
         try:
             model_version = "modernbert-bloom-v1"
             for q in list(uncached):

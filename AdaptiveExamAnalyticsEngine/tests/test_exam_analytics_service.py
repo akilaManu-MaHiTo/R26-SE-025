@@ -10,7 +10,7 @@ async def test_compute_exam_analytics_persists_and_returns_document(test_db, mon
     from app.services import student_pipeline
     import app.classifier.bloom_classifier as bc
 
-    async def _fake_classify(normalized, cache, progress=None, db=None):
+    async def _fake_classify(normalized, cache, progress=None, db=None, force_reclassify=False):
         # Return Unclassified vs SQL based on question text for sample data
         from app.llm.roles.student_analysis import QuestionSemantics
         result = {}

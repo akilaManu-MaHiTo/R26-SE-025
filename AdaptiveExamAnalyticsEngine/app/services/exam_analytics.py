@@ -29,6 +29,7 @@ async def compute_exam_analytics(
     db, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
     progress_callback: Callable[[str], None] | None = None,
+    force_reclassify: bool = False,
 ) -> dict:
     def _progress(msg: str):
         # Real-time server terminal log for exam analyze (Bloom)
@@ -61,7 +62,10 @@ async def compute_exam_analytics(
             # enrich to Bloom/topic after classification
             _progress(f"PULSE·AI — {msg} — checking Bloom level...")
 
-        semantics = await _student_pipeline._classify_questions(normalized, classification_cache, progress=_q_progress, db=db)
+        semantics = await _student_pipeline._classify_questions(
+            normalized, classification_cache, progress=_q_progress, db=db,
+            force_reclassify=force_reclassify,
+        )
         # After classify, emit per-question Bloom/topic details
         for q_no in sorted(semantics.keys()):
             sem = semantics[q_no]
