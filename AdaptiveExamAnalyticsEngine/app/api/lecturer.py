@@ -213,6 +213,8 @@ async def lecturer_exam_reanalyse(
 ):
     """Explicit recomputation — forces fresh analytics ignoring cache, for Reanalyse button."""
     try:
+        from app.taxonomy.normalizer import invalidate_taxonomy_cache
+        await invalidate_taxonomy_cache(course_code)
         document = await compute_exam_analytics(
             db, course_code, session_name, year, month, semester, force_reclassify=True,
         )

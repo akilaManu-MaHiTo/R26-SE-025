@@ -32,9 +32,9 @@ async def test_upsert_inc_version_creates_v1():
     assert doc["version"] == 1
     assert doc["course_code"] == "CS3010"
     mock_tax.find_one.assert_called_once_with({"course_code": "CS3010"})
-    mock_tax.replace_one.assert_called_once()
+    mock_tax.insert_one.assert_called_once()
     # ensure replace_one called with normalized code
-    assert mock_tax.replace_one.call_args[0][0] == {"course_code": "CS3010"}
+    assert mock_tax.insert_one.call_args[0][0]["course_code"] == "CS3010"
 
 
 @pytest.mark.asyncio
@@ -87,7 +87,7 @@ async def test_upsert_normalizes_course_code():
     doc = await repository.upsert_course_taxonomy(mock_db, " cs3010 ", {"a": {}}, updated_by="u")
     assert doc["course_code"] == "CS3010"
     mock_tax.find_one.assert_called_with({"course_code": "CS3010"})
-    mock_tax.replace_one.assert_called_with({"course_code": "CS3010"}, doc, upsert=True)
+    mock_tax.insert_one.assert_called_with({"_id": "CS3010", **doc})
     mock_courses.update_one.assert_called_with({"code": "CS3010"}, {"$set": {"taxonomy_version": 1, "taxonomy_updated_at": doc["updated_at"]}})
 
 
