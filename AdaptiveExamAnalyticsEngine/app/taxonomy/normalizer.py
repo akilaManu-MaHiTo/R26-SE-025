@@ -80,7 +80,7 @@ async def load_taxonomy(db=None, course_code: str | None = None) -> dict[str, di
             from app.db import repository
 
             doc = await repository.get_course_taxonomy(db, code)
-            if doc and isinstance(doc.get("topics"), dict) and doc["topics"]:
+            if doc and isinstance(doc.get("topics"), dict):
                 topics = doc["topics"]
                 _cache[code] = topics
                 return topics

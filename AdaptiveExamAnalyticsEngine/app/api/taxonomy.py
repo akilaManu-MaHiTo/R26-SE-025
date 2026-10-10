@@ -15,6 +15,23 @@ class TopicPayload(BaseModel):
     subtopics: list[str] = Field(default_factory=list)
 
 
+class TaxonomyPayload(BaseModel):
+    version: int = Field(ge=0)
+    topics: dict[str, TopicPayload] = Field(max_length=200)
+
+
+async def _save_taxonomy(db, course_code, topics, version):
+    from app.db.repository import TaxonomyVersionConflict, upsert_course_taxonomy
+    try:
+        return await upsert_course_taxonomy(db, course_code, topics, updated_by="lecturer", expected_version=version)
+    except TaxonomyVersionConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+def _public_document(doc):
+    return {key: value for key, value in doc.items() if key not in ("_id", "history")}
+
+
 def _validate_payload(payload: TopicPayload, existing_topics: dict, current_id: str | None):
     ct = payload.canonical_topic.strip()
     if not ct:
@@ -98,7 +115,7 @@ async def get_taxonomy(course_code: str, db=Depends(get_db)):
         try:
             await seed_it2040_if_empty(db)
         except Exception:
-            pass
+            raise HTTPException(status_code=503, detail="Could not import the initial taxonomy")
     doc = await get_course_taxonomy(db, course_code)
     if not doc:
         return {"course_code": course_code, "version": 0, "topics": {}, "updated_at": None}
@@ -108,6 +125,45 @@ async def get_taxonomy(course_code: str, db=Depends(get_db)):
         "topics": doc.get("topics", {}),
         "updated_at": doc.get("updated_at"),
     }
+
+
+@router.put("/{course_code}/taxonomy")
+async def save_taxonomy(course_code: str, payload: TaxonomyPayload, db=Depends(get_db)):
+    course_code = course_code.strip().upper()
+    if not await db["courses"].find_one({"code": course_code}):
+        raise HTTPException(status_code=404, detail=f"Course '{course_code}' not found.")
+    raw_topics = {cid: topic.model_dump() for cid, topic in payload.topics.items()}
+    topics = {}
+    for cid, topic in payload.topics.items():
+        if not 2 <= len(cid) <= 64 or cid != slugify_topic(cid):
+            raise HTTPException(status_code=400, detail="Topic IDs must be 2-64 lowercase letters, numbers or underscores")
+        name, aliases, subtopics = _validate_payload(topic, raw_topics, cid)
+        topics[cid] = {"canonical_topic": name, "aliases": aliases, "subtopics": subtopics}
+    doc = await _save_taxonomy(db, course_code, topics, payload.version)
+    await invalidate_taxonomy_cache(course_code)
+    return _public_document(doc)
+
+
+@router.get("/{course_code}/taxonomy/history")
+async def taxonomy_history(course_code: str, db=Depends(get_db)):
+    from app.db.repository import get_course_taxonomy
+    await get_taxonomy(course_code, db=db)
+    doc = await get_course_taxonomy(db, course_code)
+    if not doc:
+        return []
+    versions = [*doc.get("history", []), doc]
+    return [{"version": item["version"], "updated_at": item.get("updated_at"), "updated_by": item.get("updated_by")} for item in reversed(versions)]
+
+
+@router.get("/{course_code}/taxonomy/history/{version}")
+async def taxonomy_version(course_code: str, version: int, db=Depends(get_db)):
+    from app.db.repository import get_course_taxonomy
+    doc = await get_course_taxonomy(db, course_code)
+    if doc:
+        for item in [doc, *doc.get("history", [])]:
+            if item.get("version") == version:
+                return _public_document(item)
+    raise HTTPException(status_code=404, detail="Taxonomy version not found")
 
 
 @router.put("/{course_code}/taxonomy/{canonical_id}")
@@ -122,7 +178,7 @@ async def upsert_topic(
     course = await db["courses"].find_one({"code": course_code})
     if not course:
         raise HTTPException(status_code=404, detail=f"Course '{course_code}' not found.")
-    from app.db.repository import get_course_taxonomy, upsert_course_taxonomy
+    from app.db.repository import get_course_taxonomy
 
     doc = await get_course_taxonomy(db, course_code)
     topics = dict(doc["topics"]) if doc and isinstance(doc.get("topics"), dict) else {}
@@ -149,7 +205,7 @@ async def upsert_topic(
 
     ct, cleaned_aliases, cleaned_sub = _validate_payload(payload, topics, target_id)
     topics[target_id] = {"canonical_topic": ct, "aliases": cleaned_aliases, "subtopics": cleaned_sub}
-    new_doc = await upsert_course_taxonomy(db, course_code, topics, updated_by="lecturer")
+    new_doc = await _save_taxonomy(db, course_code, topics, version)
     await invalidate_taxonomy_cache(course_code)
     return {"canonical_id": target_id, "version": new_doc["version"], "topic": topics[target_id]}
 
@@ -163,7 +219,7 @@ async def delete_topic(course_code: str, canonical_id: str, db=Depends(get_db)):
     course = await db["courses"].find_one({"code": course_code})
     if not course:
         raise HTTPException(status_code=404, detail=f"Course '{course_code}' not found.")
-    from app.db.repository import find_taxonomy_usage_count, get_course_taxonomy, upsert_course_taxonomy
+    from app.db.repository import find_taxonomy_usage_count, get_course_taxonomy
 
     doc = await get_course_taxonomy(db, course_code)
     topics_map = doc.get("topics") if doc and isinstance(doc.get("topics"), dict) else {}
@@ -181,7 +237,7 @@ async def delete_topic(course_code: str, canonical_id: str, db=Depends(get_db)):
     cnt = await find_taxonomy_usage_count(db, course_code, actual_key)
     if cnt and cnt > 0:
         warning = f"Used in {cnt} exam snapshots — will be Stale until Reanalyse"
-    new_doc = await upsert_course_taxonomy(db, course_code, topics, updated_by="lecturer")
+    new_doc = await _save_taxonomy(db, course_code, topics, int(doc.get("version", 0)))
     await invalidate_taxonomy_cache(course_code)
     return {"deleted": True, "canonical_id": actual_key, "version": new_doc["version"], "warning": warning}
 

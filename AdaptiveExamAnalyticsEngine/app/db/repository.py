@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path as _Path
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import DuplicateKeyError
 
 COLLECTIONS = (
     "courses",
@@ -812,14 +813,33 @@ async def get_course_taxonomy(db, course_code: str) -> dict | None:
     return doc
 
 
-async def upsert_course_taxonomy(db, course_code: str, topics: dict, updated_by: str = "system") -> dict:
+class TaxonomyVersionConflict(Exception):
+    pass
+
+
+async def upsert_course_taxonomy(db, course_code: str, topics: dict, updated_by: str = "system", expected_version: int | None = None) -> dict:
     course_code = course_code.strip().upper()
     now = datetime.now(timezone.utc).isoformat()
     existing = await db["course_taxonomies"].find_one({"course_code": course_code})
-    version = int(existing["version"]) + 1 if existing and "version" in existing else 1
+    current_version = int(existing.get("version", 0)) if existing else 0
+    if expected_version is not None and current_version != expected_version:
+        raise TaxonomyVersionConflict("Version conflict, refresh and retry")
+    version = current_version + 1
     created_at = existing.get("created_at") if existing else now
     doc = {"course_code": course_code, "topics": topics, "version": version, "created_at": created_at, "updated_at": now, "updated_by": updated_by}
-    await db["course_taxonomies"].replace_one({"course_code": course_code}, doc, upsert=True)
+    # shortcut: embedded history shares MongoDB's 16 MB limit; split history out if it approaches that size.
+    doc["history"] = list(existing.get("history", [])) if existing else []
+    if existing:
+        doc["history"].append({k: deepcopy(v) for k, v in existing.items() if k not in ("_id", "history")})
+        query = {"course_code": course_code, "version": existing.get("version", {"$exists": False})}
+        result = await db["course_taxonomies"].replace_one(query, doc)
+        if not result.matched_count:
+            raise TaxonomyVersionConflict("Version conflict, refresh and retry")
+    else:
+        try:
+            await db["course_taxonomies"].insert_one({"_id": course_code, **doc})
+        except DuplicateKeyError as exc:
+            raise TaxonomyVersionConflict("Version conflict, refresh and retry") from exc
     await db["courses"].update_one({"code": course_code}, {"$set": {"taxonomy_version": version, "taxonomy_updated_at": now}})
     return doc
 
@@ -832,7 +852,10 @@ async def seed_it2040_if_empty(db) -> dict | None:
     if not path.exists():
         path = _Path(__file__).resolve().parents[2] / "datasets" / "bloom_dataset" / "taxonomy_v2.json"
     data = _json.loads(path.read_text(encoding="utf-8"))
-    return await upsert_course_taxonomy(db, "IT2040", data, updated_by="system:seed")
+    try:
+        return await upsert_course_taxonomy(db, "IT2040", data, updated_by="system:seed", expected_version=0)
+    except TaxonomyVersionConflict:
+        return await get_course_taxonomy(db, "IT2040")
 
 
 async def find_taxonomy_usage_count(db, course_code: str, canonical_id: str) -> int:
