@@ -158,24 +158,10 @@ export default function AnalyticsPage() {
       } else {
         setLiveModelMessage("PULSE·AI — Connecting to analytics...");
       }
-      // Try streaming for real-time Bloom/topic messages, fallback to plain fetch
-      // If forceReanalyse, use POST reanalyse then fallback to stream
+      // Reanalysis failures must surface; a cached read would conceal the failure.
       let data: ExamAnalytics;
       if (opts?.forceReanalyse) {
-        try {
-          data = await reanalyseExam(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
-        } catch {
-          setLiveModelMessage("PULSE·AI — Reanalyse stream fallback...");
-          data = await fetchExamAnalyticsStream(
-            exam.course_code, exam.session_name, exam.year, exam.month, exam.semester,
-            (msg) => {
-              setLiveModelMessage(msg);
-              if (msg.includes("Ingesting") || msg.includes("Analyzing student")) setCurrentLoadStep(0);
-              else if (msg.includes("Bloom") || msg.includes("Topic") || msg.includes("Q")) setCurrentLoadStep(1);
-              else if (msg.includes("Computing") || msg.includes("weak") || msg.includes("Finalizing") || msg.includes("Saving")) setCurrentLoadStep(2);
-            },
-          );
-        }
+        data = await reanalyseExam(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
       } else {
         try {
           data = await fetchExamAnalyticsStream(
