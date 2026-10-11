@@ -108,7 +108,27 @@ KEYWORD_TO_CANONICAL = {
 }
 
 
-def load_taxonomy() -> dict[str, Any]:
+def load_taxonomy(db=None, course_code: str | None = None) -> dict[str, Any]:
+    """DB-first per course with file fallback for IT2040 (sync wrapper).
+
+    - When db is provided and course_code given, tries sync cache via load_taxonomy_sync.
+    - Falls back to file taxonomy_v2.json for IT2040; empty for new courses.
+    - Backward compat: load_taxonomy() still returns IT2040 file.
+    """
+    if course_code is None:
+        course_code = "IT2040"
+    if db is not None:
+        try:
+            from app.taxonomy.normalizer import load_taxonomy_sync
+
+            cached = load_taxonomy_sync(course_code)
+            if isinstance(cached, dict) and cached:
+                return cached
+            # if IT2040 still empty, fall through to file
+            if course_code.strip().upper() != "IT2040":
+                return {}
+        except Exception:
+            pass
     with open(TAXONOMY_PATH, encoding="utf-8") as f:
         return json.load(f)
 
@@ -124,18 +144,46 @@ def normalize_ws(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
-def guess_canonical(text: str) -> str | None:
+def guess_canonical(text: str, db=None, course_code: str | None = None) -> str | None:
     # Prefer taxonomy alias match first, fallback to keyword heuristics
+    # Per-course: when db+course_code provided, uses DB-first taxonomy
     try:
         from app.taxonomy.normalizer import normalize_topic
 
         # Try to map raw heading/keyword phrase directly
         # e.g., "SQL Queries and Triggers in Database Management Systems"
-        cid = normalize_topic(text)
+        cid = normalize_topic(text, db, course_code)  # type: ignore[call-arg]
+        # normalize_topic is hybrid: sync when db None, async coroutine when db provided
+        # handle coroutine case by checking if result is awaitable -> fallback sync for now
+        import inspect as _inspect
+
+        if _inspect.isawaitable(cid):  # type: ignore[arg-type]
+            # In sync context we cannot await; fallback to sync version without db
+            try:
+                cid.close()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+            from app.taxonomy.normalizer import _normalize_topic_sync
+
+            cid = _normalize_topic_sync(text, course_code)
+            if cid:
+                return cid
+            cid = _normalize_topic_sync(text[:120], course_code)
+            if cid:
+                return cid
+            return None
         if cid:
             return cid
         # also try slicing first 120 chars as likely topic label
-        cid = normalize_topic(text[:120])
+        cid = normalize_topic(text[:120], db, course_code)  # type: ignore[call-arg]
+        if _inspect.isawaitable(cid):  # type: ignore[arg-type]
+            try:
+                cid.close()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+            from app.taxonomy.normalizer import _normalize_topic_sync
+
+            cid = _normalize_topic_sync(text[:120], course_code)
         if cid:
             return cid
     except Exception:
@@ -251,8 +299,9 @@ def question_type_from_text(text: str) -> str:
     return "short_answer"
 
 
-def build_question_bank() -> list[dict[str, Any]]:
-    taxonomy = load_taxonomy()
+def build_question_bank(db=None, course_code: str | None = None) -> list[dict[str, Any]]:
+    # Per-course: default IT2040 for backward compat; file seeds IT2040, DB-first if db provided
+    taxonomy = load_taxonomy(db, course_code or "IT2040")
     # id -> canonical
     canon_names = {k: v["canonical_topic"] for k, v in taxonomy.items()}
     records: list[dict[str, Any]] = []

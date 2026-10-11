@@ -1,3 +1,8 @@
+"""Deprecated: ClassificationResponse is superseded by student_analysis.QuestionSemantics + ModernBERT.
+
+Retained for import compatibility only; no runtime code should import this.
+"""
+
 from pydantic import BaseModel, Field, model_validator
 
 from app.analytics.taxonomy import BLOOM_LEVELS, QUESTION_TYPES, TOPICS

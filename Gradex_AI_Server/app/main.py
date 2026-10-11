@@ -52,6 +52,7 @@ from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_con
 from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
 from AdaptiveExamAnalyticsEngine.app.api.dashboard import router as v2_student_router
 from AdaptiveExamAnalyticsEngine.app.api.lecturer import router as v2_lecturer_router
+from AdaptiveExamAnalyticsEngine.app.api.taxonomy import router as taxonomy_router
 
 
 MAX_VIVA_UPLOAD_BYTES = 1024 * 1024 * 1024
@@ -93,6 +94,7 @@ app.include_router(analytics_router)
 app.include_router(viva_copilot_router)
 app.include_router(v2_lecturer_router, prefix="/api")
 app.include_router(v2_student_router, prefix="/api")
+app.include_router(taxonomy_router, dependencies=[Depends(require_api_key)])
 
 setup_grading_api(app)
 

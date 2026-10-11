@@ -1,3 +1,5 @@
+"""Research-only clustering — not used by runtime (see tests/test_embeddings_cluster.py)."""
+
 import numpy as np
 
 

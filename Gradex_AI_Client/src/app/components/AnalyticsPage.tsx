@@ -20,6 +20,8 @@ import {
   fetchLecturerStudentDetail,
   fetchLecturerStudentDetailStream,
   fetchLlmHealth,
+  fetchBloomHealth,
+  reanalyseExam,
   type ExamListItem,
   type ExamAnalytics,
   type CanonicalTopic,
@@ -123,20 +125,12 @@ export default function AnalyticsPage() {
     fetchExams().then((data) => { setExams(data); setLoadingExams(false); }).catch(console.error);
   }, []);
 
-  const handleSelectExam = useCallback(async (exam: ExamListItem) => {
-    // If exam not yet analyzed, require model to be online — else toast and abort
-    if (!exam.analyzed) {
-      try {
-        const health = await fetchLlmHealth();
-        if (!health.online || !health.model_available) {
-          toast.error("Model unavailable, please retry when model comes online.");
-          return;
-        }
-      } catch {
-        toast.error("Model unavailable, please retry when model comes online.");
-        return;
-      }
-    }
+  const handleSelectExam = useCallback(async (exam: ExamListItem, opts?: { forceReanalyse?: boolean }) => {
+    // Core analytics does NOT require Ollama — only ModernBERT for new classification.
+    // Cached snapshot loads even if both models offline. We let backend decide freshness.
+    const requestId = `${exam.course_code}-${exam.session_name}-${exam.year}-${exam.month}-${exam.semester}-${Date.now()}`;
+    // store current request id for stale-response guard
+    (handleSelectExam as any)._lastRequestId = requestId;
 
     setSelectedExam(exam);
     setLoadingAnalytics(true);
@@ -159,61 +153,93 @@ export default function AnalyticsPage() {
 
     try {
       setCurrentLoadStep(0);
-      setLiveModelMessage("PULSE·AI — Connecting to model...");
-      // Try streaming for real-time Bloom/topic messages, fallback to plain fetch
-      let data: ExamAnalytics;
-      try {
-        data = await fetchExamAnalyticsStream(
-          exam.course_code,
-          exam.session_name,
-          exam.year,
-          exam.month,
-          exam.semester,
-          (msg) => {
-            setLiveModelMessage(msg);
-            // Advance loader step based on message content
-            if (msg.includes("Ingesting") || msg.includes("Analyzing student")) setCurrentLoadStep(0);
-            else if (msg.includes("Bloom") || msg.includes("Topic") || msg.includes("Q")) setCurrentLoadStep(1);
-            else if (msg.includes("Computing") || msg.includes("weak") || msg.includes("Finalizing") || msg.includes("Saving")) setCurrentLoadStep(2);
-          },
-        );
-      } catch {
-        setLiveModelMessage("PULSE·AI — Streaming unavailable, loading...");
-        data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
+      if (opts?.forceReanalyse) {
+        setLiveModelMessage("PULSE·AI — Re-analysing (forced)...");
+      } else {
+        setLiveModelMessage("PULSE·AI — Connecting to analytics...");
       }
+      // Reanalysis failures must surface; a cached read would conceal the failure.
+      let data: ExamAnalytics;
+      if (opts?.forceReanalyse) {
+        data = await reanalyseExam(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
+      } else {
+        try {
+          data = await fetchExamAnalyticsStream(
+            exam.course_code,
+            exam.session_name,
+            exam.year,
+            exam.month,
+            exam.semester,
+            (msg) => {
+              setLiveModelMessage(msg);
+              // Advance loader step based on message content
+              if (msg.includes("Ingesting") || msg.includes("Analyzing student")) setCurrentLoadStep(0);
+              else if (msg.includes("Bloom") || msg.includes("Topic") || msg.includes("Q")) setCurrentLoadStep(1);
+              else if (msg.includes("Computing") || msg.includes("weak") || msg.includes("Finalizing") || msg.includes("Saving")) setCurrentLoadStep(2);
+            },
+          );
+        } catch {
+          setLiveModelMessage("PULSE·AI — Streaming unavailable, loading...");
+          data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
+        }
+      }
+      // Stale-response guard: only apply if still the latest requested exam
+      if ((handleSelectExam as any)._lastRequestId !== requestId) return;
       setAnalytics(data);
       setLiveModelMessage("PULSE·AI — Analysis complete");
       setCurrentLoadStep(2);
 
+      // C: parallelize optional fetches (students + teaching) — not waterfall
       setLoadingActions(true);
-      fetchTeachingActions(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
-        .then(setTeachingActions)
-        .catch(() => setTeachingActions([]))
-        .finally(() => setLoadingActions(false));
-
-      // Also fetch students for this exam (for lecturer student finder)
       setLoadingStudents(true);
-      fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
-        .then(setStudents)
-        .catch(() => setStudents([]))
-        .finally(() => setLoadingStudents(false));
+      const teachingPromise = fetchTeachingActions(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
+        .then((actions) => {
+          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
+          setTeachingActions(actions);
+        })
+        .catch(() => {
+          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
+          setTeachingActions([]);
+        })
+        .finally(() => {
+          if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingActions(false);
+        });
+
+      const studentsPromise = fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
+        .then((rows) => {
+          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
+          setStudents(rows);
+        })
+        .catch(() => {
+          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
+          setStudents([]);
+        })
+        .finally(() => {
+          if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingStudents(false);
+        });
+
+      // Fire both in parallel, optional — never block KPI render
+      void Promise.allSettled([teachingPromise, studentsPromise]);
     } catch (err) {
+      if ((handleSelectExam as any)._lastRequestId !== requestId) return;
       console.error(err);
+      const msg = err instanceof Error ? err.message : String(err);
       setLiveModelMessage("PULSE·AI — Analysis failed");
-      // Fallback: if pending exam failed and model is actually down, surface toast
-      if (!exam.analyzed) {
+      // Separate ModernBERT (core) vs Ollama (optional) health
+      if (msg.toLowerCase().includes("bloom") || msg.toLowerCase().includes("modernbert")) {
         try {
-          const h = await fetchLlmHealth();
-          if (!h.online || !h.model_available) {
-            toast.error("Model unavailable, please retry when model comes online.");
-          }
-        } catch {
-          // health itself failed — treat as model unavailable
-          toast.error("Model unavailable, please retry when model comes online.");
-        }
+          const bh = await fetchBloomHealth();
+          if (!bh.available) toast.error(`Bloom model unavailable: ${bh.detail} — core analytics cannot be computed.`);
+          else toast.error(msg);
+        } catch { toast.error(msg); }
+      } else if (msg.toLowerCase().includes("ollama") || msg.toLowerCase().includes("model unavailable")) {
+        // Teaching actions are optional; core analytics may still have succeeded but actions failed — show core error only
+        toast.error("Model unavailable, please retry when model comes online.");
+      } else {
+        toast.error(msg);
       }
     } finally {
-      setLoadingAnalytics(false);
+      if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingAnalytics(false);
     }
   }, []);
 
@@ -221,7 +247,7 @@ export default function AnalyticsPage() {
     if (!selectedExam) return;
     // If student not yet analyzed, require model — else toast and abort
     const targetRow = students.find((r) => r.student_id === studentId);
-    const needsAnalysis = !targetRow || targetRow.analysis_status !== "generated";
+    const needsAnalysis = !targetRow || !["generated", "diagram_only"].includes(targetRow.analysis_status);
     if (needsAnalysis) {
       try {
         const health = await fetchLlmHealth();
@@ -240,10 +266,26 @@ export default function AnalyticsPage() {
     setStudentDetail(null);
     setStudentDetailError(null);
     const dispatchTopbar = (active: boolean, message?: string, progress?: number) => {
+      if (!needsAnalysis) return;
       window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active, studentId, message: message || "", progress } }));
     };
     dispatchTopbar(true, `PULSE·AI — Starting analysis for ${studentId}…`, 0);
     try {
+      if (!needsAnalysis) {
+        const detail = await fetchLecturerStudentDetail(
+          selectedExam.course_code,
+          selectedExam.session_name,
+          studentId,
+          selectedExam.year,
+          selectedExam.month,
+          selectedExam.semester,
+          false,
+          false,
+        );
+        setStudentDetail(detail);
+        setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: detail.analysis_status ?? "generated" } : r));
+        return;
+      }
       // Try streaming for live progress (topbar + row spinner), fallback to plain fetch
       let detail: LecturerStudentDetail;
       try {
@@ -274,7 +316,7 @@ export default function AnalyticsPage() {
       setStudentDetail(detail);
       dispatchTopbar(true, `PULSE·AI — ${studentId} analysis complete`, 100);
       // Update row status optimistically
-      setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: "generated" } : r));
+      setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: detail.analysis_status ?? "generated" } : r));
       setTimeout(() => dispatchTopbar(false), 2500);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load student detail";
@@ -560,9 +602,15 @@ export default function AnalyticsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="tracking-tight text-foreground bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text">{selectedExam.subject_name}</h2>
-            <p className="text-sm text-muted-foreground mt-1">{selectedExam.session_name} · {selectedExam.year}</p>
+            <p className="text-sm text-muted-foreground mt-1">{selectedExam.session_name} · {selectedExam.year} {analytics ? `· Generated ${new Date(analytics.generated_at).toLocaleString()}` : ""}</p>
+            {analytics && (analytics as any).unclassified_coverage && (
+              <p className="text-xs text-amber-700 mt-1">Unclassified: {(analytics as any).unclassified_coverage.attempt_count} attempts at {(analytics as any).unclassified_coverage.average_percentage}% — review topic assignment</p>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => selectedExam && handleSelectExam(selectedExam, { forceReanalyse: true })} disabled={loadingAnalytics} title="Recompute analytics for this exam (ignores cache)">
+              <Loader2 className={`h-4 w-4 mr-1 ${loadingAnalytics ? "animate-spin" : ""}`} /> Reanalyse
+            </Button>
             <Button variant="outline" size="sm" disabled title="Coming soon" className="backdrop-blur">
               <Download className="h-4 w-4 mr-1" /> Export
             </Button>
@@ -708,6 +756,8 @@ export default function AnalyticsPage() {
                         <TableCell className="py-2">
                           {s.analysis_status === "generated" ? (
                             <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><CheckCircle2 className="size-3" /> Ready</span>
+                          ) : s.analysis_status === "diagram_only" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-700"><Eye className="size-3" /> Diagram only</span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs text-amber-700"><Clock className="size-3" /> Pending</span>
                           )}
@@ -716,7 +766,7 @@ export default function AnalyticsPage() {
                           {loadingStudentDetail && selectedStudentId === s.student_id ? (
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
                               <Loader2 className="size-3 animate-spin" />
-                              <span className="animate-pulse">Analyzing…</span>
+                              <span className="animate-pulse">{["generated", "diagram_only"].includes(s.analysis_status) ? "Loading…" : "Analyzing…"}</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">
