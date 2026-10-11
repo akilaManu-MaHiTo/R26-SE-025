@@ -1103,6 +1103,8 @@ def build() -> None:
             "max_marks_per_question": max_per_q,
             "raw_ocr_transcript": transcript,
             "evaluation": {
+                "grading_source": "sample-v4-evaluator",
+                "rag_context_used": False,
                 "total_score": total,
                 "max_score": 100,
                 "results": results,
