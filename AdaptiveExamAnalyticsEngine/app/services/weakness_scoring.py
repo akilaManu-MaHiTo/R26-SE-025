@@ -1,9 +1,7 @@
-"""Service layer for student weakness - Phase 3.
-
-Provides async helpers to fetch exam analytics and compute weakness
-scores for the recommendation engine (Phase 4).
+"""Service layer for student weakness - Phase 3 (thin DB wrapper).
 
 Wraps app.analytics.weakness pure functions with DB access.
+Consider inlining get_weakness_for_exam at call sites — it is pure delegation.
 """
 from __future__ import annotations
 

@@ -21,12 +21,82 @@ from app.schemas.exam_analytics import ExamAnalyticsDocument
 from app.llm.ollama import check_llm_detailed_health
 from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
 from app.services.recommendation import recommend_for_weak_areas
-from app.services.student_accounts import provision_student_accounts
 from app.services.student_dashboard import StudentNotFound, ensure_student_analytics
 from app.services.teaching_actions import get_teaching_actions
-from app.services.topic_canonicalization import canonicalize_topics
 
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
+
+_analytics_inflight: dict[str, asyncio.Task] = {}
+
+
+# ── helpers (deduplicated from triple copy-paste) ──────────────────────
+def _synthesize_diagram_doc(student_id: str, course_code: str, session_name: str, year, month, semester, evaluation_result: dict) -> dict:
+    ev = evaluation_result or {}
+    total = float(ev.get("total_score", 0) if ev else 0)
+    max_sc = float(ev.get("max_score", 20) if ev else 20)
+    pct = (total / max_sc * 100) if max_sc else 0
+    return {
+        "student_id": student_id,
+        "subject_code": course_code,
+        "subject_name": course_code,
+        "year": year or 0,
+        "month": month or 0,
+        "semester": semester or 0,
+        "session_name": session_name,
+        "overall_performance": {"score": total, "maximum": max_sc, "percentage": round(pct, 2), "status": performance_status(pct)},
+        "question_performance": [],
+        "topic_performance": [],
+        "bloom_performance": [],
+        "learning_analysis": {"overall_performance": performance_status(pct), "strong_topics": [], "developing_topics": [], "weak_topics": [], "critical_topics": [], "learning_gaps": []},
+        "model_metadata": {"bloom_model": "diagram", "bloom_model_type": "diagram", "grading_source": "diagram", "rag_context_used": False},
+        "generated_at": ev.get("created_at") or "",
+        "analysis_version": "1.0",
+        "analysis_status": "diagram_only",
+    }
+
+
+def _strip_ai_tips(doc: dict) -> dict:
+    filtered = dict(doc)
+    filtered.pop("recommendations", None)
+    filtered.pop("next_question_strategy", None)
+    la = filtered.get("learning_analysis")
+    if isinstance(la, dict):
+        la_copy = dict(la)
+        la_copy.pop("learning_gaps", None)
+        la_copy["learning_gaps"] = []
+        filtered["learning_analysis"] = la_copy
+    return filtered
+
+
+def _attach_diagram(target: dict, diagram, diagram_marking) -> dict:
+    if diagram is not None or diagram_marking is not None:
+        payload = {}
+        if diagram is not None:
+            payload["evaluation"] = diagram
+        if diagram_marking is not None:
+            payload["marking"] = diagram_marking
+        target["diagram"] = payload
+        if diagram is not None:
+            target["diagram_evaluation"] = diagram
+        if diagram_marking is not None:
+            target["diagram_marking"] = diagram_marking
+    return target
+
+
+def _is_complete_snapshot(doc: dict | None) -> bool:
+    if not doc:
+        return False
+    # Legacy snapshots lack canonical fields or have wrong version
+    if doc.get("analytics_version") != "1.0":
+        return False
+    if not isinstance(doc.get("canonical_topic_performance"), list):
+        return False
+    if not isinstance(doc.get("canonical_insights"), list):
+        return False
+    # Must have statistics
+    if not isinstance(doc.get("statistics"), dict):
+        return False
+    return True
 
 
 @router.get("/llm-health")
@@ -104,7 +174,19 @@ async def lecturer_exam_analytics(
 ):
     try:
         document = await find_exam_analytics(db, course_code, session_name, year, month, semester)
-        if document is None:
+        # Treat legacy/incomplete snapshots as stale and rebuild lazily (no DB deletion)
+        # If rebuild fails, retain last good result (clearly stale) rather than 500
+        if document is not None and not _is_complete_snapshot(document):
+            try:
+                fresh = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
+                document = fresh
+            except ExamNotFound:
+                # No evidence to rebuild; keep cached stale snapshot
+                pass
+            except Exception:
+                # Rebuild failed; keep cached
+                pass
+        elif document is None:
             try:
                 document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
             except ExamNotFound as exc:
@@ -113,17 +195,34 @@ async def lecturer_exam_analytics(
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to compute analytics: {exc}") from exc
-    # Provision student accounts for all graded submissions of this exam (best-effort)
+    # Analytics reads have no account-creation side effect — provisioning moved to dedicated endpoint
+    # (student access no longer depends on opening lecturer dashboard)
     try:
-        await provision_student_accounts(db, course_code, session_name, year, month, semester)
-    except Exception:
-        pass
+        return ExamAnalyticsDocument.model_validate(document)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Analytics document validation failed: {exc}") from exc
+
+
+@router.post("/exams/{course_code}/{session_name}/analytics/reanalyse")
+async def lecturer_exam_reanalyse(
+    course_code: str,
+    session_name: str,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    semester: int | None = Query(None),
+    db=Depends(get_db),
+):
+    """Explicit recomputation — forces fresh analytics ignoring cache, for Reanalyse button."""
     try:
-        canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
-        document.update(canonical)
-    except Exception:
-        # canonicalization is best-effort; return base document if it fails
-        pass
+        from app.taxonomy.normalizer import invalidate_taxonomy_cache
+        await invalidate_taxonomy_cache(course_code)
+        document = await compute_exam_analytics(
+            db, course_code, session_name, year, month, semester, force_reclassify=True,
+        )
+    except ExamNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to reanalyse: {exc}") from exc
     try:
         return ExamAnalyticsDocument.model_validate(document)
     except Exception as exc:
@@ -144,34 +243,43 @@ async def lecturer_exam_analytics_stream(
         def sse(event: str, data: dict) -> str:
             return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
-        # Fast path: cached
+        # Fast path: cached (only if complete snapshot)
         cached = await find_exam_analytics(db, course_code, session_name, year, month, semester)
-        if cached is not None:
+        if cached is not None and _is_complete_snapshot(cached):
             yield sse("progress", {"phase": "cached", "message": "PULSE·AI — Using cached analytics"})
-            try:
-                await provision_student_accounts(db, course_code, session_name, year, month, semester)
-            except Exception:
-                pass
-            try:
-                canonical = await canonicalize_topics(db, cached, course_code, session_name, year, month, semester)
-                cached.update(canonical)
-            except Exception:
-                pass
             yield sse("result", cached)
             return
+        # Stale/incomplete snapshot: fall through to recompute (do not return mixed revision)
+        if cached is not None and not _is_complete_snapshot(cached):
+            yield sse("progress", {"phase": "analyzing", "message": "PULSE·AI — Cached snapshot incomplete, recomputing..."})
 
         queue: asyncio.Queue[str] = asyncio.Queue()
 
         def progress_cb(msg: str):
+            # Thread-safe bridge: schedule put on event loop if called from worker thread
             try:
-                queue.put_nowait(msg)
+                loop = asyncio.get_running_loop()
+                loop.call_soon_threadsafe(queue.put_nowait, msg)
             except Exception:
-                pass
+                try:
+                    queue.put_nowait(msg)
+                except Exception:
+                    pass
 
-        # Run compute in background task
-        compute_task = asyncio.create_task(
-            compute_exam_analytics(db, course_code, session_name, year, month, semester, progress_callback=progress_cb)
-        )
+        # Deduplicate in-flight jobs by full exam identity
+        job_key = f"{course_code}:{session_name}:{year}:{month}:{semester}"
+        existing = _analytics_inflight.get(job_key)
+        if existing and not existing.done():
+            compute_task = existing
+            yield sse("progress", {"phase": "analyzing", "message": "PULSE·AI — Joining existing analysis job..."})
+        else:
+            compute_task = asyncio.create_task(
+                compute_exam_analytics(db, course_code, session_name, year, month, semester, progress_callback=progress_cb)
+            )
+            _analytics_inflight[job_key] = compute_task
+            def _cleanup(fut):
+                _analytics_inflight.pop(job_key, None)
+            compute_task.add_done_callback(_cleanup)
 
         # Stream progress while compute runs
         while not compute_task.done():
@@ -201,21 +309,29 @@ async def lecturer_exam_analytics_stream(
             yield sse("error", {"detail": f"Failed to compute analytics: {exc}"})
             return
 
-        # Post-processing
-        yield sse("progress", {"phase": "finalizing", "message": "PULSE·AI — Provisioning student accounts & canonicalizing topics..."})
-        try:
-            await provision_student_accounts(db, course_code, session_name, year, month, semester)
-        except Exception:
-            pass
-        try:
-            canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
-            document.update(canonical)
-        except Exception:
-            pass
-
+        # Post-processing: document already complete (canonical + weakness included)
+        yield sse("progress", {"phase": "finalizing", "message": "PULSE·AI — Finalizing snapshot..."})
         yield sse("result", document)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@router.post("/exams/{course_code}/{session_name}/provision-accounts")
+async def lecturer_provision_accounts(
+    course_code: str,
+    session_name: str,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    semester: int | None = Query(None),
+    db=Depends(get_db),
+):
+    """Dedicated student account provisioning (idempotent) — replaces analytics-read side effect."""
+    from app.services.student_accounts import provision_student_accounts as _provision
+    try:
+        result = await _provision(db, course_code, session_name, year, month, semester)
+        return {"provisioned": result}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to provision accounts: {exc}") from exc
 
 
 @router.get("/exams/{course_code}/{session_name}/students")
@@ -305,7 +421,7 @@ async def lecturer_student_detail(
 
     When `auto_analyze=true` (default), clicking a student triggers `ensure_student_analytics`
     generation (PULSE·AI) so lecturer sees spinner + progress until ready. Set `auto_analyze=false`
-    to get the old 423 behaviour.
+    to read saved analytics or existing diagram results without running analysis.
     Returns the StudentAnalyticsDocument minus `recommendations`, `next_question_strategy`,
     and `learning_analysis.learning_gaps` so lecturers see raw performance only.
     Pass `include_ai_tips=true` to get the full document (student-equivalent).
@@ -313,7 +429,20 @@ async def lecturer_student_detail(
     doc = await find_student_analytics(db, student_id, course_code, session_name, year, month, semester)
     if doc is None:
         if not auto_analyze:
-            from app.db.repository import find_graded_submission
+            from app.db.repository import find_graded_submission, find_diagram_evaluation_for_student, find_diagram_marking_for_student
+
+            diagram = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
+            marking = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
+            if diagram is not None or marking is not None:
+                saved = diagram if diagram is not None else marking
+                doc = _synthesize_diagram_doc(
+                    student_id, course_code, session_name,
+                    saved.get("year", year), saved.get("month", month), saved.get("semester", semester),
+                    saved.get("evaluation_result") or {},
+                )
+                if not include_ai_tips:
+                    doc = _strip_ai_tips(doc)
+                return _attach_diagram(doc, diagram, marking)
 
             sub = await find_graded_submission(db, student_id, course_code, session_name, year, month, semester)
             if sub is None:
@@ -324,34 +453,12 @@ async def lecturer_student_detail(
             doc_model = await ensure_student_analytics(db, student_id, course_code, session_name, year, month, semester)
             doc = doc_model.model_dump(mode="json") if hasattr(doc_model, "model_dump") else dict(doc_model)
         except StudentNotFound as exc:
-            # If diagram exists for this student, return diagram-only view instead of 404
             try:
                 from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
                 _d = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
                 _m = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
                 if _d is not None or _m is not None:
-                    # synthesize minimal student doc with diagram
-                    ev = (_d or {}).get("evaluation_result") or {}
-                    total = float(ev.get("total_score", 0) if ev else 0)
-                    max_sc = float(ev.get("max_score", 20) if ev else 20)
-                    pct = (total / max_sc * 100) if max_sc else 0
-                    doc = {
-                        "student_id": student_id,
-                        "subject_code": course_code,
-                        "subject_name": course_code,
-                        "year": year or 0,
-                        "month": month or 0,
-                        "semester": semester or 0,
-                        "session_name": session_name,
-                        "overall_performance": {"score": total, "maximum": max_sc, "percentage": round(pct,2), "status": performance_status(pct)},
-                        "question_performance": [],
-                        "topic_performance": [],
-                        "bloom_performance": [],
-                        "learning_analysis": {"overall_performance": performance_status(pct), "strong_topics": [], "developing_topics": [], "weak_topics": [], "critical_topics": [], "learning_gaps": []},
-                        "model_metadata": {"bloom_model": "diagram", "bloom_model_type": "diagram", "grading_source": "diagram", "rag_context_used": False},
-                        "generated_at": ev.get("created_at") or "",
-                        "analysis_version": "1.0",
-                    }
+                    doc = _synthesize_diagram_doc(student_id, course_code, session_name, year, month, semester, (_d or {}).get("evaluation_result") or {})
                 else:
                     raise HTTPException(status_code=404, detail=str(exc)) from exc
             except HTTPException:
@@ -359,81 +466,31 @@ async def lecturer_student_detail(
             except Exception:
                 raise HTTPException(status_code=404, detail=str(exc)) from exc
         except Exception as exc:
-            # Fallback: if diagram exists, synthesize diagram-only doc instead of 500
             try:
                 from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
                 _d2 = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
                 _m2 = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
                 if _d2 is not None or _m2 is not None:
-                    ev2 = (_d2 or {}).get("evaluation_result") or {}
-                    total2 = float(ev2.get("total_score", 0) if ev2 else 0)
-                    max2 = float(ev2.get("max_score", 20) if ev2 else 20)
-                    pct2 = (total2 / max2 * 100) if max2 else 0
-                    doc = {
-                        "student_id": student_id,
-                        "subject_code": course_code,
-                        "subject_name": course_code,
-                        "year": year or 0,
-                        "month": month or 0,
-                        "semester": semester or 0,
-                        "session_name": session_name,
-                        "overall_performance": {"score": total2, "maximum": max2, "percentage": round(pct2,2), "status": performance_status(pct2)},
-                        "question_performance": [],
-                        "topic_performance": [],
-                        "bloom_performance": [],
-                        "learning_analysis": {"overall_performance": performance_status(pct2), "strong_topics": [], "developing_topics": [], "weak_topics": [], "critical_topics": [], "learning_gaps": []},
-                        "model_metadata": {"bloom_model": "diagram", "bloom_model_type": "diagram", "grading_source": "diagram", "rag_context_used": False},
-                        "generated_at": ev2.get("created_at") or "",
-                        "analysis_version": "1.0",
-                    }
+                    doc = _synthesize_diagram_doc(student_id, course_code, session_name, year, month, semester, (_d2 or {}).get("evaluation_result") or {})
                 else:
                     raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
             except HTTPException:
                 raise
             except Exception:
                 raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
-    # Enrich with diagram data (best-effort) - from diagram_evaluation / diagram_marking
-    diagram = None
-    diagram_marking = None
+    # Enrich with diagram data (best-effort)
     try:
         from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
         diagram = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
         diagram_marking = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
     except Exception:
-        pass
-
-    def _attach_diagram(target: dict) -> dict:
-        if diagram is not None or diagram_marking is not None:
-            # attach under 'diagram' key for frontend
-            payload = {}
-            if diagram is not None:
-                payload["evaluation"] = diagram
-            if diagram_marking is not None:
-                payload["marking"] = diagram_marking
-            target["diagram"] = payload
-            # also expose top-level for convenience
-            if diagram is not None:
-                target["diagram_evaluation"] = diagram
-            if diagram_marking is not None:
-                target["diagram_marking"] = diagram_marking
-        return target
+        diagram, diagram_marking = None, None
 
     if not include_ai_tips:
-        # Strip AI improvement tips — keep only raw performance
-        filtered = dict(doc)
-        filtered.pop("recommendations", None)
-        filtered.pop("next_question_strategy", None)
-        # Also strip AI-generated learning_gaps but keep weak/strong categorization
-        la = filtered.get("learning_analysis")
-        if isinstance(la, dict):
-            la_copy = dict(la)
-            la_copy.pop("learning_gaps", None)
-            # Ensure at least an empty list so frontend doesn't break
-            la_copy["learning_gaps"] = []
-            filtered["learning_analysis"] = la_copy
-        _attach_diagram(filtered)
+        filtered = _strip_ai_tips(doc)
+        _attach_diagram(filtered, diagram, diagram_marking)
         return filtered
-    _attach_diagram(doc)
+    _attach_diagram(doc, diagram, diagram_marking)
     return doc
 
 
@@ -457,30 +514,15 @@ async def lecturer_student_detail_stream(
         cached = await find_student_analytics(db, student_id, course_code, session_name, year, month, semester)
         if cached is not None:
             yield sse("progress", {"phase": "cached", "message": "PULSE·AI — Using cached student analysis", "progress": 100, "studentId": student_id})
-            # attach diagram (best-effort)
             try:
                 from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
                 _diag = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
                 _mark = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
-                if _diag is not None or _mark is not None:
-                    if _diag is not None:
-                        cached["diagram_evaluation"] = _diag
-                    if _mark is not None:
-                        cached["diagram_marking"] = _mark
-                    cached["diagram"] = {k: v for k, v in {"evaluation": _diag, "marking": _mark}.items() if v is not None}
+                _attach_diagram(cached, _diag, _mark)
             except Exception:
                 pass
             if not include_ai_tips:
-                filtered = dict(cached)
-                filtered.pop("recommendations", None)
-                filtered.pop("next_question_strategy", None)
-                la = filtered.get("learning_analysis")
-                if isinstance(la, dict):
-                    la_copy = dict(la)
-                    la_copy.pop("learning_gaps", None)
-                    la_copy["learning_gaps"] = []
-                    filtered["learning_analysis"] = la_copy
-                yield sse("result", filtered)
+                yield sse("result", _strip_ai_tips(cached))
             else:
                 yield sse("result", cached)
             return
@@ -560,30 +602,15 @@ async def lecturer_student_detail_stream(
         # Final 100%
         yield sse("progress", {"phase": "finalizing", "message": f"PULSE·AI — {student_id} analysis complete", "progress": 100, "studentId": student_id})
 
-        # attach diagram to stream result (best-effort)
         try:
             from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
             _diag2 = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
             _mark2 = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
-            if _diag2 is not None or _mark2 is not None:
-                if _diag2 is not None:
-                    doc["diagram_evaluation"] = _diag2
-                if _mark2 is not None:
-                    doc["diagram_marking"] = _mark2
-                doc["diagram"] = {k: v for k, v in {"evaluation": _diag2, "marking": _mark2}.items() if v is not None}
+            _attach_diagram(doc, _diag2, _mark2)
         except Exception:
             pass
         if not include_ai_tips:
-            filtered = dict(doc)
-            filtered.pop("recommendations", None)
-            filtered.pop("next_question_strategy", None)
-            la = filtered.get("learning_analysis")
-            if isinstance(la, dict):
-                la_copy = dict(la)
-                la_copy.pop("learning_gaps", None)
-                la_copy["learning_gaps"] = []
-                filtered["learning_analysis"] = la_copy
-            yield sse("result", filtered)
+            yield sse("result", _strip_ai_tips(doc))
         else:
             yield sse("result", doc)
 
@@ -602,12 +629,18 @@ async def lecturer_teaching_actions(
     document = await find_exam_analytics(db, course_code, session_name, year, month, semester)
     if document is None:
         raise HTTPException(status_code=404, detail="No analytics found")
+    # Ensure we use the same snapshot revision displayed on dashboard
+    fingerprint = document.get("generated_at") or document.get("analytics_version")
     return await get_teaching_actions(
         db,
         course_code,
         session_name,
         document.get("canonical_topic_performance", []),
         document.get("question_performance", []),
+        year=document.get("year") if year is None else year,
+        month=document.get("month") if month is None else month,
+        semester=document.get("semester") if semester is None else semester,
+        evidence_fingerprint=str(fingerprint) if fingerprint else None,
     )
 
 
@@ -729,11 +762,12 @@ async def lecturer_recommendations(
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to compute analytics: {exc}") from exc
-    # enrich with canonical if missing
-    if not document.get("canonical_topic_performance"):
+    # document already contains complete canonical snapshot; legacy fallback removed
+    # If incomplete, the GET analytics path would have rebuilt; here we just validate presence
+    if not document.get("canonical_topic_performance") and not _is_complete_snapshot(document):
+        # lazy rebuild for legacy snapshot
         try:
-            canonical = await canonicalize_topics(db, document, course_code, session_name, year, month, semester)
-            document.update(canonical)
+            document = await compute_exam_analytics(db, course_code, session_name, document.get("year") or year, document.get("month") or month, document.get("semester") or semester)
         except Exception:
             pass
     try:

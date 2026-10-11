@@ -1,4 +1,9 @@
-"""Canonical schema for generated practice-question documents."""
+"""Canonical schema for generated practice-question documents.
+
+Note: services/practice_questions builds a plain dict and calls repository directly;
+this Pydantic model is currently not validated at runtime but retained for documentation
+and potential future validation. Consider wiring it in practice_questions.py.
+"""
 
 from datetime import datetime
 from typing import Literal

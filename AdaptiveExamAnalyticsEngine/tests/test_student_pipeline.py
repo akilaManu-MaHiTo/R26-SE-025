@@ -182,7 +182,7 @@ async def test_pipeline_uses_deterministic_fallback_when_qwen_is_down(monkeypatc
     ]
     assert {g["topic"] for g in saved["learning_analysis"]["learning_gaps"]} == {
         "Structured Query Language (SQL)",
-        "Introduction to DBMS & Conceptual Database Design",
+        "Unclassified",
     }
     assert saved["recommendations"][0]["priority"] == "Medium"
     assert saved["next_question_strategy"]["number_of_questions"] == 5
@@ -208,10 +208,10 @@ async def test_pipeline_uses_rule_key_concept_as_fallback_subtopic(monkeypatch):
     result = await materialize_student_analytics(db)
 
     assert result.saved == ["student-17"]
-    # Subtopic now from topic hits (canonical), not mocked Two-Phase Locking
+    # Subtopic now from topic hits (canonical), Unclassified for no-keyword question
     assert {item["subtopic"] for item in db.saved[0]["question_performance"]} == {
         "Structured Query Language (SQL)",
-        "Introduction to DBMS & Conceptual Database Design",
+        "Unclassified",
     }
     # Bloom now via ModernBERT only
     assert {
@@ -274,10 +274,10 @@ async def test_qwen_insights_replace_only_semantic_fallback_fields(monkeypatch):
         "status": "Developing",
     }
     assert saved["learning_analysis"]["overall_performance"] == "Developing"
-    # Topics now canonical via rules/BloomModernBERT topic mapping
+    # Topics now canonical via rules/BloomModernBERT topic mapping (Unclassified for no-keyword)
     assert set(saved["learning_analysis"]["developing_topics"]) == {
         "Structured Query Language (SQL)",
-        "Introduction to DBMS & Conceptual Database Design",
+        "Unclassified",
     }
     assert saved["learning_analysis"]["weak_topics"] == []
     assert saved["learning_analysis"]["learning_gaps"] == [
@@ -357,7 +357,7 @@ async def test_blank_qwen_recommendation_degrades_to_deterministic_fallback(
     assert saved["learning_analysis"]["learning_gaps"] == [
         {"topic": "Structured Query Language (SQL)", "subtopic": "Uses the correct query", "priority": "Medium"},
         {
-            "topic": "Introduction to DBMS & Conceptual Database Design",
+            "topic": "Unclassified",
             "subtopic": "Explains the concept",
             "priority": "Medium",
         },
@@ -630,3 +630,87 @@ def test_assemble_document_produces_new_top_level_shape():
     assert document["session_name"] == "Final Examination"
     assert document["overall_performance"]["percentage"] == 60.0
     assert document["next_question_strategy"]["number_of_questions"] == 5
+
+
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_classify_uses_per_course_taxonomy(monkeypatch):
+    import app.taxonomy.normalizer as norm
+    import app.classifier.bloom_classifier as bc
+
+    cs_tax = {
+        "sched": {
+            "canonical_topic": "Scheduling",
+            "aliases": ["FCFS", "round robin"],
+            "subtopics": [],
+        }
+    }
+
+    async def fake_load(db, code):
+        if isinstance(code, str) and code.strip().upper() == "CS3010":
+            return cs_tax
+        return {}
+
+    monkeypatch.setattr(norm, "load_taxonomy", fake_load)
+
+    monkeypatch.setattr(bc, "is_bloom_model_available", lambda: True)
+    monkeypatch.setattr(
+        bc,
+        "predict_bloom",
+        lambda text: {
+            "label": "BT2",
+            "level": "Understand",
+            "confidence": 0.92,
+            "probs": {},
+            "level_probs": {},
+            "pred_index": 1,
+            "model_version": "modernbert-bloom-v1",
+        },
+    )
+    monkeypatch.setattr(
+        bc,
+        "predict_bloom_batch",
+        lambda texts: [
+            {
+                "label": "BT2",
+                "level": "Understand",
+                "confidence": 0.92,
+                "probs": {},
+                "level_probs": {},
+                "pred_index": 1,
+                "model_version": "modernbert-bloom-v1",
+            }
+            for _ in texts
+        ],
+    )
+
+    # minimal mock db supporting bloom_classification_cache
+    class _FakeColl:
+        async def find_one(self, *args, **kwargs):
+            return None
+
+        async def update_one(self, *args, **kwargs):
+            return None
+
+    class _FakeDB(dict):
+        def __getitem__(self, key):
+            return _FakeColl()
+
+    mock_db = _FakeDB()
+
+    from types import SimpleNamespace
+
+    Norm = SimpleNamespace(
+        course_code="CS3010",
+        rubric_ref="rubric-cs",
+        questions=[SimpleNamespace(question_no="01", question_text="Explain Scheduling FCFS")],
+    )
+
+    from app.services.student_pipeline import _classify_questions
+
+    result = await _classify_questions(Norm, {}, db=mock_db)
+    assert "01" in result
+    assert result["01"].topic != "Unclassified"
+    assert result["01"].topic == "Scheduling"
