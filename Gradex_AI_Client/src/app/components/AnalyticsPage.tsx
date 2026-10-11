@@ -247,7 +247,7 @@ export default function AnalyticsPage() {
     if (!selectedExam) return;
     // If student not yet analyzed, require model — else toast and abort
     const targetRow = students.find((r) => r.student_id === studentId);
-    const needsAnalysis = !targetRow || targetRow.analysis_status !== "generated";
+    const needsAnalysis = !targetRow || !["generated", "diagram_only"].includes(targetRow.analysis_status);
     if (needsAnalysis) {
       try {
         const health = await fetchLlmHealth();
@@ -266,10 +266,26 @@ export default function AnalyticsPage() {
     setStudentDetail(null);
     setStudentDetailError(null);
     const dispatchTopbar = (active: boolean, message?: string, progress?: number) => {
+      if (!needsAnalysis) return;
       window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active, studentId, message: message || "", progress } }));
     };
     dispatchTopbar(true, `PULSE·AI — Starting analysis for ${studentId}…`, 0);
     try {
+      if (!needsAnalysis) {
+        const detail = await fetchLecturerStudentDetail(
+          selectedExam.course_code,
+          selectedExam.session_name,
+          studentId,
+          selectedExam.year,
+          selectedExam.month,
+          selectedExam.semester,
+          false,
+          false,
+        );
+        setStudentDetail(detail);
+        setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: detail.analysis_status ?? "generated" } : r));
+        return;
+      }
       // Try streaming for live progress (topbar + row spinner), fallback to plain fetch
       let detail: LecturerStudentDetail;
       try {
@@ -300,7 +316,7 @@ export default function AnalyticsPage() {
       setStudentDetail(detail);
       dispatchTopbar(true, `PULSE·AI — ${studentId} analysis complete`, 100);
       // Update row status optimistically
-      setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: "generated" } : r));
+      setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: detail.analysis_status ?? "generated" } : r));
       setTimeout(() => dispatchTopbar(false), 2500);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load student detail";
@@ -740,6 +756,8 @@ export default function AnalyticsPage() {
                         <TableCell className="py-2">
                           {s.analysis_status === "generated" ? (
                             <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><CheckCircle2 className="size-3" /> Ready</span>
+                          ) : s.analysis_status === "diagram_only" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-700"><Eye className="size-3" /> Diagram only</span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs text-amber-700"><Clock className="size-3" /> Pending</span>
                           )}
@@ -748,7 +766,7 @@ export default function AnalyticsPage() {
                           {loadingStudentDetail && selectedStudentId === s.student_id ? (
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
                               <Loader2 className="size-3 animate-spin" />
-                              <span className="animate-pulse">Analyzing…</span>
+                              <span className="animate-pulse">{["generated", "diagram_only"].includes(s.analysis_status) ? "Loading…" : "Analyzing…"}</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">

@@ -51,6 +51,7 @@ def _synthesize_diagram_doc(student_id: str, course_code: str, session_name: str
         "model_metadata": {"bloom_model": "diagram", "bloom_model_type": "diagram", "grading_source": "diagram", "rag_context_used": False},
         "generated_at": ev.get("created_at") or "",
         "analysis_version": "1.0",
+        "analysis_status": "diagram_only",
     }
 
 
@@ -420,7 +421,7 @@ async def lecturer_student_detail(
 
     When `auto_analyze=true` (default), clicking a student triggers `ensure_student_analytics`
     generation (PULSE·AI) so lecturer sees spinner + progress until ready. Set `auto_analyze=false`
-    to get the old 423 behaviour.
+    to read saved analytics or existing diagram results without running analysis.
     Returns the StudentAnalyticsDocument minus `recommendations`, `next_question_strategy`,
     and `learning_analysis.learning_gaps` so lecturers see raw performance only.
     Pass `include_ai_tips=true` to get the full document (student-equivalent).
@@ -428,7 +429,20 @@ async def lecturer_student_detail(
     doc = await find_student_analytics(db, student_id, course_code, session_name, year, month, semester)
     if doc is None:
         if not auto_analyze:
-            from app.db.repository import find_graded_submission
+            from app.db.repository import find_graded_submission, find_diagram_evaluation_for_student, find_diagram_marking_for_student
+
+            diagram = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
+            marking = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
+            if diagram is not None or marking is not None:
+                saved = diagram if diagram is not None else marking
+                doc = _synthesize_diagram_doc(
+                    student_id, course_code, session_name,
+                    saved.get("year", year), saved.get("month", month), saved.get("semester", semester),
+                    saved.get("evaluation_result") or {},
+                )
+                if not include_ai_tips:
+                    doc = _strip_ai_tips(doc)
+                return _attach_diagram(doc, diagram, marking)
 
             sub = await find_graded_submission(db, student_id, course_code, session_name, year, month, semester)
             if sub is None:

@@ -388,6 +388,7 @@ export interface DiagramMarking {
 }
 
 export interface LecturerStudentDetail {
+  analysis_status?: "generated" | "diagram_only";
   student_id: string;
   subject_code: string;
   subject_name: string;
@@ -436,6 +437,7 @@ export async function fetchLecturerStudentDetail(
   month?: number,
   semester?: number,
   includeAiTips = false,
+  autoAnalyze = true,
 ): Promise<LecturerStudentDetail> {
   const encodedCourse = encodeURIComponent(courseCode);
   const encodedSession = encodeURIComponent(sessionName);
@@ -445,6 +447,7 @@ export async function fetchLecturerStudentDetail(
   if (month !== undefined) params.set("month", String(month));
   if (semester !== undefined) params.set("semester", String(semester));
   if (includeAiTips) params.set("include_ai_tips", "true");
+  if (!autoAnalyze) params.set("auto_analyze", "false");
   const qs = params.toString() ? `?${params}` : "";
   const res = await fetch(`${API_BASE}/api/lecturers/exams/${encodedCourse}/${encodedSession}/student/${encodedStudent}${qs}`);
   if (!res.ok) {
