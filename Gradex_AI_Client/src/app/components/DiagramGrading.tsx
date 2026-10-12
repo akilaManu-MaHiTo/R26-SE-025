@@ -29,6 +29,7 @@ import {
 import { fetchCourses, formatCourseLabel, SAMPLE_COURSES, type CourseItem } from "../utils/courseOptions.ts";
 import {
   buildDiagramEvaluationSavePayload,
+  fetchExamKey,
   saveDiagramEvaluation,
 } from "../api/diagramEvaluationApi.ts";
 
@@ -233,6 +234,9 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
   const [selectedSession, setSelectedSession] = useState<string>(
     SESSION_OPTIONS[0]?.value ?? "final",
   );
+  const [examKey, setExamKey] = useState<string | null>(null);
+  const [examKeyLoading, setExamKeyLoading] = useState(false);
+  const [examKeyError, setExamKeyError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -253,6 +257,60 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+    const subjectCode = selectedCourse.trim();
+    const month = MONTH_OPTIONS.find(
+      (option) => option.value === selectedMonth,
+    )?.label;
+    const session =
+      selectedSession === "mid-term" ? "Mid Term" : "Final";
+
+    if (!subjectCode || !selectedYear || !month || !selectedSemester || !session) {
+      setExamKey(null);
+      setExamKeyError(null);
+      setExamKeyLoading(false);
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setExamKey(null);
+    setExamKeyError(null);
+    setExamKeyLoading(true);
+
+    void fetchExamKey({
+      subjectCode,
+      year: selectedYear,
+      month,
+      semester: selectedSemester,
+      session,
+    })
+      .then((response) => {
+        if (!isActive) return;
+        setExamKey(response.examKey);
+      })
+      .catch((cause) => {
+        if (!isActive) return;
+        setExamKeyError(
+          cause instanceof Error ? cause.message : "Exam key not found.",
+        );
+      })
+      .finally(() => {
+        if (isActive) setExamKeyLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    selectedCourse,
+    selectedYear,
+    selectedMonth,
+    selectedSemester,
+    selectedSession,
+  ]);
 
   useEffect(() => {
     let isActive = true;
@@ -383,6 +441,15 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
   };
 
   const persistEvaluation = async (nextResult: DiagramApiResponse) => {
+    if (!examKey) {
+      setSaveState(
+        examKeyLoading
+          ? "Finding the exam key. Please try again in a moment."
+          : "No matching exam key was found for the selected exam details.",
+      );
+      return;
+    }
+
     const activeCourse =
       courseList.find((course) => course.code === selectedCourse) ??
       courseList[0] ??
@@ -399,6 +466,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
       semester: selectedSemester,
       sessionName:
         selectedSession === "mid-term" ? "Mid Term" : "Final Examination",
+      examKey,
       diagramMarks: nextResult.detections?.length ?? 0,
       remarks: nextResult.ocr_error ?? "",
       guidelineObjectId: nextResult.guideline_object_id ?? selectedGuideline?._id,
@@ -820,6 +888,19 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
               </div>
             </div>
 
+            <div className="mt-3 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+              <span className="font-medium text-foreground">Exam key: </span>
+              {examKeyLoading ? (
+                <span className="text-muted-foreground">Looking up...</span>
+              ) : examKey ? (
+                <span className="text-primary">{examKey}</span>
+              ) : (
+                <span className="text-muted-foreground">
+                  {examKeyError ?? "Select all exam fields to find the exam key."}
+                </span>
+              )}
+            </div>
+
             {loading && progressState && (
               <div className="mt-4 border-t border-border bg-muted/30 px-4 py-3">
                 <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -1172,7 +1253,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
                   if (!result) return;
                   void persistEvaluation(result);
                 }}
-                disabled={!result || loading || saving}
+                disabled={!result || loading || saving || !examKey}
               >
                 {saving ? (
                   <>
