@@ -52,9 +52,38 @@ def get_diagram_evaluation_guidelines_collection():
         database = client["Grading"]
     return database["diagram_marking"]
 
+
+@lru_cache(maxsize=1)
+def get_exam_keys_collection():
+    client = get_mongo_client()
+    database = client.get_default_database()
+    if database is None:
+        database = client["Grading"]
+    return database["examkeys"]
+
+
 def insert_diagram_evaluation(record: dict) -> str:
     result = get_diagram_evaluations_collection().insert_one(record)
     return str(result.inserted_id)
+
+
+def get_exam_key(
+    subject_code: str,
+    exam_year: int,
+    exam_month: str,
+    exam_semester: int,
+    session: str,
+):
+    return get_exam_keys_collection().find_one(
+        {
+            "subjectCode": subject_code,
+            "examYear": exam_year,
+            "examMonth": exam_month,
+            "examSemester": exam_semester,
+            "session": session,
+        },
+        {"_id": 0},
+    )
 
 
 def list_diagram_evaluations(limit: int = 100):
