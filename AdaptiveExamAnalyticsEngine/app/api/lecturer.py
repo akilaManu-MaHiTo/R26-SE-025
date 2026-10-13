@@ -1,8 +1,11 @@
 import asyncio
 import json
+from collections import Counter
 from datetime import datetime, timezone
+from math import isfinite
 from uuid import uuid4
 
+from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -23,6 +26,8 @@ from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
 from app.services.recommendation import recommend_for_weak_areas
 from app.services.student_dashboard import StudentNotFound, ensure_student_analytics
 from app.services.teaching_actions import get_teaching_actions
+from app.ingestion.student_data import normalize_question_no
+from app.ingestion.answer_text import question_excerpt
 
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
 
@@ -158,6 +163,83 @@ async def list_exams(db=Depends(get_db)):
     """List all available exams with basic stats."""
     exams = await list_all_exams(db)
     return exams
+
+
+@router.get("/exams/{course_code}/{session_name}/questions/{question_no}")
+async def lecturer_question_detail(
+    course_code: str,
+    session_name: str,
+    question_no: str,
+    year: int = Query(...),
+    month: int = Query(...),
+    semester: int = Query(...),
+    db=Depends(get_db),
+):
+    """Read question evidence from the rubric and graded submissions, without AI."""
+    identity = {"subject_code": course_code, "session_name": session_name,
+                "year": year, "month": month, "semester": semester}
+    submissions = await find_graded_submissions_for_exam(db, course_code, session_name, year, month, semester)
+    references = {str(s["rubric_ref"]) for s in submissions if s.get("rubric_ref")}
+    if len(references) > 1:
+        raise HTTPException(status_code=409, detail="This exam contains multiple graded rubric versions. Review the exam's rubric assignments before viewing question evidence.")
+    reference = next((s["rubric_ref"] for s in submissions if s.get("rubric_ref")), None)
+    if reference is not None:
+        identity["_id"] = reference
+    rubric = await db["rubricCollection"].find_one(identity)
+    if rubric is None and isinstance(reference, str) and ObjectId.is_valid(reference):
+        rubric = await db["rubricCollection"].find_one({**identity, "_id": ObjectId(reference)})
+    number = normalize_question_no(question_no)
+    question = next((q for q in (rubric or {}).get("questions", [])
+                     if normalize_question_no(q.get("question_no")) == number), None)
+    if question is None:
+        raise HTTPException(status_code=404, detail="Question not found for this exam session")
+    try:
+        criteria = question.get("criteria") or []
+        maximum = sum(float(c["marks"]) for c in criteria) if criteria else float(question["max_marks"])
+        if not isfinite(maximum) or maximum <= 0:
+            raise ValueError("invalid maximum")
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="Question has invalid maximum marks")
+
+    responses = []
+    excluded_count = 0
+    for submission in submissions:
+        rows = (submission.get("evaluation") or {}).get("results")
+        if rows is None:
+            rows = submission.get("results") or []
+        result = next((row for row in rows if normalize_question_no(row.get("q_no", row.get("question_no"))) == number), None)
+        if result is None:
+            continue
+        try:
+            score = float(result["score"])
+            if not isfinite(score) or not 0 <= score <= maximum:
+                raise ValueError("invalid score")
+        except (KeyError, TypeError, ValueError):
+            excluded_count += 1
+            continue
+        excerpt = result.get("answer_excerpt")
+        source = result.get("slice_source")
+        if excerpt is None:
+            transcript = submission.get("cleaned_ocr_transcript") or submission.get("raw_ocr_transcript") or ""
+            excerpt = question_excerpt(transcript, number)
+            if excerpt:
+                source = "ocr"
+        responses.append({
+            "student_id": str(submission.get("student_id") or submission.get("student_key") or "Unknown"),
+            "score": score,
+            "answer_excerpt": excerpt,
+            "slice_source": source,
+            "feedback": result.get("feedback"),
+        })
+    counts = Counter(response["score"] for response in responses)
+    return {
+        "question_no": number,
+        "question_text": question.get("question_text") or None,
+        "max_marks": maximum,
+        "mark_distribution": [{"marks": marks, "count": count} for marks, count in sorted(counts.items())],
+        "responses": responses,
+        "excluded_count": excluded_count,
+    }
 
 
 @router.get(

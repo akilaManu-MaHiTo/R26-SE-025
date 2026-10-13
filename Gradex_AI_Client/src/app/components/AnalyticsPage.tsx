@@ -28,6 +28,7 @@ import {
   type TeachingAction,
   type StudentRow,
   type LecturerStudentDetail,
+  type QuestionPerformance,
 } from "../api/lecturerApi";
 import { KpiCards } from "./analytics/KpiCards";
 import { DistributionHistogram } from "./analytics/DistributionHistogram";
@@ -106,7 +107,7 @@ export default function AnalyticsPage() {
   const [currentLoadStep, setCurrentLoadStep] = useState(0);
   const [liveModelMessage, setLiveModelMessage] = useState<string>("PULSE·AI — Initializing...");
   const [selectedTopic, setSelectedTopic] = useState<CanonicalTopic | null>(null);
-  const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<QuestionPerformance | null>(null);
   // dense table filters
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "analyzed" | "pending">("all");
@@ -1190,7 +1191,13 @@ export default function AnalyticsPage() {
       </motion.div>
 
       <TopicDetailModal topic={selectedTopic} open={!!selectedTopic} onClose={() => setSelectedTopic(null)} />
-      <QuestionDetailModal question={selectedQuestion} open={!!selectedQuestion} onClose={() => setSelectedQuestion(null)} />
+      <QuestionDetailModal
+        key={`${selectedExam?.course_code}-${selectedExam?.session_name}-${selectedExam?.year}-${selectedExam?.month}-${selectedExam?.semester}-${selectedQuestion?.question_no}`}
+        question={selectedQuestion}
+        exam={selectedExam}
+        open={!!selectedQuestion}
+        onClose={() => setSelectedQuestion(null)}
+      />
     </div>
   );
 }
