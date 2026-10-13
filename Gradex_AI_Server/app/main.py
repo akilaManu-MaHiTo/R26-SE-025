@@ -1,15 +1,17 @@
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from queue import Queue
 import sys
 import json
+import logging
 from threading import Thread
 from uuid import uuid4
 from typing import Any, Optional
 import os
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -18,9 +20,9 @@ from bson.errors import InvalidId
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENGINE_ROOT = PROJECT_ROOT / "DiagramEvaluationEngine"
-V2_ROOT = PROJECT_ROOT / "V2_QuestionExamPredictionEngine"
+ANALYTICS_ENGINE_ROOT = PROJECT_ROOT / "AdaptiveExamAnalyticsEngine"
 GRADING_ROOT = PROJECT_ROOT / "GradingEngine"
-for path in (PROJECT_ROOT, ENGINE_ROOT, V2_ROOT):
+for path in (PROJECT_ROOT, ENGINE_ROOT, ANALYTICS_ENGINE_ROOT):
     path_str = str(path)
     if path_str not in sys.path:
         sys.path.append(path_str)
@@ -36,17 +38,26 @@ from Gradex_AI_Server.app.grading_api import setup_grading_api
 preload_grading_engine()
 
 from DiagramEvaluationEngine.predict import run_er_pipeline
-from Gradex_AI_Server.app.mongodb import insert_diagram_evaluation, list_diagram_evaluations
+from Gradex_AI_Server.app.mongodb import (
+    get_diagram_evaluation_guideline,
+    insert_diagram_evaluation,
+    list_diagram_evaluation_guidelines,
+    list_diagram_evaluations,
+    upsert_diagram_evaluation_guideline,
+)
+from DiagramEvaluationEngine.diagram_grading import grade_diagram_with_ollama
 from Gradex_AI_Server.app.analytics_api import router as analytics_router
 from Gradex_AI_Server.app.auth import configured_api_key, ensure_dev_api_key, require_api_key
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
-from V2_QuestionExamPredictionEngine.app.api.dashboard import router as v2_student_router
-from V2_QuestionExamPredictionEngine.app.api.lecturer import router as v2_lecturer_router
+from AdaptiveExamAnalyticsEngine.app.api.dashboard import router as v2_student_router
+from AdaptiveExamAnalyticsEngine.app.api.lecturer import router as v2_lecturer_router
+from AdaptiveExamAnalyticsEngine.app.api.taxonomy import router as taxonomy_router
 
 
 MAX_VIVA_UPLOAD_BYTES = 1024 * 1024 * 1024
 VIDEO_SUFFIXES = {".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v"}
+logger = logging.getLogger(__name__)
 
 
 def _analyze_timeout_seconds() -> float:
@@ -83,6 +94,7 @@ app.include_router(analytics_router)
 app.include_router(viva_copilot_router)
 app.include_router(v2_lecturer_router, prefix="/api")
 app.include_router(v2_student_router, prefix="/api")
+app.include_router(taxonomy_router, dependencies=[Depends(require_api_key)])
 
 setup_grading_api(app)
 
@@ -90,6 +102,7 @@ UPLOAD_DIR = PROJECT_ROOT / "Gradex_AI_Server" / "app" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ENGINE_DATA_EXAM = PROJECT_ROOT / "QuestionExamPredictionEngine" / "data" / "exams" / "exam2022.json"
 ENGINE_DATA_ANSWERS = PROJECT_ROOT / "QuestionExamPredictionEngine" / "data" / "answers" / "student_answers2022.json"
+DEFAULT_DIAGRAM_GUIDELINE_ID = "6a89887f8c33278a18482b47"
 
 
 class RubricCriterionPayload(BaseModel):
@@ -139,6 +152,8 @@ class DiagramEvaluationSaveRequest(BaseModel):
     diagram_entity_relations: list[dict[str, Any]] = Field(default_factory=list)
     diagram_relations: list[dict[str, Any]] = Field(default_factory=list)
     remarks: str = ""
+    guideline_object_id: str = ""
+    agent_marks: Optional[float] = None
     evaluation_result: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -185,6 +200,8 @@ def _normalize_record(payload: DiagramEvaluationSaveRequest) -> dict[str, Any]:
         "diagram_entity_relations": entity_relations,
         "diagram_relations": relations,
         "remarks": _normalize_text(payload.remarks),
+        "guideline_object_id": _normalize_text(payload.guideline_object_id),
+        "agent_marks": payload.agent_marks,
         "evaluation_result": evaluation_result,
         "created_at": now,
         "updated_at": now,
@@ -203,7 +220,17 @@ def _json_safe(value: Any) -> Any:
 
 @app.post("/api/digaram-evaluate")
 @app.post("/api/diagram-evaluate")
-async def diagram_evaluate(image: UploadFile = File(...), stream: bool = False):
+async def diagram_evaluate(
+    image: UploadFile = File(...),
+    guideline_object_id: Optional[str] = Form(None),
+    stream: bool = False,
+):
+    logger.info(
+        "Diagram evaluation request received filename=%s guideline_object_id=%s stream=%s",
+        image.filename,
+        guideline_object_id or DEFAULT_DIAGRAM_GUIDELINE_ID,
+        stream,
+    )
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Only image uploads are supported.")
 
@@ -211,14 +238,38 @@ async def diagram_evaluate(image: UploadFile = File(...), stream: bool = False):
     if not contents:
         raise HTTPException(status_code=400, detail="Empty upload.")
 
+    resolved_guideline_id = (guideline_object_id or DEFAULT_DIAGRAM_GUIDELINE_ID).strip()
+    try:
+        guideline = get_diagram_evaluation_guideline(resolved_guideline_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if guideline is None:
+        raise HTTPException(status_code=404, detail="Guideline not found.")
+    logger.info(
+        "Diagram guideline loaded guideline_id=%s exam_code=%s criteria=%s",
+        resolved_guideline_id,
+        guideline.get("examCode", "unknown"),
+        len(guideline.get("guideLines", [])),
+    )
+
     ext = Path(image.filename or "").suffix or ".jpg"
     file_path = UPLOAD_DIR / f"{uuid4().hex}{ext}"
     file_path.write_bytes(contents)
 
     if not stream:
         try:
-            return run_er_pipeline(file_path)
+            result = run_er_pipeline(file_path)
+            logger.info("Diagram extraction completed guideline_id=%s detections=%s ocr_rows=%s", resolved_guideline_id, len(result.get("detections", [])), len(result.get("ocr", [])))
+            result["guideline_object_id"] = resolved_guideline_id
+            try:
+                result["agent_grading"] = grade_diagram_with_ollama(result, guideline)
+                result["agent_marks"] = result["agent_grading"]["agent_marks"]
+            except Exception as exc:
+                logger.exception("Ollama grading failed guideline_id=%s", resolved_guideline_id)
+                result["agent_grading_error"] = str(exc)
+            return result
         except Exception as exc:
+            logger.exception("Diagram evaluation failed guideline_id=%s", resolved_guideline_id)
             raise HTTPException(status_code=500, detail=f"Evaluation failed: {exc}") from exc
 
     event_queue: Queue = Queue()
@@ -226,8 +277,47 @@ async def diagram_evaluate(image: UploadFile = File(...), stream: bool = False):
 
     def worker() -> None:
         try:
-            result = run_er_pipeline(file_path, progress_callback=event_queue.put)
-            event_queue.put({"type": "result", "payload": result})
+            def pipeline_progress(payload):
+                if isinstance(payload, dict) and payload.get("progress", 0) >= 100:
+                    payload = {
+                        **payload,
+                        "stage": "extraction_completed",
+                        "message": "Diagram extracted. Preparing Llama 3 grading...",
+                        "progress": 82,
+                    }
+                event_queue.put(payload)
+
+            result = run_er_pipeline(file_path, progress_callback=pipeline_progress)
+            logger.info("Diagram extraction completed guideline_id=%s detections=%s ocr_rows=%s", resolved_guideline_id, len(result.get("detections", [])), len(result.get("ocr", [])))
+            result["guideline_object_id"] = resolved_guideline_id
+            
+            # Send extraction result with annotated image and detections
+            extraction_result = {
+                "status": result.get("status"),
+                "annotated_image": result.get("annotated_image"),
+                "detections": result.get("detections"),
+                "structure": result.get("structure"),
+                "ocr_error": result.get("ocr_error"),
+                "guideline_object_id": resolved_guideline_id,
+            }
+            event_queue.put({"type": "result", "payload": extraction_result})
+            
+            try:
+                result["agent_grading"] = grade_diagram_with_ollama(
+                    result, guideline, progress_callback=pipeline_progress
+                )
+                result["agent_marks"] = result["agent_grading"]["agent_marks"]
+                
+                # Send grading result with agent marks and feedback
+                grading_result = {
+                    "agent_marks": result.get("agent_marks"),
+                    "agent_grading": result.get("agent_grading"),
+                }
+                event_queue.put({"type": "grading_result", "payload": grading_result})
+            except Exception as exc:
+                logger.exception("Ollama grading failed guideline_id=%s", resolved_guideline_id)
+                result["agent_grading_error"] = str(exc)
+                event_queue.put({"type": "grading_error", "payload": str(exc)})
         except Exception as exc:
             event_queue.put({"type": "error", "payload": str(exc)})
         finally:
@@ -243,8 +333,12 @@ async def diagram_evaluate(image: UploadFile = File(...), stream: bool = False):
             if isinstance(item, dict) and item.get("type") == "error":
                 yield _sse_event("error", {"detail": item["payload"]})
                 break
-            if isinstance(item, dict) and item.get("type") == "result":
-                yield _sse_event("result", item["payload"])
+            if isinstance(item, dict) and item.get("type") == "grading_error":
+                yield _sse_event("grading_error", {"detail": item["payload"]})
+                continue
+            if isinstance(item, dict) and item.get("type") in ("result", "grading_result"):
+                event_type = item.get("type")
+                yield _sse_event(event_type, item["payload"])
                 continue
             yield _sse_event("progress", item if isinstance(item, dict) else {"message": str(item)})
 
@@ -253,15 +347,23 @@ async def diagram_evaluate(image: UploadFile = File(...), stream: bool = False):
 
 @app.post("/api/diagram-evaluate-save")
 async def diagram_evaluate_save(payload: DiagramEvaluationSaveRequest):
+    logger.info(
+        "Saving diagram evaluation guideline_id=%s student_id=%s agent_marks=%s",
+        payload.guideline_object_id or "unknown",
+        payload.student_id or "UNKNOWN",
+        payload.agent_marks,
+    )
     try:
         record = _normalize_record(payload)
         inserted_id = insert_diagram_evaluation(record)
+        logger.info("Diagram evaluation saved inserted_id=%s", inserted_id)
         return _json_safe({
             "status": "saved",
             "inserted_id": str(inserted_id),
             "record": record,
         })
     except Exception as exc:
+        logger.exception("Failed to save diagram evaluation")
         raise HTTPException(status_code=500, detail=f"Failed to save diagram evaluation: {exc}") from exc
 
 @app.get("/api/diagram-evaluate-details")
@@ -270,6 +372,74 @@ async def diagram_evaluate_details():
         return _json_safe(list_diagram_evaluations())
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+@app.get("/api/diagram-evaluate-guidelines")
+async def diagram_evaluate_guideline():
+    try:
+        return _json_safe(list_diagram_evaluation_guidelines())
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/diagram-guidline")
+async def upload_diagram_guideline(
+    file: UploadFile = File(...),
+    examCode: str = Form(...),
+):
+    """Upload an ER-diagram marking-guideline PDF for an exam code.
+
+    The PDF's text is extracted with pypdf and distilled by the LLM into the
+    {examCode, guideLines[], totalMarks} document stored in ``diagram_marking``
+    — the same collection /api/diagram-evaluate reads its criteria from, so a
+    guideline uploaded here is immediately selectable on the grading page.
+    """
+    from Gradex_AI_Server.app.diagram_guideline_service import (
+        GuidelineGenerationError,
+        build_guideline_document,
+        extract_pdf_text,
+        generate_guidelines,
+    )
+
+    filename = file.filename or ""
+    if Path(filename).suffix.lower() != ".pdf":
+        raise HTTPException(status_code=400, detail="Only PDF uploads are supported.")
+
+    exam_code = examCode.strip()
+    if not exam_code:
+        raise HTTPException(status_code=400, detail="examCode is required.")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty upload.")
+
+    tmp_path = UPLOAD_DIR / f"{uuid4().hex}.pdf"
+    tmp_path.write_bytes(contents)
+    try:
+        text = extract_pdf_text(str(tmp_path))
+        guidelines = generate_guidelines(text, exam_code)
+        document = build_guideline_document(exam_code, guidelines, filename, text)
+        object_id, created = upsert_diagram_evaluation_guideline(document)
+        logger.info(
+            "Diagram guideline stored exam_code=%s id=%s criteria=%s created=%s",
+            exam_code,
+            object_id,
+            len(guidelines),
+            created,
+        )
+        return _json_safe(
+            {
+                "status": "created" if created else "updated",
+                "guideline_object_id": object_id,
+                **document,
+            }
+        )
+    except GuidelineGenerationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Failed to process diagram guideline exam_code=%s", exam_code)
+        raise HTTPException(status_code=500, detail=f"Failed to process guideline: {exc}") from exc
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
 
 class SubjectRubricConceptPayload(BaseModel):
@@ -480,11 +650,92 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
         ) from None
 
 
+@app.get("/api/viva-analyze/progress/{progress_id}", dependencies=[Depends(require_api_key)])
+async def viva_analyze_progress(progress_id: str):
+    """One-shot step list for the analyze UI.
+
+    Kept as the fallback for clients that cannot hold an EventSource open; the
+    UI prefers the /stream variant below, which pushes instead of being asked.
+    """
+    from Gradex_AI_Server.app.viva_progress import normalize_progress_id, snapshot
+
+    job_id = normalize_progress_id(progress_id)
+    if not job_id:
+        raise HTTPException(status_code=400, detail="Invalid progress id.")
+    return snapshot(job_id)
+
+
+# Long stages (Whisper on a long recording) can go minutes without a new stage.
+# Emit a keep-alive comment on this cadence so proxies and load balancers do not
+# reap the idle connection.
+_PROGRESS_KEEPALIVE_SECONDS = 15.0
+
+
+@app.get(
+    "/api/viva-analyze/progress/{progress_id}/stream",
+    dependencies=[Depends(require_api_key)],
+)
+async def viva_analyze_progress_stream(progress_id: str, request: Request):
+    """Server-sent progress for the analyze UI -- one connection per analysis.
+
+    Replaces a 400ms polling loop that produced hundreds of log lines and
+    requests per run. The stream blocks in a worker thread until the pipeline
+    actually publishes a new stage, so the browser is told the moment something
+    changes and the server does no work in between.
+
+    EventSource cannot set headers, so the API key arrives as ?api_key= --
+    require_api_key already accepts that form.
+    """
+    from Gradex_AI_Server.app.viva_progress import (
+        normalize_progress_id,
+        snapshot,
+        wait_for_change,
+    )
+
+    job_id = normalize_progress_id(progress_id)
+    if not job_id:
+        raise HTTPException(status_code=400, detail="Invalid progress id.")
+
+    async def stream_events():
+        # Send current state immediately: the job may already have advanced
+        # between the POST starting and this stream connecting.
+        current = snapshot(job_id)
+        yield _sse_event("progress", current)
+        version = int(current.get("version") or 0)
+
+        while True:
+            if await request.is_disconnected():
+                break
+            payload = await asyncio.to_thread(
+                wait_for_change, job_id, version, _PROGRESS_KEEPALIVE_SECONDS
+            )
+            if payload is None:
+                yield ": keep-alive\n\n"
+                continue
+            version = int(payload.get("version") or 0)
+            yield _sse_event("progress", payload)
+            if payload.get("finished"):
+                yield _sse_event("done", {"stage": payload.get("stage")})
+                break
+
+    return StreamingResponse(
+        stream_events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            # Stop nginx from buffering the stream into silence.
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @app.post("/api/viva-analyze", dependencies=[Depends(require_api_key)])
 async def viva_analyze(
     video: UploadFile = File(...),
     assessment_mode: str = Form(default="WITHOUT_TECHNICAL_ACCURACY"),
     subject_code: Optional[str] = Form(default=None),
+    progress_id: Optional[str] = Form(default=None),
 ):
     """
     Analyze a viva recording for emotion detection and engagement scoring.
@@ -519,9 +770,14 @@ async def viva_analyze(
         persist_and_autopublish,
         run_analysis,
     )
+    from Gradex_AI_Server.app.viva_progress import (
+        finish as finish_progress,
+        normalize_progress_id,
+    )
 
     request_start = time.time()
     requested_mode = normalize_mode(assessment_mode)
+    job_id = normalize_progress_id(progress_id)
 
     filename = video.filename or ""
     suffix = Path(filename).suffix.lower()
@@ -550,7 +806,7 @@ async def viva_analyze(
         analysis_start = time.time()
         # ML pipeline is CPU/GPU-bound; keep the event loop free for other requests.
         try:
-            result = await run_analysis(str(file_path))
+            result = await run_analysis(str(file_path), progress_id=job_id)
         except asyncio.TimeoutError as exc:
             raise HTTPException(
                 status_code=504,
@@ -564,7 +820,9 @@ async def viva_analyze(
         # analyze_video_file/viva_service.py's internal chain — it's layered
         # on here as a decoupled post-processing call so that file, and the
         # rest of VivaEvaluationEngine's existing pipeline, stay untouched.
-        result = await attach_subject_technical_accuracy(result, subject_code, db_instance)
+        result = await attach_subject_technical_accuracy(
+            result, subject_code, db_instance, progress_id=job_id
+        )
 
         print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")
         # Persist to MongoDB (vivamark.marks) and auto-publish non-technical
@@ -575,6 +833,7 @@ async def viva_analyze(
             mode=requested_mode,
             video_filename=video.filename,
             source="upload",
+            progress_id=job_id,
         )
         return result
     except ModuleNotFoundError as exc:
@@ -594,6 +853,12 @@ async def viva_analyze(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         raise HTTPException(status_code=500, detail=f"Viva analysis failed: {exc}") from exc
     finally:
+        # Close any attached SSE stream on success and on failure alike, so the
+        # browser stops listening instead of waiting out the keep-alives.
+        try:
+            finish_progress(job_id)
+        except Exception:
+            pass
         try:
             if file_path.exists():
                 file_path.unlink()

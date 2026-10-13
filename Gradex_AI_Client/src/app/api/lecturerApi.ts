@@ -83,6 +83,67 @@ export interface AttentionArea {
   priority: string;
 }
 
+export interface DiagramCriterionPerformance {
+  criterion_id: number;
+  criterion: string;
+  max_marks: number;
+  average_awarded_marks: number;
+  average_percentage: number;
+  pass_count: number;
+  partial_count: number;
+  fail_count: number;
+  student_count: number;
+  fail_rate: number;
+}
+
+export interface DiagramStudentSummary {
+  student_id: string;
+  score: number;
+  max_score: number;
+  percentage: number;
+  status: string;
+  criteria: Array<{
+    criterion_id: number;
+    criterion: string;
+    awarded_marks: number;
+    status: string;
+    remarks: string;
+  }>;
+  feedback: string;
+}
+
+export interface DiagramDetectionSummary {
+  avg_entity_count: number;
+  avg_relationship_count: number;
+  avg_label_count: number;
+  total_detections: number;
+  avg_marking_score: number;
+}
+
+export interface DiagramAnalysis {
+  statistics: {
+    total_students: number;
+    average_score: number;
+    max_score: number;
+    average_percentage: number;
+    pass_rate: number;
+    highest_score: number;
+    lowest_score: number;
+    median_percentage: number;
+    std_percentage: number;
+  };
+  criterion_performance: DiagramCriterionPerformance[];
+  student_summaries: DiagramStudentSummary[];
+  detection_summary: DiagramDetectionSummary | null;
+  weakest_criteria: Array<{
+    criterion_id: number;
+    criterion: string;
+    fail_rate: number;
+    fail_count: number;
+  }>;
+  insights: string[];
+}
+
 export interface ExamAnalytics {
   subject_code: string;
   subject_name: string;
@@ -106,8 +167,11 @@ export interface ExamAnalytics {
   canonical_attention_areas: CanonicalAttentionArea[];
   canonical_insights: string[];
   unmapped_topics: string[];
+  unclassified_coverage?: { attempt_count: number; average_percentage: number; total_max: number } | null;
+  diagram_analysis?: DiagramAnalysis | null;
   generated_at: string;
   analytics_version: string;
+  provenance?: string;
 }
 
 export interface StudentRow {
@@ -148,6 +212,7 @@ export interface TeachingAction {
   performance_percentage: number;
   actions: string[];
   generated_at: string;
+  provenance?: string;
 }
 
 export interface Recommendation {
@@ -286,7 +351,44 @@ export async function fetchExamStudents(
   return res.json();
 }
 
+export interface DiagramEvaluation {
+  student_id: string;
+  subject_code: string;
+  session_name: string;
+  year: number;
+  month: number;
+  semester: number;
+  evaluation_result?: {
+    total_score: number;
+    max_score: number;
+    criteria_results: Array<{ criterion_id: number; criterion: string; awarded_marks: number; max_marks: number; status: string; remarks: string }>;
+    overall_feedback?: string;
+    grading_source?: string;
+  };
+  created_at?: string;
+}
+
+export interface DiagramMarking {
+  student_id: string;
+  subject_code: string;
+  session_name: string;
+  diagram_marks?: number;
+  diagram_details?: {
+    label_count?: number;
+    entity_count?: number;
+    relationship_count?: number;
+    detections?: Array<{ id: string; label: string; bbox: number[]; confidence: number; text: string }>;
+    entities?: Array<{ entity_name: string; attributes: string[] }>;
+    relationships?: Array<{ relation_name: string; entities: string[]; attributes: string[] }>;
+  };
+  diagram_entity_relations?: Array<{ entity_name: string; attributes: string[] }>;
+  diagram_relations?: Array<{ relation_name: string; entities: string[]; attributes: string[] }>;
+  evaluation_result?: any;
+  created_at?: string;
+}
+
 export interface LecturerStudentDetail {
+  analysis_status?: "generated" | "diagram_only";
   student_id: string;
   subject_code: string;
   subject_name: string;
@@ -321,6 +423,10 @@ export interface LecturerStudentDetail {
   model_metadata: { bloom_model: string; bloom_model_type: string; grading_source: string; rag_context_used: boolean };
   generated_at: string;
   analysis_version: string;
+  // diagram data (when lecturer clicks student with diagram)
+  diagram?: { evaluation?: DiagramEvaluation; marking?: DiagramMarking };
+  diagram_evaluation?: DiagramEvaluation | null;
+  diagram_marking?: DiagramMarking | null;
 }
 
 export async function fetchLecturerStudentDetail(
@@ -331,6 +437,7 @@ export async function fetchLecturerStudentDetail(
   month?: number,
   semester?: number,
   includeAiTips = false,
+  autoAnalyze = true,
 ): Promise<LecturerStudentDetail> {
   const encodedCourse = encodeURIComponent(courseCode);
   const encodedSession = encodeURIComponent(sessionName);
@@ -340,6 +447,7 @@ export async function fetchLecturerStudentDetail(
   if (month !== undefined) params.set("month", String(month));
   if (semester !== undefined) params.set("semester", String(semester));
   if (includeAiTips) params.set("include_ai_tips", "true");
+  if (!autoAnalyze) params.set("auto_analyze", "false");
   const qs = params.toString() ? `?${params}` : "";
   const res = await fetch(`${API_BASE}/api/lecturers/exams/${encodedCourse}/${encodedSession}/student/${encodedStudent}${qs}`);
   if (!res.ok) {
@@ -516,5 +624,33 @@ export interface LlmHealth {
 export async function fetchLlmHealth(): Promise<LlmHealth> {
   const res = await fetch(`${API_BASE}/api/lecturers/llm-health`);
   if (!res.ok) throw new Error("Failed to fetch LLM health");
+  return res.json();
+}
+
+export interface BloomHealth {
+  enabled: boolean;
+  available: boolean;
+  model_dir: string;
+  threshold: number;
+  max_length: number;
+  device: string;
+  online: boolean;
+  detail: string;
+}
+
+export async function fetchBloomHealth(): Promise<BloomHealth> {
+  const res = await fetch(`${API_BASE}/api/lecturers/bloom-health`);
+  if (!res.ok) throw new Error("Failed to fetch Bloom health");
+  return res.json();
+}
+
+export async function reanalyseExam(courseCode: string, sessionName: string, year: number, month: number, semester: number): Promise<ExamAnalytics> {
+  const encoded = encodeURIComponent(sessionName);
+  const params = new URLSearchParams({ year: String(year), month: String(month), semester: String(semester) });
+  const res = await fetch(`${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/analytics/reanalyse?${params}`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Failed to reanalyse");
+  }
   return res.json();
 }

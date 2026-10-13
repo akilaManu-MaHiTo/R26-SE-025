@@ -45,7 +45,7 @@ export function ScoreExplainHover({
       <HoverCardContent
         side={side}
         align="start"
-        className="w-80 max-w-[min(20rem,calc(100vw-1.5rem))] p-3 text-xs leading-relaxed"
+        className="w-96 max-w-[min(24rem,calc(100vw-1.5rem))] p-3 text-xs leading-relaxed"
       >
         <div className="font-medium text-foreground text-sm">{content.title}</div>
         {content.summary ? (
@@ -54,6 +54,16 @@ export function ScoreExplainHover({
         {content.formula ? (
           <div className="mt-2 rounded-md bg-muted/60 px-2 py-1.5 font-mono text-[11px] text-foreground">
             {content.formula}
+          </div>
+        ) : null}
+        {content.workedExample && content.workedExample.length > 0 ? (
+          <div className="mt-2">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground/80">
+              This recording, step by step
+            </div>
+            <pre className="mt-1 overflow-x-auto rounded-md bg-muted/60 px-2 py-1.5 font-mono text-[11px] leading-snug text-foreground whitespace-pre">
+              {content.workedExample.join("\n")}
+            </pre>
           </div>
         ) : null}
         <ul className="mt-2 space-y-1 text-muted-foreground">

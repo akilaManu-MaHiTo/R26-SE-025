@@ -5,10 +5,12 @@ import type { AIModel } from "./components/AIBrand";
 import { GradingPage } from "./components/GradingPage";
 import { DiagramGrading } from "./components/DiagramGrading";
 import { DiagramReconstructionPage } from "./components/DiagramReconstructionPage";
+import { DiagramGuidelinePage } from "./components/DiagramGuidelinePage";
 import AnalyticsPage from "./components/AnalyticsPage";
 import { ExamCreator } from "./components/ExamCreator";
 import { VivaPage } from "./components/VivaPage";
 import { SubjectContentPage } from "./components/SubjectContentPage";
+import { TopicTaxonomyPage } from "./components/TopicTaxonomyPage";
 import { LiveCopilotPage } from "./components/viva-copilot/LiveCopilotPage";
 
 export type AgentId = "diagram-evaluation" | "grading" | "question-exam" | "viva-evaluation";
@@ -41,6 +43,13 @@ export const AGENT_CONFIG: AgentConfig[] = [
     model: "structr",
     features: [
       {
+        path: "/diagram-evaluation/diagram-guideline",
+        label: "Diagram Guideline",
+        title: "Diagram Guideline",
+        subtitle: "Turn a marking scheme into the criteria used to grade diagrams",
+        element: <DiagramGuidelinePage />,
+      },
+      {
         path: "/diagram-evaluation/diagram-grading",
         label: "Diagram Grading",
         title: "Diagram Grading",
@@ -49,8 +58,8 @@ export const AGENT_CONFIG: AgentConfig[] = [
       },
       {
         path: "/diagram-evaluation/diagram-reconstruction",
-        label: "Diagram Reconstruction",
-        title: "Diagram Reconstruction",
+        label: "Diagram History",
+        title: "Diagram History",
         subtitle: "Recreate saved ER structure from server details",
         element: <DiagramReconstructionPage />,
       },
@@ -94,6 +103,13 @@ export const AGENT_CONFIG: AgentConfig[] = [
         title: "Exam Creator",
         subtitle: "Compose balanced, level-appropriate exams",
         element: <ExamCreator />,
+      },
+      {
+        path: "/question-exam/topic-taxonomy",
+        label: "Topic Taxonomy",
+        title: "Topic Taxonomy",
+        subtitle: "Edit course topics and browse saved versions",
+        element: <TopicTaxonomyPage />,
       },
     ],
   },

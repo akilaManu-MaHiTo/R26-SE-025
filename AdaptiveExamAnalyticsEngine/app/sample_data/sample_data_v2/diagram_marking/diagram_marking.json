@@ -1,0 +1,3360 @@
+[
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad67"
+    },
+    "student_id": "IT22262551",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 20,
+    "diagram_details": {
+      "label_count": 12,
+      "entity_count": 3,
+      "relationship_count": 2,
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            50,
+            50,
+            200,
+            150
+          ],
+          "confidence": 0.97,
+          "text": "Person"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            30,
+            350,
+            80
+          ],
+          "confidence": 0.96,
+          "text": "SSN"
+        },
+        {
+          "id": "2",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            90,
+            350,
+            140
+          ],
+          "confidence": 0.95,
+          "text": "Name"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            150,
+            350,
+            200
+          ],
+          "confidence": 0.94,
+          "text": "Address"
+        },
+        {
+          "id": "4",
+          "label": "Subclass",
+          "bbox": [
+            50,
+            250,
+            200,
+            350
+          ],
+          "confidence": 0.96,
+          "text": "Instructor"
+        },
+        {
+          "id": "5",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            250,
+            350,
+            300
+          ],
+          "confidence": 0.94,
+          "text": "Rank"
+        },
+        {
+          "id": "6",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            310,
+            350,
+            360
+          ],
+          "confidence": 0.93,
+          "text": "Salary"
+        },
+        {
+          "id": "7",
+          "label": "Subclass",
+          "bbox": [
+            50,
+            450,
+            200,
+            550
+          ],
+          "confidence": 0.95,
+          "text": "Researcher"
+        },
+        {
+          "id": "8",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            450,
+            350,
+            500
+          ],
+          "confidence": 0.93,
+          "text": "GrantAmount"
+        },
+        {
+          "id": "9",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            510,
+            350,
+            560
+          ],
+          "confidence": 0.92,
+          "text": "Publications"
+        },
+        {
+          "id": "10",
+          "label": "Relationships",
+          "bbox": [
+            400,
+            200,
+            550,
+            300
+          ],
+          "confidence": 0.91,
+          "text": "N"
+        },
+        {
+          "id": "11",
+          "label": "Relationships",
+          "bbox": [
+            400,
+            400,
+            550,
+            500
+          ],
+          "confidence": 0.9,
+          "text": "M"
+        }
+      ],
+      "entities": [
+        {
+          "entity_name": "Person",
+          "attributes": [
+            "SSN",
+            "Name",
+            "Address"
+          ]
+        },
+        {
+          "entity_name": "Instructor",
+          "attributes": [
+            "Rank",
+            "Salary"
+          ]
+        },
+        {
+          "entity_name": "Researcher",
+          "attributes": [
+            "GrantAmount",
+            "Publications"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "relation_name": "N",
+          "entities": [
+            "Person",
+            "Instructor"
+          ],
+          "attributes": []
+        },
+        {
+          "relation_name": "M",
+          "entities": [
+            "Person",
+            "Researcher"
+          ],
+          "attributes": []
+        }
+      ],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN",
+              "Name",
+              "Address"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": [
+              "GrantAmount",
+              "Publications"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          },
+          {
+            "relation_name": "M",
+            "entities": [
+              "Person",
+              "Researcher"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      {
+        "entity_name": "Person",
+        "attributes": [
+          "SSN",
+          "Name",
+          "Address"
+        ]
+      },
+      {
+        "entity_name": "Instructor",
+        "attributes": [
+          "Rank",
+          "Salary"
+        ]
+      },
+      {
+        "entity_name": "Researcher",
+        "attributes": [
+          "GrantAmount",
+          "Publications"
+        ]
+      }
+    ],
+    "diagram_relations": [
+      {
+        "relation_name": "N",
+        "entities": [
+          "Person",
+          "Instructor"
+        ],
+        "attributes": []
+      },
+      {
+        "relation_name": "M",
+        "entities": [
+          "Person",
+          "Researcher"
+        ],
+        "attributes": []
+      }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            50,
+            50,
+            200,
+            150
+          ],
+          "confidence": 0.97,
+          "text": "Person",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            30,
+            350,
+            80
+          ],
+          "confidence": 0.96,
+          "text": "SSN",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "2",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            90,
+            350,
+            140
+          ],
+          "confidence": 0.95,
+          "text": "Name",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            150,
+            350,
+            200
+          ],
+          "confidence": 0.94,
+          "text": "Address",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "4",
+          "label": "Subclass",
+          "bbox": [
+            50,
+            250,
+            200,
+            350
+          ],
+          "confidence": 0.96,
+          "text": "Instructor",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "5",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            250,
+            350,
+            300
+          ],
+          "confidence": 0.94,
+          "text": "Rank",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "6",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            310,
+            350,
+            360
+          ],
+          "confidence": 0.93,
+          "text": "Salary",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "7",
+          "label": "Subclass",
+          "bbox": [
+            50,
+            450,
+            200,
+            550
+          ],
+          "confidence": 0.95,
+          "text": "Researcher",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "8",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            450,
+            350,
+            500
+          ],
+          "confidence": 0.93,
+          "text": "GrantAmount",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "9",
+          "label": "Attributes",
+          "bbox": [
+            220,
+            510,
+            350,
+            560
+          ],
+          "confidence": 0.92,
+          "text": "Publications",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "10",
+          "label": "Relationships",
+          "bbox": [
+            400,
+            200,
+            550,
+            300
+          ],
+          "confidence": 0.91,
+          "text": "N",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "11",
+          "label": "Relationships",
+          "bbox": [
+            400,
+            400,
+            550,
+            500
+          ],
+          "confidence": 0.9,
+          "text": "M",
+          "crop_path": "",
+          "ocr_status": "ok"
+        }
+      ],
+      "connections": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN",
+              "Name",
+              "Address"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": [
+              "GrantAmount",
+              "Publications"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          },
+          {
+            "relation_name": "M",
+            "entities": [
+              "Person",
+              "Researcher"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-29T04:44:38.315847+00:00",
+    "updated_at": "2026-08-29T04:44:38.315847+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad68"
+    },
+    "student_id": "IT22262552",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 19,
+    "diagram_details": {
+      "label_count": 11,
+      "entity_count": 3,
+      "relationship_count": 2,
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            60,
+            60,
+            210,
+            160
+          ],
+          "confidence": 0.96,
+          "text": "Person"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            40,
+            360,
+            90
+          ],
+          "confidence": 0.95,
+          "text": "SSN"
+        },
+        {
+          "id": "2",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            100,
+            360,
+            150
+          ],
+          "confidence": 0.94,
+          "text": "Name"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            160,
+            360,
+            210
+          ],
+          "confidence": 0.93,
+          "text": "Address"
+        },
+        {
+          "id": "4",
+          "label": "Subclass",
+          "bbox": [
+            60,
+            260,
+            210,
+            360
+          ],
+          "confidence": 0.95,
+          "text": "Instructor"
+        },
+        {
+          "id": "5",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            260,
+            360,
+            310
+          ],
+          "confidence": 0.93,
+          "text": "Rank"
+        },
+        {
+          "id": "6",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            320,
+            360,
+            370
+          ],
+          "confidence": 0.92,
+          "text": "Salary"
+        },
+        {
+          "id": "7",
+          "label": "Subclass",
+          "bbox": [
+            60,
+            460,
+            210,
+            560
+          ],
+          "confidence": 0.94,
+          "text": "Researcher"
+        },
+        {
+          "id": "8",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            460,
+            360,
+            510
+          ],
+          "confidence": 0.92,
+          "text": "GrantAmount"
+        },
+        {
+          "id": "9",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            520,
+            360,
+            570
+          ],
+          "confidence": 0.91,
+          "text": "Publications"
+        },
+        {
+          "id": "10",
+          "label": "Relationships",
+          "bbox": [
+            410,
+            210,
+            560,
+            310
+          ],
+          "confidence": 0.9,
+          "text": "N"
+        }
+      ],
+      "entities": [
+        {
+          "entity_name": "Person",
+          "attributes": [
+            "SSN",
+            "Name",
+            "Address"
+          ]
+        },
+        {
+          "entity_name": "Instructor",
+          "attributes": [
+            "Rank",
+            "Salary"
+          ]
+        },
+        {
+          "entity_name": "Researcher",
+          "attributes": [
+            "GrantAmount",
+            "Publications"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "relation_name": "N",
+          "entities": [
+            "Person",
+            "Instructor"
+          ],
+          "attributes": []
+        },
+        {
+          "relation_name": "M",
+          "entities": [
+            "Person",
+            "Researcher"
+          ],
+          "attributes": []
+        }
+      ],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN",
+              "Name",
+              "Address"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": [
+              "GrantAmount",
+              "Publications"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          },
+          {
+            "relation_name": "M",
+            "entities": [
+              "Person",
+              "Researcher"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      {
+        "entity_name": "Person",
+        "attributes": [
+          "SSN",
+          "Name",
+          "Address"
+        ]
+      },
+      {
+        "entity_name": "Instructor",
+        "attributes": [
+          "Rank",
+          "Salary"
+        ]
+      },
+      {
+        "entity_name": "Researcher",
+        "attributes": [
+          "GrantAmount",
+          "Publications"
+        ]
+      }
+    ],
+    "diagram_relations": [
+      {
+        "relation_name": "N",
+        "entities": [
+          "Person",
+          "Instructor"
+        ],
+        "attributes": []
+      },
+      {
+        "relation_name": "M",
+        "entities": [
+          "Person",
+          "Researcher"
+        ],
+        "attributes": []
+      }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            60,
+            60,
+            210,
+            160
+          ],
+          "confidence": 0.96,
+          "text": "Person",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            40,
+            360,
+            90
+          ],
+          "confidence": 0.95,
+          "text": "SSN",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "2",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            100,
+            360,
+            150
+          ],
+          "confidence": 0.94,
+          "text": "Name",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            160,
+            360,
+            210
+          ],
+          "confidence": 0.93,
+          "text": "Address",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "4",
+          "label": "Subclass",
+          "bbox": [
+            60,
+            260,
+            210,
+            360
+          ],
+          "confidence": 0.95,
+          "text": "Instructor",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "5",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            260,
+            360,
+            310
+          ],
+          "confidence": 0.93,
+          "text": "Rank",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "6",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            320,
+            360,
+            370
+          ],
+          "confidence": 0.92,
+          "text": "Salary",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "7",
+          "label": "Subclass",
+          "bbox": [
+            60,
+            460,
+            210,
+            560
+          ],
+          "confidence": 0.94,
+          "text": "Researcher",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "8",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            460,
+            360,
+            510
+          ],
+          "confidence": 0.92,
+          "text": "GrantAmount",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "9",
+          "label": "Attributes",
+          "bbox": [
+            230,
+            520,
+            360,
+            570
+          ],
+          "confidence": 0.91,
+          "text": "Publications",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "10",
+          "label": "Relationships",
+          "bbox": [
+            410,
+            210,
+            560,
+            310
+          ],
+          "confidence": 0.9,
+          "text": "N",
+          "crop_path": "",
+          "ocr_status": "ok"
+        }
+      ],
+      "connections": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN",
+              "Name",
+              "Address"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": [
+              "GrantAmount",
+              "Publications"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          },
+          {
+            "relation_name": "M",
+            "entities": [
+              "Person",
+              "Researcher"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-29T04:44:38.315885+00:00",
+    "updated_at": "2026-08-29T04:44:38.315885+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad69"
+    },
+    "student_id": "IT22262553",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 17,
+    "diagram_details": {
+      "label_count": 10,
+      "entity_count": 3,
+      "relationship_count": 2,
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            70,
+            70,
+            220,
+            170
+          ],
+          "confidence": 0.95,
+          "text": "Person"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            50,
+            370,
+            100
+          ],
+          "confidence": 0.94,
+          "text": "SSN"
+        },
+        {
+          "id": "2",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            110,
+            370,
+            160
+          ],
+          "confidence": 0.93,
+          "text": "Name"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            170,
+            370,
+            220
+          ],
+          "confidence": 0.92,
+          "text": "Address"
+        },
+        {
+          "id": "4",
+          "label": "Subclass",
+          "bbox": [
+            70,
+            270,
+            220,
+            370
+          ],
+          "confidence": 0.94,
+          "text": "Instructor"
+        },
+        {
+          "id": "5",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            270,
+            370,
+            320
+          ],
+          "confidence": 0.92,
+          "text": "Rank"
+        },
+        {
+          "id": "6",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            330,
+            370,
+            380
+          ],
+          "confidence": 0.91,
+          "text": "Salary"
+        },
+        {
+          "id": "7",
+          "label": "Subclass",
+          "bbox": [
+            70,
+            470,
+            220,
+            570
+          ],
+          "confidence": 0.93,
+          "text": "Researcher"
+        },
+        {
+          "id": "8",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            470,
+            370,
+            520
+          ],
+          "confidence": 0.91,
+          "text": "GrantAmount"
+        },
+        {
+          "id": "9",
+          "label": "Relationships",
+          "bbox": [
+            420,
+            220,
+            570,
+            320
+          ],
+          "confidence": 0.9,
+          "text": "N"
+        }
+      ],
+      "entities": [
+        {
+          "entity_name": "Person",
+          "attributes": [
+            "SSN",
+            "Name",
+            "Address"
+          ]
+        },
+        {
+          "entity_name": "Instructor",
+          "attributes": [
+            "Rank",
+            "Salary"
+          ]
+        },
+        {
+          "entity_name": "Researcher",
+          "attributes": [
+            "GrantAmount"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "relation_name": "N",
+          "entities": [
+            "Person",
+            "Instructor"
+          ],
+          "attributes": []
+        },
+        {
+          "relation_name": "M",
+          "entities": [
+            "Person",
+            "Researcher"
+          ],
+          "attributes": []
+        }
+      ],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN",
+              "Name",
+              "Address"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": [
+              "GrantAmount"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          },
+          {
+            "relation_name": "M",
+            "entities": [
+              "Person",
+              "Researcher"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      {
+        "entity_name": "Person",
+        "attributes": [
+          "SSN",
+          "Name",
+          "Address"
+        ]
+      },
+      {
+        "entity_name": "Instructor",
+        "attributes": [
+          "Rank",
+          "Salary"
+        ]
+      },
+      {
+        "entity_name": "Researcher",
+        "attributes": [
+          "GrantAmount"
+        ]
+      }
+    ],
+    "diagram_relations": [
+      {
+        "relation_name": "N",
+        "entities": [
+          "Person",
+          "Instructor"
+        ],
+        "attributes": []
+      },
+      {
+        "relation_name": "M",
+        "entities": [
+          "Person",
+          "Researcher"
+        ],
+        "attributes": []
+      }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            70,
+            70,
+            220,
+            170
+          ],
+          "confidence": 0.95,
+          "text": "Person",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            50,
+            370,
+            100
+          ],
+          "confidence": 0.94,
+          "text": "SSN",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "2",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            110,
+            370,
+            160
+          ],
+          "confidence": 0.93,
+          "text": "Name",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            170,
+            370,
+            220
+          ],
+          "confidence": 0.92,
+          "text": "Address",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "4",
+          "label": "Subclass",
+          "bbox": [
+            70,
+            270,
+            220,
+            370
+          ],
+          "confidence": 0.94,
+          "text": "Instructor",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "5",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            270,
+            370,
+            320
+          ],
+          "confidence": 0.92,
+          "text": "Rank",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "6",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            330,
+            370,
+            380
+          ],
+          "confidence": 0.91,
+          "text": "Salary",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "7",
+          "label": "Subclass",
+          "bbox": [
+            70,
+            470,
+            220,
+            570
+          ],
+          "confidence": 0.93,
+          "text": "Researcher",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "8",
+          "label": "Attributes",
+          "bbox": [
+            240,
+            470,
+            370,
+            520
+          ],
+          "confidence": 0.91,
+          "text": "GrantAmount",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "9",
+          "label": "Relationships",
+          "bbox": [
+            420,
+            220,
+            570,
+            320
+          ],
+          "confidence": 0.9,
+          "text": "N",
+          "crop_path": "",
+          "ocr_status": "ok"
+        }
+      ],
+      "connections": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN",
+              "Name",
+              "Address"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": [
+              "GrantAmount"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          },
+          {
+            "relation_name": "M",
+            "entities": [
+              "Person",
+              "Researcher"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-29T04:44:38.315913+00:00",
+    "updated_at": "2026-08-29T04:44:38.315913+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad6a"
+    },
+    "student_id": "IT22262554",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 15,
+    "diagram_details": {
+      "label_count": 9,
+      "entity_count": 3,
+      "relationship_count": 2,
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            80,
+            80,
+            230,
+            180
+          ],
+          "confidence": 0.94,
+          "text": "Person"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            250,
+            60,
+            380,
+            110
+          ],
+          "confidence": 0.93,
+          "text": "SSN"
+        },
+        {
+          "id": "2",
+          "label": "Attributes",
+          "bbox": [
+            250,
+            120,
+            380,
+            170
+          ],
+          "confidence": 0.92,
+          "text": "Name"
+        },
+        {
+          "id": "3",
+          "label": "Subclass",
+          "bbox": [
+            80,
+            280,
+            230,
+            380
+          ],
+          "confidence": 0.93,
+          "text": "Instructor"
+        },
+        {
+          "id": "4",
+          "label": "Attributes",
+          "bbox": [
+            250,
+            280,
+            380,
+            330
+          ],
+          "confidence": 0.91,
+          "text": "Rank"
+        },
+        {
+          "id": "5",
+          "label": "Attributes",
+          "bbox": [
+            250,
+            340,
+            380,
+            390
+          ],
+          "confidence": 0.9,
+          "text": "Salary"
+        },
+        {
+          "id": "6",
+          "label": "Subclass",
+          "bbox": [
+            80,
+            480,
+            230,
+            580
+          ],
+          "confidence": 0.92,
+          "text": "Researcher"
+        },
+        {
+          "id": "7",
+          "label": "Attributes",
+          "bbox": [
+            250,
+            480,
+            380,
+            530
+          ],
+          "confidence": 0.9,
+          "text": "GrantAmount"
+        },
+        {
+          "id": "8",
+          "label": "Relationships",
+          "bbox": [
+            430,
+            230,
+            580,
+            330
+          ],
+          "confidence": 0.89,
+          "text": "N"
+        }
+      ],
+      "entities": [
+        {
+          "entity_name": "Person",
+          "attributes": [
+            "SSN",
+            "Name"
+          ]
+        },
+        {
+          "entity_name": "Instructor",
+          "attributes": [
+            "Rank",
+            "Salary"
+          ]
+        },
+        {
+          "entity_name": "Researcher",
+          "attributes": [
+            "GrantAmount"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "relation_name": "N",
+          "entities": [
+            "Person",
+            "Instructor"
+          ],
+          "attributes": []
+        },
+        {
+          "relation_name": "M",
+          "entities": [
+            "Person",
+            "Researcher"
+          ],
+          "attributes": []
+        }
+      ],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN",
+              "Name"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": [
+              "GrantAmount"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          },
+          {
+            "relation_name": "M",
+            "entities": [
+              "Person",
+              "Researcher"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      {
+        "entity_name": "Person",
+        "attributes": [
+          "SSN",
+          "Name"
+        ]
+      },
+      {
+        "entity_name": "Instructor",
+        "attributes": [
+          "Rank",
+          "Salary"
+        ]
+      },
+      {
+        "entity_name": "Researcher",
+        "attributes": [
+          "GrantAmount"
+        ]
+      }
+    ],
+    "diagram_relations": [
+      {
+        "relation_name": "N",
+        "entities": [
+          "Person",
+          "Instructor"
+        ],
+        "attributes": []
+      },
+      {
+        "relation_name": "M",
+        "entities": [
+          "Person",
+          "Researcher"
+        ],
+        "attributes": []
+      }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            80,
+            80,
+            230,
+            180
+          ],
+          "confidence": 0.94,
+          "text": "Person",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            250,
+            60,
+            380,
+            110
+          ],
+          "confidence": 0.93,
+          "text": "SSN",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "2",
+          "label": "Attributes",
+          "bbox": [
+            250,
+            120,
+            380,
+            170
+          ],
+          "confidence": 0.92,
+          "text": "Name",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "3",
+          "label": "Subclass",
+          "bbox": [
+            80,
+            280,
+            230,
+            380
+          ],
+          "confidence": 0.93,
+          "text": "Instructor",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "4",
+          "label": "Attributes",
+          "bbox": [
+            250,
+            280,
+            380,
+            330
+          ],
+          "confidence": 0.91,
+          "text": "Rank",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "5",
+          "label": "Attributes",
+          "bbox": [
+            250,
+            340,
+            380,
+            390
+          ],
+          "confidence": 0.9,
+          "text": "Salary",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "6",
+          "label": "Subclass",
+          "bbox": [
+            80,
+            480,
+            230,
+            580
+          ],
+          "confidence": 0.92,
+          "text": "Researcher",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "7",
+          "label": "Attributes",
+          "bbox": [
+            250,
+            480,
+            380,
+            530
+          ],
+          "confidence": 0.9,
+          "text": "GrantAmount",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "8",
+          "label": "Relationships",
+          "bbox": [
+            430,
+            230,
+            580,
+            330
+          ],
+          "confidence": 0.89,
+          "text": "N",
+          "crop_path": "",
+          "ocr_status": "ok"
+        }
+      ],
+      "connections": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN",
+              "Name"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": [
+              "GrantAmount"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          },
+          {
+            "relation_name": "M",
+            "entities": [
+              "Person",
+              "Researcher"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-29T04:44:38.315924+00:00",
+    "updated_at": "2026-08-29T04:44:38.315924+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad6b"
+    },
+    "student_id": "IT22262555",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 13,
+    "diagram_details": {
+      "label_count": 8,
+      "entity_count": 3,
+      "relationship_count": 2,
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            90,
+            90,
+            240,
+            190
+          ],
+          "confidence": 0.93,
+          "text": "Person"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            260,
+            70,
+            390,
+            120
+          ],
+          "confidence": 0.92,
+          "text": "SSN"
+        },
+        {
+          "id": "2",
+          "label": "Subclass",
+          "bbox": [
+            90,
+            290,
+            240,
+            390
+          ],
+          "confidence": 0.92,
+          "text": "Instructor"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            260,
+            290,
+            390,
+            340
+          ],
+          "confidence": 0.91,
+          "text": "Rank"
+        },
+        {
+          "id": "4",
+          "label": "Attributes",
+          "bbox": [
+            260,
+            350,
+            390,
+            400
+          ],
+          "confidence": 0.9,
+          "text": "Salary"
+        },
+        {
+          "id": "5",
+          "label": "Subclass",
+          "bbox": [
+            90,
+            490,
+            240,
+            590
+          ],
+          "confidence": 0.91,
+          "text": "Researcher"
+        },
+        {
+          "id": "6",
+          "label": "Relationships",
+          "bbox": [
+            440,
+            240,
+            590,
+            340
+          ],
+          "confidence": 0.89,
+          "text": "N"
+        },
+        {
+          "id": "7",
+          "label": "Relationships",
+          "bbox": [
+            440,
+            440,
+            590,
+            540
+          ],
+          "confidence": 0.88,
+          "text": "M"
+        }
+      ],
+      "entities": [
+        {
+          "entity_name": "Person",
+          "attributes": [
+            "SSN"
+          ]
+        },
+        {
+          "entity_name": "Instructor",
+          "attributes": [
+            "Rank",
+            "Salary"
+          ]
+        },
+        {
+          "entity_name": "Researcher",
+          "attributes": []
+        }
+      ],
+      "relationships": [
+        {
+          "relation_name": "N",
+          "entities": [
+            "Person",
+            "Instructor"
+          ],
+          "attributes": []
+        },
+        {
+          "relation_name": "M",
+          "entities": [
+            "Person",
+            "Researcher"
+          ],
+          "attributes": []
+        }
+      ],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": []
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          },
+          {
+            "relation_name": "M",
+            "entities": [
+              "Person",
+              "Researcher"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      {
+        "entity_name": "Person",
+        "attributes": [
+          "SSN"
+        ]
+      },
+      {
+        "entity_name": "Instructor",
+        "attributes": [
+          "Rank",
+          "Salary"
+        ]
+      },
+      {
+        "entity_name": "Researcher",
+        "attributes": []
+      }
+    ],
+    "diagram_relations": [
+      {
+        "relation_name": "N",
+        "entities": [
+          "Person",
+          "Instructor"
+        ],
+        "attributes": []
+      },
+      {
+        "relation_name": "M",
+        "entities": [
+          "Person",
+          "Researcher"
+        ],
+        "attributes": []
+      }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            90,
+            90,
+            240,
+            190
+          ],
+          "confidence": 0.93,
+          "text": "Person",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            260,
+            70,
+            390,
+            120
+          ],
+          "confidence": 0.92,
+          "text": "SSN",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "2",
+          "label": "Subclass",
+          "bbox": [
+            90,
+            290,
+            240,
+            390
+          ],
+          "confidence": 0.92,
+          "text": "Instructor",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            260,
+            290,
+            390,
+            340
+          ],
+          "confidence": 0.91,
+          "text": "Rank",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "4",
+          "label": "Attributes",
+          "bbox": [
+            260,
+            350,
+            390,
+            400
+          ],
+          "confidence": 0.9,
+          "text": "Salary",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "5",
+          "label": "Subclass",
+          "bbox": [
+            90,
+            490,
+            240,
+            590
+          ],
+          "confidence": 0.91,
+          "text": "Researcher",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "6",
+          "label": "Relationships",
+          "bbox": [
+            440,
+            240,
+            590,
+            340
+          ],
+          "confidence": 0.89,
+          "text": "N",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "7",
+          "label": "Relationships",
+          "bbox": [
+            440,
+            440,
+            590,
+            540
+          ],
+          "confidence": 0.88,
+          "text": "M",
+          "crop_path": "",
+          "ocr_status": "ok"
+        }
+      ],
+      "connections": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": []
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          },
+          {
+            "relation_name": "M",
+            "entities": [
+              "Person",
+              "Researcher"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-29T04:44:38.315931+00:00",
+    "updated_at": "2026-08-29T04:44:38.315931+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad6c"
+    },
+    "student_id": "IT22262556",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 11,
+    "diagram_details": {
+      "label_count": 7,
+      "entity_count": 3,
+      "relationship_count": 1,
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            100,
+            100,
+            250,
+            200
+          ],
+          "confidence": 0.92,
+          "text": "Person"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            270,
+            80,
+            400,
+            130
+          ],
+          "confidence": 0.91,
+          "text": "SSN"
+        },
+        {
+          "id": "2",
+          "label": "Subclass",
+          "bbox": [
+            100,
+            300,
+            250,
+            400
+          ],
+          "confidence": 0.91,
+          "text": "Instructor"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            270,
+            300,
+            400,
+            350
+          ],
+          "confidence": 0.9,
+          "text": "Rank"
+        },
+        {
+          "id": "4",
+          "label": "Attributes",
+          "bbox": [
+            270,
+            360,
+            400,
+            410
+          ],
+          "confidence": 0.89,
+          "text": "Salary"
+        },
+        {
+          "id": "5",
+          "label": "Subclass",
+          "bbox": [
+            100,
+            500,
+            250,
+            600
+          ],
+          "confidence": 0.9,
+          "text": "Researcher"
+        },
+        {
+          "id": "6",
+          "label": "Relationships",
+          "bbox": [
+            450,
+            250,
+            600,
+            350
+          ],
+          "confidence": 0.88,
+          "text": "N"
+        }
+      ],
+      "entities": [
+        {
+          "entity_name": "Person",
+          "attributes": [
+            "SSN"
+          ]
+        },
+        {
+          "entity_name": "Instructor",
+          "attributes": [
+            "Rank",
+            "Salary"
+          ]
+        },
+        {
+          "entity_name": "Researcher",
+          "attributes": []
+        }
+      ],
+      "relationships": [
+        {
+          "relation_name": "N",
+          "entities": [
+            "Person",
+            "Instructor"
+          ],
+          "attributes": []
+        }
+      ],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": []
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      {
+        "entity_name": "Person",
+        "attributes": [
+          "SSN"
+        ]
+      },
+      {
+        "entity_name": "Instructor",
+        "attributes": [
+          "Rank",
+          "Salary"
+        ]
+      },
+      {
+        "entity_name": "Researcher",
+        "attributes": []
+      }
+    ],
+    "diagram_relations": [
+      {
+        "relation_name": "N",
+        "entities": [
+          "Person",
+          "Instructor"
+        ],
+        "attributes": []
+      }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            100,
+            100,
+            250,
+            200
+          ],
+          "confidence": 0.92,
+          "text": "Person",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            270,
+            80,
+            400,
+            130
+          ],
+          "confidence": 0.91,
+          "text": "SSN",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "2",
+          "label": "Subclass",
+          "bbox": [
+            100,
+            300,
+            250,
+            400
+          ],
+          "confidence": 0.91,
+          "text": "Instructor",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            270,
+            300,
+            400,
+            350
+          ],
+          "confidence": 0.9,
+          "text": "Rank",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "4",
+          "label": "Attributes",
+          "bbox": [
+            270,
+            360,
+            400,
+            410
+          ],
+          "confidence": 0.89,
+          "text": "Salary",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "5",
+          "label": "Subclass",
+          "bbox": [
+            100,
+            500,
+            250,
+            600
+          ],
+          "confidence": 0.9,
+          "text": "Researcher",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "6",
+          "label": "Relationships",
+          "bbox": [
+            450,
+            250,
+            600,
+            350
+          ],
+          "confidence": 0.88,
+          "text": "N",
+          "crop_path": "",
+          "ocr_status": "ok"
+        }
+      ],
+      "connections": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank",
+              "Salary"
+            ]
+          },
+          "Researcher": {
+            "attributes": []
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-29T04:44:38.315939+00:00",
+    "updated_at": "2026-08-29T04:44:38.315939+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad6d"
+    },
+    "student_id": "IT22262557",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 9,
+    "diagram_details": {
+      "label_count": 5,
+      "entity_count": 2,
+      "relationship_count": 1,
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            110,
+            110,
+            260,
+            210
+          ],
+          "confidence": 0.91,
+          "text": "Person"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            280,
+            90,
+            410,
+            140
+          ],
+          "confidence": 0.9,
+          "text": "SSN"
+        },
+        {
+          "id": "2",
+          "label": "Subclass",
+          "bbox": [
+            110,
+            310,
+            260,
+            410
+          ],
+          "confidence": 0.9,
+          "text": "Instructor"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            280,
+            310,
+            410,
+            360
+          ],
+          "confidence": 0.89,
+          "text": "Rank"
+        },
+        {
+          "id": "4",
+          "label": "Relationships",
+          "bbox": [
+            460,
+            260,
+            610,
+            360
+          ],
+          "confidence": 0.87,
+          "text": "N"
+        }
+      ],
+      "entities": [
+        {
+          "entity_name": "Person",
+          "attributes": [
+            "SSN"
+          ]
+        },
+        {
+          "entity_name": "Instructor",
+          "attributes": [
+            "Rank"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "relation_name": "N",
+          "entities": [
+            "Person",
+            "Instructor"
+          ],
+          "attributes": []
+        }
+      ],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      {
+        "entity_name": "Person",
+        "attributes": [
+          "SSN"
+        ]
+      },
+      {
+        "entity_name": "Instructor",
+        "attributes": [
+          "Rank"
+        ]
+      }
+    ],
+    "diagram_relations": [
+      {
+        "relation_name": "N",
+        "entities": [
+          "Person",
+          "Instructor"
+        ],
+        "attributes": []
+      }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            110,
+            110,
+            260,
+            210
+          ],
+          "confidence": 0.91,
+          "text": "Person",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            280,
+            90,
+            410,
+            140
+          ],
+          "confidence": 0.9,
+          "text": "SSN",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "2",
+          "label": "Subclass",
+          "bbox": [
+            110,
+            310,
+            260,
+            410
+          ],
+          "confidence": 0.9,
+          "text": "Instructor",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            280,
+            310,
+            410,
+            360
+          ],
+          "confidence": 0.89,
+          "text": "Rank",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "4",
+          "label": "Relationships",
+          "bbox": [
+            460,
+            260,
+            610,
+            360
+          ],
+          "confidence": 0.87,
+          "text": "N",
+          "crop_path": "",
+          "ocr_status": "ok"
+        }
+      ],
+      "connections": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-29T04:44:38.315945+00:00",
+    "updated_at": "2026-08-29T04:44:38.315945+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad6e"
+    },
+    "student_id": "IT22262558",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 7,
+    "diagram_details": {
+      "label_count": 4,
+      "entity_count": 2,
+      "relationship_count": 1,
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            120,
+            120,
+            270,
+            220
+          ],
+          "confidence": 0.9,
+          "text": "Person"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            290,
+            100,
+            420,
+            150
+          ],
+          "confidence": 0.89,
+          "text": "SSN"
+        },
+        {
+          "id": "2",
+          "label": "Subclass",
+          "bbox": [
+            120,
+            320,
+            270,
+            420
+          ],
+          "confidence": 0.89,
+          "text": "Instructor"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            290,
+            320,
+            420,
+            370
+          ],
+          "confidence": 0.88,
+          "text": "Rank"
+        }
+      ],
+      "entities": [
+        {
+          "entity_name": "Person",
+          "attributes": [
+            "SSN",
+            "Name"
+          ]
+        },
+        {
+          "entity_name": "Instructor",
+          "attributes": [
+            "Rank"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "relation_name": "N",
+          "entities": [
+            "Person",
+            "Instructor"
+          ],
+          "attributes": []
+        }
+      ],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN",
+              "Name"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      {
+        "entity_name": "Person",
+        "attributes": [
+          "SSN",
+          "Name"
+        ]
+      },
+      {
+        "entity_name": "Instructor",
+        "attributes": [
+          "Rank"
+        ]
+      }
+    ],
+    "diagram_relations": [
+      {
+        "relation_name": "N",
+        "entities": [
+          "Person",
+          "Instructor"
+        ],
+        "attributes": []
+      }
+    ],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            120,
+            120,
+            270,
+            220
+          ],
+          "confidence": 0.9,
+          "text": "Person",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            290,
+            100,
+            420,
+            150
+          ],
+          "confidence": 0.89,
+          "text": "SSN",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "2",
+          "label": "Subclass",
+          "bbox": [
+            120,
+            320,
+            270,
+            420
+          ],
+          "confidence": 0.89,
+          "text": "Instructor",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "3",
+          "label": "Attributes",
+          "bbox": [
+            290,
+            320,
+            420,
+            370
+          ],
+          "confidence": 0.88,
+          "text": "Rank",
+          "crop_path": "",
+          "ocr_status": "ok"
+        }
+      ],
+      "connections": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN",
+              "Name"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank"
+            ]
+          }
+        },
+        "relationships": [
+          {
+            "relation_name": "N",
+            "entities": [
+              "Person",
+              "Instructor"
+            ],
+            "attributes": []
+          }
+        ],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-29T04:44:38.315953+00:00",
+    "updated_at": "2026-08-29T04:44:38.315953+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad6f"
+    },
+    "student_id": "IT22262559",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 5,
+    "diagram_details": {
+      "label_count": 3,
+      "entity_count": 2,
+      "relationship_count": 0,
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            130,
+            130,
+            280,
+            230
+          ],
+          "confidence": 0.89,
+          "text": "Person"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            300,
+            110,
+            430,
+            160
+          ],
+          "confidence": 0.88,
+          "text": "SSN"
+        },
+        {
+          "id": "2",
+          "label": "Subclass",
+          "bbox": [
+            130,
+            330,
+            280,
+            430
+          ],
+          "confidence": 0.88,
+          "text": "Instructor"
+        }
+      ],
+      "entities": [
+        {
+          "entity_name": "Person",
+          "attributes": [
+            "SSN"
+          ]
+        },
+        {
+          "entity_name": "Instructor",
+          "attributes": [
+            "Rank"
+          ]
+        }
+      ],
+      "relationships": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank"
+            ]
+          }
+        },
+        "relationships": [],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      {
+        "entity_name": "Person",
+        "attributes": [
+          "SSN"
+        ]
+      },
+      {
+        "entity_name": "Instructor",
+        "attributes": [
+          "Rank"
+        ]
+      }
+    ],
+    "diagram_relations": [],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            130,
+            130,
+            280,
+            230
+          ],
+          "confidence": 0.89,
+          "text": "Person",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "1",
+          "label": "Attributes",
+          "bbox": [
+            300,
+            110,
+            430,
+            160
+          ],
+          "confidence": 0.88,
+          "text": "SSN",
+          "crop_path": "",
+          "ocr_status": "ok"
+        },
+        {
+          "id": "2",
+          "label": "Subclass",
+          "bbox": [
+            130,
+            330,
+            280,
+            430
+          ],
+          "confidence": 0.88,
+          "text": "Instructor",
+          "crop_path": "",
+          "ocr_status": "ok"
+        }
+      ],
+      "connections": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": [
+              "SSN"
+            ]
+          },
+          "Instructor": {
+            "attributes": [
+              "Rank"
+            ]
+          }
+        },
+        "relationships": [],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-29T04:44:38.315959+00:00",
+    "updated_at": "2026-08-29T04:44:38.315959+00:00",
+    "source": "diagram-evaluation"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad70"
+    },
+    "student_id": "IT22262560",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "diagram_marks": 2,
+    "diagram_details": {
+      "label_count": 1,
+      "entity_count": 1,
+      "relationship_count": 0,
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            140,
+            140,
+            290,
+            240
+          ],
+          "confidence": 0.87,
+          "text": "Person"
+        }
+      ],
+      "entities": [
+        {
+          "entity_name": "Person",
+          "attributes": []
+        }
+      ],
+      "relationships": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": []
+          }
+        },
+        "relationships": [],
+        "unmatched_connections": []
+      }
+    },
+    "diagram_entity_relations": [
+      {
+        "entity_name": "Person",
+        "attributes": []
+      }
+    ],
+    "diagram_relations": [],
+    "remarks": "",
+    "evaluation_result": {
+      "status": "ok",
+      "detections": [
+        {
+          "id": "0",
+          "label": "Entities",
+          "bbox": [
+            140,
+            140,
+            290,
+            240
+          ],
+          "confidence": 0.87,
+          "text": "Person",
+          "crop_path": "",
+          "ocr_status": "ok"
+        }
+      ],
+      "connections": [],
+      "structure": {
+        "entities": {
+          "Person": {
+            "attributes": []
+          }
+        },
+        "relationships": [],
+        "unmatched_connections": []
+      },
+      "ocr": [],
+      "save_dir": ""
+    },
+    "created_at": "2026-08-29T04:44:38.315965+00:00",
+    "updated_at": "2026-08-29T04:44:38.315965+00:00",
+    "source": "diagram-evaluation"
+  }
+]

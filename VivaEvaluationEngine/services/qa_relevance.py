@@ -280,6 +280,9 @@ def attach_qa_analysis(
     structure_groq_call=None,
 ) -> Dict[str, Any]:
     """Run AI 1 (conversation structure) then AI 2 (pair relevance)."""
+    from services.pipeline_progress import emit
+
+    emit("qa", "Checking Q&A relevance")
     enriched = dict(result)
     audio = dict(enriched.get("audio_analysis") or {})
     conversation = dict(audio.get("conversation") or {})

@@ -16,6 +16,9 @@ export interface ScoreExplainContent {
   summary: string;
   lines: string[];
   formula?: string;
+  /** The same formula with this recording's real numbers substituted in, so a
+   * viewer can check the arithmetic themselves rather than trusting the total. */
+  workedExample?: string[];
 }
 
 const GRADE_BANDS = [
@@ -84,6 +87,98 @@ function componentLines(
   });
 }
 
+/** A family's real applied weight for this recording, e.g. "50%" when one
+ * family was dropped. Falls back to the nominal third. */
+function familyWeightLabel(
+  assessment: VivaAssessment | undefined,
+  family: string,
+): string {
+  const weights = assessment?.ai_performance?.family_weights_applied;
+  const w = weights?.[family];
+  if (w != null && !Number.isNaN(w)) return pct(w, "≈33.3%");
+  return "≈33.3%";
+}
+
+/** Substituted arithmetic for the official mark: one line per family showing
+ * `score x weight = contribution`, then the total. Returns [] when the scorer
+ * produced no mark (INCOMPLETE), where there is no arithmetic to show. */
+function officialMarkWorking(
+  assessment: VivaAssessment | undefined,
+  withTech: boolean,
+  fusion: { weightAi: number; weightTechnical: number },
+): string[] {
+  const perf = assessment?.ai_performance;
+  const weights = perf?.family_weights_applied;
+  const scores = perf?.family_scores;
+  const ai = perf?.score;
+  if (!weights || !scores || ai == null) return [];
+
+  const names = Object.keys(weights);
+  if (names.length === 0) return [];
+
+  const rows = names.map((name) => {
+    const score = Number(scores[name] ?? 0);
+    const weight = Number(weights[name] ?? 0);
+    const label = FAMILY_LABELS[name] || name;
+    // Family scores are 0-1; show them on the same /100 scale as the mark.
+    return `${label.padEnd(16)} ${(score * 100).toFixed(1).padStart(5)} x ${pct(
+      weight,
+      "",
+    ).padStart(5)} = ${(score * 100 * weight).toFixed(1).padStart(5)}`;
+  });
+
+  rows.push(`${"AI performance".padEnd(16)} ${" ".repeat(16)}= ${ai.toFixed(1).padStart(5)}`);
+
+  if (!withTech) {
+    rows.push(`${"Official mark".padEnd(16)} ${" ".repeat(16)}= ${ai.toFixed(1).padStart(5)}`);
+    return rows;
+  }
+
+  const tech = assessment?.technical_accuracy;
+  if (tech == null) {
+    rows.push("Technical accuracy not entered yet — final mark is pending.");
+    return rows;
+  }
+  const tech100 = Number(tech) * 10;
+  const final = fusion.weightAi * ai + fusion.weightTechnical * tech100;
+  rows.push(
+    `${"AI".padEnd(16)} ${ai.toFixed(1).padStart(5)} x ${pct(fusion.weightAi, "").padStart(5)} = ${(
+      fusion.weightAi * ai
+    )
+      .toFixed(1)
+      .padStart(5)}`,
+    `${"Technical".padEnd(16)} ${tech100.toFixed(1).padStart(5)} x ${pct(
+      fusion.weightTechnical,
+      "",
+    ).padStart(5)} = ${(fusion.weightTechnical * tech100).toFixed(1).padStart(5)}`,
+    `${"Official mark".padEnd(16)} ${" ".repeat(16)}= ${final.toFixed(1).padStart(5)}`,
+  );
+  return rows;
+}
+
+/** Substituted arithmetic for one family: each component, then the mean. */
+function familyWorking(
+  assessment: VivaAssessment | undefined,
+  family: string,
+): string[] {
+  const comps = (assessment?.ai_performance?.components || []).filter(
+    (c) => String(c.family || "") === family,
+  );
+  const score = assessment?.ai_performance?.family_scores?.[family];
+  if (comps.length === 0 || score == null) return [];
+
+  const rows = comps.map((c) => {
+    const key = String(c.feature || "");
+    const label = COMPONENT_LABELS[key] || key.replace(/_/g, " ");
+    const value = typeof c.normalized === "number" ? Number(c.normalized) * 100 : 0;
+    return `${label.slice(0, 24).padEnd(26)} ${value.toFixed(1).padStart(5)}`;
+  });
+  rows.push(
+    `${`average of ${comps.length}`.padEnd(26)} ${(Number(score) * 100).toFixed(1).padStart(5)}`,
+  );
+  return rows;
+}
+
 export function buildScoreExplain(
   topic: ScoreExplainTopic,
   options: {
@@ -101,13 +196,31 @@ export function buildScoreExplain(
   switch (topic) {
     case "official_mark":
     case "ai_performance": {
-      const eng = pct(weights?.engagement, "≈33.3%");
-      const audio = pct(weights?.audio_acoustics, "≈33.3%");
-      const transcript = pct(weights?.transcript, "≈33.3%");
+      // A family with no usable inputs is dropped by the scorer and the rest
+      // renormalize, so read the applied weights rather than assuming 33.3%
+      // each — otherwise the tooltip's percentages will not reconcile with the
+      // mark whenever (say) audio was unmeasurable.
+      const familyScores = assessment?.ai_performance?.family_scores;
+      const dropped = familyScores
+        ? (Object.keys(FAMILY_LABELS) as string[]).filter(
+            (name) => familyScores[name] == null,
+          )
+        : [];
+      const applied = weights ? Object.keys(weights).length : 3;
+      const evenPct = `≈${Math.round((100 / applied) * 10) / 10}%`;
+      const eng = pct(weights?.engagement, evenPct);
+      const audio = pct(weights?.audio_acoustics, evenPct);
+      const transcript = pct(weights?.transcript, evenPct);
       const lines = [
         `Scorer ${version}`,
         `Engagement ${eng} · Audio ${audio} · Transcript ${transcript}`,
-        "Equal average of available families (missing families are dropped and weights re-balance).",
+        dropped.length > 0
+          ? `Not measurable in this recording, so dropped: ${dropped
+              .map((name) => FAMILY_LABELS[name])
+              .join(", ")}. The remaining ${applied} ${
+              applied === 1 ? "family carries" : "families carry"
+            } the whole mark at the percentages above.`
+          : "Equal average of available families (missing families are dropped and weights re-balance).",
         "Emotion: not a separate % of the mark. It enters inside Engagement as facial confidence/positivity (emotion-weighted face tone), mixed 50/50 with Face CNN engagement.",
         "Still not included: LLM clarity/confidence, audio quality /10, engagement blend %, Positive/Neutral/Negative emotion bars as their own family.",
       ];
@@ -130,13 +243,19 @@ export function buildScoreExplain(
         lines,
         formula: withTech
           ? `Final = ${fusion.weightAi}×AI + ${fusion.weightTechnical}×Technical`
-          : "Final = (Engagement + Audio + Transcript) / 3",
+          : weights && Object.keys(weights).length > 0
+            ? `AI = (${Object.keys(weights)
+                .map((name) => FAMILY_LABELS[name] || name)
+                .join(" + ")}) / ${Object.keys(weights).length}`
+            : "Final = (Engagement + Audio + Transcript) / 3",
+        workedExample: officialMarkWorking(assessment, withTech, fusion),
       };
     }
     case "engagement": {
       const comps = componentLines(assessment, "engagement");
       const lines = [
-        familyScoreLine(assessment, "engagement") || "Part of the official mark (≈33.3%).",
+        familyScoreLine(assessment, "engagement") ||
+          `Part of the official mark (${familyWeightLabel(assessment, "engagement")}).`,
         ...(comps.length > 0
           ? ["Inside this family (equal parts when both measured):", ...comps]
           : [
@@ -148,16 +267,18 @@ export function buildScoreExplain(
         "Emotion bars (Positive/Neutral/Negative %) are not scored alone; facial confidence is the emotion input here.",
       ];
       return {
-        title: "Engagement (≈33.3% of mark)",
+        title: `Engagement (${familyWeightLabel(assessment, "engagement")} of mark)`,
         summary: "Face CNN engagement + facial confidence (emotion-weighted).",
         lines,
         formula: "Engagement = (CNN + facial confidence) / 2",
+        workedExample: familyWorking(assessment, "engagement"),
       };
     }
     case "audio_acoustics": {
       const comps = componentLines(assessment, "audio_acoustics");
       const lines = [
-        familyScoreLine(assessment, "audio_acoustics") || "Part of the official mark (≈33.3%).",
+        familyScoreLine(assessment, "audio_acoustics") ||
+          `Part of the official mark (${familyWeightLabel(assessment, "audio_acoustics")}).`,
         ...(comps.length > 0
           ? ["Acoustic parts used for this recording:", ...comps]
           : [
@@ -169,16 +290,18 @@ export function buildScoreExplain(
         "Not the supporting “audio quality /10” grade.",
       ];
       return {
-        title: "Audio acoustics (≈33.3% of mark)",
+        title: `Audio acoustics (${familyWeightLabel(assessment, "audio_acoustics")} of mark)`,
         summary: "Pitch stability, clarity, and articulation.",
         lines,
         formula: "Audio = average of available acoustic parts",
+        workedExample: familyWorking(assessment, "audio_acoustics"),
       };
     }
     case "transcript": {
       const comps = componentLines(assessment, "transcript");
       const lines = [
-        familyScoreLine(assessment, "transcript") || "Part of the official mark (≈33.3%).",
+        familyScoreLine(assessment, "transcript") ||
+          `Part of the official mark (${familyWeightLabel(assessment, "transcript")}).`,
         ...(comps.length > 0
           ? ["Transcript parts used for this recording:", ...comps]
           : [
@@ -190,10 +313,11 @@ export function buildScoreExplain(
         "Not LLM clarity or English “quality” scores.",
       ];
       return {
-        title: "Transcript (≈33.3% of mark)",
+        title: `Transcript (${familyWeightLabel(assessment, "transcript")} of mark)`,
         summary: "Speech rate and delivery features from the transcript.",
         lines,
         formula: "Transcript = average of available delivery parts",
+        workedExample: familyWorking(assessment, "transcript"),
       };
     }
     case "grade":

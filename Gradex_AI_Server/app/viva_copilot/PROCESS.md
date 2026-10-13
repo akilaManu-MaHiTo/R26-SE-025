@@ -5,9 +5,21 @@ Technical click-through for the isolated **Live Interviewer Copilot**. This is *
 | Product | UI | Backend | Engine |
 |---|---|---|---|
 | **Viva Assessment** | `VivaPage.tsx` | `POST /api/viva-analyze` | `VivaEvaluationEngine` + Mongo marks |
-| **Live Interviewer Copilot** | `viva-copilot/*` | `/api/viva-copilot/*` | In-memory session + Groq STT/chat |
+| **Live Interviewer Copilot** | `viva-copilot/*` | `/api/viva-copilot/*` | In-memory session + Groq STT/chat, **plus** `VivaEvaluationEngine` + Mongo marks at end-of-session analyze |
 
-Copilot does **not** write Mongo, does **not** import `viva_service.py`, and does **not** score the student.
+**During the session** the copilot does not write Mongo and does not score the student: the live
+path is STT + follow-up-question suggestion only, held in `SessionStore` in RAM.
+
+**At end of session** that changed. `POST /sessions/{id}/analyze` (`analysis.py::analyze_live_session`)
+runs the **same** scoring chain as an uploaded recording — via `viva_analysis_runner`, which calls
+`viva_service.analyze_video_file` — and persists a mark to Mongo. The only live-specific
+differences are `source="live_copilot"`, the `copilot_session_id`, and the live transcript
+attached as `live_session` / `live_transcript`. Scoring itself is identical, so a live viva and an
+uploaded one are graded on the same basis.
+
+Scoring is still driven by the **recording**, not the live transcript: the Stage-1 families
+(engagement CNN, Praat acoustics, face coverage) are all video/waveform-derived, and the quality
+gates in `assessment_scoring` depend on them, so a transcript-only mark would be voided.
 
 ---
 
@@ -38,6 +50,8 @@ Browser (LiveCopilotPage)
   │ REST  (lecturer buttons only)
   │   POST /api/viva-copilot/sessions
   │   POST /sessions/{id}/phase | /finalize | /ask | /context
+  │   POST /sessions/{id}/analyze   (end of session — grades + saves the mark)
+  │   GET  /sessions/{id}/transcript
   │   DELETE /sessions/{id}
   │
   │ WebSocket  (live path — no polling)
@@ -48,14 +62,20 @@ Browser (LiveCopilotPage)
   │
   ▼
 Gradex_AI_Server  (FastAPI, port 8000)
-  router.py  →  pipeline.py  →  session_store.py  (RAM dict, not Mongo)
-                     │
-                     ├─ ingest_text()     → bypasses STT entirely (fast path)
-                     ├─ stt.py            → Groq Whisper  POST .../audio/transcriptions (pooled httpx client)
-                     └─ followup_llm.py   → Groq Chat  POST .../chat/completions (streamed, pooled httpx client)
+  router.py  →  pipeline.py  →  session_store.py  (RAM dict — live phase only)
+       │             │
+       │             ├─ ingest_text()     → bypasses STT entirely (fast path)
+       │             ├─ stt.py            → Groq Whisper  POST .../audio/transcriptions (pooled httpx client)
+       │             └─ followup_llm.py   → Groq Chat  POST .../chat/completions (streamed, pooled httpx client)
+       │
+       └─ /analyze → analysis.py::analyze_live_session
+                          → viva_analysis_runner.run_analysis
+                              → viva_service.analyze_video_file   (VivaEvaluationEngine)
+                          → attach_subject_technical_accuracy     (optional, advisory)
+                          → persist_and_autopublish               (Mongo: vivamark.marks)
 ```
 
-**Why WebSocket for live work:** the browser never polls. Audio and suggestion delivery stay on one socket. REST is only for explicit lecturer actions (create, phase, ask, end). The “database” for this feature is `SessionStore` in RAM. Mongo used by the rest of Gradex is unused here.
+**Why WebSocket for live work:** the browser never polls. Audio and suggestion delivery stay on one socket. REST is only for explicit lecturer actions (create, phase, ask, end). The “database” for the *live* phase is `SessionStore` in RAM — Mongo is not touched while the session is running. It is written once, at the end, by `POST /sessions/{id}/analyze` (see §2 above).
 
 **Latency optimizations (dual-path transcription + streaming):**
 
