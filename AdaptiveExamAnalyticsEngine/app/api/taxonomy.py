@@ -9,6 +9,12 @@ from app.taxonomy.normalizer import invalidate_taxonomy_cache, slugify_topic
 router = APIRouter(prefix="/api/courses", tags=["taxonomy"])
 
 
+@router.get("")
+async def list_taxonomy_courses(db=Depends(get_db)):
+    docs = await db["courses"].find({}).sort("code", 1).to_list(length=500)
+    return {"items": [{**doc, "_id": str(doc["_id"])} for doc in docs]}
+
+
 class TopicPayload(BaseModel):
     canonical_topic: str = Field(...)
     aliases: list[str] = Field(default_factory=list)
