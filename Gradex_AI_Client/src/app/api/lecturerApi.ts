@@ -186,6 +186,34 @@ export interface StudentRow {
   submitted_at: string | null;
 }
 
+export interface QuestionDetail {
+  question_no: string;
+  question_text: string | null;
+  max_marks: number;
+  mark_distribution: Array<{ marks: number; count: number }>;
+  responses: Array<{
+    student_id: string;
+    score: number;
+    answer_excerpt: string | null;
+    slice_source: string | null;
+    feedback: string | null;
+  }>;
+  excluded_count: number;
+}
+
+export async function fetchQuestionDetail(
+  exam: Pick<ExamListItem, "course_code" | "session_name" | "year" | "month" | "semester">,
+  questionNo: string,
+): Promise<QuestionDetail> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const res = await fetch(`${API_BASE}/api/lecturers/exams/${encodeURIComponent(exam.course_code)}/${encodeURIComponent(exam.session_name)}/questions/${encodeURIComponent(questionNo)}?${params}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Failed to fetch question detail (${res.status})`);
+  }
+  return res.json();
+}
+
 export interface CanonicalTopic {
   topic: string;
   average_percentage: number;
