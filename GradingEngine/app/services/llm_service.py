@@ -51,7 +51,10 @@ def _row_from_evaluation(evaluation: dict, q_no: str) -> dict:
                 if score == 0:
                     # Colab often puts the mark on the parent object as score/total_score.
                     score = _coerce_float(
-                        evaluation.get("total_score", evaluation.get("score", evaluation.get("marks")))
+                        evaluation.get(
+                            "total_score",
+                            evaluation.get("score", evaluation.get("marks")),
+                        )
                     )
                 if score == 0 and isinstance(item.get("criteria_breakdown"), list):
                     score = round(

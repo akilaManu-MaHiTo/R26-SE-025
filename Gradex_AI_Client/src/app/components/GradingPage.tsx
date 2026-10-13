@@ -2157,12 +2157,14 @@ function HandwrittenGradingWorkflow() {
         .map((row, i) => {
           const qNo = String(row.q_no ?? row.question_no ?? i + 1);
           const score = typeof row.score === "number" ? row.score : Number(row.score ?? "");
-          const justification = String(row.justification ?? "").trim();
-          const feedback = String(row.feedback ?? "").trim();
+          // UI export only: prefer feedback; fall back to justification if feedback empty.
+          const feedback = (
+            String(row.feedback ?? "").trim() ||
+            String(row.justification ?? "").trim()
+          );
           return `<tr>
             <td>Q${escapeHtml(qNo)}</td>
             <td>${Number.isFinite(score) ? escapeHtml(String(score)) : "—"}</td>
-            <td>${escapeHtml(justification || "—")}</td>
             <td>${escapeHtml(feedback || "—")}</td>
           </tr>`;
         })
@@ -2176,8 +2178,8 @@ function HandwrittenGradingWorkflow() {
           ${student.manualOverride ? " · Manual override" : ""}</p>
         ${student.lecturerNote ? `<p><strong>Lecturer note:</strong> ${escapeHtml(student.lecturerNote)}</p>` : ""}
         <table>
-          <thead><tr><th>Q</th><th>Final score</th><th>Justification</th><th>Feedback</th></tr></thead>
-          <tbody>${qRows || `<tr><td colspan="4">No question results</td></tr>`}</tbody>
+          <thead><tr><th>Q</th><th>Final score</th><th>Feedback</th></tr></thead>
+          <tbody>${qRows || `<tr><td colspan="3">No question results</td></tr>`}</tbody>
         </table>
       </section>`;
     });
@@ -2476,12 +2478,12 @@ function HandwrittenGradingWorkflow() {
           <Card className="border-border bg-muted/40 shadow-sm">
             <div className="p-6 space-y-6">
               <section className="space-y-4">
-                <div>
+            <div>
                   <h3 className="text-sm font-semibold text-foreground">Course</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     From Knowledge Base — RAG uses this subject code
                   </p>
-                </div>
+            </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -2541,7 +2543,7 @@ function HandwrittenGradingWorkflow() {
               <Separator />
 
               <section className="space-y-4">
-                <div>
+            <div>
                   <h3 className="text-sm font-semibold text-foreground">Exam term</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">Academic period for this sitting</p>
                 </div>
@@ -2613,14 +2615,14 @@ function HandwrittenGradingWorkflow() {
               <Separator />
 
               <section className="space-y-4">
-                <div>
+            <div>
                   <h3 className="text-sm font-semibold text-foreground">Marking scheme</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">Optional — you can pick an existing rubric later</p>
                 </div>
-                <div
-                  onClick={() => rubricFileInputRef.current?.click()}
+              <div
+                onClick={() => rubricFileInputRef.current?.click()}
                   className="border border-dashed border-border rounded-lg p-5 bg-card hover:border-primary/40 hover:bg-accent/40 cursor-pointer transition-colors"
-                >
+              >
                 {rubricFile ? (
                   <div className="flex items-center gap-3">
                     <div className="size-10 rounded-md bg-muted border border-border flex items-center justify-center shrink-0">
@@ -2640,7 +2642,7 @@ function HandwrittenGradingWorkflow() {
                     </div>
                   </div>
                 )}
-                </div>
+              </div>
               <input
                 ref={rubricFileInputRef}
                 type="file"
@@ -2900,8 +2902,8 @@ function HandwrittenGradingWorkflow() {
                 {selectedGradingRubric?.filename ? (
                   <div className="text-xs text-muted-foreground mt-0.5 truncate">
                     {selectedGradingRubric.filename}
-                  </div>
-                ) : (
+              </div>
+            ) : (
                   <div className="text-xs text-muted-foreground mt-0.5">
                     Use Choose rubric to pick another scheme from the server.
                   </div>
@@ -2913,7 +2915,7 @@ function HandwrittenGradingWorkflow() {
           </Card>
 
           <Card className="p-6 border-border bg-muted/40 shadow-sm space-y-5">
-            <div>
+              <div>
               <h3 className="text-sm font-semibold text-foreground">Student scripts</h3>
               <p className="text-xs text-muted-foreground mt-0.5">ZIP or folder — one student ID folder per paper</p>
             </div>
@@ -3802,8 +3804,11 @@ function HandwrittenGradingWorkflow() {
                           const qNo = String(row.q_no ?? row.question_no ?? i + 1);
                           const qKey = qNo.padStart(2, "0").replace(/^0+(\d)$/, "0$1");
                           const normKey = qNo.replace(/^0+/, "") || qNo;
-                          const justification = String(row.justification ?? "");
-                          const feedback = String(row.feedback ?? "");
+                          // UI only: show one prose block (feedback preferred).
+                          const feedbackDisplay = (
+                            String(row.feedback ?? "").trim() ||
+                            String(row.justification ?? "").trim()
+                          );
                           const engine = String(row.grading_source ?? "");
                           const sliceSource = String(
                             row.slice_source ??
@@ -3860,11 +3865,10 @@ function HandwrittenGradingWorkflow() {
                                   </Badge>
                                 )}
                               </div>
-                              {justification && (
-                                <p className="text-xs text-muted-foreground leading-relaxed">{justification}</p>
-                              )}
-                              {feedback && (
-                                <p className="text-xs text-muted-foreground mt-1 italic">{feedback}</p>
+                              {feedbackDisplay && (
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                  {feedbackDisplay}
+                                </p>
                               )}
                               {rowError && (
                                 <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1">{rowError}</p>
@@ -4259,7 +4263,7 @@ function HandwrittenGradingWorkflow() {
                     <div className="text-sm text-foreground">Download CSV</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
                       Student ID, totals, % and per-question marks
-                    </div>
+                  </div>
                   </div>
                   <Download className="size-4 text-muted-foreground shrink-0" />
                 </div>
@@ -4278,7 +4282,7 @@ function HandwrittenGradingWorkflow() {
                     <div className="text-sm text-foreground">Download feedback pack</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
                       Printable HTML reports (Print → Save as PDF)
-                    </div>
+                  </div>
                   </div>
                   <Download className="size-4 text-muted-foreground shrink-0" />
                 </div>
