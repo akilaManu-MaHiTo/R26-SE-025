@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { fetchCourses, formatCourseLabel, type CourseItem } from "../utils/courseOptions";
-import { fetchTaxonomy, fetchTaxonomyHistory, saveTaxonomy, type TaxonomyDocument, type TaxonomyTopic, type TaxonomyVersion } from "../api/taxonomyApi";
+import { formatCourseLabel, type CourseItem } from "../utils/courseOptions";
+import { fetchTaxonomyCourses, fetchTaxonomy, fetchTaxonomyHistory, saveTaxonomy, type TaxonomyDocument, type TaxonomyTopic, type TaxonomyVersion } from "../api/taxonomyApi";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
@@ -23,7 +23,7 @@ export function TopicTaxonomyPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchCourses().then((items) => {
+    fetchTaxonomyCourses().then((items) => {
       if (cancelled) return;
       setCourses(items);
       setCourseCode((current) => current || items.find((item) => item.code === "IT2040")?.code || items[0]?.code || "");
