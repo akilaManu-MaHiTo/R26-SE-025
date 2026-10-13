@@ -25,13 +25,24 @@ def _normalized_text(value: Any) -> str:
     text = re.sub(r"[^\w\s-]", " ", text, flags=re.UNICODE)
     text = re.sub(r"(?<!\w)-{2,}(?!\w)", " ", text)
     text = " ".join(text.split())
-    compact = re.sub(r"[\W_]+", "", text).casefold()
-    return {
-        "sid": "S_Id",
-        "studentid": "S_Id",
-        "cid": "C_Id",
-        "courseid": "C_Id",
-    }.get(compact, text)
+    return text
+
+
+_ID_SUFFIX = re.compile(r"^(?P<prefix>[a-z]+?)(?:id|identifier|no|num|number|code)$")
+
+
+def _compact(value: str) -> str:
+    return re.sub(r"[\W_]+", "", value).casefold()
+
+
+def _canonical_identifier(label: str, entity_names: list[str] | None = None) -> str:
+    """Normalize identifier formatting only (e.g. "DID", "d_id", "D ID" -> "D_Id"). The
+    prefix is kept as written so a rubric's "S_ID" still matches, even when
+    OCR garbled the entity name (e.g. a misspelled entity)."""
+    match = _ID_SUFFIX.match(_compact(label))
+    if not match:
+        return label
+    return f"{match.group('prefix').capitalize()}_Id"
 
 
 def _normalized_text_list(values: Any) -> list[str]:
@@ -58,6 +69,20 @@ def _normalize_diagram_structure(structure: Any) -> dict[str, Any]:
             entities[name] = {
                 "attributes": _normalized_text_list(entity.get("attributes", [])),
             }
+            primary_keys = _normalized_text_list(entity.get("primary_keys", []))
+            if primary_keys:
+                entities[name]["primary_keys"] = primary_keys
+
+    entity_names = list(entities)
+    for entity in entities.values():
+        for key in ("attributes", "primary_keys"):
+            if key in entity:
+                entity[key] = sorted(
+                    {_canonical_identifier(a, entity_names) for a in entity[key]},
+                    key=str.casefold,
+                )
+        if "primary_keys" in entity:
+            entity["attributes"] = [a for a in entity["attributes"] if a not in entity["primary_keys"]]
 
     relationships = []
     if isinstance(raw_relationships, list):
@@ -71,7 +96,10 @@ def _normalize_diagram_structure(structure: Any) -> dict[str, Any]:
                 "name": name,
                 "entities": _normalized_text_list(raw_relationship.get("entities", [])),
             }
-            attributes = _normalized_text_list(raw_relationship.get("attributes", []))
+            attributes = sorted(
+                {_canonical_identifier(a, entity_names) for a in _normalized_text_list(raw_relationship.get("attributes", []))},
+                key=str.casefold,
+            )
             if attributes:
                 relationship["attributes"] = attributes
             relationships.append(relationship)
@@ -184,7 +212,8 @@ You are an ER diagram grading agent running locally with Ollama. Grade the stude
 Use only the diagram structure provided. Do not infer objects that are not present.
 Award each criterion's marks only when its requirement is supported by the extracted data.
 For every criterion, check every requirement in its description and expected fields. Award zero marks when any required entity, attribute, relationship, notation, role, or connection is absent or cannot be verified. Do not infer labels, connections, notation, or relationships from the drawing.
-Compare labels by meaning, not by OCR formatting. For identifier-like attributes, ignore case, whitespace, underscores, hyphens, and ordinary naming conventions, and recognize common abbreviations when the meaning is unambiguous. For example, C_Id, CId, and Course_id can represent the same Course ID attribute; these are formatting/name variants, not separate attributes. Do not use this rule to invent an attribute that is not present.
+Compare labels by meaning, not by OCR formatting. For identifier-like attributes, ignore case, whitespace, underscores, hyphens, and ordinary naming conventions, and recognize common abbreviations when the meaning is unambiguous. An identifier written as an abbreviation or the full entity name (for example X_Id, XId, X_ID, or Entity_id, where X is the entity's initial or short form) refers to the same ID attribute of that entity; these are formatting/name variants, not separate attributes. This applies to any entity, including ones not seen before. Do not use this rule to invent an attribute that is not present.
+Entity names may contain OCR typos (e.g. a misspelled or truncated entity name); match them to the rubric by meaning. An entity's "primary_keys" list holds its underlined key attributes and counts as attributes of that entity, so an identifier listed under an entity's primary_keys satisfies a required ID attribute of that entity, whichever naming variant is used. Only report a relationship or attribute as missing if it truly appears nowhere in the structure.
 Compare relationship names semantically rather than requiring an exact spelling. Allow ordinary case, plurality, inflection, and natural-language ER variants when they describe the same connected entities. For example, Join, Joins, Joining, Has, Have, Contains, Includes, Belongs to, Is associated with, Is linked to, Connects, and With may be valid variants of a required Joins relationship when the entity pair and relationship direction make that meaning clear. Treat OCR or wording differences such as "has" versus "joins" as equivalent when they express the same association; do not penalize a student merely for choosing a suitable relationship synonym. Do not accept an unrelated action or a label whose meaning conflicts with the connected entities. When the wording is genuinely ambiguous, rely on the supplied connections and rubric context, and explain the uncertainty in the criterion reason rather than inventing a relationship.
 Before assigning marks, make a requirement-by-requirement checklist for each criterion: required entities, each required attribute (including key attributes), relationship names, and connections. A criterion with a missing required attribute or materially incorrect relationship name must not receive full marks, even when the rest of the diagram is correct.
 Return one criterion_results entry for every rubric criterion, including failed criteria with zero marks. Use the exact criterion IDs from the marking guideline, once each, and do not return any other IDs.
