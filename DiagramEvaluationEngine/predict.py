@@ -1,6 +1,8 @@
 import base64
 import json
 import os
+import re
+import unicodedata
 from collections import defaultdict
 from pathlib import Path
 from typing import Callable, Optional
@@ -38,6 +40,26 @@ def _read_image(image_path: Path):
     if image is None:
         raise FileNotFoundError(f"Could not read image at {image_path}")
     return image
+
+
+def _normalize_ocr_label(value: str) -> str:
+    """Remove OCR decoration while preserving meaningful label text."""
+    text = unicodedata.normalize("NFKC", str(value or ""))
+    text = text.replace("_", " ")
+    text = re.sub(r"[^\w\s-]", " ", text, flags=re.UNICODE)
+    text = re.sub(r"(?<!\w)-{2,}(?!\w)", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return ""
+
+    compact = re.sub(r"[\W_]+", "", text).casefold()
+    identifier_aliases = {
+        "sid": "S_Id",
+        "studentid": "S_Id",
+        "cid": "C_Id",
+        "courseid": "C_Id",
+    }
+    return identifier_aliases.get(compact, text)
 
 
 def _normalize_line(line):
@@ -139,24 +161,50 @@ def _has_underline(crop) -> bool:
         max(3, (min(height, width) // 2) * 2 + 1),
         7,
     )
-    horizontal_kernel = cv2.getStructuringElement(
-        cv2.MORPH_RECT, (max(12, int(width * 0.42)), 1)
-    )
-    horizontal = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel)
-    contours, _ = cv2.findContours(
-        horizontal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-    )
-    minimum_length = width * 0.42
-    for contour in contours:
-        x, y, line_width, line_height = cv2.boundingRect(contour)
-        if line_width < minimum_length:
-            continue
-        if line_width / max(line_height, 1) < 8:
-            continue
-        # An underline is expected below the label's centre, not at the crop edge.
-        if y < height * 0.58 or y + line_height > height * 0.98:
-            continue
-        return True
+    # Try a few line lengths. A fixed 42% kernel misses short labels, while a
+    # very small kernel incorrectly turns the oval border into an underline.
+    minimum_length = max(8.0, width * 0.22)
+    for kernel_fraction in (0.24, 0.34, 0.44):
+        horizontal_kernel = cv2.getStructuringElement(
+            cv2.MORPH_RECT, (max(7, int(width * kernel_fraction)), 1)
+        )
+        horizontal = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel)
+        contours, _ = cv2.findContours(
+            horizontal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+        for contour in contours:
+            x, y, line_width, line_height = cv2.boundingRect(contour)
+            line_center = y + line_height / 2.0
+            if line_width < minimum_length:
+                continue
+            if line_width > width * 0.72:
+                continue
+            if line_width / max(line_height, 1) < 6:
+                continue
+            # Keep the stroke inside the crop. This rejects the connector and
+            # the lower oval boundary, both of which commonly touch the edge.
+            if x < width * 0.04 or x + line_width > width * 0.96:
+                continue
+            # The detector crop includes padding around the attribute text.
+            # Underlines occur in the lower text area, but not at the crop edge.
+            if line_center < height * 0.52 or line_center > height * 0.70:
+                continue
+
+            # Require actual label ink immediately above the candidate. This
+            # prevents an isolated oval edge from being treated as text.
+            band_top = max(0, y - max(3, int(height * 0.24)))
+            text_band = binary[band_top:y, x : x + line_width]
+            if text_band.size == 0:
+                continue
+            if cv2.countNonZero(text_band) < max(3, int(line_width * 0.02)):
+                continue
+            below_band = binary[
+                y + line_height : min(height, y + line_height + max(3, int(height * 0.14))),
+                x : x + line_width,
+            ]
+            if cv2.countNonZero(below_band) > max(4, int(line_width * 0.02)):
+                continue
+            return True
 
     # Hough is retained as a fallback for broken lines and pencil-like strokes.
     edges = cv2.Canny(gray, 30, 120)
@@ -176,9 +224,26 @@ def _has_underline(crop) -> bool:
         line_length = float(np.hypot(x2 - x1, y2 - y1))
         if line_length < minimum_length:
             continue
+        if line_length > width * 0.72:
+            continue
         if abs(y2 - y1) > max(2, int(height * 0.06)):
             continue
-        if min(y1, y2) < height * 0.58 or max(y1, y2) > height * 0.98:
+        if min(x1, x2) < width * 0.04 or max(x1, x2) > width * 0.96:
+            continue
+        line_center = (y1 + y2) / 2.0
+        if line_center < height * 0.52 or line_center > height * 0.70:
+            continue
+        band_top = max(0, int(line_center - height * 0.24))
+        text_band = binary[band_top : max(0, int(line_center)), min(x1, x2) : max(x1, x2) + 1]
+        if text_band.size == 0 or cv2.countNonZero(text_band) < max(3, int(line_length * 0.02)):
+            continue
+        line_x1, line_x2 = min(x1, x2), max(x1, x2) + 1
+        line_y = max(y1, y2)
+        below_band = binary[
+            line_y + 1 : min(height, line_y + 1 + max(3, int(height * 0.14))),
+            line_x1 : line_x2,
+        ]
+        if cv2.countNonZero(below_band) > max(4, int(line_length * 0.02)):
             continue
         return True
     return False
@@ -211,12 +276,30 @@ def _detect_primary_keys(image, detections, save_dir: Path) -> None:
         model_label = (
             str(detection.get("label", "")).strip().lower().replace("_", " ")
         )
-        # Underlines are frequently outside the detector's tight text box.
-        crop = _crop_detection(
-            image,
-            detection.get("bbox", [0, 0, 0, 0]),
-            padding=0.35,
-        )
+        if model_label == "attributes":
+            # The model predicts all attributes with one class. Use the
+            # corresponding YOLO crop for the underline decision; the model
+            # does not emit a separate primary-key detection.
+            saved_crop_path = Path(str(detection.get("crop_path", "")))
+            crop = (
+                cv2.imread(str(saved_crop_path))
+                if saved_crop_path.is_file()
+                else None
+            )
+            crop_source = "attributes_crop"
+        else:
+            crop = None
+            crop_source = "expanded_detection_crop"
+
+        # Keep a fallback for direct callers or runs where save_crop did not
+        # produce the expected Attributes image.
+        if crop is None:
+            crop = _crop_detection(
+                image,
+                detection.get("bbox", [0, 0, 0, 0]),
+                padding=0.35,
+            )
+
         underline_detected = _has_underline(crop)
         is_primary_key = model_label == "primary key" or (
             model_label == "attributes" and underline_detected
@@ -234,6 +317,7 @@ def _detect_primary_keys(image, detections, save_dir: Path) -> None:
         detection["is_primary_key"] = True
         detection["underline_detected"] = underline_detected
         detection["primary_key_crop_path"] = str(crop_path)
+        detection["primary_key_crop_source"] = crop_source
 
 
 def _extract_detections(results, image_path: Path, crops_root: Path):
@@ -293,9 +377,10 @@ def _attach_ocr_text(detections, ocr_rows):
         row = ocr_by_path.get(Path(crop_path).resolve())
         if not row:
             continue
-        text = str(row.get("text", "")).strip()
+        text = _normalize_ocr_label(row.get("text", ""))
         if text:
             det["text"] = text
+            row["text"] = text
         det["ocr_status"] = row.get("status")
 
 
@@ -581,12 +666,12 @@ def run_er_pipeline(
         )
 
         ocr_rows = run_ocr_on_crops(crops_root, progress_callback=progress_callback)
-        save_ocr_outputs(save_dir, ocr_rows)
     except Exception as exc:
         ocr_error = str(exc)
 
     if ocr_rows:
         _attach_ocr_text(detections, ocr_rows)
+        save_ocr_outputs(save_dir, ocr_rows)
 
     _emit_progress(
         progress_callback,
@@ -656,12 +741,12 @@ def main():
     crops_root = save_dir / "crops"
 
     rows = run_ocr_on_crops(crops_root)
-    save_ocr_outputs(save_dir, rows)
     if not use_handwritten:
         print_label_summary(rows)
 
         detections = _extract_detections(results, source_path, crops_root)
         _attach_ocr_text(detections, rows)
+        save_ocr_outputs(save_dir, rows)
 
         image = _read_image(source_path)
         _detect_primary_keys(image, detections, save_dir)

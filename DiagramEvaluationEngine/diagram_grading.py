@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+import re
+import unicodedata
 from typing import Any, Callable
 
 import httpx
@@ -18,7 +20,18 @@ logger.setLevel(logging.INFO)
 
 
 def _normalized_text(value: Any) -> str:
-    return " ".join(str(value or "").split())
+    text = unicodedata.normalize("NFKC", str(value or ""))
+    text = text.replace("_", " ")
+    text = re.sub(r"[^\w\s-]", " ", text, flags=re.UNICODE)
+    text = re.sub(r"(?<!\w)-{2,}(?!\w)", " ", text)
+    text = " ".join(text.split())
+    compact = re.sub(r"[\W_]+", "", text).casefold()
+    return {
+        "sid": "S_Id",
+        "studentid": "S_Id",
+        "cid": "C_Id",
+        "courseid": "C_Id",
+    }.get(compact, text)
 
 
 def _normalized_text_list(values: Any) -> list[str]:
