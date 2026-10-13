@@ -680,29 +680,42 @@ async def delete_rubric(
         description="When set, delete only this grading batch's submissions (keep other runs).",
     ),
 ):
+    """
+    Delete a grading history session/batch.
+
+    Allows cleanup when the rubric document is already missing (orphan submissions
+    still listed in /grading-history) — those rows should still be deletable.
+    """
     if not ObjectId.is_valid(rubric_id):
         raise HTTPException(status_code=400, detail="Invalid Rubric ID format")
 
     oid = ObjectId(rubric_id)
     existing = await db_instance.rubric_col.find_one({"_id": oid})
-    if not existing:
-        raise HTTPException(status_code=404, detail="Rubric not found")
 
     deleted_subs = 0
     job = (batch_job_id or "").strip() or None
+    # Submissions may store rubric_ref as ObjectId or as a plain string.
+    ref_match = {"$or": [{"rubric_ref": oid}, {"rubric_ref": rubric_id}]}
     if purge_submissions:
-        query: dict = {"rubric_ref": oid}
+        query: dict = {**ref_match}
         if job:
-            query["batch_job_id"] = job
+            query = {"$and": [ref_match, {"batch_job_id": job}]}
         result = await db_instance.submissions_col.delete_many(query)
         deleted_subs = int(result.deleted_count or 0)
 
-    remaining = await db_instance.submissions_col.count_documents({"rubric_ref": oid})
+    remaining = await db_instance.submissions_col.count_documents(ref_match)
     deleted_rubric = False
-    # Delete the rubric only when removing the whole session, or when no batches remain.
-    if not job or remaining == 0:
+    if existing and (not job or remaining == 0):
         await db_instance.rubric_col.delete_one({"_id": oid})
         deleted_rubric = True
+    elif not existing:
+        # History can still list batches after the rubric doc was removed.
+        if deleted_subs == 0 and remaining == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Rubric not found (already deleted).",
+            )
+        deleted_rubric = remaining == 0
 
     return {
         "status": "success",

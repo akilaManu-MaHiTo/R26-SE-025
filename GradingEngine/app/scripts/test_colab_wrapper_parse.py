@@ -50,7 +50,35 @@ def main() -> None:
     parsed_zero = parse_colab_response_body(json.dumps(SAMPLE_ZERO_PLACEHOLDER))
     assert float(parsed_zero.get("total_score") or 0) == 7.0, parsed_zero
 
-    print("OK: wrapper unwrap -> total_score=10; zero-placeholder unwrap -> 7")
+    # Score-only JSON + Explanation section => prose filled, score unchanged
+    score_only = {
+        "status": "success",
+        "total_score": 4,
+        "evaluation_output": (
+            '### Grade & Feedback: {"total_score": 4}\n'
+            "### Explanation: Mentions ACID but omits durability details.\n"
+        ),
+    }
+    parsed_score_only = parse_colab_response_body(json.dumps(score_only))
+    assert float(parsed_score_only.get("total_score") or 0) == 4.0, parsed_score_only
+    assert "ACID" in (parsed_score_only.get("justification") or ""), parsed_score_only
+    assert "ACID" in (parsed_score_only.get("feedback") or ""), parsed_score_only
+
+    # Truncated justification string still recovered
+    truncated = (
+        '### Grade & Feedback: {"total_score": 6, "justification": "Covers two '
+        "phases but omits weak entities"
+    )
+    parsed_trunc = parse_colab_response_body(
+        json.dumps({"status": "success", "evaluation_output": truncated})
+    )
+    assert float(parsed_trunc.get("total_score") or 0) == 6.0, parsed_trunc
+    assert "weak entities" in (parsed_trunc.get("justification") or ""), parsed_trunc
+
+    print(
+        "OK: wrapper unwrap -> 10; zero-placeholder -> 7; "
+        "score-only prose fill; truncated justification"
+    )
 
 
 if __name__ == "__main__":

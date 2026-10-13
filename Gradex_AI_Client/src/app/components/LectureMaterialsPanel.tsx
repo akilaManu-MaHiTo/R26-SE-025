@@ -91,6 +91,38 @@ export function formatCourseLabel(course: CourseItem): string {
   return `${course.code} - ${name}`;
 }
 
+/** Middle-ellipsis for long filenames so confirm dialogs stay readable. */
+export function ellipsizeMiddle(value: string, max = 72): string {
+  const text = (value || "").trim();
+  if (text.length <= max) return text;
+  const keep = Math.max(8, Math.floor((max - 1) / 2));
+  return `${text.slice(0, keep)}…${text.slice(-keep)}`;
+}
+
+function ModalNameBlock({
+  label,
+  value,
+  maxLen = 72,
+}: {
+  label: string;
+  value: string;
+  maxLen?: number;
+}) {
+  const full = (value || "").trim() || "—";
+  const shown = ellipsizeMiddle(full, maxLen);
+  return (
+    <div className="min-w-0 rounded-md border border-border bg-muted/50 px-3 py-2 text-left">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div
+        className="mt-0.5 text-sm font-medium text-foreground break-all [overflow-wrap:anywhere]"
+        title={full !== shown ? full : undefined}
+      >
+        {shown}
+      </div>
+    </div>
+  );
+}
+
 export function LectureMaterialsPanel({
   apiBaseUrl = DEFAULT_API_BASE_URL,
 }: LectureMaterialsPanelProps) {
@@ -302,7 +334,9 @@ export function LectureMaterialsPanel({
       if (!response.ok) {
         throw new Error(parseApiError(data, "Failed to delete lecture material."));
       }
-      setSuccess(`Removed ${pendingDelete.filename} from the knowledge base.`);
+      setSuccess(
+        `Removed ${ellipsizeMiddle(pendingDelete.filename, 56)} from the knowledge base.`
+      );
       setPendingDelete(null);
       await loadMaterials();
     } catch (err) {
@@ -592,20 +626,22 @@ export function LectureMaterialsPanel({
           if (!open && !uploading) setPendingUploadFile(null);
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
+        <AlertDialogContent className="max-w-[min(32rem,calc(100%-2rem))] overflow-hidden">
+          <AlertDialogHeader className="min-w-0 text-left">
             <AlertDialogTitle>Upload lecture material?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Upload{" "}
-              <span className="font-medium text-foreground">{pendingUploadFile?.name}</span> to course{" "}
-              <span className="font-medium text-foreground">{selectedCourse || "—"}</span> and index it
-              for RAG?
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>Index this file for RAG under the selected course?</p>
+                <div className="space-y-2 min-w-0">
+                  <ModalNameBlock label="File" value={pendingUploadFile?.name || ""} />
+                  <ModalNameBlock label="Course" value={selectedCourse || "—"} maxLen={40} />
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={uploading}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              
               disabled={uploading}
               onClick={(e) => {
                 e.preventDefault();
@@ -619,14 +655,20 @@ export function LectureMaterialsPanel({
       </AlertDialog>
 
       <AlertDialog open={pendingDelete != null} onOpenChange={(open) => !open && setPendingDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
+        <AlertDialogContent className="max-w-[min(32rem,calc(100%-2rem))] overflow-hidden">
+          <AlertDialogHeader className="min-w-0 text-left">
             <AlertDialogTitle>Remove lecture material?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This deletes all indexed pages/slides for{" "}
-              <span className="font-medium text-foreground">{pendingDelete?.filename}</span> from{" "}
-              <span className="font-medium text-foreground">{pendingDelete?.course_name}</span>. Grading will no
-              longer retrieve this content via RAG.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  This deletes all indexed pages/slides for the file below. Grading will no longer
+                  retrieve this content via RAG.
+                </p>
+                <div className="space-y-2 min-w-0">
+                  <ModalNameBlock label="File" value={pendingDelete?.filename || ""} />
+                  <ModalNameBlock label="Course" value={pendingDelete?.course_name || ""} maxLen={40} />
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -648,15 +690,21 @@ export function LectureMaterialsPanel({
         open={pendingCourseDelete != null}
         onOpenChange={(open) => !open && setPendingCourseDelete(null)}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
+        <AlertDialogContent className="max-w-[min(32rem,calc(100%-2rem))] overflow-hidden">
+          <AlertDialogHeader className="min-w-0 text-left">
             <AlertDialogTitle>Delete course?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This removes{" "}
-              <span className="font-medium text-foreground">
-                {pendingCourseDelete ? formatCourseLabel(pendingCourseDelete) : ""}
-              </span>{" "}
-              and purges all indexed lecture materials tagged with that course code.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  This removes the course and purges all indexed lecture materials tagged with that
+                  course code.
+                </p>
+                <ModalNameBlock
+                  label="Course"
+                  value={pendingCourseDelete ? formatCourseLabel(pendingCourseDelete) : ""}
+                  maxLen={80}
+                />
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

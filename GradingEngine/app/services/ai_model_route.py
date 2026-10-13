@@ -37,11 +37,18 @@ GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_API_KEY = os.getenv("BACKUP_API_KEY") or os.getenv("AI_API_KEY")
 
 _COLAB_STRICT_POLICY = (
-    "\n\nGRADING POLICY (mandatory): Be a strict university examiner. "
-    "Award marks only for evidence that clearly meets each rubric criterion. "
-    "Use partial credit for partial answers. Do not award full marks for vague, "
-    "incomplete, generic, or barely-related answers. When uncertain, under-mark "
-    "rather than over-mark. Never inflate scores for effort alone."
+    "\n\nGRADING POLICY (mandatory): Fair, strict university examiner. "
+    "Score ONLY from the rubric criteria. "
+    "For EACH criterion: award 0 if absent/wrong, full criterion marks if clearly met, "
+    "or a fraction if only partly met. "
+    "total_score = sum of those criterion marks (use mid values when earned). "
+    "Preserve discrimination: strong answers must score clearly higher than weak ones; "
+    "do not push every paper toward the middle. "
+    "Empty/irrelevant => near 0. One solid point among several => low partial. "
+    "Most points correct with gaps => high partial. All required points clear => full. "
+    "Never give full marks when required content is missing. "
+    "Never give 0 when a required criterion is clearly correct. "
+    "Never reward length or effort alone."
 )
 
 
@@ -174,19 +181,84 @@ def _grade_dict_from_model_markdown(text: str) -> dict | None:
         ):
             return parsed
 
-    # Last resort: pull numeric total_score / score from text.
+    # Last resort: pull numeric total_score / score from text (incl. truncated JSON).
     total_score_match = re.search(r'"total_score"\s*:\s*([0-9.]+)', raw)
     score_match = re.search(r'"(?:score|marks)"\s*:\s*([0-9.]+)', raw)
     max_score_match = re.search(r'"max_score"\s*:\s*([0-9.]+)', raw)
     if total_score_match or score_match:
-        return {
+        recovered = {
             "max_score": float(max_score_match.group(1)) if max_score_match else 0.0,
             "total_score": float((total_score_match or score_match).group(1)),
-            "justification": _extract_json_string_field(raw, "justification") or "",
-            "feedback": _extract_json_string_field(raw, "feedback") or "",
+            "justification": _recover_prose_field(raw, "justification"),
+            "feedback": _recover_prose_field(raw, "feedback"),
             "parse_warning": "Recovered score fields from model markdown text.",
         }
+        return _fill_missing_prose(recovered, raw)
     return None
+
+
+def _markdown_explanation(text: str) -> str:
+    if not (text or "").strip():
+        return ""
+    expl = re.search(
+        r"###\s*Explanation\s*:\s*(.+?)(?:\n###|\Z)",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return expl.group(1).strip() if expl else ""
+
+
+def _recover_prose_field(text: str, field: str) -> str:
+    """Pull justification/feedback even from truncated / incomplete JSON."""
+    value = _extract_json_string_field(text, field)
+    if value and value.strip():
+        return value.strip()
+    # Truncated generation often cuts mid-string (no closing quote).
+    match = re.search(
+        rf'"{re.escape(field)}"\s*:\s*"(.*)$',
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if match:
+        frag = match.group(1)
+        # Stop at next JSON key / fence if present.
+        frag = re.split(r'"\s*,\s*"|\'\s*,\s*"|\n###', frag, maxsplit=1)[0]
+        frag = frag.replace("\\n", "\n").replace('\\"', '"').strip()
+        if frag:
+            return frag
+    return ""
+
+
+def _fill_missing_prose(target: dict, markdown: str | None = None) -> dict:
+    """
+    Fill empty justification/feedback without changing scores.
+    Uses JSON fields, ### Explanation, or truncated string recovery.
+    """
+    if not isinstance(target, dict):
+        return target
+    md = markdown or ""
+    justification = str(target.get("justification") or "").strip()
+    feedback = str(target.get("feedback") or "").strip()
+
+    if not justification and md:
+        justification = _recover_prose_field(md, "justification")
+    if not feedback and md:
+        feedback = _recover_prose_field(md, "feedback")
+
+    explanation = _markdown_explanation(md) if md else ""
+    if not feedback and explanation:
+        feedback = explanation
+    if not justification and explanation:
+        justification = explanation
+    # If only one prose field exists, mirror it so UI always has text to show.
+    if justification and not feedback:
+        feedback = justification
+    if feedback and not justification:
+        justification = feedback
+
+    target["justification"] = justification
+    target["feedback"] = feedback
+    return target
 
 
 def _unwrap_colab_wrapper(data: dict) -> dict:
@@ -222,7 +294,7 @@ def _unwrap_colab_wrapper(data: dict) -> dict:
 
     # Already a real grading payload.
     if (direct > 0 or has_positive_results) and nested_val is None:
-        return data
+        return _fill_missing_prose(data)
     if (direct > 0 or has_positive_results) and nested_val is not None:
         # Keep direct scores unless nested text clearly has a better grade object.
         extracted = _grade_dict_from_model_markdown(nested_val)
@@ -231,36 +303,28 @@ def _unwrap_colab_wrapper(data: dict) -> dict:
                 "parse_warning",
                 f"Unwrapped Colab grade from '{nested_key}' (higher than wrapper score).",
             )
-            if not extracted.get("feedback"):
-                expl = re.search(
-                    r"###\s*Explanation\s*:\s*(.+?)(?:\n###|\Z)",
-                    nested_val,
-                    flags=re.IGNORECASE | re.DOTALL,
-                )
-                if expl:
-                    extracted["feedback"] = expl.group(1).strip()
-            return extracted
-        return data
+            return _fill_missing_prose(extracted, nested_val)
+        # Keep wrapper score, but recover missing prose from nested markdown.
+        # (Previously we returned `data` and dropped Explanation/justification.)
+        merged = dict(data)
+        if extracted:
+            if not str(merged.get("justification") or "").strip():
+                merged["justification"] = str(extracted.get("justification") or "").strip()
+            if not str(merged.get("feedback") or "").strip():
+                merged["feedback"] = str(extracted.get("feedback") or "").strip()
+        return _fill_missing_prose(merged, nested_val)
 
     # Placeholder/zero wrapper — pull Grade & Feedback from markdown.
     if nested_val:
         extracted = _grade_dict_from_model_markdown(nested_val)
         if extracted:
-            if not extracted.get("feedback"):
-                expl = re.search(
-                    r"###\s*Explanation\s*:\s*(.+?)(?:\n###|\Z)",
-                    nested_val,
-                    flags=re.IGNORECASE | re.DOTALL,
-                )
-                if expl:
-                    extracted["feedback"] = expl.group(1).strip()
             extracted.setdefault(
                 "parse_warning",
                 f"Unwrapped Colab grade from '{nested_key}' markdown/wrapper.",
             )
-            return extracted
+            return _fill_missing_prose(extracted, nested_val)
 
-    return data
+    return _fill_missing_prose(data, nested_val)
 
 
 def _sanitize_colab_grading_payload(data: dict) -> dict:
@@ -767,9 +831,14 @@ def try_forward_to_colab(payload: dict) -> dict | None:
         "answer": payload.get("answer", ""),
     }
     if COLAB_STRICT_GRADING:
+        # Put policy on snippet (Reference Context) and also on topic so it is
+        # visible even when Colab cells bury context in the middle of the prompt.
         snippet = str(colab_body.get("snippet") or "")
         if "GRADING POLICY (mandatory)" not in snippet:
             colab_body["snippet"] = (snippet + _COLAB_STRICT_POLICY).strip()
+        topic = str(colab_body.get("topic") or "")
+        if "GRADING POLICY (mandatory)" not in topic:
+            colab_body["topic"] = (topic + _COLAB_STRICT_POLICY).strip()
     timeout = (COLAB_CONNECT_TIMEOUT_SECONDS, COLAB_TIMEOUT_SECONDS)
     last_err: Exception | None = None
 
