@@ -43,6 +43,9 @@ type DiagramDetection = {
   bbox: [number, number, number, number];
   confidence?: number;
   text?: string;
+  is_primary_key?: boolean;
+  underline_detected?: boolean;
+  primary_key_crop_path?: string;
 };
 
 type DiagramApiResponse = {
@@ -50,7 +53,7 @@ type DiagramApiResponse = {
   annotated_image?: string;
   detections?: DiagramDetection[];
   structure?: {
-    entities?: Record<string, { attributes?: string[] }>;
+    entities?: Record<string, { attributes?: string[]; primary_keys?: string[] }>;
     relationships?: Array<{
       name: string;
       entities?: string[];
@@ -156,6 +159,15 @@ type DetectionStyle = {
 
 function getDetectionStyle(label?: string): DetectionStyle {
   const normalized = label?.toLowerCase() ?? "";
+
+  if (normalized.includes("primary key")) {
+    return {
+      borderClass: "border-green-500",
+      backgroundClass: "bg-green-500/10",
+      badgeClass: "bg-green-600 text-white",
+      dotClass: "bg-green-500",
+    };
+  }
 
   if (normalized.includes("attribute")) {
     return {
@@ -1135,8 +1147,9 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
                             <div className="text-xs text-muted-foreground">
                               {(() => {
                                 const attributes = entry.attributes ?? [];
+                                const primaryKeys = entry.primary_keys ?? [];
                                 return attributes.length > 0
-                                  ? attributes.join(", ")
+                                  ? `${attributes.join(", ")}${primaryKeys.length > 0 ? ` • Primary keys: ${primaryKeys.join(", ")}` : ""}`
                                   : "No attributes returned";
                               })()}
                             </div>
@@ -1144,6 +1157,32 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
                         ))}
                       </div>
                     </div>
+
+                    {entityEntries.some(([, entry]) => (entry.primary_keys ?? []).length > 0) && (
+                      <div>
+                        <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                          <span>Primary keys</span>
+                          <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                            Underlined
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {entityEntries.flatMap(([entityName, entry]) =>
+                            (entry.primary_keys ?? []).map((primaryKey) => (
+                              <div
+                                key={`${entityName}-${primaryKey}`}
+                                className="rounded-xl border border-green-300 bg-green-50 px-3 py-2 text-green-800"
+                              >
+                                <div className="font-medium">{primaryKey}</div>
+                                <div className="text-xs text-green-700">
+                                  {entityName} • detected from underline
+                                </div>
+                              </div>
+                            )),
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">

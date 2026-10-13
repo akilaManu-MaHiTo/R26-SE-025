@@ -40,6 +40,13 @@ def _read_image(image_path: Path):
     return image
 
 
+def _normalize_line(line):
+    coords = np.asarray(line).reshape(-1)
+    if coords.size < 4:
+        return None
+    return tuple(int(value) for value in coords[:4])
+
+
 def _detect_lines(
     image,
     canny_low: int = 50,
@@ -63,10 +70,10 @@ def _detect_lines(
 
     normalized_lines = []
     for line in lines:
-        coords = np.asarray(line).reshape(-1)
-        if coords.size < 4:
+        normalized_line = _normalize_line(line)
+        if normalized_line is None:
             continue
-        normalized_lines.append(tuple(int(value) for value in coords[:4]))
+        normalized_lines.append(normalized_line)
 
     return normalized_lines
 
@@ -108,6 +115,125 @@ def _infer_crop_path(crops_root: Path, label: str, stem: str, index: int) -> str
     if matches:
         return str(matches[0])
     return str(label_dir / f"{base_name}.jpg")
+
+
+def _has_underline(crop) -> bool:
+    """Return True when a crop contains a long horizontal underline below its text."""
+    if crop is None or crop.size == 0:
+        return False
+
+    height, width = crop.shape[:2]
+    if height < 8 or width < 16:
+        return False
+
+    gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+    gray = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(gray)
+
+    # A morphology pass is more reliable than edges for faint or anti-aliased
+    # underlines, and removes most of the vertical strokes from the label text.
+    binary = cv2.adaptiveThreshold(
+        gray,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV,
+        max(3, (min(height, width) // 2) * 2 + 1),
+        7,
+    )
+    horizontal_kernel = cv2.getStructuringElement(
+        cv2.MORPH_RECT, (max(12, int(width * 0.42)), 1)
+    )
+    horizontal = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel)
+    contours, _ = cv2.findContours(
+        horizontal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+    minimum_length = width * 0.42
+    for contour in contours:
+        x, y, line_width, line_height = cv2.boundingRect(contour)
+        if line_width < minimum_length:
+            continue
+        if line_width / max(line_height, 1) < 8:
+            continue
+        # An underline is expected below the label's centre, not at the crop edge.
+        if y < height * 0.58 or y + line_height > height * 0.98:
+            continue
+        return True
+
+    # Hough is retained as a fallback for broken lines and pencil-like strokes.
+    edges = cv2.Canny(gray, 30, 120)
+    lines = cv2.HoughLinesP(
+        edges,
+        rho=1,
+        theta=np.pi / 180,
+        threshold=max(8, int(width * 0.1)),
+        minLineLength=max(12, int(width * 0.42)),
+        maxLineGap=max(3, int(width * 0.08)),
+    )
+    for line in lines if lines is not None else []:
+        normalized_line = _normalize_line(line)
+        if normalized_line is None:
+            continue
+        x1, y1, x2, y2 = normalized_line
+        line_length = float(np.hypot(x2 - x1, y2 - y1))
+        if line_length < minimum_length:
+            continue
+        if abs(y2 - y1) > max(2, int(height * 0.06)):
+            continue
+        if min(y1, y2) < height * 0.58 or max(y1, y2) > height * 0.98:
+            continue
+        return True
+    return False
+
+
+def _crop_detection(image, bbox, padding: float = 0.0):
+    height, width = image.shape[:2]
+    x1, y1, x2, y2 = [int(round(value)) for value in bbox]
+    box_width = max(1, x2 - x1)
+    box_height = max(1, y2 - y1)
+    x_padding = int(round(box_width * padding))
+    y_padding = int(round(box_height * padding))
+    x1 -= x_padding
+    y1 -= y_padding
+    x2 += x_padding
+    y2 += y_padding
+    x1 = max(0, min(x1, width - 1))
+    y1 = max(0, min(y1, height - 1))
+    x2 = max(x1 + 1, min(x2, width))
+    y2 = max(y1 + 1, min(y2, height))
+    return image[y1:y2, x1:x2]
+
+
+def _detect_primary_keys(image, detections, save_dir: Path) -> None:
+    primary_dir = save_dir / "primary"
+    primary_count = 0
+    stem = save_dir.name
+
+    for detection in detections:
+        model_label = (
+            str(detection.get("label", "")).strip().lower().replace("_", " ")
+        )
+        # Underlines are frequently outside the detector's tight text box.
+        crop = _crop_detection(
+            image,
+            detection.get("bbox", [0, 0, 0, 0]),
+            padding=0.35,
+        )
+        underline_detected = _has_underline(crop)
+        is_primary_key = model_label == "primary key" or (
+            model_label == "attributes" and underline_detected
+        )
+        if not is_primary_key:
+            continue
+
+        primary_count += 1
+        primary_dir.mkdir(parents=True, exist_ok=True)
+        crop_path = primary_dir / f"{stem}-{primary_count}.jpg"
+        if not cv2.imwrite(str(crop_path), crop):
+            raise OSError(f"Could not save primary-key crop to {crop_path}")
+
+        detection["label"] = "Primary Key"
+        detection["is_primary_key"] = True
+        detection["underline_detected"] = underline_detected
+        detection["primary_key_crop_path"] = str(crop_path)
 
 
 def _extract_detections(results, image_path: Path, crops_root: Path):
@@ -226,6 +352,7 @@ def _build_er_structure(detections, connections):
             attribute_names[det["id"]] = _display_name(det, "Attribute")
 
     entity_attributes = defaultdict(set)
+    entity_primary_keys = defaultdict(set)
     relationship_entities = defaultdict(set)
     relationship_attributes = defaultdict(set)
     unmatched = []
@@ -237,13 +364,13 @@ def _build_er_structure(detections, connections):
         right_label = right["label"]
 
         if left_label in entity_labels and right_label in attribute_labels:
-            entity_attributes[left["id"]].add(
-                attribute_names.get(right["id"], _display_name(right, "Attribute"))
-            )
+            attribute_name = attribute_names.get(right["id"], _display_name(right, "Attribute"))
+            target = entity_primary_keys if right.get("is_primary_key") else entity_attributes
+            target[left["id"]].add(attribute_name)
         elif right_label in entity_labels and left_label in attribute_labels:
-            entity_attributes[right["id"]].add(
-                attribute_names.get(left["id"], _display_name(left, "Attribute"))
-            )
+            attribute_name = attribute_names.get(left["id"], _display_name(left, "Attribute"))
+            target = entity_primary_keys if left.get("is_primary_key") else entity_attributes
+            target[right["id"]].add(attribute_name)
         elif left_label == relationship_label and right_label in entity_labels:
             relationship_entities[left["id"]].add(
                 entity_names.get(right["id"], _display_name(right, "Entity"))
@@ -268,6 +395,9 @@ def _build_er_structure(detections, connections):
         entities[name] = {
             "attributes": sorted(entity_attributes.get(entity_id, set()))
         }
+        primary_keys = sorted(entity_primary_keys.get(entity_id, set()))
+        if primary_keys:
+            entities[name]["primary_keys"] = primary_keys
 
     relationships = []
     for rel_id, rel_name in relationship_names.items():
@@ -468,6 +598,7 @@ def run_er_pipeline(
     )
 
     image = _read_image(resolved_image)
+    _detect_primary_keys(image, detections, save_dir)
     lines = _detect_lines(image)
     connections = _connect_lines_to_detections(lines, detections)
     structure = _build_er_structure(detections, connections)
@@ -533,6 +664,7 @@ def main():
         _attach_ocr_text(detections, rows)
 
         image = _read_image(source_path)
+        _detect_primary_keys(image, detections, save_dir)
         lines = _detect_lines(image)
         connections = _connect_lines_to_detections(lines, detections)
         structure = _build_er_structure(detections, connections)
