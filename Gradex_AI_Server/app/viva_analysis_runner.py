@@ -42,12 +42,23 @@ def analyze_timeout_seconds() -> float:
     return value if value > 0 else 600.0
 
 
-async def run_analysis(video_path: str, *, debug: bool = False) -> Dict[str, Any]:
+async def run_analysis(
+    video_path: str,
+    *,
+    debug: bool = False,
+    progress_id: Optional[str] = None,
+) -> Dict[str, Any]:
     """Run the ML pipeline off the event loop, with the shared timeout."""
+    from Gradex_AI_Server.app.viva_progress import bind_progress, publish
     from Gradex_AI_Server.app.viva_service import analyze_video_file
 
+    def _run() -> Dict[str, Any]:
+        publish(progress_id, "starting", "Starting video analysis")
+        with bind_progress(progress_id):
+            return analyze_video_file(video_path, debug)
+
     return await asyncio.wait_for(
-        asyncio.to_thread(analyze_video_file, video_path, debug),
+        asyncio.to_thread(_run),
         timeout=analyze_timeout_seconds(),
     )
 
@@ -56,11 +67,15 @@ async def attach_subject_technical_accuracy(
     result: Dict[str, Any],
     subject_code: Optional[str],
     db_instance: Any,
+    progress_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Optional advisory technical-accuracy panel. Never auto-published."""
     code = subject_code.strip() if isinstance(subject_code, str) else ""
     if not code:
         return result
+    from Gradex_AI_Server.app.viva_progress import publish
+
+    publish(progress_id, "technical", "Scoring concept coverage")
     try:
         from Gradex_AI_Server.app.subject_rubric_service import get_subject_rubric
         from VivaEvaluationEngine.services.technical_accuracy import attach_technical_accuracy
@@ -87,6 +102,7 @@ async def persist_and_autopublish(
     video_filename: Optional[str],
     source: str = "upload",
     extra_doc: Optional[Dict[str, Any]] = None,
+    progress_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Save the mark and auto-publish non-technical vivas.
 
@@ -94,7 +110,9 @@ async def persist_and_autopublish(
     otherwise-successful analysis.
     """
     from Gradex_AI_Server.app.core.database import ensure_marks_collection
+    from Gradex_AI_Server.app.viva_progress import publish
 
+    publish(progress_id, "saving", "Saving the mark")
     result["assessment_mode"] = mode
 
     if not await ensure_marks_collection():

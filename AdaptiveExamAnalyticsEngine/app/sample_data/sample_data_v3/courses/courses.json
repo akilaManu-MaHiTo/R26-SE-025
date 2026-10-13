@@ -1,0 +1,14 @@
+[
+  {
+    "_id": { "$oid": "66a100000000000000000001" },
+    "code": "SE3040",
+    "name": "Software Architecture",
+    "description": "Year 3 Software Engineering module"
+  },
+  {
+    "_id": { "$oid": "66a100000000000000000002" },
+    "code": "IT2040",
+    "name": "Database Management Systems",
+    "description": "Year 2 Database module"
+  }
+]

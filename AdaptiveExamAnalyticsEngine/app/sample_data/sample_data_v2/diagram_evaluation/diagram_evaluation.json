@@ -1,0 +1,722 @@
+[
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad5d"
+    },
+    "student_id": "IT22262551",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "EER-001",
+    "rubric_ref": "6a9263b6c7d058c29fb8ad5b",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Person entity identification",
+          "awarded_marks": 3,
+          "max_marks": 3,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Instructor subclass mapping",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Researcher subclass mapping",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Superclass/subclass strategy",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct ER notation",
+          "awarded_marks": 3,
+          "max_marks": 3,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 6,
+          "criterion": "Correct connections and keys",
+          "awarded_marks": 2,
+          "max_marks": 2,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Outstanding EER diagram. All entities, attributes, relationships and notation perfectly represented. Complete superclass/subclass mapping with correct FK references.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-29T04:44:38.314418+00:00",
+    "updated_at": "2026-08-29T04:44:38.314418+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad5e"
+    },
+    "student_id": "IT22262552",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "EER-001",
+    "rubric_ref": "6a9263b6c7d058c29fb8ad5b",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Person entity identification",
+          "awarded_marks": 3,
+          "max_marks": 3,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Instructor subclass mapping",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Researcher subclass mapping",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Superclass/subclass strategy",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct ER notation",
+          "awarded_marks": 3,
+          "max_marks": 3,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 6,
+          "criterion": "Correct connections and keys",
+          "awarded_marks": 2,
+          "max_marks": 2,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Excellent diagram with all three entities and most attributes correct. Minor issue with superclass/subclass strategy clarity.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-29T04:44:38.314448+00:00",
+    "updated_at": "2026-08-29T04:44:38.314448+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad5f"
+    },
+    "student_id": "IT22262553",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "EER-001",
+    "rubric_ref": "6a9263b6c7d058c29fb8ad5b",
+    "evaluation_result": {
+      "total_score": 17,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Person entity identification",
+          "awarded_marks": 3,
+          "max_marks": 3,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Instructor subclass mapping",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Researcher subclass mapping",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Superclass/subclass strategy",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct ER notation",
+          "awarded_marks": 3,
+          "max_marks": 3,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 6,
+          "criterion": "Correct connections and keys",
+          "awarded_marks": 2,
+          "max_marks": 2,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Good diagram. Person and Instructor correctly mapped. Researcher missing Publications attribute. Strategy is correct but notation has minor issues.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-29T04:44:38.314468+00:00",
+    "updated_at": "2026-08-29T04:44:38.314468+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad60"
+    },
+    "student_id": "IT22262554",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "EER-001",
+    "rubric_ref": "6a9263b6c7d058c29fb8ad5b",
+    "evaluation_result": {
+      "total_score": 15,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Person entity identification",
+          "awarded_marks": 2,
+          "max_marks": 3,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Instructor subclass mapping",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Researcher subclass mapping",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Superclass/subclass strategy",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct ER notation",
+          "awarded_marks": 2,
+          "max_marks": 3,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 6,
+          "criterion": "Correct connections and keys",
+          "awarded_marks": 2,
+          "max_marks": 2,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Good diagram with all entities present. Missing Address attribute on Person. Connections mostly correct.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-29T04:44:38.314475+00:00",
+    "updated_at": "2026-08-29T04:44:38.314475+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad61"
+    },
+    "student_id": "IT22262555",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "EER-001",
+    "rubric_ref": "6a9263b6c7d058c29fb8ad5b",
+    "evaluation_result": {
+      "total_score": 13,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Person entity identification",
+          "awarded_marks": 2,
+          "max_marks": 3,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Instructor subclass mapping",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Researcher subclass mapping",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Superclass/subclass strategy",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct ER notation",
+          "awarded_marks": 2,
+          "max_marks": 3,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 6,
+          "criterion": "Correct connections and keys",
+          "awarded_marks": 2,
+          "max_marks": 2,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Average diagram. Person missing Name. Researcher missing GrantAmount and Publications. Basic structure correct.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-29T04:44:38.314481+00:00",
+    "updated_at": "2026-08-29T04:44:38.314481+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad62"
+    },
+    "student_id": "IT22262556",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "EER-001",
+    "rubric_ref": "6a9263b6c7d058c29fb8ad5b",
+    "evaluation_result": {
+      "total_score": 11,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Person entity identification",
+          "awarded_marks": 2,
+          "max_marks": 3,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Instructor subclass mapping",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Researcher subclass mapping",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Superclass/subclass strategy",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct ER notation",
+          "awarded_marks": 2,
+          "max_marks": 3,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 6,
+          "criterion": "Correct connections and keys",
+          "awarded_marks": 1,
+          "max_marks": 2,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Below average. Missing Person Name/Address and Researcher attributes. Only basic entity rectangles drawn.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-29T04:44:38.314486+00:00",
+    "updated_at": "2026-08-29T04:44:38.314486+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad63"
+    },
+    "student_id": "IT22262557",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "EER-001",
+    "rubric_ref": "6a9263b6c7d058c29fb8ad5b",
+    "evaluation_result": {
+      "total_score": 9,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Person entity identification",
+          "awarded_marks": 1,
+          "max_marks": 3,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Instructor subclass mapping",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Researcher subclass mapping",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Superclass/subclass strategy",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct ER notation",
+          "awarded_marks": 1,
+          "max_marks": 3,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 6,
+          "criterion": "Correct connections and keys",
+          "awarded_marks": 1,
+          "max_marks": 2,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Weak diagram. Person has only SSN. Instructor missing Salary. Researcher entirely absent. Limited ER notation.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-29T04:44:38.314493+00:00",
+    "updated_at": "2026-08-29T04:44:38.314493+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad64"
+    },
+    "student_id": "IT22262558",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "EER-001",
+    "rubric_ref": "6a9263b6c7d058c29fb8ad5b",
+    "evaluation_result": {
+      "total_score": 7,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Person entity identification",
+          "awarded_marks": 1,
+          "max_marks": 3,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Instructor subclass mapping",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Researcher subclass mapping",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Superclass/subclass strategy",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct ER notation",
+          "awarded_marks": 1,
+          "max_marks": 3,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 6,
+          "criterion": "Correct connections and keys",
+          "awarded_marks": 1,
+          "max_marks": 2,
+          "status": "partial",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Poor diagram. Missing most attributes on Person. Researcher absent. Instructor has no attributes. Minimal connections.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-29T04:44:38.314500+00:00",
+    "updated_at": "2026-08-29T04:44:38.314500+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad65"
+    },
+    "student_id": "IT22262559",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "EER-001",
+    "rubric_ref": "6a9263b6c7d058c29fb8ad5b",
+    "evaluation_result": {
+      "total_score": 5,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Person entity identification",
+          "awarded_marks": 1,
+          "max_marks": 3,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Instructor subclass mapping",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Researcher subclass mapping",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Superclass/subclass strategy",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct ER notation",
+          "awarded_marks": 1,
+          "max_marks": 3,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 6,
+          "criterion": "Correct connections and keys",
+          "awarded_marks": 0,
+          "max_marks": 2,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Very poor. Only Person with SSN and Instructor with Rank identified. All other attributes and Researcher missing.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-29T04:44:38.314506+00:00",
+    "updated_at": "2026-08-29T04:44:38.314506+00:00"
+  },
+  {
+    "_id": {
+      "$oid": "6a9263b6c7d058c29fb8ad66"
+    },
+    "student_id": "IT22262560",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2024,
+    "month": 7,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "EER-001",
+    "rubric_ref": "6a9263b6c7d058c29fb8ad5b",
+    "evaluation_result": {
+      "total_score": 2,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Person entity identification",
+          "awarded_marks": 0,
+          "max_marks": 3,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Instructor subclass mapping",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Researcher subclass mapping",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Superclass/subclass strategy",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Correct ER notation",
+          "awarded_marks": 1,
+          "max_marks": 3,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 6,
+          "criterion": "Correct connections and keys",
+          "awarded_marks": 0,
+          "max_marks": 2,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Failing. Only Person entity identified. No attributes, no subclasses, no relationships drawn correctly.",
+      "grading_source": "colab"
+    },
+    "created_at": "2026-08-29T04:44:38.314513+00:00",
+    "updated_at": "2026-08-29T04:44:38.314513+00:00"
+  }
+]

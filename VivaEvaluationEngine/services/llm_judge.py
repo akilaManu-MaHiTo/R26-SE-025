@@ -420,6 +420,9 @@ def run_llm_judge(result: Dict[str, Any], debug: bool = False) -> Dict[str, Any]
 
 def attach_llm_evaluation(result: Dict[str, Any], debug: bool = False) -> Dict[str, Any]:
     """Mutate+return merged pipeline result with llm_evaluation attached."""
+    from services.pipeline_progress import emit
+
+    emit("llm_judge", "Scoring delivery")
     enriched = dict(result)
     enriched["llm_evaluation"] = run_llm_judge(enriched, debug=debug)
     return enriched
