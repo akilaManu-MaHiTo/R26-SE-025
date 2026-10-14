@@ -596,9 +596,10 @@ export interface QuestionBankItem {
   year: number;
 }
 
-export async function fetchQuestionBank(params: { source_type?: string; year?: number; canonical_topic?: string; limit?: number } = {}): Promise<QuestionBankItem[]> {
+export async function fetchQuestionBank(params: { source_type?: string; year?: number; canonical_topic?: string; course_code?: string; limit?: number } = {}): Promise<QuestionBankItem[]> {
   const qs = new URLSearchParams();
   if (params.source_type) qs.set("source_type", params.source_type);
+  if (params.course_code) qs.set("course_code", params.course_code);
   if (params.year) qs.set("year", String(params.year));
   if (params.canonical_topic) qs.set("canonical_topic", params.canonical_topic);
   if (params.limit) qs.set("limit", String(params.limit));
@@ -611,7 +612,7 @@ export interface ExamDraft {
   draft_id: string;
   subject_code: string;
   subject_name: string;
-  paper: { exam: string; year: number; questions: { question_number: number; topic: string; parts: { part: string; question: string; max_marks: number }[] }[] };
+  paper: import("./examCreatorApi").Paper;
   total_marks: number;
   question_count: number;
   created_at: string;

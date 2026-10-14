@@ -21,6 +21,8 @@ from app.db.repository import (
     list_all_exams,
 )
 from app.schemas.exam_analytics import ExamAnalyticsDocument
+from app.schemas.exam_creator import CreatorPaper, CreatorRequest, GenerateRequest
+from app.services.exam_creator import course_bank, review_paper, generate_for_paper
 from app.llm.ollama import check_llm_detailed_health
 from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
 from app.services.recommendation import recommend_for_weak_areas
@@ -32,6 +34,27 @@ from app.ingestion.answer_text import question_excerpt
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
 
 _analytics_inflight: dict[str, asyncio.Task] = {}
+
+
+@router.post("/exam-creator/review")
+async def review_exam_creator(payload: CreatorRequest, db=Depends(get_db)):
+    analytics = {}
+    source = payload.paper.source_exam
+    if source:
+        analytics = await find_exam_analytics(db, payload.course_code, source.session_name,
+                                             source.year, source.month, source.semester) or {}
+    return review_paper(payload, analytics, course_bank(payload.course_code))
+
+
+@router.post("/exam-creator/generate")
+async def generate_exam_creator(payload: GenerateRequest):
+    try:
+        result = await generate_for_paper(payload, course_bank(payload.course_code))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if result["status"] != "ok":
+        raise HTTPException(status_code=503, detail=result.get("detail") or result.get("reason", "Generation unavailable"))
+    return result
 
 
 # ── helpers (deduplicated from triple copy-paste) ──────────────────────
@@ -726,10 +749,8 @@ async def lecturer_teaching_actions(
     )
 
 
-class ExamDraftPaper(BaseModel):
-    exam: str = Field(min_length=1)
-    year: int
-    questions: list[dict] = Field(default_factory=list)
+class ExamDraftPaper(CreatorPaper):
+    pass
 
 
 class ExamDraftCreate(BaseModel):
@@ -797,6 +818,7 @@ async def question_bank(
     year: int | None = Query(None),
     canonical_topic: str | None = Query(None),
     limit: int = Query(100, ge=1, le=200),
+    course_code: str | None = Query(None),
 ):
     """Browse question bank - filter by source/year/topic for ExamCreator right panel."""
     import json
@@ -807,6 +829,8 @@ async def question_bank(
         return []
     bank = json.loads(bank_path.read_text(encoding="utf-8"))
     filtered = bank
+    if course_code:
+        filtered = course_bank(course_code, filtered)
     if source_type:
         filtered = [r for r in filtered if r.get("source_type") == source_type]
     if year:
@@ -853,7 +877,7 @@ async def lecturer_recommendations(
         except Exception:
             pass
     try:
-        result = recommend_for_weak_areas(document, limit=limit)
+        result = recommend_for_weak_areas(document, limit=limit, question_bank=course_bank(course_code))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to generate recommendations: {exc}") from exc
     return {

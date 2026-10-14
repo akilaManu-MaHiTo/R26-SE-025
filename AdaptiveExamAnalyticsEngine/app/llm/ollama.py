@@ -163,8 +163,13 @@ async def generate(prompt: str, *, temperature: float | None = None, timeout: fl
             if response.status_code >= 400:
                 raise OllamaUnavailable(f"Ollama returned HTTP {response.status_code}")
             data = response.json()
+    except httpx.TimeoutException as exc:
+        raise OllamaUnavailable(
+            f"Ollama generation timed out after {effective_timeout:g} seconds. "
+            "Increase OLLAMA_TIMEOUT or use a faster model/GPU, then restart the analytics backend."
+        ) from exc
     except (httpx.HTTPError, ValueError) as exc:
-        raise OllamaUnavailable(str(exc)) from exc
+        raise OllamaUnavailable(f"{type(exc).__name__}: {exc}") from exc
     try:
         return json.loads(data.get("response", "{}"))
     except json.JSONDecodeError as exc:
