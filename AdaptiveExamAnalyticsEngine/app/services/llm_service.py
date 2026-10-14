@@ -47,17 +47,10 @@ def _try_bloom_model(question_text: str) -> dict:
 
 def classify_question(question_text: str) -> dict:
     """Classify question: topic from rules, Bloom level ONLY from bloom_modernbert."""
-    rules_result = classify_by_rules(question_text)
+    bloom = _try_bloom_model(question_text)
+    rules_result = classify_by_rules(question_text, bloom_level=bloom["level"])
     rules = _rules_dict(rules_result)
-    try:
-        bloom = _try_bloom_model(question_text)
-    except Exception as exc:
-        logger.warning("Bloom ModernBERT inference failed: %s", exc)
-        # No fallback to rules/Qwen for Bloom — surface error explicitly
-        return {"status": "bloom_error", "rules": rules, "reason": str(exc), "bloom": None}
-    # Overwrite Bloom level with ModernBERT prediction regardless of rules confidence
-    rules_with_bloom = {**rules, "bloom_level": bloom["level"]}
-    return {"status": "bloom_model", "rules": rules_with_bloom, "bloom": bloom}
+    return {"status": "bloom_model", "rules": rules, "bloom": bloom}
 
 
 async def misconception_summary(topic: str, criteria: list[dict], answers: list[str]) -> dict:
@@ -247,6 +240,7 @@ def _similarity_checks(parsed, recommendation: dict) -> list[dict]:
         return []
     embedder = _get_embedder()
     historical = recommendation.get("historical_questions", [])
+    historical_vectors = {}
     checks = []
     try:
         for candidate in parsed.candidates:
@@ -254,7 +248,10 @@ def _similarity_checks(parsed, recommendation: dict) -> list[dict]:
             best = 0.0
             best_ref = None
             for hist in historical:
-                sim = embedder.similarity(cand_vec, embedder.embed(hist.get("question_text", "")))
+                text = hist.get("question_text", "")
+                if text not in historical_vectors:
+                    historical_vectors[text] = embedder.embed(text)
+                sim = embedder.similarity(cand_vec, historical_vectors[text])
                 if sim > best:
                     best = sim
                     best_ref = hist.get("question_id")

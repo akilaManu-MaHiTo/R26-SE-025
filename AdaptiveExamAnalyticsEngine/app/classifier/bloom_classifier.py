@@ -1,6 +1,5 @@
-"""Hybrid Bloom classifier using ModernBERT (safetensors) with confidence threshold.
+"""Lazy, process-local Bloom classifier using ModernBERT (safetensors).
 
-Mirrors `test_it2040_exam.py` loading but as a lazy singleton for the adaptive analytics engine.
 - Weights: models/bloom_modernbert/bloom.safetensors (or model.safetensors)
 - Tokenizer: models/bloom_modernbert/tokenizer/
 - Config: models/bloom_modernbert/config.json (id2label BT1..BT6)
@@ -11,14 +10,15 @@ Usage:
     result = predict_bloom("Convert EER model to relational model")
     # {"label":"BT3","level":"Apply","confidence":0.81,"probs":{"BT1":..},"model_version":"modernbert-bloom-v1"}
 
-Hybrid policy (Option B): caller checks confidence >= settings.bloom_model_threshold
-before trusting the prediction; otherwise fall back to LLM/rules.
+Callers use the top-1 prediction without a rule/LLM fallback. Exam analytics
+uses settings.bloom_model_threshold to flag low-confidence results for review.
 """
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 from app.config import settings
@@ -40,6 +40,7 @@ _MODEL = None
 _TOKENIZER = None
 _CONFIG = None
 _LOAD_ERROR: str | None = None
+_LOAD_LOCK = Lock()
 
 
 def _model_dir() -> Path:
@@ -64,6 +65,11 @@ def is_bloom_model_available() -> bool:
 
 
 def _load_model():
+    with _LOAD_LOCK:
+        return _load_model_unlocked()
+
+
+def _load_model_unlocked():
     global _MODEL, _TOKENIZER, _CONFIG, _LOAD_ERROR
     if _MODEL is not None:
         return _MODEL, _TOKENIZER, _CONFIG
@@ -183,5 +189,6 @@ def predict_bloom_batch(texts: list[str], max_length: int | None = None) -> list
 def reload_bloom_model() -> None:
     """Clear cached model (for tests)."""
     global _MODEL, _TOKENIZER, _CONFIG, _LOAD_ERROR
-    _MODEL = _TOKENIZER = _CONFIG = None
-    _LOAD_ERROR = None
+    with _LOAD_LOCK:
+        _MODEL = _TOKENIZER = _CONFIG = None
+        _LOAD_ERROR = None
