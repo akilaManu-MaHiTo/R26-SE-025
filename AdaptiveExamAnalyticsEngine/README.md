@@ -4,6 +4,10 @@ DBMS learning analytics pipeline: materializes per-student analytics from graded
 submissions, classifies question semantics (Bloom levels, topics), and serves a
 FastAPI dashboard.
 
+The lecturer Exam Creator includes saved blueprints, draft-aware recommendations,
+source-grounded question alternatives, and separate marking-scheme exports.
+See [the exam creator guide](EXAM_CREATOR.md) for usage, model configuration and validation limits.
+
 ## Running with sample data
 
 ```bash

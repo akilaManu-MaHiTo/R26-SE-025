@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import pathlib
 from collections import Counter
+from datetime import date
 from typing import Any
 
 from app.analytics.recommendation_score import (
@@ -43,7 +44,7 @@ def _load_question_bank() -> list[dict[str, Any]]:
         return json.load(f)
 
 
-def _compute_signals(question_bank: list[dict[str, Any]]) -> dict[str, Any]:
+def _compute_signals(question_bank: list[dict[str, Any]], reference_year: int | None = None) -> dict[str, Any]:
     """Derive Lecture Coverage, Tutorial Evidence, Exam Relevance maps.
 
     Returns:
@@ -55,14 +56,15 @@ def _compute_signals(question_bank: list[dict[str, Any]]) -> dict[str, Any]:
     lecture_topics = {
         r["canonical_topic"] for r in question_bank if r["source_type"] == "lecture"
     }
-    # tutorial counts per topic (include generated as teachable evidence)
+    # Generated candidates are not evidence that students practised a topic.
     tut_counts: Counter = Counter(
-        r["canonical_topic"] for r in question_bank if r["source_type"] in ("tutorial", "generated")
+        r["canonical_topic"] for r in question_bank if r["source_type"] == "tutorial"
     )
     max_tut = max(tut_counts.values()) if tut_counts else 1
 
-    # exam counts - last 2 years as recent (2023,2024)
-    recent_exams = [r for r in question_bank if r["source_type"] == "exam" and r["year"] >= 2023]
+    reference_year = reference_year if reference_year is not None else date.today().year
+    recent_exams = [r for r in question_bank if r["source_type"] == "exam"
+                    and reference_year - 2 <= r.get("year", 0) < reference_year]
     recent_by_topic: Counter = Counter(r["canonical_topic"] for r in recent_exams)
     max_recent = max(recent_by_topic.values()) if recent_by_topic else 1
 
@@ -103,6 +105,7 @@ def recommend_questions(
     weights: ScoreWeights = DEFAULT_WEIGHTS,
     limit: int = 10,
     exclude_recent_exam_topics: bool = False,
+    reference_year: int | None = None,
 ) -> list[dict[str, Any]]:
     """Rank candidate questions for lecturer.
 
@@ -121,7 +124,7 @@ def recommend_questions(
     weakness_res = weakness_for_document(analytics_document)
     weakness_scores: dict[str, dict] = weakness_res["weakness_scores"]
 
-    signals = _compute_signals(question_bank)
+    signals = _compute_signals(question_bank, reference_year)
 
     # Prefer bloom gap from analytics document's bloom_performance (actual student weakness)
     # if available, else fall back to recent exam bank distribution
@@ -138,8 +141,6 @@ def recommend_questions(
     # Candidates: tutorial + generated questions (lecture rows are coverage signals, not exam candidates)
     # Generated fills 0-coverage gaps (JDBC/Indexes/Transaction etc. via qwen3:8b)
     candidates = [r for r in question_bank if r["source_type"] in ("tutorial", "generated")]
-    if not candidates:
-        candidates = [r for r in question_bank if r["source_type"] == "lecture"]
 
     ranked: list[dict[str, Any]] = []
     for cand in candidates:
@@ -178,7 +179,7 @@ def recommend_questions(
                 "bloom_level": cand.get("bloom_level"),
                 "difficulty": cand.get("difficulty"),
                 "marks": cand.get("marks", 0),
-                "text": cand.get("text", "")[:2000],
+                "text": cand.get("text", ""),
                 "weakness": weakness,
                 "lecture_coverage": lecture_cov,
                 "tutorial_evidence": tut_ev,
