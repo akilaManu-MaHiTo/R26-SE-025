@@ -166,9 +166,9 @@ async def bloom_predict(payload: dict):
             status_code=503,
             detail="Bloom ModernBERT not available — ensure models/bloom_modernbert/bloom.safetensors + tokenizer exist",
         )
-    rules = classify_by_rules(text)
     try:
         b = predict_bloom(text)
+        rules = classify_by_rules(text, bloom_level=b["level"])
         bloom = b
         status = "bloom_model"
     except Exception as exc:

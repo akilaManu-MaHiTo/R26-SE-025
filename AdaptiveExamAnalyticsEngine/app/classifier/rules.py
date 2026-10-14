@@ -188,9 +188,11 @@ def _question_type(text: str, bloom_level: str) -> str:
     return "short_answer"
 
 
-def classify_by_rules(question_text: str, taxonomy: dict | None = None) -> RuleClassification:
+def classify_by_rules(
+    question_text: str, taxonomy: dict | None = None, *, bloom_level: str | None = None
+) -> RuleClassification:
     hits = _topic_hits(question_text, taxonomy)
-    bloom = _bloom_level(question_text)
+    bloom = _bloom_level(question_text) if bloom_level is None else bloom_level
     confidence = "high"
     if not hits:
         # No keyword match -> unclassified, reviewable (never silently use TOPICS[0])

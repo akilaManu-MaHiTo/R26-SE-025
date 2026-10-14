@@ -8,6 +8,11 @@ __pycache__/
 graphify-out
 
 datasets
-models
+# Keep runtime tokenizer/config files visible; distribute large weights separately.
+models/*
+!models/bloom_modernbert/
+models/bloom_modernbert/*.safetensors
+models/bloom_modernbert/*.bin
+.cache/
 
 cleanup

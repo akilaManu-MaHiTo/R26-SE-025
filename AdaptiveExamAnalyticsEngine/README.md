@@ -8,6 +8,31 @@ The lecturer Exam Creator includes saved blueprints, draft-aware recommendations
 source-grounded question alternatives, and separate marking-scheme exports.
 See [the exam creator guide](EXAM_CREATOR.md) for usage, model configuration and validation limits.
 
+## Models and development checks
+
+Bloom classification requires the local ModernBERT checkpoint. Put
+`bloom.safetensors` (or `model.safetensors`) and `config.json` in
+`models/bloom_modernbert/`, with the tokenizer files in its `tokenizer/` folder.
+The weights must be supplied separately; they are not included in Git. Loading
+is lazy and shared within each process, so multiple server workers each need
+their own model memory. `BLOOM_MODEL_DIR` resolves relative to this project.
+`BLOOM_MODEL_THRESHOLD` flags low-confidence analytics for review; it does not
+switch classification to Ollama or rules.
+
+Install core dependencies with `python -m pip install -r requirements.txt`.
+For optional candidate similarity and research clustering, also install
+`python -m pip install -r requirements-embeddings.txt`. SentenceTransformer loads
+on the first similarity request and may download its configured model unless it
+is already cached. Set `EMBEDDING_AVAILABLE=false` to disable similarity checks.
+
+Run tests from this directory with `python -m pytest`. Tests using `test_db`
+require a disposable MongoDB database named `dbms_analytics_test`; the fixture
+drops it on teardown. Live model tests are opt-in. For focused offline cleanup
+checks, run `python -m pytest tests/test_model_cleanup.py`.
+
+See [the model audit](MODEL_AUDIT.md) for artifact provenance, retained research
+files, cleanup findings, test results and remaining reproducibility limits.
+
 ## Running with sample data
 
 ```bash
