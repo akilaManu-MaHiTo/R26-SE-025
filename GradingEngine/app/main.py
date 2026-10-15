@@ -74,9 +74,17 @@ app.include_router(ai_model_router)
 
 ALLOWED_SESSION_NAMES = {
     "Final Examination",
-    "Mid Term Examination",
-    "Tutorial Examination",
-    "Quiz",
+    "Mid Term",
+}
+
+_SESSION_NAME_ALIASES = {
+    "mid term": "Mid Term",
+    "mid-term": "Mid Term",
+    "midterm": "Mid Term",
+    "mid term examination": "Mid Term",
+    "mid-term examination": "Mid Term",
+    "final": "Final Examination",
+    "final examination": "Final Examination",
 }
 
 
@@ -87,6 +95,7 @@ class RubricUpdatePayload(BaseModel):
     year: int | None = None
     month: int | None = None
     semester: int | None = None
+    examKey: str | None = None
     questions: list[dict] = Field(default_factory=list)
 
 
@@ -97,6 +106,7 @@ class RubricSessionPayload(BaseModel):
     year: int | None = None
     month: int | None = None
     semester: int | None = None
+    examKey: str | None = None
 
 
 class BatchGradePayload(BaseModel):
@@ -139,15 +149,42 @@ def _normalize_course_code(value: str) -> str:
 
 def _normalize_session_name(value: str) -> str:
     text = " ".join((value or "").strip().split())
+    aliased = _SESSION_NAME_ALIASES.get(text.lower())
+    if aliased:
+        return aliased
     if text not in ALLOWED_SESSION_NAMES:
         raise HTTPException(
             status_code=400,
-            detail=(
-                "session_name must be one of: Final Examination, Mid Term Examination, "
-                "Tutorial Examination, Quiz"
-            ),
+            detail="session_name must be one of: Final Examination, Mid Term",
         )
     return text
+
+
+def _exam_identity_fields(
+    *,
+    subject_code: str,
+    subject_name: str,
+    session_name: str,
+    year: int,
+    month: int,
+    semester: int,
+    exam_key: str = "",
+) -> dict:
+    code = _normalize_course_code(subject_code)
+    session = _normalize_session_name(session_name)
+    name = " ".join((subject_name or "").strip().split()) or code
+    fields = {
+        "subject_code": code,
+        "subject_name": name,
+        "session_name": session,
+        "year": year,
+        "month": month,
+        "semester": semester,
+    }
+    key = (exam_key or "").strip()
+    if key:
+        fields["examKey"] = key
+    return fields
 
 
 def _parse_year_month_semester(
@@ -360,16 +397,31 @@ async def upload_rubric(
     year: str = Form(...),
     month: str = Form(...),
     semester: str = Form(...),
+    examKey: str = Form(default=""),
 ):
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
-    normalized_session = _normalize_session_name(session_name)
     normalized_code = _normalize_course_code(subject_code)
     if not normalized_code:
         raise HTTPException(status_code=400, detail="subject_code is required.")
+    key = (examKey or "").strip()
+    if not key:
+        raise HTTPException(
+            status_code=400,
+            detail="examKey is required (look up /api/exam-key before upload).",
+        )
     y, m, s = _parse_year_month_semester(year, month, semester)
     resolved_name = await _resolve_subject_name(normalized_code, subject_name)
+    identity = _exam_identity_fields(
+        subject_code=normalized_code,
+        subject_name=resolved_name,
+        session_name=session_name,
+        year=y,
+        month=m,
+        semester=s,
+        exam_key=key,
+    )
 
     temp_path = f"temp_{uuid4().hex}_{Path(file.filename).name}"
 
@@ -386,12 +438,7 @@ async def upload_rubric(
             raise HTTPException(status_code=500, detail="AI failed to parse the rubric structure.")
 
         rubric_document = {
-            "session_name": normalized_session,
-            "subject_code": normalized_code,
-            "subject_name": resolved_name,
-            "year": y,
-            "month": m,
-            "semester": s,
+            **identity,
             "filename": file.filename,
             "parsed_at": os.path.getmtime(temp_path),
             "questions": structured_data,
@@ -660,14 +707,58 @@ async def patch_rubric_session(rubric_id: str, payload: RubricSessionPayload):
         update_fields["month"] = m
         update_fields["semester"] = s
 
+    if payload.examKey is not None:
+        key = payload.examKey.strip()
+        if not key:
+            raise HTTPException(status_code=400, detail="examKey cannot be empty.")
+        update_fields["examKey"] = key
+
     if not update_fields:
         raise HTTPException(status_code=400, detail="No updatable fields provided")
 
-    await db_instance.rubric_col.update_one(
-        {"_id": ObjectId(rubric_id)},
-        {"$set": update_fields},
+    merged = {**existing, **update_fields}
+    y, m, s = _parse_year_month_semester(
+        merged.get("year"), merged.get("month"), merged.get("semester")
     )
-    updated = await db_instance.rubric_col.find_one({"_id": ObjectId(rubric_id)})
+    exam_key = str(merged.get("examKey") or "").strip()
+    if not exam_key:
+        raise HTTPException(
+            status_code=400,
+            detail="examKey is required (look up /api/exam-key before saving session).",
+        )
+    update_fields.update(
+        _exam_identity_fields(
+            subject_code=str(merged.get("subject_code") or ""),
+            subject_name=str(merged.get("subject_name") or ""),
+            session_name=str(merged.get("session_name") or "Final Examination"),
+            year=y,
+            month=m,
+            semester=s,
+            exam_key=exam_key,
+        )
+    )
+
+    oid = ObjectId(rubric_id)
+    await db_instance.rubric_col.update_one({"_id": oid}, {"$set": update_fields})
+    identity_on_subs = {
+        k: update_fields[k]
+        for k in (
+            "subject_code",
+            "subject_name",
+            "session_name",
+            "year",
+            "month",
+            "semester",
+            "examKey",
+        )
+        if k in update_fields
+    }
+    if identity_on_subs:
+        await db_instance.submissions_col.update_many(
+            {"rubric_ref": oid, "archived_at": {"$exists": False}},
+            {"$set": identity_on_subs},
+        )
+    updated = await db_instance.rubric_col.find_one({"_id": oid})
     return {"status": "success", "item": _serialize_rubric_doc(updated)}
 
 
@@ -680,12 +771,6 @@ async def delete_rubric(
         description="When set, delete only this grading batch's submissions (keep other runs).",
     ),
 ):
-    """
-    Delete a grading history session/batch.
-
-    Allows cleanup when the rubric document is already missing (orphan submissions
-    still listed in /grading-history) — those rows should still be deletable.
-    """
     if not ObjectId.is_valid(rubric_id):
         raise HTTPException(status_code=400, detail="Invalid Rubric ID format")
 
@@ -694,7 +779,6 @@ async def delete_rubric(
 
     deleted_subs = 0
     job = (batch_job_id or "").strip() or None
-    # Submissions may store rubric_ref as ObjectId or as a plain string.
     ref_match = {"$or": [{"rubric_ref": oid}, {"rubric_ref": rubric_id}]}
     if purge_submissions:
         query: dict = {**ref_match}
@@ -709,7 +793,6 @@ async def delete_rubric(
         await db_instance.rubric_col.delete_one({"_id": oid})
         deleted_rubric = True
     elif not existing:
-        # History can still list batches after the rubric doc was removed.
         if deleted_subs == 0 and remaining == 0:
             raise HTTPException(
                 status_code=404,
@@ -760,14 +843,75 @@ async def update_rubric(rubric_id: str, payload: RubricUpdatePayload):
         update_fields["month"] = m
         update_fields["semester"] = s
 
+    if payload.examKey is not None:
+        key = payload.examKey.strip()
+        if not key:
+            raise HTTPException(status_code=400, detail="examKey cannot be empty.")
+        update_fields["examKey"] = key
+
+    identity_keys = {
+        "session_name",
+        "subject_code",
+        "subject_name",
+        "year",
+        "month",
+        "semester",
+        "examKey",
+    }
+    if identity_keys.intersection(update_fields):
+        base = await db_instance.rubric_col.find_one({"_id": ObjectId(rubric_id)})
+        if not base:
+            raise HTTPException(status_code=404, detail="Rubric not found")
+        merged = {**base, **update_fields}
+        exam_key = str(merged.get("examKey") or "").strip()
+        if not exam_key:
+            raise HTTPException(
+                status_code=400,
+                detail="examKey is required (look up /api/exam-key before saving).",
+            )
+        y2, m2, s2 = _parse_year_month_semester(
+            merged.get("year"), merged.get("month"), merged.get("semester")
+        )
+        update_fields.update(
+            _exam_identity_fields(
+                subject_code=str(merged.get("subject_code") or ""),
+                subject_name=str(merged.get("subject_name") or ""),
+                session_name=str(merged.get("session_name") or "Final Examination"),
+                year=y2,
+                month=m2,
+                semester=s2,
+                exam_key=exam_key,
+            )
+        )
+
+    oid = ObjectId(rubric_id)
     result = await db_instance.rubric_col.update_one(
-        {"_id": ObjectId(rubric_id)},
+        {"_id": oid},
         {"$set": update_fields},
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Rubric not found")
 
-    updated = await db_instance.rubric_col.find_one({"_id": ObjectId(rubric_id)})
+    identity_on_subs = {
+        k: update_fields[k]
+        for k in (
+            "subject_code",
+            "subject_name",
+            "session_name",
+            "year",
+            "month",
+            "semester",
+            "examKey",
+        )
+        if k in update_fields
+    }
+    if identity_on_subs:
+        await db_instance.submissions_col.update_many(
+            {"rubric_ref": oid, "archived_at": {"$exists": False}},
+            {"$set": identity_on_subs},
+        )
+
+    updated = await db_instance.rubric_col.find_one({"_id": oid})
     return {"status": "success", "item": _serialize_rubric_doc(updated)}
 
 
