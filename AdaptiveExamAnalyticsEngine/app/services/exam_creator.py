@@ -91,7 +91,7 @@ def review_paper(request: CreatorRequest, analytics: dict, bank: list[dict]) -> 
         issue("outcomes_missing", "Enter the learning outcomes to guide generation and lecturer review.")
 
     ranked = recommendation.recommend_questions(analytics, question_bank=bank,
-        limit=len(bank), reference_year=paper.year)
+        limit=len(bank), reference_year=paper.year, require_evidence=False)
     excluded = {p.get("question_id") for p in parts} | {r.question_id for r in paper.rejected_questions}
     selected_texts = {normalized(p.get("question", "")) for p in parts}
     candidates = []

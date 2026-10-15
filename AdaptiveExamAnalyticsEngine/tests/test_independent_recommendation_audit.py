@@ -3,7 +3,7 @@ import pytest
 
 from app.services import llm_service
 from app.services.recommendation import recommend_questions
-from app.services.student_pipeline import _gap_from_insight_text, _validated_insights
+from app.services.student_pipeline import _validated_insights
 from app.services.teaching_actions import _validate_llm_output
 
 
@@ -24,19 +24,18 @@ def test_teaching_actions_repair_numbers_and_reject_unknown_topics():
     assert result[0]["performance_percentage"] == 40
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="R1: empty assessment evidence still produces practice recommendations")
 def test_no_observed_evidence_does_not_claim_personalized_need():
     assert recommend_questions({}, question_bank=[candidate()], reference_year=2026) == []
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="R2: duplicate bank rows are ranked twice")
 def test_duplicate_candidates_are_not_recommended_twice():
-    document = {"canonical_topic_performance": [{"topic": "SQL", "average_percentage": 40}]}
+    document = {"canonical_topic_performance": [{"topic": "SQL", "average_percentage": 40,
+        "question_count": 2, "student_count": 10}]}
     result = recommend_questions(document, question_bank=[candidate(), candidate()], reference_year=2026)
+    assert len(result) == 1
     assert len({row["question_id"] for row in result}) == len(result)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="R3: practice schema checks types but not requested count or target membership")
 def test_generated_practice_must_match_backend_target(monkeypatch):
     async def fake_validate(model, *args, **kwargs):
         return model(requested_count=5, questions=[{
@@ -56,20 +55,19 @@ def test_generated_practice_must_match_backend_target(monkeypatch):
     assert result["status"] != "ok"
 
 
-def test_student_insight_validation_currently_accepts_unassessed_topics():
-    # Baseline characterization: schema validity is not evidence validity.
+def test_student_insight_validation_rejects_unassessed_topics():
+    from tests.test_recommendation_evidence import analysis
+    _, numeric = analysis()
     result = _validated_insights({"status": "ok", "learning_gaps": ["Botany is weak"],
         "recommendations": [{"topic": "Botany", "priority": "High", "bloom_level": "Create",
                              "action": "Study photosynthesis."}],
         "generation_target": {"recommended_bloom_level": "Create", "recommended_difficulty": "Hard",
-                              "recommended_topics": ["Botany"]}})
-    assert result is not None
-    assert result.generation_target.recommended_topics == ["Botany"]
+                              "recommended_topics": ["Botany"]}}, numeric)
+    assert result is None
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="R4: all free-text learning gaps attach to first weak topic")
-def test_learning_gap_is_not_attached_to_an_unrelated_topic():
-    result = _gap_from_insight_text("Review transaction isolation.", {
-        "critical_topics": ["SQL"], "weak_topics": ["Transactions"],
-        "overall_performance": "Needs Improvement"})
-    assert result["topic"] == "Transactions"
+def test_learning_gaps_retain_their_original_topic_evidence():
+    from tests.test_recommendation_evidence import assemble, insights
+    numeric, document = assemble(insights())
+    assert document["learning_analysis"]["learning_gaps"] == [
+        gap.model_dump() for gap in numeric.learning_analysis.learning_gaps]

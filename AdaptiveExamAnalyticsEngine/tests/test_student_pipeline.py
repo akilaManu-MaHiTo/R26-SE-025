@@ -224,7 +224,7 @@ async def test_pipeline_uses_rule_key_concept_as_fallback_subtopic(monkeypatch):
     )
 
 
-async def test_qwen_insights_replace_only_semantic_fallback_fields(monkeypatch):
+async def test_qwen_action_text_preserves_backend_gaps_priority_and_target(monkeypatch):
     db = install_repository_boundaries(monkeypatch, [submission("student-17")])
     def _fake_predict(text):
         if "SELECT" in text or "JOIN" in text:
@@ -242,9 +242,9 @@ async def test_qwen_insights_replace_only_semantic_fallback_fields(monkeypatch):
                 "learning_gaps": ["Trace joins before writing SQL."],
                 "recommendations": [
                     {
-                        "priority": "Medium",
-                        "topic": "SQL",
-                        "bloom_level": "Analyze",
+                        "priority": "Low",
+                        "topic": "Structured Query Language (SQL)",
+                        "bloom_level": "Apply",
                         "action": "Compare inner and outer joins.",
                     }
                 ],
@@ -281,13 +281,15 @@ async def test_qwen_insights_replace_only_semantic_fallback_fields(monkeypatch):
     }
     assert saved["learning_analysis"]["weak_topics"] == []
     assert saved["learning_analysis"]["learning_gaps"] == [
-        {"topic": "Structured Query Language (SQL)", "subtopic": "Trace joins before writing SQL.", "priority": "Medium"}
+        {"topic": "Structured Query Language (SQL)", "subtopic": "Uses the correct query", "priority": "Medium"},
+        {"topic": "Unclassified", "subtopic": "Explains the concept", "priority": "Medium"},
     ]
-    assert saved["recommendations"][0]["action"] == "Compare inner and outer joins."
+    assert saved["recommendations"][0]["action"].startswith("Compare inner and outer joins. Evidence:")
+    assert saved["recommendations"][0]["priority"] == "Medium"
     assert saved["next_question_strategy"] == {
-        "recommended_topics": ["Joins"],
-        "recommended_bloom_levels": ["Analyze", "Apply", "Understand"],
-        "recommended_difficulty": "Hard",
+        "recommended_topics": ["Structured Query Language (SQL)"],
+        "recommended_bloom_levels": ["Apply", "Understand"],
+        "recommended_difficulty": "Medium",
         "number_of_questions": 5,
     }
     assert saved["model_metadata"] == {

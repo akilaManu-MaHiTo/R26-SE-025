@@ -92,7 +92,7 @@ def valid_document(
             "rag_context_used": False,
         },
         "generated_at": "2026-08-12T00:00:00Z",
-        "analysis_version": "1.0",
+        "analysis_version": "1.1",
     }
 
 
