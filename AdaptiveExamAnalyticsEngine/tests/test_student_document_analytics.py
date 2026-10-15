@@ -220,7 +220,7 @@ def test_fallbacks_use_missed_criteria_high_priority_and_five_questions():
 
     gaps = fallback_learning_gaps(analysis.question_performance)
     recommendations = fallback_recommendations(
-        analysis.topic_performance, analysis.bloom_performance
+        analysis.topic_performance, analysis.question_performance
     )
     generation_target = fallback_generation_target(
         analysis.topic_performance, analysis.bloom_performance

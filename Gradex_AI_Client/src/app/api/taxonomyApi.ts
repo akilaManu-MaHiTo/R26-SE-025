@@ -1,3 +1,5 @@
+import type { CourseItem } from "../utils/courseOptions";
+
 const env = (import.meta as { env?: Record<string, string> }).env ?? {};
 const API_BASE = (env.VITE_BACKEND_URL || env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -20,8 +22,8 @@ export interface TaxonomyVersion {
   updated_by: string | null;
 }
 
-async function request<T>(courseCode: string, suffix = "", body?: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE}/api/courses/${encodeURIComponent(courseCode)}/taxonomy${suffix}`, {
+async function request<T>(path: string, body?: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE}/api/courses${path}`, {
     method: body === undefined ? "GET" : "PUT",
     headers: {
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
@@ -37,10 +39,13 @@ async function request<T>(courseCode: string, suffix = "", body?: unknown): Prom
   return data;
 }
 
-export const fetchTaxonomy = (courseCode: string, version?: number) =>
-  request<TaxonomyDocument>(courseCode, version === undefined ? "" : `/history/${version}`);
+export const fetchTaxonomyCourses = async () =>
+  (await request<{ items: CourseItem[] }>("")).items;
 
-export const fetchTaxonomyHistory = (courseCode: string) => request<TaxonomyVersion[]>(courseCode, "/history");
+export const fetchTaxonomy = (courseCode: string, version?: number) =>
+  request<TaxonomyDocument>(`/${encodeURIComponent(courseCode)}/taxonomy${version === undefined ? "" : `/history/${version}`}`);
+
+export const fetchTaxonomyHistory = (courseCode: string) => request<TaxonomyVersion[]>(`/${encodeURIComponent(courseCode)}/taxonomy/history`);
 
 export const saveTaxonomy = (courseCode: string, document: TaxonomyDocument) =>
-  request<TaxonomyDocument>(courseCode, "", { version: document.version, topics: document.topics });
+  request<TaxonomyDocument>(`/${encodeURIComponent(courseCode)}/taxonomy`, { version: document.version, topics: document.topics });

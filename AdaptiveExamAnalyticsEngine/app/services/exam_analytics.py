@@ -20,6 +20,8 @@ from app.db.repository import (
 from app.ingestion.student_data import normalize_student_submission
 from app.services import student_pipeline as _student_pipeline
 
+ANALYTICS_VERSION = "1.1"
+
 
 class ExamNotFound(Exception):
     """Raised when no graded submissions exist for the requested exam."""
@@ -338,7 +340,7 @@ async def compute_exam_analytics(
         **stats,
         "diagram_analysis": diagram_analysis,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "analytics_version": "1.0",
+        "analytics_version": ANALYTICS_VERSION,
     }
     _progress("PULSE·AI — Saving analytics to database...")
     await upsert_exam_analytics(db, document)

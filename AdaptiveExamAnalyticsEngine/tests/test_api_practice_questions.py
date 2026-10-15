@@ -63,17 +63,25 @@ async def test_practice_post_returns_503_when_generation_degrades(
         app.dependency_overrides.clear()
 
 
-async def test_practice_get_returns_cached_batch_when_not_fresh(test_db):
+async def test_practice_get_returns_cached_batch_when_not_fresh(test_db, monkeypatch):
     from app.db.repository import upsert_generated_questions
+    from app.api import dashboard
+    from app.schemas.student import NextQuestionStrategy
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    strategy = NextQuestionStrategy(recommended_topics=["SQL"], recommended_bloom_levels=["Understand"],
+                                    recommended_difficulty="Medium", number_of_questions=5)
+    monkeypatch.setattr(dashboard, "ensure_student_analytics", AsyncMock(return_value=SimpleNamespace(next_question_strategy=strategy)))
 
     cached_document = {
         "student_id": "IT22145976",
         "exam_id": "IT2040@Final Examination 2021",
         "course": {"code": "IT2040", "name": "Databases"},
-        "request": {"recommended_topics": ["SQL"]},
-        "questions": [{"prompt": "p", "bloom_level": "Understand", "topic": "SQL", "difficulty": "Medium", "hints": []}],
+        "request": strategy.model_dump(),
+        "questions": [{"prompt": f"SQL exercise {i}", "bloom_level": "Understand", "topic": "SQL", "difficulty": "Medium", "hints": []} for i in range(5)],
         "generated_at": "2026-08-12T00:00:00Z",
-        "generation_version": "1.0",
+        "generation_version": "1.1",
     }
     await upsert_generated_questions(test_db, cached_document)
     app.dependency_overrides[deps.get_db] = lambda: test_db

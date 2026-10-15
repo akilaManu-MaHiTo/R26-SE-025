@@ -5,7 +5,8 @@ from pydantic import BaseModel
 from app.api.deps import get_db
 from app.db.repository import find_generated_questions, find_user_by_email, list_exams_for_student
 from app.schemas.student import StudentAnalyticsDocument
-from app.services.practice_questions import generate_practice_questions
+from app.services.practice_questions import GENERATION_VERSION, generate_practice_questions
+from app.llm.roles.generate_practice import practice_batch_matches_target
 from app.services.student_accounts import verify_password
 from app.services.student_dashboard import StudentNotFound, ensure_student_analytics
 
@@ -96,6 +97,9 @@ async def get_practice_questions(
 ):
     exam_id = f"{course_code}@{session_name}"
     cached = await find_generated_questions(db, student_id, exam_id)
-    if cached is not None and not fresh:
-        return cached
+    if cached is not None and not fresh and cached.get("generation_version") == GENERATION_VERSION:
+        analysis = await ensure_student_analytics(db, student_id, course_code, session_name)
+        target = analysis.next_question_strategy.model_dump()
+        if cached.get("request") == target and practice_batch_matches_target(cached.get("questions"), target):
+            return cached
     return await create_practice_questions(student_id, course_code, session_name, db)

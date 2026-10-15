@@ -47,8 +47,8 @@ def test_bloom_gap():
 def test_recommend_questions_ranks_weak_first():
     doc = {
         "topic_performance": [
-            {"topic": "SQL Queries and Triggers in Database Management Systems", "average_percentage": 50.0, "status": "Needs Improvement"},
-            {"topic": "Database Design and Relational Algebra", "average_percentage": 90.0, "status": "Strong"},
+            {"topic": "SQL Queries and Triggers in Database Management Systems", "average_percentage": 50.0, "status": "Needs Improvement", "question_count": 2, "student_count": 10},
+            {"topic": "Database Design and Relational Algebra", "average_percentage": 90.0, "status": "Strong", "question_count": 2, "student_count": 10},
         ],
         "bloom_performance": [{"level": "Apply", "average_percentage": 50.0}],
     }
