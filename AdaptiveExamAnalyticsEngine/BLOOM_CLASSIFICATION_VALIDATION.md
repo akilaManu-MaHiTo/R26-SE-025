@@ -1,5 +1,7 @@
 # Bloom classification: scientific baseline audit
 
+Subsequent update: [the independent holdout workflow](BLOOM_HOLDOUT.md) now includes validation/evaluation tooling and 14 unlabeled final-exam pilot candidates. No new model accuracy is claimed: lecturer labels, historical non-use confirmation and semantic overlap review remain required. The evidence below preserves the original audit baseline.
+
 Audit date: 2026-10-15. This audit reads the current working tree, including the existing staged cleanup. It changes no production classifier, datasets, weights, predictions or annotation files. All computations below use stored files and Python's standard library. They do not evaluate a fresh inference run.
 
 ## What actually assigns Bloom labels
