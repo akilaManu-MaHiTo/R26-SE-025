@@ -69,7 +69,7 @@ def build_insights(
             weakest = min(topic_performance, key=lambda item: float(item.get("average_percentage", 0)))
             pct = float(weakest.get("average_percentage", 0))
             n = int(weakest.get("student_count", 0) or 0)
-            ac = int(weakest.get("attempt_count", 0) or 0)
+            ac = int(weakest.get("question_count", 0) or 0)
             evidence = weakest.get("evidence_status", "")
             topic_name = weakest.get("topic", "Unknown")
             # phrase matches brief: "at 42.3% (n=12, 2 questions) - confirmed_weakness"
@@ -87,7 +87,7 @@ def build_insights(
             if strongest.get("topic") != weakest.get("topic") or len(topic_performance) == 1:
                 pct_s = float(strongest.get("average_percentage", 0))
                 n_s = int(strongest.get("student_count", 0) or 0)
-                ac_s = int(strongest.get("attempt_count", 0) or 0)
+                ac_s = int(strongest.get("question_count", 0) or 0)
                 topic_s = strongest.get("topic", "Unknown")
                 # include sample size to satisfy n=
                 insights.append(f"{topic_s} is the strongest topic at {pct_s:.1f}% (n={n_s}, {ac_s} questions).")
@@ -232,13 +232,17 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
     topic_max: dict[str, float] = {}
     topic_students: dict[str, set[int]] = {}
     topic_attempts: dict[str, int] = {}
+    topic_questions: dict[str, set[str]] = {}
     for idx, student in enumerate(normalized_students):
         for topic in student["topic_performance"]:
             name = topic["topic"]
             topic_score[name] = topic_score.get(name, 0.0) + topic["score"]
             topic_max[name] = topic_max.get(name, 0.0) + topic["max_score"]
             topic_students.setdefault(name, set()).add(idx)
+        for question in student.get("question_performance", []):
+            name = question["topic"]
             topic_attempts[name] = topic_attempts.get(name, 0) + 1
+            topic_questions.setdefault(name, set()).add(question["question_no"])
     topic_performance = []
     for name, score in sorted(
         topic_score.items(), key=lambda item: item[1] / topic_max[item[0]]
@@ -246,14 +250,16 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
         avg_pct = round(score / topic_max[name] * 100.0, 2) if topic_max[name] else 0.0
         sc = len(topic_students.get(name, set()))
         ac = topic_attempts.get(name, 0)
+        qc = len(topic_questions.get(name, set()))
         topic_performance.append(
             {
                 "topic": name,
                 "average_percentage": avg_pct,
                 "status": performance_status(score / topic_max[name] * 100.0 if topic_max[name] else 0.0),
-                "evidence_status": _evidence_status(avg_pct, sc, ac, min_students, min_attempts),
+                "evidence_status": _evidence_status(avg_pct, sc, qc, min_students, min_attempts),
                 "student_count": sc,
                 "attempt_count": ac,
+                "question_count": qc,
             }
         )
 
@@ -389,6 +395,7 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
     matrix_max: dict[tuple[str, str], float] = {}
     matrix_students: dict[tuple[str, str], set[int]] = {}
     matrix_attempts: dict[tuple[str, str], int] = {}
+    matrix_questions: dict[tuple[str, str], set[str]] = {}
     for idx, student in enumerate(normalized_students):
         for q in student.get("question_performance", []):
             key = (q["topic"], q["bloom_level"])
@@ -396,12 +403,14 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
             matrix_max[key] = matrix_max.get(key, 0.0) + q["max_score"]
             matrix_students.setdefault(key, set()).add(idx)
             matrix_attempts[key] = matrix_attempts.get(key, 0) + 1
+            matrix_questions.setdefault(key, set()).add(q["question_no"])
     topic_bloom_matrix = []
     for (topic, bloom_level), score in sorted(matrix_score.items()):
         max_s = matrix_max[(topic, bloom_level)]
         avg_pct = round(score / max_s * 100 if max_s else 0.0, 2)
         sc = len(matrix_students.get((topic, bloom_level), set()))
         ac = matrix_attempts.get((topic, bloom_level), 0)
+        qc = len(matrix_questions.get((topic, bloom_level), set()))
         topic_bloom_matrix.append(
             {
                 "topic": topic,
@@ -409,7 +418,8 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
                 "average_percentage": avg_pct,
                 "student_count": sc,
                 "attempt_count": ac,
-                "evidence_status": _evidence_status(avg_pct, sc, ac, min_students, min_attempts),
+                "question_count": qc,
+                "evidence_status": _evidence_status(avg_pct, sc, qc, min_students, min_attempts),
             }
         )
 
