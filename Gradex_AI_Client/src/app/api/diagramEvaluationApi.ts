@@ -53,6 +53,7 @@ export type DiagramEvaluationSaveInput = {
 	month?: string | number;
 	semester?: string | number;
 	sessionName?: string;
+	examKey?: string;
 	diagramMarks?: number;
 	remarks?: string;
 	guidelineObjectId?: string;
@@ -67,6 +68,7 @@ export type DiagramEvaluationRecord = {
 	month: number;
 	semester: number;
 	session_name: string;
+	examKey: string;
 	diagram_marks: number;
 	diagram_details: {
 		label_count: number;
@@ -109,6 +111,25 @@ export type DiagramEvaluationSaveResponse = {
 	status?: string;
 	inserted_id?: string;
 	record?: DiagramEvaluationRecord;
+};
+
+export type ExamKeyLookupParams = {
+	subjectCode: string;
+	year: string | number;
+	month: string;
+	semester: string | number;
+	session: string;
+};
+
+export type ExamKeyLookupResponse = {
+	examKey: string;
+	subjectCode: string;
+	subjectName?: string;
+	examYear: number;
+	examSemester: number;
+	examMonth: string;
+	session: string;
+	examStructure?: string[];
 };
 
 function readJsonResponse(response: Response): Promise<unknown> {
@@ -219,6 +240,7 @@ export function buildDiagramEvaluationSavePayload({
 	month,
 	semester,
 	sessionName,
+	examKey,
 	diagramMarks,
 	remarks,
 	guidelineObjectId,
@@ -243,6 +265,7 @@ export function buildDiagramEvaluationSavePayload({
 		month: toInteger(month, currentDate.getMonth() + 1),
 		semester: normalizeSemester(semester),
 		session_name: normalizeSessionName(sessionName),
+		examKey: toTrimmedString(examKey),
 		diagram_marks: toInteger(diagramMarks, detections.length),
 		diagram_details: {
 			label_count: detections.length,
@@ -263,6 +286,27 @@ export function buildDiagramEvaluationSavePayload({
 		created_at: currentDate.toISOString(),
 		updated_at: currentDate.toISOString(),
 	};
+}
+
+export async function fetchExamKey(
+	params: ExamKeyLookupParams,
+	apiBaseUrl: string = DEFAULT_API_BASE_URL,
+): Promise<ExamKeyLookupResponse> {
+	const query = new URLSearchParams({
+		subjectCode: params.subjectCode.trim(),
+		year: String(params.year),
+		month: params.month.trim(),
+		semester: String(normalizeSemester(params.semester)),
+		session: params.session.trim(),
+	});
+	const response = await fetch(`${apiBaseUrl}/api/exam-key?${query.toString()}`);
+	const data = (await readJsonResponse(response)) as ExamKeyLookupResponse;
+
+	if (!response.ok) {
+		throw new Error(parseApiError(data, "Failed to find exam key."));
+	}
+
+	return data;
 }
 
 export async function saveDiagramEvaluation(
