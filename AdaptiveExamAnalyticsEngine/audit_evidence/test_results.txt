@@ -1,0 +1,38 @@
+.................................F...............ssss...........sss..ss. [ 58%]
+.sss..................xxxxxxxxxxxxxxx..xxx.xxx.....                      [100%]
+================================== FAILURES ===================================
+___________ test_normalize_submission_joins_questions_and_criteria ____________
+tests\test_student_data_ingestion.py:54: in test_normalize_submission_joins_questions_and_criteria
+    normalized = normalize_student_submission(
+app\ingestion\student_data.py:115: in normalize_student_submission
+    subject_name = str(rubric.get("subject_name") or course_name or "").strip() or course_code
+                       ^^^^^^^^^^
+E   AttributeError: 'list' object has no attribute 'get'
+=========================== short test summary info ===========================
+XFAIL tests/test_independent_equation_audit.py::test_diagram_pass_rate_respects_each_students_denominator - EQ-01 diagram pass rate uses average max instead of student max
+XFAIL tests/test_independent_equation_audit.py::test_zero_diagram_maximum_has_defined_output - EQ-02 zero diagram maxima divide by zero in pass-rate calculation
+XFAIL tests/test_independent_equation_audit.py::test_partial_diagram_criterion_uses_authoritative_maximum - EQ-03 observed maximum award is not rubric maximum
+XFAIL tests/test_independent_equation_audit.py::test_diagram_status_matches_shared_performance_scale[40] - EQ-04 diagram status diverges from student/config thresholds
+XFAIL tests/test_independent_equation_audit.py::test_diagram_status_matches_shared_performance_scale[49.99] - EQ-04 diagram status diverges from student/config thresholds
+XFAIL tests/test_independent_equation_audit.py::test_diagram_status_matches_shared_performance_scale[60] - EQ-04 diagram status diverges from student/config thresholds
+XFAIL tests/test_independent_equation_audit.py::test_diagram_status_matches_shared_performance_scale[64.99] - EQ-04 diagram status diverges from student/config thresholds
+XFAIL tests/test_independent_equation_audit.py::test_negative_weights_cannot_produce_out_of_range_scores - EQ-05 negative weights pass sum validation and break [0,1] guarantee
+XFAIL tests/test_independent_equation_audit.py::test_ndcg_ideal_uses_relevant_candidates_below_cutoff - EQ-06 NDCG ideal must be drawn from all candidate relevance before truncation
+XFAIL tests/test_independent_equation_audit.py::test_ndcg_zero_cutoff_is_zero - EQ-07 zero cutoff treated as full list by k or len
+XFAIL tests/test_independent_equation_audit.py::test_exam_zero_maximum_does_not_crash_before_guard - EQ-08 topic sorting divides by zero before guarded percentage calculation
+XFAIL tests/test_independent_equation_audit.py::test_topic_attempts_are_question_evidence_not_student_count - EQ-09 topic attempts count aggregated student topics instead of questions
+XFAIL tests/test_independent_equation_audit.py::test_tutorial_one_practice_endpoint_matches_its_contract - EQ-10 tutorial signal contradicts documented one-question endpoint 0.6
+XFAIL tests/test_independent_equation_audit.py::test_accuracy_rejects_unpaired_observations - EQ-11 accuracy silently drops unmatched labels
+XFAIL tests/test_independent_equation_audit.py::test_weak_topic_zero_limit_returns_no_rows - EQ-12 zero limit is treated as no limit
+XFAIL tests/test_independent_recommendation_audit.py::test_no_observed_evidence_does_not_claim_personalized_need - R1: empty assessment evidence still produces practice recommendations
+XFAIL tests/test_independent_recommendation_audit.py::test_duplicate_candidates_are_not_recommended_twice - R2: duplicate bank rows are ranked twice
+XFAIL tests/test_independent_recommendation_audit.py::test_generated_practice_must_match_backend_target - R3: practice schema checks types but not requested count or target membership
+XFAIL tests/test_independent_recommendation_audit.py::test_learning_gap_is_not_attached_to_an_unrelated_topic - R4: all free-text learning gaps attach to first weak topic
+XFAIL tests/test_independent_dashboard_audit.py::test_anonymous_student_profile_requires_authentication - DASH-01: anonymous caller can read another student's profile
+XFAIL tests/test_independent_dashboard_audit.py::test_anonymous_lecturer_inventory_requires_authentication - DASH-01: lecturer exam inventory is readable anonymously
+SKIPPED [1] tests\test_evaluation.py: pytest temporary-path setup unavailable in this audit environment
+SKIPPED [6] tests\test_llm_student_analysis.py: Windows asyncio setup unavailable in this audit environment
+SKIPPED [2] tests\test_practice_questions.py: Windows asyncio setup unavailable in this audit environment
+SKIPPED [1] tests\test_model_cleanup.py: Windows asyncio setup unavailable in this audit environment
+SKIPPED [2] tests\test_model_cleanup.py:54: Windows asyncio setup unavailable in this audit environment
+1 failed, 89 passed, 12 skipped, 21 xfailed in 6.41s

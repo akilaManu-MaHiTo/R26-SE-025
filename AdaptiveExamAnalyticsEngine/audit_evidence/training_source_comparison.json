@@ -1,0 +1,38 @@
+{
+  "training_source_provenance": "User states this CSV is the only training source; actual split membership not supplied",
+  "training_csv_path": "C:\\Users\\liyan\\OneDrive\\Documents\\SLIIT\\Y4\\Research\\Dataset\\bloom model\\blooms_taxonomy_dataset.csv",
+  "training_csv": {
+    "rows": 8767,
+    "unique_normalized_texts": 8721,
+    "duplicate_rows": 46,
+    "conflicting_label_texts": 13,
+    "label_counts": {
+      "BT1": 2582,
+      "BT2": 1801,
+      "BT3": 1508,
+      "BT4": 1293,
+      "BT6": 800,
+      "BT5": 783
+    },
+    "sha256": "399916f9715753ab7ccd011e1fb5f8f177dc153cc7f95704257d47a6847b50f0"
+  },
+  "repository_source_csv": {
+    "rows": 8767,
+    "unique_normalized_texts": 8721,
+    "duplicate_rows": 46,
+    "conflicting_label_texts": 13,
+    "label_counts": {
+      "BT1": 2582,
+      "BT2": 1801,
+      "BT3": 1508,
+      "BT4": 1293,
+      "BT6": 800,
+      "BT5": 783
+    },
+    "sha256": "399916f9715753ab7ccd011e1fb5f8f177dc153cc7f95704257d47a6847b50f0"
+  },
+  "byte_identical": true,
+  "normalized_text_label_sets_identical": true,
+  "gold_rows_overlapping_training_source": 500,
+  "gold_unique_texts_overlapping_training_source": 500
+}
