@@ -1,3 +1,5 @@
+import { SERVER_BASE_URL } from "../api/gradingApiBase";
+import { apiFetch } from "../api/authApi";
 import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
@@ -33,9 +35,7 @@ import {
   saveDiagramEvaluation,
 } from "../api/diagramEvaluationApi.ts";
 
-const API_BASE_URL =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ??
-  "http://127.0.0.1:8000";
+const API_BASE_URL = SERVER_BASE_URL;
 
 type DiagramDetection = {
   id: string | number;
@@ -330,7 +330,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
     const loadGuidelines = async () => {
       setGuidelinesLoading(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/diagram-evaluate-guidelines`);
+        const response = await apiFetch(`${API_BASE_URL}/api/diagram-evaluate-guidelines`);
         const data = (await readJsonResponse(response)) as unknown;
         if (!response.ok || !Array.isArray(data)) throw new Error("Failed to load guidelines.");
 
@@ -548,7 +548,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
       }
       formData.append("guideline_object_id", selectedGuideline._id);
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/diagram-evaluate?stream=1`,
         {
           method: "POST",

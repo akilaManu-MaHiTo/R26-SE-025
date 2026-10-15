@@ -1,16 +1,12 @@
+import { SERVER_BASE_URL } from "../../api/gradingApiBase";
+import { apiFetch } from "../../api/authApi";
 /** Diagram marking-guideline API — the lecturer-facing side of the diagram
  * grading flow. A guideline uploaded here lands in the same `diagram_marking`
  * collection that /api/diagram-evaluate reads its criteria from, so it becomes
  * immediately selectable when grading a submission.
  * Isolated from the other client backends, mirroring subjectContentApi.ts. */
 
-const backendBaseUrl =
-  ((import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL) ??
-  "http://localhost:8000";
-
-const apiKey =
-  ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env?.VITE_GRADEX_API_KEY) ??
-  "";
+const backendBaseUrl = SERVER_BASE_URL;
 
 /** Machine-checkable shape of one criterion. Keys vary by criterion type
  * (entity / attributes / primary key / relationship / connections / notation),
@@ -46,10 +42,6 @@ export interface DiagramGuideline {
   updated_at?: string;
 }
 
-function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  return { ...extra, ...(apiKey ? { "X-API-Key": apiKey } : {}) };
-}
-
 async function readError(response: Response): Promise<string> {
   let detail = `HTTP ${response.status}`;
   try {
@@ -77,9 +69,8 @@ export async function uploadDiagramGuideline(
   formData.append("file", file);
   formData.append("examCode", examCode);
 
-  const response = await fetch(`${backendBaseUrl}/api/diagram-guidline`, {
+  const response = await apiFetch(`${backendBaseUrl}/api/diagram-guidline`, {
     method: "POST",
-    headers: authHeaders(),
     body: formData,
   });
 
@@ -89,9 +80,7 @@ export async function uploadDiagramGuideline(
 
 /** Every stored guideline, newest first. */
 export async function listDiagramGuidelines(): Promise<DiagramGuideline[]> {
-  const response = await fetch(`${backendBaseUrl}/api/diagram-evaluate-guidelines`, {
-    headers: authHeaders(),
-  });
+  const response = await apiFetch(`${backendBaseUrl}/api/diagram-evaluate-guidelines`);
 
   if (!response.ok) throw new Error(await readError(response));
   const body = (await response.json()) as DiagramGuideline[];
