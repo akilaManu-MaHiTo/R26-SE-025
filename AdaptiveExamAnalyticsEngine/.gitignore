@@ -8,6 +8,20 @@ __pycache__/
 graphify-out
 
 datasets
-models
+# Keep only the holdout review sheets; training data and source PDFs stay local.
+!datasets/
+datasets/*
+!datasets/bloom_dataset/
+datasets/bloom_dataset/*
+!datasets/bloom_dataset/bloom/
+datasets/bloom_dataset/bloom/*
+!datasets/bloom_dataset/bloom/independent_holdout_template.csv
+!datasets/bloom_dataset/bloom/final_exam_holdout_candidates.csv
+# Keep runtime tokenizer/config files visible; distribute large weights separately.
+models/*
+!models/bloom_modernbert/
+models/bloom_modernbert/*.safetensors
+models/bloom_modernbert/*.bin
+.cache/
 
 cleanup

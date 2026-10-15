@@ -74,7 +74,11 @@ class NumericStudentAnalysis(BaseModel):
             "weak_criteria": [
                 {
                     "topic": question.topic,
+                    "question_id": question.question_id,
+                    "bloom_level": question.bloom_analysis.level,
                     "criterion": criterion.criterion,
+                    "awarded_marks": criterion.awarded_marks,
+                    "max_marks": criterion.max_marks,
                 }
                 for question in self.question_performance
                 for criterion in question.criteria_performance
@@ -229,26 +233,21 @@ def fallback_learning_gaps(
     return gaps
 
 
-def weakest_bloom(
-    _topic: TopicPerformance, blooms: list[BloomPerformance]
-) -> str:
-    return min(blooms, key=lambda bloom: bloom.average_score).level
-
-
 def fallback_recommendations(
-    topics: list[TopicPerformance], blooms: list[BloomPerformance]
+    topics: list[TopicPerformance], questions: list[QuestionPerformance]
 ) -> list[Recommendation]:
-    weak_topics = [topic for topic in topics if topic.status != "Strong"]
-    if not weak_topics:
-        return []
-    return [
-        Recommendation(
+    recommendations = []
+    for topic in topics:
+        evidence = [question for question in questions if question.topic == topic.topic]
+        if topic.status == "Strong" or not evidence:
+            continue
+        weakest = min(evidence, key=lambda question: question.performance.percentage)
+        recommendations.append(Recommendation(
             topic=topic.topic,
             priority=_PRIORITY_BY_STATUS[topic.status],
-            action=f"Review {topic.topic} and practice {weakest_bloom(topic, blooms)} questions.",
-        )
-        for topic in weak_topics
-    ]
+            action=f"Review {topic.topic} and practice {weakest.bloom_analysis.level} questions.",
+        ))
+    return recommendations
 
 
 def fallback_generation_target(
@@ -323,6 +322,6 @@ def build_numeric_analysis(
             critical_topics=critical_topics,
             learning_gaps=fallback_learning_gaps(questions),
         ),
-        recommendations=fallback_recommendations(topics, blooms),
+        recommendations=fallback_recommendations(topics, questions),
         next_question_strategy=fallback_generation_target(topics, blooms),
     )

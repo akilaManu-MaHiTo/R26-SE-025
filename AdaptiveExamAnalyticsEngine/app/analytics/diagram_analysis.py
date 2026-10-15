@@ -5,6 +5,7 @@ alongside text-based question performance in a single view.
 """
 
 import statistics as _stats
+import math
 
 
 def compute_diagram_analysis(
@@ -44,10 +45,7 @@ def compute_diagram_analysis(
             cid = cr.get("criterion_id", 0)
             status = cr.get("status", "unknown")
             awarded = float(cr.get("awarded_marks", 0))
-            max_marks = float(0)
-            # Try to find max_marks from matching criterion in rubric
-            # For now, infer from awarded if status is 'pass' and it equals the max
-            # We'll compute max_marks from the rubric guideLines separately
+            max_marks = float(cr["max_marks"]) if cr.get("max_marks") is not None else None
 
             if cid not in criterion_agg:
                 criterion_agg[cid] = {
@@ -57,11 +55,16 @@ def compute_diagram_analysis(
                     "partial_count": 0,
                     "fail_count": 0,
                     "total_awarded": 0.0,
+                    "total_available": 0.0,
+                    "known_maxima": 0,
                     "student_count": 0,
                 }
             agg = criterion_agg[cid]
             agg["student_count"] += 1
             agg["total_awarded"] += awarded
+            if max_marks is not None and math.isfinite(max_marks) and max_marks > 0:
+                agg["total_available"] += max_marks
+                agg["known_maxima"] += 1
             if status == "pass":
                 agg["pass_count"] += 1
             elif status == "partial":
@@ -91,7 +94,7 @@ def compute_diagram_analysis(
     avg_score = sum(scores) / len(scores) if scores else 0.0
     avg_max = sum(max_scores) / len(max_scores) if max_scores else 20.0
     avg_percentage = (avg_score / avg_max * 100.0) if avg_max > 0 else 0.0
-    pass_rate = (sum(1 for s in scores if s / avg_max * 100 >= 50) / len(scores) * 100.0) if scores else 0.0
+    pass_rate = (sum(1 for s, m in zip(scores, max_scores) if m > 0 and s / m >= 0.5) / len(scores) * 100.0) if scores else 0.0
     try:
         med_pct = _stats.median([(s / m * 100) if m > 0 else 0 for s, m in zip(scores, max_scores)])
         std_pct = round(_stats.pstdev([(s / m * 100) if m > 0 else 0 for s, m in zip(scores, max_scores)]), 2) if len(scores) > 1 else 0.0
@@ -117,30 +120,17 @@ def compute_diagram_analysis(
     for cid in sorted(criterion_agg.keys()):
         agg = criterion_agg[cid]
         n = agg["student_count"]
-        # Find max_marks for this criterion from the evaluation data
-        # (look for a student who got full marks to infer max)
-        max_marks_for_criterion = 0.0
-        for ev in diagram_evaluations:
-            for cr in (ev.get("evaluation_result") or {}).get("criteria_results", []):
-                if cr.get("criterion_id") == cid:
-                    # If any student passed with this criterion, the awarded_marks is likely the max
-                    # We need the rubric to get the actual max. For now, use the max awarded as proxy.
-                    awarded = float(cr.get("awarded_marks", 0))
-                    if awarded > max_marks_for_criterion:
-                        max_marks_for_criterion = awarded
-                    # If status is pass and awarded > 0, this is likely the full marks
-                    if cr.get("status") == "pass" and awarded > 0:
-                        max_marks_for_criterion = max(max_marks_for_criterion, awarded)
-
         avg_awarded = agg["total_awarded"] / n if n > 0 else 0.0
-        avg_pct = (avg_awarded / max_marks_for_criterion * 100.0) if max_marks_for_criterion > 0 else 0.0
+        # Missing rubric maxima cannot be inferred from observed student awards.
+        max_marks_for_criterion = agg["total_available"] / n if agg["known_maxima"] == n else None
+        avg_pct = agg["total_awarded"] / agg["total_available"] * 100.0 if max_marks_for_criterion is not None else None
         fail_rate = agg["fail_count"] / n if n > 0 else 0.0
         criterion_performance.append({
             "criterion_id": cid,
             "criterion": agg["criterion"],
             "max_marks": max_marks_for_criterion,
             "average_awarded_marks": round(avg_awarded, 2),
-            "average_percentage": round(avg_pct, 2),
+            "average_percentage": round(avg_pct, 2) if avg_pct is not None else None,
             "pass_count": agg["pass_count"],
             "partial_count": agg["partial_count"],
             "fail_count": agg["fail_count"],

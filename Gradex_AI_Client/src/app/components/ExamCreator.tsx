@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Plus, Pencil, X, AlertTriangle, BookOpen, BarChart3, ChevronRight, Layers, FileDown, Eye, CloudUpload } from "lucide-react";
+import { Sparkles, Plus, X, BookOpen, ChevronRight, Layers, FileDown, Eye, CloudUpload } from "lucide-react";
 import { useHideSidebar } from "../App";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -8,17 +8,14 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { ProgressLoader, type LoadStep } from "./ProgressLoader";
+import { type LoadStep } from "./ProgressLoader";
 import { AIPageBanner } from "./AIBrand";
 import {
   fetchExams,
-  fetchRecommendations,
   fetchQuestionBank,
   createExamDraft,
   listExamDrafts,
-  getExamDraft,
   type ExamListItem,
-  type RecommendationsResponse,
   type Recommendation,
   type QuestionBankItem,
   type ExamDraft,
@@ -26,51 +23,9 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { toast } from "sonner";
 
-// ─── Paper Model (Task 2) ───
-export type Part = { part: string; question: string; max_marks: number };
-export type PaperQuestion = { question_number: number; topic: string; parts: Part[] };
-export type Paper = { exam: string; year: number; questions: PaperQuestion[] };
-
-export const seedPaper: Paper = {
-  exam: "IT2040 – Database Management Systems",
-  year: 2023,
-  questions: [
-    {
-      question_number: 1,
-      topic: "Schema refinement",
-      parts: [
-        { part: "a", question: "Explain schema refinement and its importance in database design.", max_marks: 8 },
-        { part: "b", question: "What is functional dependency? Explain full, partial, and transitive dependency with examples.", max_marks: 12 },
-      ],
-    },
-    {
-      question_number: 2,
-      topic: "Schema refinement",
-      parts: [
-        { part: "a", question: "Given a relation and set of functional dependencies, explain the step-by-step process of normalization up to BCNF.", max_marks: 10 },
-        { part: "b", question: "Define lossless join decomposition and dependency preservation.", max_marks: 10 },
-      ],
-    },
-    {
-      question_number: 3,
-      topic: "Java Database Connectivity (JDBC)",
-      parts: [
-        { part: "a", question: "Explain the steps involved in connecting to a database using JDBC. Include necessary exception handling.", max_marks: 10 },
-        { part: "b", question: "What is SQL injection? How can it be prevented using JDBC?", max_marks: 8 },
-        { part: "c", question: "Differentiate between ResultSet TYPE_SCROLL_INSENSITIVE and TYPE_FORWARD_ONLY.", max_marks: 7 },
-      ],
-    },
-    {
-      question_number: 4,
-      topic: "SQL",
-      parts: [
-        { part: "a", question: "Write SQL queries to:\n(i) Find the top 5 members with the highest number of loans.\n(ii) Update fine amounts by adding 10% penalty for overdue payments.", max_marks: 12 },
-        { part: "b", question: "Create a trigger that automatically updates availableCopies in the Book table when a book is returned.", max_marks: 12 },
-        { part: "c", question: "Explain how to implement role-based access control in SQL Server with examples.", max_marks: 11 },
-      ],
-    },
-  ],
-};
+import { ExamCreatorAssistant, PartReviewEditor } from "./ExamCreatorAssistant";
+import { defaultBlueprint, type Part, type PaperQuestion, type Paper } from "../api/examCreatorApi";
+export type { Part, PaperQuestion, Paper } from "../api/examCreatorApi";
 
 function renumberQuestions(qs: PaperQuestion[]): PaperQuestion[] {
   return qs.map((q, i) => ({
@@ -83,20 +38,6 @@ function renumberQuestions(qs: PaperQuestion[]): PaperQuestion[] {
 function totalMarks(paper: Paper): number {
   return paper.questions.flatMap((q) => q.parts).reduce((s, p) => s + (Number(p.max_marks) || 0), 0);
 }
-
-const CANONICAL_TOPICS = [
-  "Introduction to DBMS & Conceptual Database Design",
-  "Logical Database Design",
-  "Schema Refinement",
-  "Structured Query Language (SQL)",
-  "Database Programming",
-  "Java Database Connectivity (JDBC)",
-  "Database Indexes and Storage Structures",
-  "Database Transaction Management and Concurrency Control",
-  "Database Recovery and Log Management",
-  "Database Utilities",
-  "Database Security",
-];
 
 function PremiumExamLoader({ steps, currentStep }: { steps: LoadStep[]; currentStep: number }) {
   return (
@@ -116,25 +57,15 @@ function PremiumExamLoader({ steps, currentStep }: { steps: LoadStep[]; currentS
   );
 }
 
-// ─── Helpers ───
-function PriorityBadge({ priority }: { priority: string }) {
-  const color =
-    priority === "High" ? "bg-red-500 text-white" : priority === "Medium" ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground";
-  return <Badge className={color}>{priority}</Badge>;
-}
-
 export function ExamCreator() {
-  const hideCtx = useHideSidebar();
+  const setHideSidebar = useHideSidebar()?.setHide;
   const [exams, setExams] = useState<ExamListItem[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamListItem | null>(null);
-  const [recommendations, setRecommendations] = useState<RecommendationsResponse | null>(null);
-  const [rejectedIds, setRejectedIds] = useState<Set<string>>(new Set());
-  const [paper, setPaper] = useState<Paper>(seedPaper);
+  const [paper, setPaper] = useState<Paper>({ exam: "New exam", year: new Date().getFullYear(), questions: [], blueprint: defaultBlueprint() });
   const [insertTargets, setInsertTargets] = useState<Record<string, string>>({});
   const [loadingExams, setLoadingExams] = useState(true);
-  const [loadingRecs, setLoadingRecs] = useState(false);
   const [loadSteps, setLoadSteps] = useState<LoadStep[]>([]);
-  const [currentStep, setCurrentStep] = useState(0);
+  const currentStep = 0;
   const [rightTab, setRightTab] = useState<"recommended" | "browse">("recommended");
   const [bankFilters, setBankFilters] = useState<{ source_type?: string; year?: number }>({});
   const [bankItems, setBankItems] = useState<QuestionBankItem[]>([]);
@@ -144,7 +75,9 @@ export function ExamCreator() {
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  const savedPaper = useRef(JSON.stringify(paper));
   const total = totalMarks(paper);
+  const targetMarks = paper.blueprint?.total_marks || 100;
 
   useEffect(() => {
     setLoadSteps([{ label: "Fetching exams..." }]);
@@ -159,56 +92,41 @@ export function ExamCreator() {
       .finally(() => setLoadingDrafts(false));
   }, []);
 
-  const handleSelectExam = useCallback(async (exam: ExamListItem) => {
+  const handleSelectExam = useCallback((exam: ExamListItem) => {
+    if (JSON.stringify(paper) !== savedPaper.current && !window.confirm("Start a new draft? Save your current paper to cloud first if you want to keep it.")) return;
     setSelectedExam(exam);
-    hideCtx?.setHide(true);
-    setLoadingRecs(true);
-    setRecommendations(null);
-    setRejectedIds(new Set());
-    const steps: LoadStep[] = [
-      { label: "Loading student weakness..." },
-      { label: "Scoring against curriculum..." },
-      { label: "Ranking recommendations..." },
-    ];
-    setLoadSteps(steps);
-    setCurrentStep(0);
-    try {
-      setCurrentStep(0);
-      const data = await fetchRecommendations(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester, 12);
-      setCurrentStep(2);
-      setRecommendations(data);
-      setPaper((prev) => ({ ...prev, exam: `${exam.course_code} – ${exam.subject_name}`, year: exam.year }));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingRecs(false);
-    }
-  }, [hideCtx]);
+    setCurrentDraftId(null);
+    setBankItems([]);
+    setBankFilters({});
+    setInsertTargets({});
+    setRightTab("recommended");
+    const nextPaper: Paper = { exam: `${exam.course_code} – ${exam.subject_name}`, year: new Date().getFullYear(),
+      questions: [], blueprint: defaultBlueprint(),
+      source_exam: { session_name: exam.session_name, year: exam.year, month: exam.month, semester: exam.semester } };
+    savedPaper.current = JSON.stringify(nextPaper);
+    setPaper(nextPaper);
+    setHideSidebar?.(true);
+  }, [setHideSidebar, paper]);
 
   const handleBackToSelector = useCallback(() => {
-    hideCtx?.setHide(false);
+    setHideSidebar?.(false);
     setSelectedExam(null);
-  }, [hideCtx]);
+  }, [setHideSidebar]);
 
   useEffect(() => {
-    return () => hideCtx?.setHide(false);
-  }, [hideCtx]);
+    return () => setHideSidebar?.(false);
+  }, [setHideSidebar]);
 
-  const handleFetchBank = useCallback(async (filters: { source_type?: string; year?: number }) => {
+  useEffect(() => {
+    if (rightTab !== "browse" || !selectedExam) return;
+    let ignore = false;
     setLoadingBank(true);
-    try {
-      const items = await fetchQuestionBank({ ...filters, limit: 50 });
-      setBankItems(items);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingBank(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (rightTab === "browse") handleFetchBank(bankFilters);
-  }, [rightTab, bankFilters, handleFetchBank]);
+    fetchQuestionBank({ ...bankFilters, course_code: selectedExam.course_code, limit: 200 })
+      .then(items => { if (!ignore) setBankItems(items.filter(item => item.source_type !== "lecture")); })
+      .catch(() => { if (!ignore) { setBankItems([]); toast.error("Question bank unavailable"); } })
+      .finally(() => { if (!ignore) setLoadingBank(false); });
+    return () => { ignore = true; };
+  }, [rightTab, bankFilters, selectedExam]);
 
   const handleInsertFromBank = (item: QuestionBankItem) => {
     const fakeRec: Recommendation = {
@@ -234,14 +152,11 @@ export function ExamCreator() {
   };
 
   const handleUpload = async () => {
-    if (total === 0) {
-      toast.error("Paper is empty");
-      return;
-    }
     setUploading(true);
     try {
       const subject = selectedExam?.course_code || paper.exam.split(" ")[0] || "IT2040";
       const draft = await createExamDraft(subject, paper, currentDraftId || undefined);
+      savedPaper.current = JSON.stringify(paper);
       setCurrentDraftId(draft.draft_id);
       setDrafts((prev) => {
         const filtered = prev.filter((d) => d.draft_id !== draft.draft_id);
@@ -257,9 +172,15 @@ export function ExamCreator() {
   };
 
   const handleLoadDraft = async (draft: ExamDraft) => {
-    setPaper(draft.paper as Paper);
+    if (JSON.stringify(paper) !== savedPaper.current && !window.confirm("Load this saved draft and replace the current editor contents?")) return;
+    const nextPaper = { ...draft.paper, blueprint: draft.paper.blueprint ?? defaultBlueprint() };
+    savedPaper.current = JSON.stringify(nextPaper);
+    setPaper(nextPaper);
+    setBankItems([]);
+    setBankFilters({});
+    setRightTab("recommended");
     setCurrentDraftId(draft.draft_id);
-    hideCtx?.setHide(true);
+    setHideSidebar?.(true);
     // create a synthetic selectedExam for header
     setSelectedExam({
       course_code: draft.subject_code,
@@ -280,18 +201,24 @@ export function ExamCreator() {
       analyzed_at: null,
     } as ExamListItem);
     toast.success(`Loaded draft ${draft.draft_id}`);
-    // fetch recommendations for this draft's subject
-    try {
-      const rec = await fetchRecommendations(draft.subject_code, "Final Examination", draft.paper.year, 1, 1, 12);
-      setRecommendations(rec);
-    } catch {}
+
   };
 
   const handleInsert = (rec: Recommendation) => {
+    if (paper.questions.some(q => q.parts.some(p => p.question_id === rec.question_id))) {
+      toast.error("This question is already in the draft"); return;
+    }
     const target = insertTargets[rec.question_id] || "end";
+    if (target.includes("-part")) {
+      const parent = paper.questions.find(q => q.question_number === Number(target.split("Q")[1].split("-")[0]));
+      if (parent && parent.topic !== rec.canonical_topic) {
+        toast.error("Add this topic as a separate question so blueprint coverage stays accurate");
+        return;
+      }
+    }
     setPaper((prev) => {
       let qs = [...prev.questions];
-      const newPart: Part = { part: "a", question: rec.text, max_marks: rec.marks > 0 ? rec.marks : 10 };
+      const newPart: Part = { part: "a", question: rec.text, max_marks: rec.marks > 0 ? rec.marks : 10, question_id: rec.question_id, bloom_level: rec.bloom_level, review_status: "needs_review" };
       if (target === "end") {
         qs.push({ question_number: qs.length + 1, topic: rec.canonical_topic, parts: [newPart] });
       } else if (target.includes("-part")) {
@@ -312,65 +239,55 @@ export function ExamCreator() {
     });
   };
 
-  const handleDownload = async () => {
+  const makePdf = async (markingScheme = false) => {
     const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text(`${paper.exam} ${paper.year}`, 10, 15);
-    doc.setFontSize(10);
-    doc.text(`Total Marks: ${total}`, 10, 22);
-    let y = 30;
-    paper.questions.forEach((q) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 15;
+    let y = 15;
+    const write = (text: string, size = 10) => {
+      doc.setFontSize(size);
+      for (const line of doc.splitTextToSize(text, 185)) {
+        if (y > 277) { doc.addPage(); y = 15; }
+        doc.text(line, 12, y);
+        y += size === 14 ? 7 : 5;
       }
-      doc.setFontSize(11);
-      doc.text(`Question ${q.question_number} (${q.topic})`, 10, y);
-      y += 7;
-      q.parts.forEach((p) => {
-        const lines = doc.splitTextToSize(`${p.part}) ${p.question} [${p.max_marks} marks]`, 190);
-        if (y + lines.length * 5 > 280) {
-          doc.addPage();
-          y = 15;
+      y += 3;
+    };
+    write(`${paper.exam} ${paper.year}`, 14);
+    write(markingScheme ? "LECTURER COPY - Answers and marking scheme" : "DRAFT EXAMINATION PAPER");
+    write(`Total marks: ${total} | Duration: ${paper.blueprint?.duration_minutes ?? 180} minutes`);
+    paper.questions.forEach(q => {
+      write(`Question ${q.question_number} (${q.topic})`, 12);
+      q.parts.forEach(p => {
+        write(`${p.part}) ${p.question} [${p.max_marks} marks]`);
+        if (markingScheme) {
+          write(`Review: ${p.review_status === "approved" ? "Approved" : "Pending lecturer review"}`);
+          write(`Answer: ${p.model_answer || "Not supplied"}`);
+          (p.marking_scheme ?? []).forEach(c => write(`${c.criterion} [${c.marks} marks]`));
+          if (p.sources?.length) write(`Sources: ${p.sources.map(source => source.source_id).join(", ")}`);
         }
-        doc.setFontSize(10);
-        doc.text(lines, 12, y);
-        y += lines.length * 5 + 3;
       });
-      y += 4;
     });
-    doc.save(`${paper.exam.replace(/\s/g, "_")}_${paper.year}.pdf`);
+    return doc;
   };
-
+  const handleDownload = async (markingScheme = false) => {
+    try {
+      const doc = await makePdf(markingScheme);
+      doc.save(`${paper.exam.replace(/\s/g, "_")}_${paper.year}${markingScheme ? "_marking_scheme" : ""}.pdf`);
+    } catch { toast.error("Could not export PDF"); }
+  };
   const handlePreview = async () => {
-    const { default: jsPDF } = await import("jspdf");
-    const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text(`${paper.exam} ${paper.year}`, 10, 15);
-    let y = 30;
-    paper.questions.forEach((q) => {
-      doc.setFontSize(11);
-      doc.text(`Question ${q.question_number} (${q.topic})`, 10, y);
-      y += 7;
-      q.parts.forEach((p) => {
-        const lines = doc.splitTextToSize(`${p.part}) ${p.question} [${p.max_marks}]`, 190);
-        if (y + lines.length * 5 > 280) {
-          doc.addPage();
-          y = 15;
-        }
-        doc.text(lines, 12, y);
-        y += lines.length * 5 + 3;
-      });
-      y += 4;
-    });
-    window.open(doc.output("bloburl"), "_blank");
+    const previewWindow = window.open("", "_blank");
+    try {
+      const doc = await makePdf();
+      if (previewWindow) previewWindow.location.href = String(doc.output("bloburl"));
+      else toast.error("Allow pop-ups to preview the paper");
+    } catch { previewWindow?.close(); toast.error("Could not preview PDF"); }
   };
 
-  const visibleRecs = recommendations?.recommendations.filter((r) => !rejectedIds.has(r.question_id)) ?? [];
-  const high = visibleRecs.filter((r) => r.priority === "High");
-  const medium = visibleRecs.filter((r) => r.priority === "Medium");
-  const low = visibleRecs.filter((r) => r.priority === "Low");
+  // Session, month and semester distinguish exams in the same academic year.
+  function examKey(exam: ExamListItem) {
+    return `${exam.course_code}-${exam.session_name}-${exam.year}-${exam.month}-${exam.semester}`;
+  }
 
   // Exam selector (no exam chosen)
   if (!selectedExam) {
@@ -400,7 +317,7 @@ export function ExamCreator() {
             <AnimatePresence>
               {exams.map((exam, idx) => (
                 <motion.div
-                  key={`${exam.course_code}-${exam.year}-${exam.session_name}`}
+                  key={examKey(exam)}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
@@ -463,37 +380,39 @@ export function ExamCreator() {
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
       {/* Top bar: premium exam switcher + total */}
-      <div className="flex items-center gap-3 px-6 py-3 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 shrink-0 sticky top-0 z-10">
+      <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 shrink-0 sticky top-0 z-10">
         <Layers className="size-4 text-muted-foreground" />
         <Select
-          value={`${selectedExam.course_code}-${selectedExam.year}`}
+          disabled={uploading}
+          value={examKey(selectedExam)}
           onValueChange={(v) => {
-            const ex = exams.find((e) => `${e.course_code}-${e.year}` === v);
+            const ex = exams.find((e) => examKey(e) === v);
             if (ex) handleSelectExam(ex);
           }}
         >
-          <SelectTrigger className="w-[280px]"><SelectValue /></SelectTrigger>
-          <SelectContent>{exams.map((e) => <SelectItem key={`${e.course_code}-${e.year}`} value={`${e.course_code}-${e.year}`}>{e.course_code} {e.year} — {e.session_name}</SelectItem>)}</SelectContent>
+          <SelectTrigger className="w-[240px]"><SelectValue /></SelectTrigger>
+          <SelectContent>{exams.map((e) => <SelectItem key={examKey(e)} value={examKey(e)}>{e.course_code} {e.year} — {e.session_name}</SelectItem>)}</SelectContent>
         </Select>
-        <Button variant="ghost" size="sm" onClick={handleBackToSelector} className="ml-2">Change exam</Button>
-        <div className="ml-auto flex items-center gap-3">
-          <motion.span key={total} initial={{ scale: 0.9 }} animate={{ scale: 1 }} transition={{ duration: 0.2 }} className={`text-sm font-medium tabular-nums ${total === 100 ? "text-green-600" : total < 100 ? "text-amber-600" : "text-red-600"}`}>
-            Total: {total}/100 {total !== 100 && "⚠️"}
+        <Button variant="ghost" size="sm" onClick={handleBackToSelector} disabled={uploading} className="ml-2">Change exam</Button>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <motion.span key={total} initial={{ scale: 0.9 }} animate={{ scale: 1 }} transition={{ duration: 0.2 }} className={`text-sm font-medium tabular-nums ${total === targetMarks ? "text-green-600" : total < targetMarks ? "text-amber-600" : "text-red-600"}`}>
+            Total: {total}/{targetMarks} {total !== targetMarks && "⚠️"}
           </motion.span>
           <Button variant="outline" size="sm" onClick={handlePreview}><Eye className="size-4 mr-1" />Preview</Button>
           <Button variant="outline" size="sm" onClick={handleUpload} disabled={uploading}><CloudUpload className="size-4 mr-1" />{uploading ? "Uploading..." : currentDraftId ? "Update Cloud" : "Upload to Cloud"}</Button>
-          <Button size="sm" onClick={handleDownload}><FileDown className="size-4 mr-1" />Download PDF</Button>
+          <Button variant="outline" size="sm" onClick={() => handleDownload(true)}>Marking scheme</Button>
+          <Button size="sm" onClick={() => handleDownload()}><FileDown className="size-4 mr-1" />Download PDF</Button>
         </div>
       </div>
 
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
         {/* Left 65%: Full paper editor — premium */}
-        <div className="w-[65%] overflow-y-auto p-6 space-y-4 border-r bg-gradient-to-b from-muted/30 via-muted/10 to-background">
+        <div className="w-full lg:w-[60%] lg:overflow-y-auto p-6 space-y-4 border-r bg-gradient-to-b from-muted/30 via-muted/10 to-background">
           <motion.div key={`${paper.exam}-${paper.year}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="rounded-xl border bg-card/60 backdrop-blur p-4">
             <h2 className="font-semibold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">{paper.exam} {paper.year}</h2>
-            <p className="text-xs text-muted-foreground">Draft paper — editable. Total <span className={total === 100 ? "text-green-600 font-medium" : total < 100 ? "text-amber-600" : "text-red-600"}>{total}/100</span></p>
+            <p className="text-xs text-muted-foreground">Draft paper — editable. Total <span className={total === targetMarks ? "text-green-600 font-medium" : total < targetMarks ? "text-amber-600" : "text-red-600"}>{total}/{targetMarks}</span></p>
             <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-2">
-              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min((total / 100) * 100, 100)}%` }} transition={{ duration: 0.6, ease: "easeOut" }} className={`h-full rounded-full ${total === 100 ? "bg-gradient-to-r from-green-500 to-emerald-500" : total < 100 ? "bg-gradient-to-r from-amber-500 to-orange-500" : "bg-gradient-to-r from-red-500 to-red-400"}`} />
+              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min((total / targetMarks) * 100, 100)}%` }} transition={{ duration: 0.6, ease: "easeOut" }} className={`h-full rounded-full ${total === targetMarks ? "bg-gradient-to-r from-green-500 to-emerald-500" : total < targetMarks ? "bg-gradient-to-r from-amber-500 to-orange-500" : "bg-gradient-to-r from-red-500 to-red-400"}`} />
             </div>
           </motion.div>
           <AnimatePresence>
@@ -502,13 +421,8 @@ export function ExamCreator() {
                 <Card id={`question-${q.question_number}`} className="p-4 space-y-3 bg-card/80 backdrop-blur border-border/60 hover:border-primary/20 hover:shadow-md transition-all">
               <div className="flex items-center gap-2">
                 <span className="font-semibold shrink-0">Question {q.question_number}</span>
-                <Select
-                  value={q.topic}
-                  onValueChange={(v) => setPaper((prev) => ({ ...prev, questions: prev.questions.map((x) => (x.question_number === q.question_number ? { ...x, topic: v } : x)) }))}
-                >
-                  <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{CANONICAL_TOPICS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                </Select>
+                <Input aria-label={`Question ${q.question_number} topic`} value={q.topic}
+                  onChange={e => setPaper(prev => ({ ...prev, questions: prev.questions.map(x => x.question_number === q.question_number ? { ...x, topic: e.target.value, parts: x.parts.map(p => ({ ...p, review_status: "needs_review" })) } : x) }))} />
                 <Button
                   variant="ghost"
                   size="icon"
@@ -522,14 +436,14 @@ export function ExamCreator() {
                   <span className="mt-2 text-sm font-medium shrink-0">{p.part})</span>
                   <Textarea
                     value={p.question}
-                    onChange={(e) => setPaper((prev) => ({ ...prev, questions: prev.questions.map((x) => (x.question_number === q.question_number ? { ...x, parts: x.parts.map((y) => (y.part === p.part ? { ...y, question: e.target.value } : y)) } : x)) }))}
+                    onChange={(e) => setPaper((prev) => ({ ...prev, questions: prev.questions.map((x) => (x.question_number === q.question_number ? { ...x, parts: x.parts.map((y) => (y.part === p.part ? { ...y, question: e.target.value, review_status: "needs_review" } : y)) } : x)) }))}
                     className="flex-1 min-h-[60px]"
                     placeholder="Question text..."
                   />
                   <Input
                     type="number"
                     value={p.max_marks}
-                    onChange={(e) => setPaper((prev) => ({ ...prev, questions: prev.questions.map((x) => (x.question_number === q.question_number ? { ...x, parts: x.parts.map((y) => (y.part === p.part ? { ...y, max_marks: Number(e.target.value) || 0 } : y)) } : x)) }))}
+                    onChange={(e) => setPaper((prev) => ({ ...prev, questions: prev.questions.map((x) => (x.question_number === q.question_number ? { ...x, parts: x.parts.map((y) => (y.part === p.part ? { ...y, max_marks: Number(e.target.value) || 0, review_status: "needs_review" } : y)) } : x)) }))}
                     className="w-20 shrink-0"
                     min={1}
                     max={40}
@@ -544,6 +458,9 @@ export function ExamCreator() {
                   </Button>
                 </div>
               ))}
+              {q.parts.map(p => <PartReviewEditor key={`review-${p.part}`} part={p} onChange={changes => setPaper(prev => ({ ...prev,
+                questions: prev.questions.map(x => x.question_number === q.question_number ? { ...x, parts: x.parts.map(y => y.part === p.part ? { ...y, ...changes } : y) } : x),
+              }))} />)}
               <Button
                 variant="outline"
                 size="sm"
@@ -557,7 +474,7 @@ export function ExamCreator() {
           </AnimatePresence>
           <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
             <Button
-              onClick={() => setPaper((prev) => ({ ...prev, questions: renumberQuestions([...prev.questions, { question_number: prev.questions.length + 1, topic: "Structured Query Language (SQL)", parts: [{ part: "a", question: "", max_marks: 10 }] }]) }))}
+              onClick={() => setPaper((prev) => ({ ...prev, questions: renumberQuestions([...prev.questions, { question_number: prev.questions.length + 1, topic: "", parts: [{ part: "a", question: "", max_marks: 10 }] }]) }))}
               className="w-full border-dashed"
               variant="outline"
             >
@@ -567,114 +484,14 @@ export function ExamCreator() {
         </div>
 
         {/* Right 35%: Recommendations + Browse Bank */}
-        <div className="w-[35%] overflow-y-auto p-4 space-y-4 bg-background">
+        <div className="w-full lg:w-[40%] lg:overflow-y-auto p-4 space-y-4 bg-background">
           <Tabs value={rightTab} onValueChange={(v) => setRightTab(v as "recommended" | "browse")} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="recommended" className="text-xs">Recommended</TabsTrigger>
               <TabsTrigger value="browse" className="text-xs">Browse Bank</TabsTrigger>
             </TabsList>
             <TabsContent value="recommended" className="space-y-4 mt-4">
-              <AnimatePresence mode="wait">
-                {loadingRecs ? (
-                  <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                    <PremiumExamLoader steps={loadSteps} currentStep={currentStep} />
-                  </motion.div>
-                ) : recommendations ? (
-                  <motion.div
-                    key={`${selectedExam?.course_code}-${selectedExam?.year}-${selectedExam?.session_name}`}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -12 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                    className="space-y-4"
-                  >
-                <>
-                  <Card className="p-3 border-border">
-                    <div className="font-medium flex items-center gap-2 text-sm">
-                      <AlertTriangle className="size-4 text-amber-500" /> Weak Areas to Assess
-                    </div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                      {recommendations.ranked_weak_topics.map(([topic, weakness], idx) => (
-                        <motion.div key={topic} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: idx * 0.04 }}>
-                          <Badge
-                            variant="outline"
-                            className={weakness >= 0.4 ? "border-red-300 text-red-600 bg-red-50" : weakness >= 0.3 ? "border-amber-300 text-amber-600 bg-amber-50" : "border-border"}
-                          >
-                            {topic.split(" ").slice(0, 3).join(" ")} {(weakness * 100).toFixed(0)}%
-                          </Badge>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </Card>
-
-              {[
-                { label: "High Priority", color: "bg-red-500", items: high },
-                { label: "Medium Priority", color: "bg-amber-500", items: medium },
-              ].map(({ label, color, items }) => (
-                <div key={label} className="space-y-2">
-                  <h3 className="font-semibold text-sm flex items-center gap-2">
-                    <span className={`size-2 rounded-full ${color}`} /> {label} <span className="font-normal text-muted-foreground">({items.length})</span>
-                  </h3>
-                  {items.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No {label.toLowerCase()} recommendations.</p>
-                  ) : (
-                    <AnimatePresence>
-                      {items.map((rec, idx) => (
-                        <motion.div key={rec.question_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.3, delay: idx * 0.04 }} whileHover={{ y: -2 }}>
-                          <Card className="p-3 space-y-2 border-border/60 bg-card/80 backdrop-blur hover:border-primary/20 hover:shadow-md transition-all">
-                        <div className="flex flex-wrap gap-1">
-                          <Badge variant="outline" className="text-[10px]">{rec.canonical_topic.slice(0, 30)}</Badge>
-                          <Badge variant="secondary" className="text-[10px]">{rec.bloom_level}</Badge>
-                          <Badge variant="outline" className="text-[10px]">{rec.marks || 10} m</Badge>
-                          <PriorityBadge priority={rec.priority} />
-                        </div>
-                        <p className="text-xs leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto pr-1 border rounded bg-muted/20 p-1.5">{rec.text}</p>
-                        <div className="text-[11px] text-muted-foreground bg-muted/50 rounded p-1.5">
-                          Weak {rec.reason.weakness_pct}% · Tut {rec.reason.tutorial_count} · Exam {rec.reason.exam_recent_count} · Bloom {(rec.bloom_gap * 100).toFixed(0)}%
-                        </div>
-                        <div className="flex gap-1">
-                          <Select value={insertTargets[rec.question_id] || "end"} onValueChange={(v) => setInsertTargets((s) => ({ ...s, [rec.question_id]: v }))}>
-                            <SelectTrigger className="flex-1 h-7 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="end">Add as Q{paper.questions.length + 1}</SelectItem>
-                              {paper.questions.map((q) => (
-                                <SelectItem key={`q${q.question_number}`} value={`Q${q.question_number}`}>Insert as Q{q.question_number}</SelectItem>
-                              ))}
-                              {paper.questions.map((q) => (
-                                <SelectItem key={`qp${q.question_number}`} value={`Q${q.question_number}-part`}>Add part to Q{q.question_number}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button size="sm" className="h-7" onClick={() => handleInsert(rec)}><Plus className="size-3 mr-1" />Add</Button>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" className="h-6 text-xs flex-1" onClick={() => setRejectedIds((s) => new Set(s).add(rec.question_id))}><X className="size-3 mr-1" />Reject</Button>
-                        </div>
-                          </Card>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                    )}
-                </div>
-              ))}
-
-               {low.length > 0 && (
-                <details>
-                  <summary className="font-semibold text-sm cursor-pointer">Low Priority ({low.length}) — expand</summary>
-                  <div className="space-y-2 mt-2">
-                    {low.map((rec) => (
-                      <Card key={rec.question_id} className="p-2 text-xs border-border">
-                        <p className="whitespace-pre-wrap break-words max-h-24 overflow-y-auto pr-1">{rec.text}</p>
-                        <Button size="sm" variant="ghost" className="h-6 mt-1" onClick={() => handleInsert(rec)}><Plus className="size-3 mr-1" />Add</Button>
-                      </Card>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
+              <ExamCreatorAssistant key={`${selectedExam.course_code}-${currentDraftId ?? "new"}`} courseCode={selectedExam.course_code} paper={paper} setPaper={setPaper} />
             </TabsContent>
             <TabsContent value="browse" className="space-y-3 mt-4">
               <div className="flex gap-2">
@@ -684,17 +501,14 @@ export function ExamCreator() {
                     <SelectItem value="all">All sources</SelectItem>
                     <SelectItem value="tutorial">Tutorial</SelectItem>
                     <SelectItem value="exam">Exam</SelectItem>
-                    <SelectItem value="lecture">Lecture objective</SelectItem>
+                    <SelectItem value="generated">Generated candidate</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={bankFilters.year ? String(bankFilters.year) : "all"} onValueChange={(v) => setBankFilters((s) => ({ ...s, year: v === "all" ? undefined : Number(v) }))}>
                   <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All years</SelectItem>
-                    <SelectItem value="2024">2024</SelectItem>
-                    <SelectItem value="2023">2023</SelectItem>
-                    <SelectItem value="2022">2022</SelectItem>
-                    <SelectItem value="2019">2019</SelectItem>
+                    {Array.from(new Set(exams.filter(e => e.course_code === selectedExam.course_code).map(e => e.year))).sort((a, b) => b - a).map(year => <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -720,7 +534,7 @@ export function ExamCreator() {
                           <SelectContent>
                             <SelectItem value="end">Add as Q{paper.questions.length + 1}</SelectItem>
                             {paper.questions.map((q) => <SelectItem key={`bq${q.question_number}`} value={`Q${q.question_number}`}>Insert as Q{q.question_number}</SelectItem>)}
-                            {paper.questions.map((q) => <SelectItem key={`bqp${q.question_number}`} value={`Q${q.question_number}-part`}>Add part to Q{q.question_number}</SelectItem>)}
+                            {paper.questions.filter(q => q.topic === item.canonical_topic).map((q) => <SelectItem key={`bqp${q.question_number}`} value={`Q${q.question_number}-part`}>Add part to Q{q.question_number}</SelectItem>)}
                           </SelectContent>
                         </Select>
                         <Button size="sm" className="h-7" onClick={() => handleInsertFromBank(item)}><Plus className="size-3 mr-1" />Add</Button>

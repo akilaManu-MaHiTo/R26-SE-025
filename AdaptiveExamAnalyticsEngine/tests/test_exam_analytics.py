@@ -115,10 +115,10 @@ def test_topic_evidence_status_insufficient_vs_confirmed():
     docs = _student_docs()  # 2 students
     stats = compute_exam_analytics_stats(docs, pass_threshold=0.5)
     assert stats["topic_performance"][0]["evidence_status"] == "insufficient_evidence"
-    # Confirmed weakness: create 12 students all failing topic
+    # More students do not turn one assessed question into broader topic coverage.
     many = [docs[1]]*12
     stats2 = compute_exam_analytics_stats(many, pass_threshold=0.5)
-    assert stats2["topic_performance"][0]["evidence_status"] in ("possible_weakness","confirmed_weakness")
+    assert stats2["topic_performance"][0]["evidence_status"] == "insufficient_evidence"
 
 
 def test_topic_bloom_matrix_computed():

@@ -36,6 +36,7 @@ class TopicPerformanceSummary(BaseModel):
     evidence_status: str = Field(default="insufficient_evidence")
     student_count: int = Field(ge=0, default=0)
     attempt_count: int = Field(ge=0, default=0)
+    question_count: int = Field(ge=0, default=0)
 
 
 class BloomPerformanceSummary(BaseModel):
@@ -63,6 +64,7 @@ class TopicBloomCell(BaseModel):
     average_percentage: float = Field(ge=0, le=100)
     student_count: int = Field(ge=0, default=0)
     attempt_count: int = Field(ge=0, default=0)
+    question_count: int = Field(ge=0, default=0)
     evidence_status: str = Field(default="insufficient_evidence")
 
 
@@ -76,9 +78,9 @@ class AttentionArea(BaseModel):
 class DiagramCriterionPerformance(BaseModel):
     criterion_id: int
     criterion: str
-    max_marks: float = Field(ge=0)
+    max_marks: float | None = Field(ge=0)
     average_awarded_marks: float = Field(ge=0)
-    average_percentage: float = Field(ge=0, le=100)
+    average_percentage: float | None = Field(ge=0, le=100)
     pass_count: int = Field(ge=0)
     partial_count: int = Field(ge=0)
     fail_count: int = Field(ge=0)
