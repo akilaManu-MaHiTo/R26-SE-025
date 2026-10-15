@@ -1,5 +1,7 @@
 # Lecture mapping and dashboard validation — baseline audit
 
+Subsequent update: DASH-02 (stale student displays) and DASH-08 (fabricated lecturer-home values) have now been repaired. See [current remediation and verification](REMEDIATION_VALIDATION.md#lecturer-home-values-and-student-request-races). The findings and line references below preserve the original baseline.
+
 Audit date: 2026-10-15. Scope: current working-tree analytics engine and `Gradex_AI_Client`, including the existing staged work. No production code, staged changes, credentials, database, remote API, or model service was changed or accessed. This is a source/fixture audit with isolated ASGI probes, not a deployed-system certification. Assumed use: multiple lecturers and students, including simultaneous requests and repeated exam sessions.
 
 ## Evidence flow and what is already sound

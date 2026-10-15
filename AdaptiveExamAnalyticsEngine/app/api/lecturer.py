@@ -24,7 +24,7 @@ from app.schemas.exam_analytics import ExamAnalyticsDocument
 from app.schemas.exam_creator import CreatorPaper, CreatorRequest, GenerateRequest
 from app.services.exam_creator import course_bank, review_paper, generate_for_paper
 from app.llm.ollama import check_llm_detailed_health
-from app.services.exam_analytics import ExamNotFound, compute_exam_analytics
+from app.services.exam_analytics import ANALYTICS_VERSION, ExamNotFound, compute_exam_analytics
 from app.services.recommendation import recommend_for_weak_areas
 from app.services.student_dashboard import StudentNotFound, ensure_student_analytics
 from app.services.teaching_actions import get_teaching_actions
@@ -115,7 +115,7 @@ def _is_complete_snapshot(doc: dict | None) -> bool:
     if not doc:
         return False
     # Legacy snapshots lack canonical fields or have wrong version
-    if doc.get("analytics_version") != "1.0":
+    if doc.get("analytics_version") != ANALYTICS_VERSION:
         return False
     if not isinstance(doc.get("canonical_topic_performance"), list):
         return False

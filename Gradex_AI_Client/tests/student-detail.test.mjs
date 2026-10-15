@@ -31,6 +31,7 @@ async function openStudent(status, { missing = false, streamFails = false, model
     searchParams: new URLSearchParams(),
     setSearchParams: (value) => { destination = new URLSearchParams(value); },
     selectedExam: { course_code: 'IT2040', session_name: 'Final', year: 2026, month: 7, semester: 1 },
+    studentRequest: { current: null },
     students: [{ student_id: 'S1', analysis_status: status }],
     fetchLecturerStudentDetail,
     fetchLlmHealth: async () => { requests.push('health'); return { online: modelOnline, model_available: modelOnline }; },
@@ -74,6 +75,7 @@ test('student performance replaces the exam page and Back to exam clears the stu
     ...React,
     useState: (initial) => [stateIndex++ === 1 ? { course_code: 'IT2040', session_name: 'Final', year: 2026 } : initial, () => {}],
     useEffect() {},
+    useRef: (value) => ({ current: value }),
     useCallback: (callback) => callback,
   };
   const stub = ({ children, onClick }) => {
@@ -148,4 +150,168 @@ test('pending student retains automatic analysis when the stream fails', async (
   assert.deepEqual(result.requests.slice(0, 2), ['health', 'stream']);
   assert.notEqual(result.requests[2].searchParams.get('auto_analyze'), 'false');
   assert.deepEqual(result.loaded, { student_id: 'S1' });
+});
+
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+
+function racingStudents(status = 'generated') {
+  const requests = [], notifications = [], timers = [], errors = [];
+  let loaded, error, loading;
+  const context = {
+    Error, URLSearchParams,
+    studentRequest: { current: null },
+    searchParams: new URLSearchParams(), setSearchParams() {},
+    selectedExam: { course_code: 'IT2040', session_name: 'Final', year: 2026, month: 7, semester: 1 },
+    students: ['A', 'B'].map(student_id => ({ student_id, analysis_status: status })),
+    fetchLlmHealth: async () => ({ online: true, model_available: true }),
+    fetchLecturerStudentDetail: (...args) => {
+      const request = { ...deferred(), studentId: args[2], year: args[3] };
+      requests.push(request);
+      return request.promise;
+    },
+    fetchLecturerStudentDetailStream: (...args) => {
+      const request = { ...deferred(), studentId: args[2], progress: args[6] };
+      requests.push(request);
+      return request.promise;
+    },
+    window: { dispatchEvent: (event) => notifications.push(event.detail) },
+    CustomEvent: class { constructor(_, options) { this.detail = options.detail; } },
+    setSelectedStudentId() {},
+    setLoadingStudentDetail: value => { loading = value; },
+    setStudentDetail: value => { loaded = value; },
+    setStudentDetailError: value => { error = value; },
+    setStudents() {}, setTimeout: fn => timers.push(fn), toast: { error: value => errors.push(value) },
+  };
+  const select = vm.runInNewContext(handlerCode, context);
+  return { select, requests, notifications, timers, errors, context,
+    get loaded() { return loaded; }, get error() { return error; }, get loading() { return loading; } };
+}
+
+for (const status of ['generated', 'pending']) test(`late student A success cannot replace student B (${status})`, async () => {
+  const view = racingStudents(status);
+  const first = view.select('A');
+  await new Promise(resolve => setImmediate(resolve));
+  const second = view.select('B');
+  await new Promise(resolve => setImmediate(resolve));
+  view.requests[1].resolve({ student_id: 'B' });
+  await second;
+  view.requests[0].resolve({ student_id: 'A' });
+  await first;
+  assert.equal(view.loaded.student_id, 'B');
+});
+
+test('obsolete model-health failure does not become the current student error', async () => {
+  const view = racingStudents('pending');
+  const health = [];
+  view.context.fetchLlmHealth = () => {
+    const request = deferred(); health.push(request); return request.promise;
+  };
+  const old = view.select('A');
+  const current = view.select('B');
+  health[0].reject(new Error('Old health failure'));
+  await old;
+  assert.equal(view.error, null);
+  assert.equal(view.errors.length, 0);
+  assert.equal(view.loading, true);
+  health[1].resolve({ online: true, model_available: true });
+  await new Promise(resolve => setImmediate(resolve));
+  view.requests[0].resolve({ student_id: 'B' });
+  await current;
+});
+
+test('URL changes hide previous student or exam errors before effects start the new load', () => {
+  for (const query of ['student=B&year=2026', 'student=A&year=2027']) {
+    const params = new URLSearchParams(`${query}&course=IT2040&session=Final&month=7&semester=1`);
+    let index = 0;
+    const states = { 1: { course_code: 'IT2040', session_name: 'Final', year: 2026, month: 7, semester: 1 },
+      19: 'A', 22: 'Error belonging to the previous selection' };
+    const hooks = { ...React,
+      useState: initial => [index in states ? states[index++] : (index++, initial), () => {}],
+      useEffect() {}, useRef: value => ({ current: value }), useCallback: callback => callback,
+    };
+    const stub = ({ children }) => React.createElement('div', null, children);
+    const module = { exports: {} };
+    vm.runInNewContext(transformSync(page, { loader: 'tsx', format: 'cjs' }).code, {
+      module, exports: module.exports,
+      require(name) {
+        if (name === 'react') return hooks;
+        if (name === 'react-router') return { useSearchParams: () => [params, () => {}] };
+        if (name === 'framer-motion') return { motion: { div: stub, p: stub } };
+        return new Proxy({}, { get: () => stub });
+      },
+    });
+    const html = renderToStaticMarkup(React.createElement(module.exports.default));
+    assert.match(html, /Loading performance/);
+    assert.doesNotMatch(html, /Error belonging to the previous selection/);
+  }
+});
+
+test('obsolete errors and completion cannot clear the current loading state', async () => {
+  const view = racingStudents();
+  const first = view.select('A');
+  const second = view.select('B');
+  view.requests[0].reject(new Error('Old failure'));
+  await first;
+  assert.equal(view.error, null);
+  assert.equal(view.loading, true);
+  view.requests[1].resolve({ student_id: 'B' });
+  await second;
+  assert.equal(view.loading, false);
+});
+
+test('obsolete stream progress and failure do not emit notifications or start a fallback', async () => {
+  const view = racingStudents('pending');
+  const first = view.select('A');
+  await new Promise(resolve => setImmediate(resolve));
+  const second = view.select('B');
+  await new Promise(resolve => setImmediate(resolve));
+  const count = view.notifications.length;
+  view.requests[0].progress('Old progress', 75);
+  view.requests[0].reject(new Error('Old stream failure'));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(view.notifications.length, count);
+  assert.equal(view.requests.length, 2);
+  await first;
+  view.requests[1].resolve({ student_id: 'B' });
+  await second;
+});
+
+test('old delayed completion cannot hide the next student analysis', async () => {
+  const view = racingStudents('pending');
+  const first = view.select('A');
+  await new Promise(resolve => setImmediate(resolve));
+  view.requests[0].resolve({ student_id: 'A' });
+  await first;
+  const second = view.select('B');
+  await new Promise(resolve => setImmediate(resolve));
+  const count = view.notifications.length;
+  view.timers[0]();
+  assert.equal(view.notifications.length, count);
+  view.requests[1].resolve({ student_id: 'B' });
+  await second;
+});
+
+test('changing exam invalidates a pending student request with the same student ID', async () => {
+  const view = racingStudents();
+  const old = view.select('A');
+  const examSource = page.match(/const handleSelectExam = useCallback\((async .*?), \[\]\);/s)[1];
+  Object.assign(view.context, {
+    setSelectedExam: exam => { view.context.selectedExam = exam; },
+    fetchExamAnalyticsStream: async () => ({}), fetchTeachingActions: async () => [], fetchExamStudents: async () => [],
+  });
+  for (const setter of ['setLoadingAnalytics', 'setLoadingStudents', 'setAnalytics', 'setLiveModelMessage',
+    'setStudentSearch', 'setLoadSteps', 'setCurrentLoadStep', 'setLoadingActions', 'setTeachingActions',
+    'setSelectedTopic', 'setSelectedQuestion']) view.context[setter] = () => {};
+  view.context.handleSelectExam = vm.runInNewContext(transformSync(`(${examSource})`, { loader: 'ts' }).code, view.context);
+  await view.context.handleSelectExam({ ...view.context.selectedExam, year: 2027 });
+  const current = view.select('A');
+  view.requests[1].resolve({ student_id: 'A', year: 2027 });
+  await current;
+  view.requests[0].resolve({ student_id: 'A', year: 2026 });
+  await old;
+  assert.equal(view.loaded.year, 2027);
 });

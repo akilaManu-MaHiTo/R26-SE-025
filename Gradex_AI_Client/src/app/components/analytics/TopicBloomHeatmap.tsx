@@ -8,6 +8,7 @@ export interface TopicBloomCell {
   average_percentage: number;
   student_count: number;
   attempt_count: number;
+  question_count?: number;
   evidence_status: string;
 }
 
@@ -78,7 +79,8 @@ export function TopicBloomHeatmap({ topic_bloom_matrix }: Props) {
                 }
                 const bg = cellBg(cell.average_percentage);
                 // Tooltip content: avg% + n + evidence_status
-                const tooltip = `${cell.average_percentage.toFixed(1)}% (n=${cell.student_count}, ${cell.attempt_count} attempts) - ${cell.evidence_status}`;
+                const coverage = cell.question_count == null ? "question coverage unavailable" : `${cell.question_count} questions`;
+                const tooltip = `${cell.average_percentage.toFixed(1)}% (n=${cell.student_count}, ${cell.attempt_count} responses, ${coverage}) - ${cell.evidence_status}`;
                 const showWeakBadge = cell.evidence_status === "confirmed_weakness" || cell.evidence_status === "possible_weakness";
                 return (
                   <td key={lvl} className="p-1">

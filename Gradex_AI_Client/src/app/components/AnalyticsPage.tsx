@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Download, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight, UserSearch, Eye, AlertCircle, Loader2, GraduationCap, BookOpen, Brain, Award, User } from "lucide-react";
@@ -121,6 +121,12 @@ export default function AnalyticsPage() {
   const [studentDetail, setStudentDetail] = useState<LecturerStudentDetail | null>(null);
   const [loadingStudentDetail, setLoadingStudentDetail] = useState(false);
   const [studentDetailError, setStudentDetailError] = useState<string | null>(null);
+  const studentRequest = useRef<object | null>(null);
+
+  useEffect(() => () => {
+    studentRequest.current = null;
+    window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
+  }, []);
 
   useEffect(() => {
     setLoadSteps([{ label: "Fetching exams..." }]);
@@ -129,6 +135,11 @@ export default function AnalyticsPage() {
   }, []);
 
   const handleSelectExam = useCallback(async (exam: ExamListItem, opts?: { forceReanalyse?: boolean }) => {
+    studentRequest.current = null;
+    window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
+    setLoadingStudentDetail(false);
+    setSelectedTopic(null);
+    setSelectedQuestion(null);
     // Core analytics does NOT require Ollama — only ModernBERT for new classification.
     // Cached snapshot loads even if both models offline. We let backend decide freshness.
     const requestId = `${exam.course_code}-${exam.session_name}-${exam.year}-${exam.month}-${exam.semester}-${Date.now()}`;
@@ -250,6 +261,12 @@ export default function AnalyticsPage() {
 
   const handleSelectStudent = useCallback(async (studentId: string) => {
     if (!selectedExam) return;
+    if (studentRequest.current !== null) {
+      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
+    }
+    const request = {};
+    studentRequest.current = request;
+    const isCurrent = () => studentRequest.current === request;
     const targetRow = students.find((r) => r.student_id === studentId);
     const needsAnalysis = !targetRow || !["generated", "diagram_only"].includes(targetRow.analysis_status);
     setSelectedStudentId(studentId);
@@ -269,8 +286,10 @@ export default function AnalyticsPage() {
     if (needsAnalysis) {
       try {
         const health = await fetchLlmHealth();
+        if (!isCurrent()) return;
         if (!health.online || !health.model_available) throw new Error("Model unavailable");
       } catch {
+        if (!isCurrent()) return;
         const message = "Model unavailable, please retry when model comes online.";
         setStudentDetailError(message);
         setLoadingStudentDetail(false);
@@ -279,7 +298,7 @@ export default function AnalyticsPage() {
       }
     }
     const dispatchTopbar = (active: boolean, message?: string, progress?: number) => {
-      if (!needsAnalysis) return;
+      if (!needsAnalysis || !isCurrent()) return;
       window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active, studentId, message: message || "", progress } }));
     };
     dispatchTopbar(true, `PULSE·AI — Starting analysis for ${studentId}…`, 0);
@@ -295,6 +314,7 @@ export default function AnalyticsPage() {
           false,
           false,
         );
+        if (!isCurrent()) return;
         setStudentDetail(detail);
         setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: detail.analysis_status ?? "generated" } : r));
         return;
@@ -315,6 +335,7 @@ export default function AnalyticsPage() {
           false
         );
       } catch {
+        if (!isCurrent()) return;
         dispatchTopbar(true, `PULSE·AI — Analyzing ${studentId}…`, 45);
         detail = await fetchLecturerStudentDetail(
           selectedExam.course_code,
@@ -326,12 +347,14 @@ export default function AnalyticsPage() {
           false
         );
       }
+      if (!isCurrent()) return;
       setStudentDetail(detail);
       dispatchTopbar(true, `PULSE·AI — ${studentId} analysis complete`, 100);
       // Update row status optimistically
       setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: detail.analysis_status ?? "generated" } : r));
       setTimeout(() => dispatchTopbar(false), 2500);
     } catch (e) {
+      if (!isCurrent()) return;
       const msg = e instanceof Error ? e.message : "Failed to load student detail";
       setStudentDetailError(msg);
       dispatchTopbar(true, `Analysis failed for ${studentId}`, 0);
@@ -344,6 +367,7 @@ export default function AnalyticsPage() {
         } else {
           try {
             const h = await fetchLlmHealth();
+            if (!isCurrent()) return;
             if (!h.online || !h.model_available) toast.error("Model unavailable, please retry when model comes online.");
           } catch {
             // ignore — already showed detail error
@@ -351,13 +375,18 @@ export default function AnalyticsPage() {
         }
       }
     } finally {
-      setLoadingStudentDetail(false);
+      if (isCurrent()) setLoadingStudentDetail(false);
     }
   }, [selectedExam, students, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!requestedStudentId) {
+      studentRequest.current = null;
+      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
       setSelectedStudentId(null);
+      setStudentDetail(null);
+      setStudentDetailError(null);
+      setLoadingStudentDetail(false);
     }
     if (searchParams.has("course")) {
       const exam = exams.find((item) =>
@@ -378,6 +407,15 @@ export default function AnalyticsPage() {
   }, [requestedStudentId, searchParams, selectedExam, exams, loadingAnalytics, loadingStudents, selectedStudentId, handleSelectExam, handleSelectStudent]);
 
   if (requestedStudentId) {
+    const selectionMatches = selectedStudentId === requestedStudentId && selectedExam && (
+      !searchParams.has("course") || (
+        selectedExam.course_code === searchParams.get("course") &&
+        selectedExam.session_name === searchParams.get("session") &&
+        String(selectedExam.year) === searchParams.get("year") &&
+        String(selectedExam.month) === searchParams.get("month") &&
+        String(selectedExam.semester) === searchParams.get("semester")
+      )
+    );
     return (
       <div className="p-6 md:p-8 space-y-6">
         <Button variant="ghost" size="sm" onClick={() => {
@@ -402,7 +440,7 @@ export default function AnalyticsPage() {
             </p>
           </header>
 
-          {loadingStudentDetail || (!studentDetail && !studentDetailError) ? (
+          {!selectionMatches || loadingStudentDetail || (!studentDetail && !studentDetailError) ? (
             <div className="py-10 flex flex-col items-center gap-3">
               <Loader2 className="size-6 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">Loading performance…</p>
