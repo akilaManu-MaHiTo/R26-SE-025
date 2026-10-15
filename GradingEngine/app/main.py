@@ -3,6 +3,11 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 import os
+import sys
+
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
+from Gradex_AI_Server.app.session_auth import setup_auth, initialize_auth, close_auth
 
 from bson import ObjectId
 from fastapi import BackgroundTasks, FastAPI, UploadFile, File, HTTPException, Form, Query
@@ -46,12 +51,15 @@ from app.services.rag_service import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await initialize_auth()
     await connect_to_mongo()
     yield
     await close_mongo_connection()
+    close_auth()
 
 
 app = FastAPI(title="Project Grading API", lifespan=lifespan)
+setup_auth(app, student_routes=False)
 
 _cors_origins = [
     o.strip()
