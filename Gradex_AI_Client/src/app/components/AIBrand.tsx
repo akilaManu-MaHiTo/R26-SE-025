@@ -1,3 +1,5 @@
+import { SERVER_BASE_URL } from "../api/gradingApiBase";
+import { apiFetch } from "../api/authApi";
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import pulseSomnolentSvg from "./animations/bloub-galet-somnolent-turquoise-anime.svg";
@@ -277,11 +279,10 @@ export function AIPageBanner({ model }: { model: AIModel }) {
   React.useEffect(() => {
     if (model !== "pulse") return;
     let cancelled = false;
-    const API_BASE =
-      (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+    const API_BASE = SERVER_BASE_URL;
     async function check() {
       try {
-        const res = await fetch(`${API_BASE}/api/lecturers/llm-health`);
+        const res = await apiFetch(`${API_BASE}/api/lecturers/llm-health`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!cancelled) setHealth({ online: !!data.online, detail: data.detail || "" });

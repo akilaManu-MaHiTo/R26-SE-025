@@ -1,6 +1,6 @@
-const DEFAULT_API_BASE_URL =
-	(import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ??
-	"http://127.0.0.1:8000";
+import { SERVER_BASE_URL } from "./gradingApiBase";
+import { apiFetch } from "./authApi";
+const DEFAULT_API_BASE_URL = SERVER_BASE_URL;
 
 type DiagramDetection = {
 	id: string | number;
@@ -269,7 +269,7 @@ export async function saveDiagramEvaluation(
 	payload: DiagramEvaluationRecord,
 	apiBaseUrl: string = DEFAULT_API_BASE_URL,
 ): Promise<DiagramEvaluationSaveResponse> {
-	const response = await fetch(`${apiBaseUrl}/api/diagram-evaluate-save`, {
+	const response = await apiFetch(`${apiBaseUrl}/api/diagram-evaluate-save`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",

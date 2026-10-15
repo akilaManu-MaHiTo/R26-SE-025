@@ -368,12 +368,9 @@ function LiveCopilotScreen() {
       setAnalyzeProgress(null);
       setAnalyzeElapsedMs(0);
       const started = Date.now();
-      const apiKey =
-        ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env
-          ?.VITE_GRADEX_API_KEY) ?? "";
       const tick = window.setInterval(() => {
         setAnalyzeElapsedMs(Date.now() - started);
-        void fetchVivaAnalyzeProgress(copilotHttpBase(), progressId, apiKey).then((next) => {
+        void fetchVivaAnalyzeProgress(copilotHttpBase(), progressId).then((next) => {
           if (next) setAnalyzeProgress(next);
         });
       }, 400);
