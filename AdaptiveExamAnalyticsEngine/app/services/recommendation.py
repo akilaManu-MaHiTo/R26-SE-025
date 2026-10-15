@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import json
 import pathlib
+from math import isfinite
 from collections import Counter
+from datetime import date
 from typing import Any
 
 from app.analytics.recommendation_score import (
@@ -22,6 +24,7 @@ from app.analytics.recommendation_score import (
     recommendation_score,
 )
 from app.services.weakness_scoring import weakness_for_document
+from app.analytics.exam_analytics import _load_evidence_thresholds
 
 QUESTION_BANK_PATH = pathlib.Path(__file__).resolve().parents[2] / "datasets" / "bloom_dataset" / "question_bank.json"
 
@@ -43,7 +46,7 @@ def _load_question_bank() -> list[dict[str, Any]]:
         return json.load(f)
 
 
-def _compute_signals(question_bank: list[dict[str, Any]]) -> dict[str, Any]:
+def _compute_signals(question_bank: list[dict[str, Any]], reference_year: int | None = None) -> dict[str, Any]:
     """Derive Lecture Coverage, Tutorial Evidence, Exam Relevance maps.
 
     Returns:
@@ -55,14 +58,15 @@ def _compute_signals(question_bank: list[dict[str, Any]]) -> dict[str, Any]:
     lecture_topics = {
         r["canonical_topic"] for r in question_bank if r["source_type"] == "lecture"
     }
-    # tutorial counts per topic (include generated as teachable evidence)
+    # Generated candidates are not evidence that students practised a topic.
     tut_counts: Counter = Counter(
-        r["canonical_topic"] for r in question_bank if r["source_type"] in ("tutorial", "generated")
+        r["canonical_topic"] for r in question_bank if r["source_type"] == "tutorial"
     )
     max_tut = max(tut_counts.values()) if tut_counts else 1
 
-    # exam counts - last 2 years as recent (2023,2024)
-    recent_exams = [r for r in question_bank if r["source_type"] == "exam" and r["year"] >= 2023]
+    reference_year = reference_year if reference_year is not None else date.today().year
+    recent_exams = [r for r in question_bank if r["source_type"] == "exam"
+                    and reference_year - 2 <= r.get("year", 0) < reference_year]
     recent_by_topic: Counter = Counter(r["canonical_topic"] for r in recent_exams)
     max_recent = max(recent_by_topic.values()) if recent_by_topic else 1
 
@@ -96,6 +100,23 @@ def _compute_signals(question_bank: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _with_supported_topics(document: dict[str, Any]) -> dict[str, Any]:
+    key = "canonical_topic_performance" if document.get("canonical_topic_performance") else "topic_performance"
+    min_students, min_questions = _load_evidence_thresholds()
+    assessed = []
+    for entry in document.get(key) or []:
+        pct = entry.get("average_percentage")
+        if not isinstance(pct, (int, float)) or isinstance(pct, bool) or not isfinite(pct) or not 0 <= pct <= 100:
+            continue
+        if entry.get("evidence_status") == "insufficient_evidence" or entry.get("topic") == "Unclassified":
+            continue
+        if any(not isinstance(entry.get(field), int) or isinstance(entry.get(field), bool) or entry[field] < minimum
+               for field, minimum in (("question_count", min_questions), ("student_count", min_students))):
+            continue
+        assessed.append(entry)
+    return {**document, "canonical_topic_performance": None, "topic_performance": None, key: assessed}
+
+
 def recommend_questions(
     analytics_document: dict[str, Any],
     question_bank: list[dict[str, Any]] | None = None,
@@ -103,6 +124,8 @@ def recommend_questions(
     weights: ScoreWeights = DEFAULT_WEIGHTS,
     limit: int = 10,
     exclude_recent_exam_topics: bool = False,
+    reference_year: int | None = None,
+    require_evidence: bool = True,
 ) -> list[dict[str, Any]]:
     """Rank candidate questions for lecturer.
 
@@ -111,17 +134,18 @@ def recommend_questions(
       question_bank: optional override (loads from disk if None)
       bloom_target: desired bloom distribution, defaults to DEFAULT_BLOOM_TARGET
       limit: top N to return
+      require_evidence: false only for explicitly curriculum-based exam construction
     """
     if question_bank is None:
         question_bank = _load_question_bank()
     if bloom_target is None:
         bloom_target = DEFAULT_BLOOM_TARGET
 
-    # Phase 3 weakness
-    weakness_res = weakness_for_document(analytics_document)
+    evidence_document = _with_supported_topics(analytics_document) if require_evidence else analytics_document
+    weakness_res = weakness_for_document(evidence_document)
     weakness_scores: dict[str, dict] = weakness_res["weakness_scores"]
 
-    signals = _compute_signals(question_bank)
+    signals = _compute_signals(question_bank, reference_year)
 
     # Prefer bloom gap from analytics document's bloom_performance (actual student weakness)
     # if available, else fall back to recent exam bank distribution
@@ -138,14 +162,21 @@ def recommend_questions(
     # Candidates: tutorial + generated questions (lecture rows are coverage signals, not exam candidates)
     # Generated fills 0-coverage gaps (JDBC/Indexes/Transaction etc. via qwen3:8b)
     candidates = [r for r in question_bank if r["source_type"] in ("tutorial", "generated")]
-    if not candidates:
-        candidates = [r for r in question_bank if r["source_type"] == "lecture"]
 
     ranked: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    seen_texts: set[str] = set()
     for cand in candidates:
         topic = cand["canonical_topic"]
         w_info = weakness_scores.get(topic, {"weakness": 0.0})
         weakness = float(w_info.get("weakness", 0.0))
+        if require_evidence and (topic not in weakness_scores or w_info["average_percentage"] >= 80):
+            continue
+        text_key = " ".join(cand.get("text", "").casefold().split())
+        if not text_key or cand["question_id"] in seen_ids or text_key in seen_texts:
+            continue
+        seen_ids.add(cand["question_id"])
+        seen_texts.add(text_key)
 
         lecture_cov = signals["lecture_coverage"].get(topic, 0.0)
         tut_ev = signals["tutorial_evidence"].get(topic, 0.0)
@@ -178,7 +209,7 @@ def recommend_questions(
                 "bloom_level": cand.get("bloom_level"),
                 "difficulty": cand.get("difficulty"),
                 "marks": cand.get("marks", 0),
-                "text": cand.get("text", "")[:2000],
+                "text": cand.get("text", ""),
                 "weakness": weakness,
                 "lecture_coverage": lecture_cov,
                 "tutorial_evidence": tut_ev,
@@ -187,6 +218,8 @@ def recommend_questions(
                 "recommendation_score": score,
                 "priority": priority_from_score(score),
                 "reason": {
+                    "basis": "observed_performance" if require_evidence else "curriculum_coverage",
+                    "observed_average_percentage": w_info.get("average_percentage"),
                     "weakness_pct": round(weakness * 100, 1),
                     "lecture": bool(lecture_cov),
                     "tutorial_count": signals["tutorial_counts"].get(topic, 0),
@@ -212,7 +245,7 @@ def recommend_for_weak_areas(
 
     Used by lecturer dashboard.
     """
-    weakness_res = weakness_for_document(analytics_document)
+    weakness_res = weakness_for_document(_with_supported_topics(analytics_document))
     recs = recommend_questions(analytics_document, **kwargs)
     return {
         "weakness_scores": weakness_res["weakness_scores"],

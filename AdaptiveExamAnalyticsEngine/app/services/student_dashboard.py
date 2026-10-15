@@ -4,7 +4,7 @@ from app.db.repository import (
     upsert_student_analytics,
 )
 from app.schemas.student import StudentAnalyticsDocument
-from app.services.student_pipeline import build_student_analytics
+from app.services.student_pipeline import STUDENT_ANALYSIS_VERSION, build_student_analytics
 
 
 class StudentNotFound(Exception):
@@ -24,7 +24,7 @@ async def ensure_student_analytics(
     cached = await find_student_analytics(
         db, student_id, course_code, session_name, year, month, semester
     )
-    if cached is not None:
+    if cached is not None and cached.get("analysis_version") == STUDENT_ANALYSIS_VERSION:
         return StudentAnalyticsDocument.model_validate(cached)
 
     submission = await find_graded_submission(

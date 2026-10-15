@@ -11,10 +11,10 @@ from uuid import uuid4
 from typing import Any, Optional
 import os
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from bson import ObjectId
 from bson.errors import InvalidId
 
@@ -40,6 +40,7 @@ preload_grading_engine()
 from DiagramEvaluationEngine.predict import run_er_pipeline
 from Gradex_AI_Server.app.mongodb import (
     get_diagram_evaluation_guideline,
+    get_exam_key,
     insert_diagram_evaluation,
     list_diagram_evaluation_guidelines,
     list_diagram_evaluations,
@@ -140,6 +141,8 @@ def _sse_event(event: str, payload: dict) -> str:
 
 
 class DiagramEvaluationSaveRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     student_id: str = ""
     subject_code: str = ""
     subject_name: str = ""
@@ -147,6 +150,7 @@ class DiagramEvaluationSaveRequest(BaseModel):
     month: int
     semester: int
     session_name: str = ""
+    exam_key: str = Field(default="", alias="examKey")
     diagram_marks: int = 0
     diagram_details: dict[str, Any] = Field(default_factory=dict)
     diagram_entity_relations: list[dict[str, Any]] = Field(default_factory=list)
@@ -195,6 +199,7 @@ def _normalize_record(payload: DiagramEvaluationSaveRequest) -> dict[str, Any]:
         "month": int(payload.month),
         "semester": int(payload.semester),
         "session_name": _normalize_text(payload.session_name, "Final Examination"),
+        "examKey": _normalize_text(payload.exam_key),
         "diagram_marks": int(payload.diagram_marks),
         "diagram_details": details,
         "diagram_entity_relations": entity_relations,
@@ -372,6 +377,36 @@ async def diagram_evaluate_details():
         return _json_safe(list_diagram_evaluations())
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/exam-key")
+async def exam_key(
+    subject_code: str = Query(..., alias="subjectCode", min_length=1),
+    year: int = Query(...),
+    month: str = Query(..., min_length=1),
+    semester: int = Query(...),
+    session: str = Query(..., min_length=1),
+):
+    try:
+        record = get_exam_key(
+            subject_code=subject_code.strip(),
+            exam_year=year,
+            exam_month=month.strip(),
+            exam_semester=semester,
+            session=session.strip(),
+        )
+    except Exception as exc:
+        logger.exception("Failed to look up exam key")
+        raise HTTPException(status_code=500, detail="Failed to look up exam key.") from exc
+
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No exam key matches the selected subject and exam details.",
+        )
+
+    return _json_safe(record)
+
 
 @app.get("/api/diagram-evaluate-guidelines")
 async def diagram_evaluate_guideline():

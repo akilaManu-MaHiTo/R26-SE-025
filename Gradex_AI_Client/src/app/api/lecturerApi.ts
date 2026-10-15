@@ -43,6 +43,10 @@ export interface TopicPerformance {
   topic: string;
   average_percentage: number;
   status: string;
+  question_count?: number;
+  student_count?: number;
+  attempt_count?: number;
+  evidence_status?: string;
 }
 
 export interface BloomPerformance {
@@ -59,6 +63,7 @@ export interface TopicBloomCell {
   average_percentage: number;
   student_count: number;
   attempt_count: number;
+  question_count?: number;
   evidence_status: string;
 }
 
@@ -86,9 +91,9 @@ export interface AttentionArea {
 export interface DiagramCriterionPerformance {
   criterion_id: number;
   criterion: string;
-  max_marks: number;
+  max_marks: number | null;
   average_awarded_marks: number;
-  average_percentage: number;
+  average_percentage: number | null;
   pass_count: number;
   partial_count: number;
   fail_count: number;
@@ -184,6 +189,34 @@ export interface StudentRow {
   status: string;
   analysis_status: string;
   submitted_at: string | null;
+}
+
+export interface QuestionDetail {
+  question_no: string;
+  question_text: string | null;
+  max_marks: number;
+  mark_distribution: Array<{ marks: number; count: number }>;
+  responses: Array<{
+    student_id: string;
+    score: number;
+    answer_excerpt: string | null;
+    slice_source: string | null;
+    feedback: string | null;
+  }>;
+  excluded_count: number;
+}
+
+export async function fetchQuestionDetail(
+  exam: Pick<ExamListItem, "course_code" | "session_name" | "year" | "month" | "semester">,
+  questionNo: string,
+): Promise<QuestionDetail> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const res = await fetch(`${API_BASE}/api/lecturers/exams/${encodeURIComponent(exam.course_code)}/${encodeURIComponent(exam.session_name)}/questions/${encodeURIComponent(questionNo)}?${params}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Failed to fetch question detail (${res.status})`);
+  }
+  return res.json();
 }
 
 export interface CanonicalTopic {
@@ -568,9 +601,10 @@ export interface QuestionBankItem {
   year: number;
 }
 
-export async function fetchQuestionBank(params: { source_type?: string; year?: number; canonical_topic?: string; limit?: number } = {}): Promise<QuestionBankItem[]> {
+export async function fetchQuestionBank(params: { source_type?: string; year?: number; canonical_topic?: string; course_code?: string; limit?: number } = {}): Promise<QuestionBankItem[]> {
   const qs = new URLSearchParams();
   if (params.source_type) qs.set("source_type", params.source_type);
+  if (params.course_code) qs.set("course_code", params.course_code);
   if (params.year) qs.set("year", String(params.year));
   if (params.canonical_topic) qs.set("canonical_topic", params.canonical_topic);
   if (params.limit) qs.set("limit", String(params.limit));
@@ -583,7 +617,7 @@ export interface ExamDraft {
   draft_id: string;
   subject_code: string;
   subject_name: string;
-  paper: { exam: string; year: number; questions: { question_number: number; topic: string; parts: { part: string; question: string; max_marks: number }[] }[] };
+  paper: import("./examCreatorApi").Paper;
   total_marks: number;
   question_count: number;
   created_at: string;

@@ -299,7 +299,8 @@ async def find_graded_submissions_for_exam(
     db: AsyncIOMotorDatabase, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> list[dict]:
-    query: dict = {"subject_code": course_code, "session_name": session_name, "status": "graded"}
+    # Regrading archives old papers while keeping their status graded.
+    query: dict = {"subject_code": course_code, "session_name": session_name, "status": "graded", "archived_at": None}
     if year is not None:
         query["year"] = year
     if month is not None:

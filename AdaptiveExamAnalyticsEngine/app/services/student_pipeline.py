@@ -8,7 +8,6 @@ from pydantic import TypeAdapter, ValidationError
 
 from app.analytics.student_document import (
     NumericStudentAnalysis,
-    _PRIORITY_BY_STATUS,
     build_numeric_analysis,
 )
 from app.classifier.rules import classify_by_rules
@@ -32,6 +31,8 @@ from app.services.llm_service import generate_student_insights
 import app.classifier.bloom_classifier as _bc_module
 _ORIG_PREDICT_BLOOM = _bc_module.predict_bloom
 _ORIG_PREDICT_BATCH = _bc_module.predict_bloom_batch
+
+STUDENT_ANALYSIS_VERSION = "1.1"
 
 
 @dataclass(frozen=True)
@@ -352,7 +353,7 @@ async def _classify_questions(
     return semantics_by_question
 
 
-def _validated_insights(insights: dict) -> StudentInsightResponse | None:
+def _validated_insights(insights: dict, numeric: NumericStudentAnalysis) -> StudentInsightResponse | None:
     if insights.get("status") != "ok":
         return None
 
@@ -369,27 +370,15 @@ def _validated_insights(insights: dict) -> StudentInsightResponse | None:
         },
     }
     try:
-        return StudentInsightResponse.model_validate(whitelisted)
+        validated = StudentInsightResponse.model_validate(whitelisted)
     except ValidationError:
         return None
-
-
-def _gap_from_insight_text(text: str, learning_analysis: dict) -> dict:
-    candidates = (
-        learning_analysis.get("critical_topics", [])
-        + learning_analysis.get("weak_topics", [])
-        + learning_analysis.get("developing_topics", [])
-    )
-    topic = next((name for name in candidates if name), "General")
-    priority = _PRIORITY_BY_STATUS.get(
-        learning_analysis.get("overall_performance"), "Medium"
-    )
-    return {"topic": topic, "subtopic": text, "priority": priority}
-
-
-def _bloom_levels_with_target(target: str, strategy: dict) -> list[str]:
-    levels = strategy.get("recommended_bloom_levels") or []
-    return [target] + [level for level in levels if level != target]
+    eligible_topics = {r.topic for r in numeric.recommendations if r.topic != "Unclassified"}
+    supported_pairs = {(q.topic, q.bloom_analysis.level) for q in numeric.question_performance
+                       if q.topic in eligible_topics and q.performance.score < q.performance.max_score}
+    if any((r.topic, r.bloom_level) not in supported_pairs for r in validated.recommendations):
+        return None
+    return validated
 
 
 def _assemble_document(
@@ -399,29 +388,26 @@ def _assemble_document(
     submission: dict,
 ) -> dict:
     document = numeric.model_dump(mode="json")
-    validated_insights = _validated_insights(insights)
+    validated_insights = _validated_insights(insights, numeric)
+    # AI may improve action text; gaps, priorities and practice targets remain backend-owned.
     if validated_insights is not None:
-        document["learning_analysis"]["learning_gaps"] = [
-            _gap_from_insight_text(text, document["learning_analysis"])
-            for text in validated_insights.learning_gaps
-        ]
-        document["recommendations"] = [
-            recommendation.model_dump(mode="json")
-            for recommendation in validated_insights.recommendations
-        ]
-        target = validated_insights.generation_target
-        document["next_question_strategy"]["recommended_bloom_levels"] = (
-            _bloom_levels_with_target(
-                target.recommended_bloom_level,
-                document["next_question_strategy"],
-            )
-        )
-        document["next_question_strategy"]["recommended_difficulty"] = (
-            target.recommended_difficulty
-        )
-        document["next_question_strategy"]["recommended_topics"] = list(
-            target.recommended_topics
-        )
+        actions = {r.topic: r.action for r in validated_insights.recommendations}
+        for recommendation in document["recommendations"]:
+            if recommendation["topic"] in actions:
+                recommendation["action"] = actions[recommendation["topic"]]
+    supported = []
+    for recommendation in document["recommendations"]:
+        questions = [q for q in numeric.question_performance if q.topic == recommendation["topic"]
+                     and q.topic != "Unclassified" and q.performance.score < q.performance.max_score]
+        if not questions:
+            continue
+        evidence = "; ".join(f"{q.question_id}: {q.performance.score:g}/{q.performance.max_score:g} marks" for q in questions)
+        recommendation["action"] += f" Evidence: {evidence}."
+        supported.append(recommendation)
+    document["recommendations"] = supported
+    eligible_topics = {r["topic"] for r in supported}
+    document["next_question_strategy"]["recommended_topics"] = [
+        topic for topic in document["next_question_strategy"]["recommended_topics"] if topic in eligible_topics]
     document["next_question_strategy"]["number_of_questions"] = 5
 
     evaluation_metadata = submission.get("evaluation")
@@ -454,7 +440,7 @@ def _assemble_document(
             "rag_context_used": rag_context_used,
         },
         generated_at=datetime.now(timezone.utc).isoformat(),
-        analysis_version="1.0",
+        analysis_version=STUDENT_ANALYSIS_VERSION,
     )
     return document
 

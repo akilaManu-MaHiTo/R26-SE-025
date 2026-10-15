@@ -2,7 +2,10 @@ from datetime import datetime, timezone
 
 from app.db.repository import find_course_for_submission, upsert_generated_questions
 from app.schemas.student import NextQuestionStrategy
+from app.llm.roles.generate_practice import practice_batch_matches_target
 from app.services.llm_service import generate_practice_questions as generate_practice_questions_call
+
+GENERATION_VERSION = "1.1"
 
 
 async def generate_practice_questions(
@@ -12,6 +15,8 @@ async def generate_practice_questions(
     response = await generate_practice_questions_call(target)
     if response["status"] != "ok":
         return response
+    if not practice_batch_matches_target(response.get("questions"), target):
+        return {"status": "degraded", "reason": "target_mismatch"}
     document = {
         "student_id": student_id,
         "exam_id": f"{course_code}@{session_name}",
@@ -19,7 +24,7 @@ async def generate_practice_questions(
         "request": target,
         "questions": response["questions"],
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "generation_version": "1.0",
+        "generation_version": GENERATION_VERSION,
     }
     await upsert_generated_questions(db, document)
     return {"status": "ok", "document": document}
