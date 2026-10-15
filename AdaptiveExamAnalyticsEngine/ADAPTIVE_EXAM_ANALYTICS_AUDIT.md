@@ -1,5 +1,7 @@
 # Adaptive exam analytics audit
 
+Further update: EQ-06/07/11 (NDCG ideal/cutoff and unpaired-label metrics) are repaired. An overlap-checking holdout evaluation command and 14 unlabeled final-exam pilot candidates are available; independent Bloom accuracy remains unverified pending human labels and provenance review. See [holdout workflow](BLOOM_HOLDOUT.md) and [current verification](REMEDIATION_VALIDATION.md).
+
 Subsequent update: the user authorized fixes to diagram denominators, assessment evidence counts, fabricated lecturer-home values, stale student displays and recommendation/practice evidence binding. EQ-01/02/03/09, DASH-02/08 and recommendation cases R1–R4 are now repaired; see [remediation and current verification](REMEDIATION_VALIDATION.md). The remainder of this report preserves the original audit baseline and its test results.
 
 Audit date: 2026-10-15 (Asia/Colombo). Baseline HEAD: `b455262cecab6d953fbcc852b6878404749006a2`. Scope is the current working tree, including existing staged changes, rather than HEAD alone.

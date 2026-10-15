@@ -1,5 +1,7 @@
 # Equation validation
 
+Further update: EQ-06, EQ-07 and EQ-11 are repaired; their probes now pass without expected-failure markers. NDCG's ideal ranking uses all supplied candidates before cutoff, k=0 returns zero, negative k is rejected, and paired classification/agreement metrics reject unequal lengths. Confusion matrices also reject duplicate or incomplete class lists. See [current verification](REMEDIATION_VALIDATION.md).
+
 Subsequent update: EQ-01, EQ-02, EQ-03 and EQ-09 were repaired after this baseline audit. Their tests are now ordinary passing regressions. Historical formulas, line references and results below describe the audited baseline; [remediation validation](REMEDIATION_VALIDATION.md) describes the current implementation.
 
 Audit date: 2026-10-15. This is a read-only audit of production equations in the current working tree, including pre-existing changes. No production fixes, model downloads, network model requests, or database writes were performed. Line numbers refer to that tree, not an assumed release. P1 means materially misleading core results, P2 means incorrect results or missing validation under stated conditions, and P3 means a boundary/contract or reporting limitation. Mathematical validity and empirical usefulness are separate verdicts.

@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import re
+import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -13,6 +14,40 @@ LEVELS = ('Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create')
 
 def normalize(text):
     return re.sub(r'\s+', ' ', text).strip().casefold()
+
+
+def holdout_key(text):
+    return re.sub(r'[\W_]+', ' ', unicodedata.normalize('NFKC', text).casefold()).strip()
+
+
+def validate_holdout(rows, excluded_texts):
+    """Check recorded human review and text overlap; provenance needs human verification."""
+    if not rows:
+        raise ValueError('Holdout has no labeled questions')
+    excluded = {holdout_key(text) for text in excluded_texts}
+    ids, texts = set(), set()
+    for i, row in enumerate(rows, 2):
+        required = ('question_id', 'question_text', 'source_reference', 'rater_a_id',
+                    'rater_b_id', 'rater_a_label', 'rater_b_label', 'bloom_label')
+        if any(not str(row.get(field) or '').strip() for field in required):
+            raise ValueError(f'Row {i}: missing question, provenance or human labels')
+        if any(row[field] not in LEVELS for field in ('rater_a_label', 'rater_b_label', 'bloom_label')):
+            raise ValueError(f'Row {i}: unknown Bloom label; use full level names')
+        if normalize(row['rater_a_id']) == normalize(row['rater_b_id']):
+            raise ValueError(f'Row {i}: require two distinct raters')
+        resolved = row['rater_a_label'] == row['rater_b_label'] == row['bloom_label']
+        if not resolved and not (row.get('adjudicator_id') or '').strip():
+            raise ValueError(f'Row {i}: disagreement needs recorded adjudication')
+        key, question_id = holdout_key(row['question_text']), row['question_id'].strip()
+        if not key:
+            raise ValueError(f'Row {i}: question has no text')
+        if key in excluded:
+            raise ValueError(f'Row {i}: training/tuning source overlap')
+        if key in texts or question_id in ids:
+            raise ValueError(f'Row {i}: Duplicate question text or ID')
+        texts.add(key)
+        ids.add(question_id)
+    return rows
 
 
 def csv_evidence(path):

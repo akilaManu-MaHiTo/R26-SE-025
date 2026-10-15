@@ -52,3 +52,56 @@ Final affected-file verification, with dotenv loading disabled and database/exte
 The broader sandboxed `scripts/run_audit_tests.py` selection returned **151 passed, 1 failed, 18 skipped, 13 strict expected failures**, exit1. [Saved output](audit_evidence/recommendation_fix_results.txt). Its sole ordinary failure remains the pre-existing list-shaped rubric fixture in `test_normalize_submission_joins_questions_and_criteria`. This selection still skips async/temp fixtures; the affected async paths were separately exercised by the passing109-test run. The remaining expected failures are other audit findings.
 
 No live database, model inference, retraining or annotation changes were performed. These checks validate evidence linkage and generated metadata/counts; they do not establish semantic relevance, answerability, cognitive-demand correctness or learning gains. Duplicate detection is case/whitespace based, not semantic similarity. Lecturer review of generated question content is still needed, and general evidence-fingerprint cache freshness remains outside this version migration.
+
+
+## Evaluation metrics and independent Bloom holdout preparation
+
+The user authorized repairs for EQ-06, EQ-07 and EQ-11, then supplied the local
+`datasets/bloom_dataset/Final exam` directory as a possible holdout source.
+
+- `app/evaluation/metrics.py`: NDCG builds its ideal ranking from the complete
+  supplied relevance list before truncating to k; zero cutoff returns zero and
+  negative cutoff raises ValueError. Accuracy, confusion matrix, macro F1 and
+  Cohen kappa reject unequal paired lengths. Confusion matrices reject duplicate
+  classes and classes missing observed labels rather than dropping observations.
+  Valid-input formulas, empty-set conventions and the existing unanimous-rater
+  kappa convention remain unchanged. All three baseline probes now run normally.
+- `scripts/evaluate_bloom_holdout.py` validates external question text, recorded
+  independent rater IDs/labels, adjudication, provenance fields, duplicate IDs/text
+  and normalized overlap with the complete confirmed training source plus supplied
+  tuning pools. Validation precedes any model import/inference. Optional local
+  frozen-model evaluation emits hashes, predictions, accuracy, six-class macro F1,
+  per-class precision/recall/F1/support and confusion matrix JSON. No model fallback,
+  retraining or dependency was added.
+- `final_exam_holdout_candidates.csv` contains 14 unlabeled text-question candidates
+  from the supplied 2022/2023 papers. Selected pages were rendered and checked;
+  contextual schema/FD questions retain context and explicit primary keys. No
+  normalized exact training-source overlap was found. Source/candidate hashes and
+  limitations are saved in `audit_evidence/final_exam_holdout_preparation.json`.
+  Narrow ignore exceptions keep only the two review CSVs visible to Git.
+- [Holdout instructions](BLOOM_HOLDOUT.md) explain the pending lecturer annotation,
+  historical non-use confirmation, semantic overlap review and class/family
+  coverage checks. The pilot is not an independent gold set. Diagram questions,
+  unreliable scan/code extraction and the apparent 2024-filename/2018-cover mismatch
+  remain for human review. Long schema inputs may reach runtime truncation limits.
+
+Before the metric fix, 17 new regressions failed; afterward they passed. Holdout
+validation tests initially failed because the validation feature was absent.
+Final focused command (`--noconftest`, evaluation/holdout/evidence tests, excluding
+only the existing temporary-path labeling-template test) returned **43 passed,
+1 deselected**. CLI tests confirm blank/unlabeled sheets fail before model loading;
+a model-boundary stub checks the successful evaluation/reporting path with real
+hand-calculated metrics, not model accuracy.
+
+Final `scripts/run_audit_tests.py`: **189 passed, 1 failed, 18 skipped, 10 strict
+expected failures**, exit1. [Saved output](audit_evidence/metrics_holdout_results.txt).
+The ordinary failure remains `test_normalize_submission_joins_questions_and_criteria`
+(list-shaped rubric fixture passed to a dictionary normalizer). The selection
+blocks external HTTP/database connections and skips Windows async/temp fixtures;
+the entire integration suite was not run because its DB fixture can drop a database.
+Both staged and unstaged `git diff --check` passed.
+
+No real model inference, retraining, live database operation or lecturer labeling
+was performed. Independent Bloom accuracy remains unmeasured pending human labels
+and provenance review; exact overlap checks cannot detect all paraphrases or prior
+use. Existing reports/results are preserved as historical baseline evidence.
