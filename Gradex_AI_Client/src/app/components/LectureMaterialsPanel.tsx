@@ -91,7 +91,6 @@ export function formatCourseLabel(course: CourseItem): string {
   return `${course.code} - ${name}`;
 }
 
-/** Middle-ellipsis for long filenames so confirm dialogs stay readable. */
 export function ellipsizeMiddle(value: string, max = 72): string {
   const text = (value || "").trim();
   if (text.length <= max) return text;

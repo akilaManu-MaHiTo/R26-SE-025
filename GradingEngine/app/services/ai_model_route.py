@@ -1015,20 +1015,102 @@ def _attach_rag_meta(result: dict, enriched: dict) -> dict:
     return result
 
 
+def _is_stub_prose(text: str) -> bool:
+    """True for model stub/placeholder feedback like '<short>' that must not be kept."""
+    t = " ".join((text or "").strip().lower().split())
+    if not t:
+        return False
+    if t in {
+        "<short>",
+        "short",
+        "<long>",
+        "long",
+        "todo",
+        "n/a",
+        "na",
+        "...",
+        "tbd",
+    }:
+        return True
+    # Angle-bracket tags used as placeholders (e.g. <short>, <ok>).
+    if len(t) <= 24 and t.startswith("<") and t.endswith(">"):
+        return True
+    return False
+
+
+def _evaluation_has_stub_feedback(normalized: dict) -> bool:
+    if not isinstance(normalized, dict):
+        return False
+    if _is_stub_prose(str(normalized.get("feedback") or "")):
+        return True
+    if _is_stub_prose(str(normalized.get("justification") or "")):
+        return True
+    for row in normalized.get("results") or []:
+        if not isinstance(row, dict):
+            continue
+        if _is_stub_prose(str(row.get("feedback") or "")):
+            return True
+        if _is_stub_prose(str(row.get("justification") or "")):
+            return True
+    return False
+
+
+def _apply_colab_or_recover(enriched: dict, questions_list: list[dict], colab_result: dict) -> dict:
+    """
+    Accept a Colab grade, or recover when the model returns stub feedback (<short>).
+    Retry Colab once, then fall through to Groq so flaky load does not stick bad marks.
+    """
+    normalized = normalize_evaluation(colab_result, questions_list)
+    if not _evaluation_has_stub_feedback(normalized):
+        return normalized
+
+    print("Colab returned stub feedback (<short>/placeholder); retrying once...")
+    time.sleep(COLAB_RETRY_DELAY_SECONDS)
+    retry_raw = try_forward_to_colab(enriched)
+    if retry_raw is not None:
+        retry_norm = normalize_evaluation(retry_raw, questions_list)
+        if not _evaluation_has_stub_feedback(retry_norm):
+            print("Colab retry produced usable feedback.")
+            return retry_norm
+        print("Colab retry still stubbed; switching to Groq for this question.")
+    else:
+        print("Colab retry unavailable; switching to Groq for this question.")
+
+    groq_result = grade_with_groq(enriched)
+    if _evaluation_has_stub_feedback(groq_result):
+        # Prefer Groq marks even if prose is thin; last resort keep Colab.
+        print("Groq also returned stub prose; keeping Groq scores anyway.")
+    return groq_result
+
+
 def evaluate_grading(payload: dict) -> dict:
     questions_list = _parse_rubric_questions(payload.get("rubric", ""))
     enriched = _enrich_payload_with_rag(payload)
     colab_result = try_forward_to_colab(enriched)
     if colab_result is not None:
-        normalized = normalize_evaluation(colab_result, questions_list)
+        try:
+            normalized = _apply_colab_or_recover(enriched, questions_list, colab_result)
+        except Exception as err:
+            print(f"Colab stub recovery failed ({type(err).__name__}): {err}")
+            print("Switching to fallback system...")
+            try:
+                normalized = grade_with_groq(enriched)
+            except Exception as groq_err:
+                print(f"Fallback model failed: {groq_err}")
+                if GROQ_API_KEY:
+                    raise
+                normalized = normalize_evaluation(
+                    _emergency_fallback_response(), questions_list
+                )
         per_q = [
             f"Q{r.get('q_no')}={r.get('score')}"
             for r in (normalized.get("results") or [])
             if isinstance(r, dict)
         ]
         print(
-            "Colab grade applied "
-            f"(total_score={normalized.get('total_score')}, "
+            "Grade applied "
+            f"(source={normalized.get('grading_source')}, "
+            f"total_score={normalized.get('total_score')}, "
             f"max_score={normalized.get('max_score')}, "
             f"{', '.join(per_q) or 'no per-question rows'})."
         )

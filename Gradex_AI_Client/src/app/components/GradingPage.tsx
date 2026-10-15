@@ -32,13 +32,12 @@ import {
   SelectValue,
 } from "./ui/select";
 
-import { GRADING_API_BASE_URL } from "../api/gradingApiBase";
+import { GRADING_API_BASE_URL, SERVER_BASE_URL } from "../api/gradingApiBase";
+import { fetchExamKey } from "../api/diagramEvaluationApi";
 
 const SESSION_NAME_OPTIONS = [
   "Final Examination",
-  "Mid Term Examination",
-  "Tutorial Examination",
-  "Quiz",
+  "Mid Term",
 ] as const;
 
 const SEMESTER_OPTIONS = [
@@ -67,6 +66,28 @@ function buildYearOptions(centerYear = new Date().getFullYear()): string[] {
     years.push(String(y));
   }
   return years;
+}
+
+function sessionForExamKeyLookup(sessionName: string): string | null {
+  const s = sessionName.trim().toLowerCase();
+  if (
+    s === "mid term" ||
+    s === "mid-term" ||
+    s === "midterm" ||
+    s === "mid term examination" ||
+    s === "mid-term examination"
+  ) {
+    return "Mid Term";
+  }
+  if (s === "final examination" || s === "final") return "Final";
+  return null;
+}
+
+function normalizeSessionName(sessionName: string): string {
+  const lookup = sessionForExamKeyLookup(sessionName);
+  if (lookup === "Mid Term") return "Mid Term";
+  if (lookup === "Final") return "Final Examination";
+  return sessionName.trim();
 }
 
 function formatRubricDetailsLabel(r: {
@@ -755,6 +776,9 @@ function HandwrittenGradingWorkflow() {
   const [sessionYear, setSessionYear] = useState(String(new Date().getFullYear()));
   const [sessionMonth, setSessionMonth] = useState(String(new Date().getMonth() + 1));
   const [sessionSemester, setSessionSemester] = useState("1");
+  const [examKey, setExamKey] = useState<string | null>(null);
+  const [examKeyLoading, setExamKeyLoading] = useState(false);
+  const [examKeyError, setExamKeyError] = useState<string | null>(null);
   const yearOptions = buildYearOptions();
   const [rubricFile, setRubricFile] = useState<File | null>(null);
   const [rubricId, setRubricId] = useState<string | null>(null);
@@ -979,7 +1003,7 @@ function HandwrittenGradingWorkflow() {
   const openHistoryEdit = (item: GradingHistoryItem) => {
     setHistoryEditError(null);
     setHistoryEditItem(item);
-    setEditSessionName(item.session_name || "");
+    setEditSessionName(normalizeSessionName(item.session_name || ""));
     setEditSubjectCode(item.subject_code || "");
     setEditSubjectName(item.subject_name || "");
     setEditYear(item.year != null ? String(item.year) : String(new Date().getFullYear()));
@@ -992,16 +1016,33 @@ function HandwrittenGradingWorkflow() {
     setHistoryEditSaving(true);
     setHistoryEditError(null);
     try {
+      const monthLabel =
+        MONTH_OPTIONS.find((m) => m.value === editMonth)?.label ?? "";
+      const lookupSession = sessionForExamKeyLookup(editSessionName);
+      if (!lookupSession || !editSubjectCode.trim() || !monthLabel) {
+        throw new Error("Select Final Examination or Mid Term with a valid course and month.");
+      }
+      const keyRes = await fetchExamKey(
+        {
+          subjectCode: editSubjectCode.trim(),
+          year: editYear,
+          month: monthLabel,
+          semester: editSemester,
+          session: lookupSession,
+        },
+        SERVER_BASE_URL,
+      );
       const response = await fetch(`${GRADING_API_BASE_URL}/rubric/${historyEditItem._id}/session`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          session_name: editSessionName.trim(),
+          session_name: normalizeSessionName(editSessionName),
           subject_code: editSubjectCode.trim(),
           subject_name: editSubjectName.trim(),
           year: Number(editYear),
           month: Number(editMonth),
           semester: Number(editSemester),
+          examKey: keyRes.examKey,
         }),
       });
       const data = await readJsonResponse(response);
@@ -1243,6 +1284,60 @@ function HandwrittenGradingWorkflow() {
     }
   }, [page, rubricId]);
 
+  useEffect(() => {
+    let active = true;
+    const subjectCode = subject.trim();
+    const monthLabel =
+      MONTH_OPTIONS.find((m) => m.value === sessionMonth)?.label ?? "";
+    const lookupSession = sessionForExamKeyLookup(examName);
+
+    if (!subjectCode || !sessionYear || !monthLabel || !sessionSemester || !lookupSession) {
+      setExamKey(null);
+      setExamKeyError(
+        lookupSession
+          ? null
+          : "Session type is not supported for exam key lookup.",
+      );
+      setExamKeyLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setExamKey(null);
+    setExamKeyError(null);
+    setExamKeyLoading(true);
+
+    void fetchExamKey(
+      {
+        subjectCode,
+        year: sessionYear,
+        month: monthLabel,
+        semester: sessionSemester,
+        session: lookupSession,
+      },
+      SERVER_BASE_URL,
+    )
+      .then((res) => {
+        if (!active) return;
+        setExamKey(res.examKey);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setExamKey(null);
+        setExamKeyError(
+          err instanceof Error ? err.message : "Failed to find exam key.",
+        );
+      })
+      .finally(() => {
+        if (active) setExamKeyLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [subject, sessionYear, sessionMonth, sessionSemester, examName]);
+
   const selectedGradingRubric = rubricsList.find((r) => r._id === gradingRubricId);
   const selectedRubricLabel =
     (selectedGradingRubric && formatRubricDetailsLabel(selectedGradingRubric)) ||
@@ -1282,7 +1377,7 @@ function HandwrittenGradingWorkflow() {
         }
         if (!cancelled) {
           if (typeof data.session_name === "string" && data.session_name.trim()) {
-            setExamName(data.session_name);
+            setExamName(normalizeSessionName(data.session_name));
           }
           if (typeof data.subject_code === "string" && data.subject_code.trim()) {
             setSubject(data.subject_code);
@@ -1293,6 +1388,10 @@ function HandwrittenGradingWorkflow() {
           if (typeof data.year === "number") setSessionYear(String(data.year));
           if (typeof data.month === "number") setSessionMonth(String(data.month));
           if (typeof data.semester === "number") setSessionSemester(String(data.semester));
+          if (typeof data.examKey === "string" && data.examKey.trim()) {
+            setExamKey(data.examKey.trim());
+            setExamKeyError(null);
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -1312,18 +1411,27 @@ function HandwrittenGradingWorkflow() {
       setRubricError("Please upload a rubric file first.");
       return;
     }
+    if (!examKey) {
+      setRubricError(
+        examKeyLoading
+          ? "Looking up exam key… try again in a moment."
+          : examKeyError || "No exam key for these session details. Register the exam in examkeys first.",
+      );
+      return;
+    }
     setRubricLoading(true);
     setRubricError(null);
     setRubricSuccess(null);
     try {
       const formData = new FormData();
       formData.append("file", rubricFile);
-      formData.append("session_name", examName);
+      formData.append("session_name", normalizeSessionName(examName));
       formData.append("subject_code", subject);
       formData.append("subject_name", subjectName);
       formData.append("year", sessionYear);
       formData.append("month", sessionMonth);
       formData.append("semester", sessionSemester);
+      formData.append("examKey", examKey);
 
       const response = await fetch(`${GRADING_API_BASE_URL}/upload-rubric`, {
         method: "POST",
@@ -1349,8 +1457,15 @@ function HandwrittenGradingWorkflow() {
     }
   };
 
-  /** Continue from session setup: extract PDF when provided, otherwise jump to batch grading and pick a rubric there. */
   const handleSessionContinue = async () => {
+    if (!examKey) {
+      setRubricError(
+        examKeyLoading
+          ? "Looking up exam key… try again in a moment."
+          : examKeyError || "No exam key for these session details. Register the exam in examkeys first.",
+      );
+      return;
+    }
     if (rubricFile) {
       await uploadRubricToBackend();
       return;
@@ -1374,13 +1489,20 @@ function HandwrittenGradingWorkflow() {
     setRubricError(null);
     setRubricSuccess(null);
     try {
+      if (!examKey) {
+        setRubricError(
+          examKeyError || "No exam key for these session details. Register the exam in examkeys first.",
+        );
+        return;
+      }
       const payload = {
-        session_name: examName,
+        session_name: normalizeSessionName(examName),
         subject_code: subject,
         subject_name: subjectName,
         year: Number(sessionYear),
         month: Number(sessionMonth),
         semester: Number(sessionSemester),
+        examKey,
         questions: rubric.map((entry) => {
           const criteriaRows = entry.criteria
             .filter((c) => c.point.trim().length > 0)
@@ -1661,16 +1783,22 @@ function HandwrittenGradingWorkflow() {
   };
 
   const applySessionFieldsToRubric = async (rid: string) => {
+    if (!examKey) {
+      throw new Error(
+        examKeyError || "No exam key for these session details. Register the exam in examkeys first.",
+      );
+    }
     const response = await fetch(`${GRADING_API_BASE_URL}/rubric/${rid}/session`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        session_name: examName.trim(),
+        session_name: normalizeSessionName(examName),
         subject_code: subject.trim(),
         subject_name: subjectName.trim(),
         year: Number(sessionYear),
         month: Number(sessionMonth),
         semester: Number(sessionSemester),
+        examKey,
       }),
     });
     const data = await readJsonResponse(response);
@@ -1702,6 +1830,14 @@ function HandwrittenGradingWorkflow() {
       setBatchUploadError("Select a rubric and upload a batch first.");
       return;
     }
+    if (!examKey) {
+      setBatchUploadError(
+        examKeyLoading
+          ? "Looking up exam key… try again in a moment."
+          : examKeyError || "No exam key for these session details. Register the exam in examkeys first.",
+      );
+      return;
+    }
     if (!rosterReadyToGrade) {
       setBatchUploadError(
         validationReport
@@ -1713,6 +1849,7 @@ function HandwrittenGradingWorkflow() {
     setBatchUploadError(null);
     setGradingRunning(true);
     try {
+      await applySessionFieldsToRubric(gradingRubricId);
       const response = await fetch(`${GRADING_API_BASE_URL}/grade-batch/${gradingRubricId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2157,7 +2294,6 @@ function HandwrittenGradingWorkflow() {
         .map((row, i) => {
           const qNo = String(row.q_no ?? row.question_no ?? i + 1);
           const score = typeof row.score === "number" ? row.score : Number(row.score ?? "");
-          // UI export only: prefer feedback; fall back to justification if feedback empty.
           const feedback = (
             String(row.feedback ?? "").trim() ||
             String(row.justification ?? "").trim()
@@ -2663,16 +2799,28 @@ function HandwrittenGradingWorkflow() {
             </Button>
             <Button
               onClick={handleSessionContinue}
-              disabled={!subject || !examName || rubricLoading || courses.length === 0}
+              disabled={
+                !subject ||
+                !examName ||
+                !examKey ||
+                examKeyLoading ||
+                rubricLoading ||
+                courses.length === 0
+              }
             >
               {rubricLoading ? (
                 <><RefreshCw className="size-4 mr-2 animate-spin" /> Extracting rubric...</>
+              ) : examKeyLoading ? (
+                <><RefreshCw className="size-4 mr-2 animate-spin" /> Looking up exam key...</>
               ) : rubricFile ? (
                 <>Extract rubric and verify <ArrowRight className="size-4 ml-2" /></>
               ) : (
                 <>Continue to batch grading <ArrowRight className="size-4 ml-2" /></>
               )}
             </Button>
+            {examKeyError && !examKeyLoading && (
+              <div className="text-sm text-destructive w-full">{examKeyError}</div>
+            )}
             {rubricError && <div className="text-sm text-destructive w-full">{rubricError}</div>}
             {rubricSuccess && <div className="text-sm text-emerald-700 dark:text-emerald-400 w-full">{rubricSuccess}</div>}
           </div>
@@ -3214,16 +3362,23 @@ function HandwrittenGradingWorkflow() {
                 !batchId ||
                 batchUploading ||
                 gradingRunning ||
-                !rosterReadyToGrade
+                !rosterReadyToGrade ||
+                !examKey ||
+                examKeyLoading
               }
             >
               {gradingRunning ? (
                 <><RefreshCw className="size-4 mr-2 animate-spin" /> Starting batch…</>
+              ) : examKeyLoading ? (
+                <><RefreshCw className="size-4 mr-2 animate-spin" /> Looking up exam key...</>
               ) : (
                 <>Start processing <Sparkles className="size-4 ml-2" /></>
               )}
             </Button>
           </div>
+          {examKeyError && !examKeyLoading && (
+            <p className="text-sm text-destructive w-full">{examKeyError}</p>
+          )}
           {!rosterReadyToGrade && gradingRubricId && batchId && !gradingRunning && (
             <p className="text-sm text-muted-foreground">
               {validationReport
@@ -3804,7 +3959,6 @@ function HandwrittenGradingWorkflow() {
                           const qNo = String(row.q_no ?? row.question_no ?? i + 1);
                           const qKey = qNo.padStart(2, "0").replace(/^0+(\d)$/, "0$1");
                           const normKey = qNo.replace(/^0+/, "") || qNo;
-                          // UI only: show one prose block (feedback preferred).
                           const feedbackDisplay = (
                             String(row.feedback ?? "").trim() ||
                             String(row.justification ?? "").trim()
@@ -4654,7 +4808,11 @@ function HandwrittenGradingWorkflow() {
             </Button>
             <Button
               onClick={() => void saveHistoryEdit()}
-              disabled={historyEditSaving || !editSessionName || !editSubjectCode}
+              disabled={
+                historyEditSaving ||
+                !editSubjectCode ||
+                !sessionForExamKeyLookup(editSessionName)
+              }
             >
               {historyEditSaving ? (
                 <><RefreshCw className="size-4 mr-2 animate-spin" /> Saving…</>
