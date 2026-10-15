@@ -8,10 +8,13 @@ type DiagramDetection = {
 	bbox: [number, number, number, number];
 	confidence?: number;
 	text?: string;
+	is_primary_key?: boolean;
+	underline_detected?: boolean;
+	primary_key_crop_path?: string;
 };
 
 type DiagramStructure = {
-	entities?: Record<string, { attributes?: string[] }>;
+	entities?: Record<string, { attributes?: string[]; primary_keys?: string[] }>;
 	relationships?: Array<{
 		name: string;
 		entities?: string[];
@@ -80,6 +83,9 @@ export type DiagramEvaluationRecord = {
 			bbox: [number, number, number, number];
 			confidence?: number;
 			text?: string;
+			is_primary_key?: boolean;
+			underline_detected?: boolean;
+			primary_key_crop_path?: string;
 		}>;
 		entities: Array<{ entity_name: string; attributes: string[] }>;
 		relationships: Array<{
@@ -93,6 +99,7 @@ export type DiagramEvaluationRecord = {
 	diagram_entity_relations: Array<{
 		entity_name: string;
 		attributes: string[];
+		primary_keys?: string[];
 	}>;
 	diagram_relations: Array<{
 		relation_name: string;
@@ -210,6 +217,9 @@ function normalizeDetections(result: DiagramApiResponse): DiagramEvaluationRecor
 		bbox: detection.bbox,
 		confidence: detection.confidence,
 		text: detection.text,
+		is_primary_key: detection.is_primary_key,
+		underline_detected: detection.underline_detected,
+		primary_key_crop_path: detection.primary_key_crop_path,
 	}));
 }
 
@@ -218,7 +228,8 @@ function normalizeEntityRelations(result: DiagramApiResponse): DiagramEvaluation
 
 	return Object.entries(entities).map(([entityName, entityValue]) => ({
 		entity_name: entityName,
-		attributes: entityValue.attributes ?? [],
+		attributes: [...(entityValue.attributes ?? []), ...(entityValue.primary_keys ?? [])],
+		primary_keys: entityValue.primary_keys ?? [],
 	}));
 }
 
