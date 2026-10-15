@@ -38,10 +38,13 @@ type DiagramDetailRecord = {
       text?: string;
       bbox?: [number, number, number, number];
       confidence?: number;
+      is_primary_key?: boolean;
+      primary_key_crop_path?: string;
     }>;
     entities?: Array<{
       entity_name?: string;
       attributes?: string[];
+      primary_keys?: string[];
     }>;
     relationships?: Array<{
       relation_name?: string;
@@ -49,7 +52,7 @@ type DiagramDetailRecord = {
       attributes?: string[];
     }>;
     structure?: {
-      entities?: Record<string, { attributes?: string[] }>;
+      entities?: Record<string, { attributes?: string[]; primary_keys?: string[] }>;
       relationships?: Array<{
         name?: string;
         entities?: string[];
@@ -60,6 +63,7 @@ type DiagramDetailRecord = {
   diagram_entity_relations?: Array<{
     entity_name?: string;
     attributes?: string[];
+    primary_keys?: string[];
   }>;
   diagram_relations?: Array<{
     relation_name?: string;
@@ -69,7 +73,7 @@ type DiagramDetailRecord = {
   evaluation_result?: {
     annotated_image?: string;
     structure?: {
-      entities?: Record<string, { attributes?: string[] }>;
+      entities?: Record<string, { attributes?: string[]; primary_keys?: string[] }>;
       relationships?: Array<{
         name?: string;
         entities?: string[];
@@ -101,6 +105,7 @@ function normalizeStructure(record: DiagramDetailRecord) {
   const entities = entityEntries.map(([name, value]) => ({
     name,
     attributes: value.attributes ?? [],
+    primaryKeys: value.primary_keys ?? [],
   }));
 
   const relationships = relationshipEntries.map((relationship) => ({
