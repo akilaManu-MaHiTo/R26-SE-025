@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import { transformSync } from 'esbuild';
+import { loadApi } from './load-api.mjs';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
@@ -10,9 +11,7 @@ const page = readFileSync(new URL('../src/app/components/AnalyticsPage.tsx', imp
 // Execute the click handler without mounting unrelated charts and dialogs.
 const handlerSource = page.match(/const handleSelectStudent = useCallback\((async .*?), \[selectedExam, students[^\]]*\]\);/s)[1];
 const handlerCode = transformSync(`(${handlerSource})`, { loader: 'ts' }).code;
-const apiSource = readFileSync(new URL('../src/app/api/lecturerApi.ts', import.meta.url), 'utf8');
-const apiCode = transformSync(apiSource, { loader: 'ts', format: 'esm' }).code;
-const { fetchLecturerStudentDetail } = await import(`data:text/javascript;base64,${Buffer.from(apiCode).toString('base64')}`);
+const { fetchLecturerStudentDetail } = await loadApi('../src/app/api/lecturerApi.ts');
 
 async function openStudent(status, { missing = false, streamFails = false, modelOnline = true } = {}) {
   const requests = [];

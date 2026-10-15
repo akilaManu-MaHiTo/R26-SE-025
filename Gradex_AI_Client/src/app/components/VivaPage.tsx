@@ -1,5 +1,6 @@
 "use client";
 
+import { SERVER_BASE_URL } from "../api/gradingApiBase";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -97,12 +98,7 @@ export function VivaPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoPlayerRef = useRef<VivaVideoPlayerHandle>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
-  const backendBaseUrl =
-    ((import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL) ??
-    "http://localhost:8000";
-  const apiKey =
-    ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env?.VITE_GRADEX_API_KEY) ??
-    "";
+  const backendBaseUrl = SERVER_BASE_URL;
 
   // Deliberately does NOT reset assessmentMode: the examiner picks it upfront,
   // before choosing upload/live or selecting a file, via the selector below —
@@ -255,7 +251,7 @@ export function VivaPage() {
     const startFallbackPolling = () => {
       if (cancelled || fallbackId !== null) return;
       const poll = async () => {
-        const next = await fetchVivaAnalyzeProgress(backendBaseUrl, progressId, apiKey);
+        const next = await fetchVivaAnalyzeProgress(backendBaseUrl, progressId);
         if (!cancelled && next) setProgressSnapshot(next);
       };
       void poll();
@@ -267,7 +263,6 @@ export function VivaPage() {
     const unsubscribe = subscribeVivaAnalyzeProgress(
       backendBaseUrl,
       progressId,
-      apiKey,
       (next) => {
         if (!cancelled) setProgressSnapshot(next);
       },
@@ -279,7 +274,7 @@ export function VivaPage() {
       unsubscribe();
       if (fallbackId !== null) window.clearInterval(fallbackId);
     };
-  }, [isAnalyzing, analysisPhase, backendBaseUrl, apiKey]);
+  }, [isAnalyzing, analysisPhase, backendBaseUrl]);
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
@@ -417,8 +412,8 @@ export function VivaPage() {
         );
 
         xhr.open("POST", apiUrl, true);
+        xhr.withCredentials = true;
         xhr.timeout = 600000;
-        if (apiKey) xhr.setRequestHeader("X-API-Key", apiKey);
         xhrRef.current = xhr;
         xhr.send(formData);
       });

@@ -20,7 +20,7 @@ from fastapi import (
 )
 from pydantic import BaseModel, Field
 
-from Gradex_AI_Server.app.auth import require_api_key, require_websocket_api_key
+from Gradex_AI_Server.app.auth import require_lecturer, require_websocket_lecturer
 
 from Gradex_AI_Server.app.core.database import db_instance
 from Gradex_AI_Server.app.viva_analysis_runner import (
@@ -43,7 +43,7 @@ from Gradex_AI_Server.app.viva_copilot.session_store import broadcast, session_t
 from VivaEvaluationEngine.services.assessment_scoring import MODE_WITHOUT
 
 router = APIRouter(prefix="/api/viva-copilot", tags=["viva-copilot"])
-_AUTH = [Depends(require_api_key)]
+_AUTH = [Depends(require_lecturer)]
 
 
 class ProjectContextPayload(BaseModel):
@@ -249,7 +249,7 @@ async def _close_expired_copilot_session(session, session_id: str, websocket: We
 
 @router.websocket("/ws/{session_id}")
 async def copilot_ws(websocket: WebSocket, session_id: str) -> None:
-    if not await require_websocket_api_key(websocket):
+    if not await require_websocket_lecturer(websocket):
         return
     session = store.get(session_id)
     if session is None:

@@ -1,15 +1,11 @@
+import { SERVER_BASE_URL } from "../../api/gradingApiBase";
+import { apiFetch } from "../../api/authApi";
 /** Subject concept-rubric API — the lecturer-facing side of the technical
  * viva flow. A rubric uploaded here is what /api/viva-analyze looks up by
  * subject code to produce the advisory technical-accuracy suggestion.
  * Isolated from other client backends, mirroring vivaMarksApi.ts. */
 
-const backendBaseUrl =
-  ((import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL) ??
-  "http://localhost:8000";
-
-const apiKey =
-  ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env?.VITE_GRADEX_API_KEY) ??
-  "";
+const backendBaseUrl = SERVER_BASE_URL;
 
 /** Weight is 0–5 server-side (SubjectRubricConceptPayload in main.py). */
 export const CONCEPT_WEIGHT_MIN = 0;
@@ -54,10 +50,6 @@ export interface SubjectRubric {
   version?: number;
 }
 
-function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  return { ...extra, ...(apiKey ? { "X-API-Key": apiKey } : {}) };
-}
-
 async function readError(response: Response): Promise<string> {
   let detail = `HTTP ${response.status}`;
   try {
@@ -86,9 +78,8 @@ export async function uploadSubjectContent(
   formData.append("subject_code", subjectCode);
   formData.append("subject_name", subjectName);
 
-  const response = await fetch(`${backendBaseUrl}/api/subject-content/upload`, {
+  const response = await apiFetch(`${backendBaseUrl}/api/subject-content/upload`, {
     method: "POST",
-    headers: authHeaders(),
     body: formData,
   });
 
@@ -98,9 +89,7 @@ export async function uploadSubjectContent(
 
 /** Every stored subject, newest first. Summaries only — fetch one for concepts. */
 export async function listSubjectContent(): Promise<SubjectRubricSummary[]> {
-  const response = await fetch(`${backendBaseUrl}/api/subject-content`, {
-    headers: authHeaders(),
-  });
+  const response = await apiFetch(`${backendBaseUrl}/api/subject-content`);
 
   if (!response.ok) throw new Error(await readError(response));
   return (await response.json()) as SubjectRubricSummary[];
@@ -108,9 +97,8 @@ export async function listSubjectContent(): Promise<SubjectRubricSummary[]> {
 
 /** Returns null for 404 — "no rubric yet" is a normal state, not an error. */
 export async function fetchSubjectContent(subjectCode: string): Promise<SubjectRubric | null> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${backendBaseUrl}/api/subject-content/${encodeURIComponent(subjectCode)}`,
-    { headers: authHeaders() },
   );
 
   if (response.status === 404) return null;
@@ -124,11 +112,11 @@ export async function saveSubjectContent(
   subjectName: string,
   concepts: SubjectConcept[],
 ): Promise<SubjectRubric> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${backendBaseUrl}/api/subject-content/${encodeURIComponent(subjectCode)}`,
     {
       method: "PUT",
-      headers: authHeaders({ "Content-Type": "application/json" }),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         subject_name: subjectName,
         concepts: concepts.map((concept) => ({

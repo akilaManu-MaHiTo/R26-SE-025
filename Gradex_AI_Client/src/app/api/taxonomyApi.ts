@@ -1,7 +1,8 @@
+import { SERVER_BASE_URL } from "./gradingApiBase";
+import { apiFetch } from "./authApi";
 import type { CourseItem } from "../utils/courseOptions";
 
-const env = (import.meta as { env?: Record<string, string> }).env ?? {};
-const API_BASE = (env.VITE_BACKEND_URL || env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const API_BASE = SERVER_BASE_URL;
 
 export interface TaxonomyTopic {
   canonical_topic: string;
@@ -23,11 +24,10 @@ export interface TaxonomyVersion {
 }
 
 async function request<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE}/api/courses${path}`, {
+  const response = await apiFetch(`${API_BASE}/api/courses${path}`, {
     method: body === undefined ? "GET" : "PUT",
     headers: {
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-      ...(env.VITE_GRADEX_API_KEY ? { "X-API-Key": env.VITE_GRADEX_API_KEY } : {}),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });

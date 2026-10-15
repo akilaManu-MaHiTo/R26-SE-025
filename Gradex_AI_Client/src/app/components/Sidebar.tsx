@@ -6,6 +6,7 @@ import { AGENT_CONFIG } from "../routeConfig";
 
 interface SidebarProps {
   role: "lecturer" | "student";
+  email: string;
   onLogout: () => void;
 }
 
@@ -33,7 +34,7 @@ const subItemClass = ({ isActive }: { isActive: boolean }) =>
       : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
   );
 
-export function Sidebar({ role, onLogout }: SidebarProps) {
+export function Sidebar({ role, email, onLogout }: SidebarProps) {
   return (
     <aside className="w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 print:hidden">
       <div className="px-6 py-5 border-b border-sidebar-border flex items-center gap-3">
@@ -86,15 +87,15 @@ export function Sidebar({ role, onLogout }: SidebarProps) {
       <div className="p-3 border-t border-sidebar-border">
         <div className="flex items-center gap-3 p-2.5 rounded-lg bg-sidebar-accent/60">
           <div className="size-9 rounded-lg bg-secondary text-secondary-foreground flex items-center justify-center text-sm font-medium">
-            {role === "lecturer" ? "DR" : "SP"}
+            {email.slice(0, 2).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm text-sidebar-foreground truncate">
-              {role === "lecturer" ? "Dr. R. Mendis" : "Sahan Perera"}
+              {email}
             </div>
             <div className="text-xs text-muted-foreground truncate capitalize">{role}</div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onLogout} className="size-8">
+          <Button variant="ghost" size="icon" onClick={onLogout} className="size-8" aria-label="Sign out">
             <LogOut className="size-4" />
           </Button>
         </div>

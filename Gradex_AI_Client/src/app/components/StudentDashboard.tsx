@@ -247,7 +247,7 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
               <div className="text-xs text-muted-foreground mt-2">
                 {error.includes("Wait for lecture")
                   ? `Your submission for ${selectedExam?.subject_code} ${selectedExam?.session_name} ${selectedExam?.year} is saved. Once your lecturer clicks Analyze for this exam, your personalized analytics will be generated in background and appear here.`
-                  : `If you just completed an exam, ask your lecturer to analyze it — your account (${studentId.toLowerCase()}@my.sliit.lk / Student@123) is provisioned then and analytics is generated in background.`}
+                  : `If you just completed an exam, ask your lecturer to analyze it — analytics is generated in the background. Contact your lecturer for account access.`}
               </div>
             </div>
           </div>
@@ -454,7 +454,7 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
 
           {/* Footer hint */}
           <div className="text-xs text-muted-foreground text-center">
-            Data is analyzed in background after your lecturer clicks <span className="font-medium">Analyze</span> — if you see &quot;Model unavailable&quot; on the lecturer side, analytics falls back to rule-based scoring. Your login: <span className="font-mono">{studentId.toLowerCase()}@my.sliit.lk</span> / Student@123
+            Data is analyzed in background after your lecturer clicks <span className="font-medium">Analyze</span> — if you see &quot;Model unavailable&quot; on the lecturer side, analytics falls back to rule-based scoring. Contact your lecturer if your results are not available.
           </div>
         </motion.div>
       )}

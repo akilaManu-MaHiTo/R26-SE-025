@@ -2,13 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { transformSync } from 'esbuild';
+import { loadApi } from './load-api.mjs';
 import vm from 'node:vm';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-const source = readFileSync(new URL('../src/app/api/lecturerApi.ts', import.meta.url), 'utf8');
-const code = transformSync(source, { loader: 'ts', format: 'esm' }).code;
-const api = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
+const api = await loadApi('../src/app/api/lecturerApi.ts');
 const exam = { course_code: 'IT/2040', session_name: 'Final Examination', year: 2022, month: 7, semester: 1 };
 
 test('question detail request keeps the complete exam identity and encodes path values', async () => {

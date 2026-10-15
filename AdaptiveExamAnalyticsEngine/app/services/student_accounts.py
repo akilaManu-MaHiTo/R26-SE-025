@@ -1,7 +1,5 @@
 """Student account provisioning on lecturer exam analysis."""
 
-import hashlib
-import secrets
 from datetime import datetime, timezone
 
 from app.db.repository import (
@@ -11,29 +9,11 @@ from app.db.repository import (
     upsert_user,
 )
 
-DEFAULT_PASSWORD = "Student@123"
 EMAIL_DOMAIN = "my.sliit.lk"
-ITERATIONS = 100000
 
 
 def student_email(student_id: str) -> str:
     return f"{student_id.strip().lower()}@{EMAIL_DOMAIN}"
-
-
-def hash_password(password: str) -> str:
-    salt = secrets.token_bytes(16)
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, ITERATIONS)
-    return f"pbkdf2_sha256${ITERATIONS}${salt.hex()}${dk.hex()}"
-
-
-def verify_password(password: str, stored: str) -> bool:
-    try:
-        algo, iters, salt_hex, hash_hex = stored.split("$")
-        # algo is pbkdf2_sha256, iters is numeric string
-        dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), int(iters))
-        return dk.hex() == hash_hex
-    except Exception:
-        return False
 
 
 async def ensure_student_account(db, student_id: str) -> dict:
@@ -54,7 +34,8 @@ async def ensure_student_account(db, student_id: str) -> dict:
     doc = {
         "student_id": sid,
         "email": email,
-        "password_hash": hash_password(DEFAULT_PASSWORD),
+        # Analysis creates a profile; provision_user.py enables login with a unique password.
+        "password_hash": "",
         "role": "student",
         "created_at": now,
         "updated_at": now,

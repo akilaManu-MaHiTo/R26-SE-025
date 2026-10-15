@@ -1,3 +1,5 @@
+import { SERVER_BASE_URL } from "../api/gradingApiBase";
+import { apiFetch } from "../api/authApi";
 export type CourseItem = {
   _id: string;
   code: string;
@@ -20,14 +22,9 @@ export const SAMPLE_COURSES: CourseItem[] = [
   },
 ];
 
-const env = (import.meta as { env?: Record<string, string> }).env ?? {};
 
 /** Server root only — same as viva/diagram. Grading callers pass GRADING_API_BASE_URL explicitly. */
-const DEFAULT_API_BASE_URL = (
-  env.VITE_BACKEND_URL?.trim() ||
-  env.VITE_API_BASE_URL?.trim() ||
-  "http://127.0.0.1:8000"
-).replace(/\/$/, "");
+const DEFAULT_API_BASE_URL = SERVER_BASE_URL;
 
 function parseApiError(data: unknown, fallback: string): string {
   if (data == null || typeof data !== "object") return fallback;
@@ -58,7 +55,7 @@ async function readJsonResponse(response: Response): Promise<unknown> {
 export async function fetchCourses(
   apiBaseUrl: string = DEFAULT_API_BASE_URL,
 ): Promise<CourseItem[]> {
-  const response = await fetch(`${apiBaseUrl}/courses`);
+  const response = await apiFetch(`${apiBaseUrl}/courses`);
   const data = (await readJsonResponse(response)) as { items?: CourseItem[] };
 
   if (!response.ok) {
