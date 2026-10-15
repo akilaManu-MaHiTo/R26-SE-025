@@ -140,7 +140,7 @@ def test_diagram_equal_maxima_rates_and_detection_counts():
     rows = diagram([0, 10], [10, 10])
     for row, status, marks in zip(rows, ["fail", "pass"], [0, 5]):
         row["evaluation_result"]["criteria_results"] = [
-            {"criterion_id": 1, "criterion": "Keys", "awarded_marks": marks, "status": status}]
+            {"criterion_id": 1, "criterion": "Keys", "awarded_marks": marks, "max_marks": 5, "status": status}]
     markings = [{"diagram_marks": marks, "diagram_details": {"entity_count": entities,
                  "relationship_count": 1, "label_count": 3, "detections": ["box"]}}
                 for marks, entities in [(2, 2), (4, 4)]]
@@ -156,18 +156,15 @@ def test_diagram_equal_maxima_rates_and_detection_counts():
     assert compute_diagram_analysis([], []) is None
 
 
-@pytest.mark.xfail(strict=True, reason="EQ-01 diagram pass rate uses average max instead of student max")
 def test_diagram_pass_rate_respects_each_students_denominator():
     result = compute_diagram_analysis(diagram([6, 60], [10, 100]), [])
     assert result["statistics"]["pass_rate"] == 100  # Both earned 60%.
 
 
-@pytest.mark.xfail(strict=True, reason="EQ-02 zero diagram maxima divide by zero in pass-rate calculation")
 def test_zero_diagram_maximum_has_defined_output():
     assert compute_diagram_analysis(diagram([0], [0]), [])["statistics"]["pass_rate"] == 0
 
 
-@pytest.mark.xfail(strict=True, reason="EQ-03 observed maximum award is not rubric maximum")
 def test_partial_diagram_criterion_uses_authoritative_maximum():
     criteria = [{"criterion_id": 1, "criterion": "Keys", "awarded_marks": 2, "max_marks": 5, "status": "partial"}]
     result = compute_diagram_analysis(diagram([2, 2], [5, 5], criteria), [])
@@ -201,7 +198,6 @@ def test_exam_zero_maximum_does_not_crash_before_guard():
     assert exam.compute_exam_analytics_stats(normalized([0], [0]), 0.5)["topic_performance"][0]["average_percentage"] == 0
 
 
-@pytest.mark.xfail(strict=True, reason="EQ-09 topic attempts count aggregated student topics instead of questions")
 def test_topic_attempts_are_question_evidence_not_student_count():
     rows = normalized([0] * 10)
     result = exam.compute_exam_analytics_stats(rows, 0.5)

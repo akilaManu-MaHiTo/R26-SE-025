@@ -43,6 +43,10 @@ export interface TopicPerformance {
   topic: string;
   average_percentage: number;
   status: string;
+  question_count?: number;
+  student_count?: number;
+  attempt_count?: number;
+  evidence_status?: string;
 }
 
 export interface BloomPerformance {
@@ -59,6 +63,7 @@ export interface TopicBloomCell {
   average_percentage: number;
   student_count: number;
   attempt_count: number;
+  question_count?: number;
   evidence_status: string;
 }
 
@@ -86,9 +91,9 @@ export interface AttentionArea {
 export interface DiagramCriterionPerformance {
   criterion_id: number;
   criterion: string;
-  max_marks: number;
+  max_marks: number | null;
   average_awarded_marks: number;
-  average_percentage: number;
+  average_percentage: number | null;
   pass_count: number;
   partial_count: number;
   fail_count: number;

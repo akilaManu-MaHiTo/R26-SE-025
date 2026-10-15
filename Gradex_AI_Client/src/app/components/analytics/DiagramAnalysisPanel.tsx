@@ -130,11 +130,11 @@ export function DiagramAnalysisPanel({ diagramAnalysis }: Props) {
                     <span className="text-muted-foreground mr-1.5">#{c.criterion_id}</span>
                     {c.criterion}
                   </TableCell>
-                  <TableCell className="text-center text-xs tabular-nums">{c.max_marks}</TableCell>
+                  <TableCell className="text-center text-xs tabular-nums">{c.max_marks ?? "N/A"}</TableCell>
                   <TableCell className="text-center text-xs tabular-nums">{c.average_awarded_marks}</TableCell>
                   <TableCell className="text-center text-xs tabular-nums font-medium">
-                    <span className={c.average_percentage >= 80 ? "text-emerald-700" : c.average_percentage >= 50 ? "text-amber-700" : "text-red-700"}>
-                      {c.average_percentage.toFixed(0)}%
+                    <span className={c.average_percentage == null ? "text-muted-foreground" : c.average_percentage >= 80 ? "text-emerald-700" : c.average_percentage >= 50 ? "text-amber-700" : "text-red-700"}>
+                      {c.average_percentage == null ? "N/A" : `${c.average_percentage.toFixed(0)}%`}
                     </span>
                   </TableCell>
                   <TableCell className="text-center">
