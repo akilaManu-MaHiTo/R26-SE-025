@@ -72,8 +72,9 @@ def test_unmarked_tutorial_remains_available_for_lecturer_allocation():
 
 def test_recommendation_keeps_long_question_and_supporting_data():
     text = "Question and supporting table. " * 100
-    result = recommendation.recommend_questions({}, question_bank=[{**row("long"), "text": text}])
+    result = recommendation.recommend_questions({}, question_bank=[{**row("long"), "text": text}], require_evidence=False)
     assert result[0]["text"] == text
+    assert result[0]["reason"]["basis"] == "curriculum_coverage"
 
 
 @pytest.mark.parametrize("blueprint", [
@@ -183,6 +184,7 @@ def test_malformed_part_metadata_is_rejected(part):
 
 async def test_review_endpoint_scopes_bank_and_uses_saved_source(monkeypatch):
     from app.api import lecturer
+    monkeypatch.setitem(app.dependency_overrides, lecturer.get_db, lambda: object())
     captured = []
 
     async def fake_find(db, *args):

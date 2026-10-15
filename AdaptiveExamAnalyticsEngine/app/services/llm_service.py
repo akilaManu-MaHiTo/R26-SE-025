@@ -125,6 +125,8 @@ async def generate_student_insights(student_id: str, evidence: dict) -> dict:
         "The student identifier and backend evidence are authoritative; do not recalculate, alter, "
         "or invent evidence. The response schema contains no score, percentage, marks, average, or "
         "other numeric performance calculations; perform no numeric performance calculations.\n"
+        "Use exact assessed topic names and their observed Bloom levels. Only supported action text "
+        "will be used; backend evidence owns learning gaps, priorities and practice targets.\n"
         "Respond ONLY with JSON matching this schema:\n"
         '{"learning_gaps": [str], "recommendations": [{"priority": "High|Medium|Low", '
         '"topic": str, "bloom_level": "Remember|Understand|Apply|Analyze|Evaluate|Create", '
@@ -160,10 +162,15 @@ def is_embedding_available() -> bool:
 
 
 async def generate_practice_questions(target: dict) -> dict:
-    from app.llm.roles.generate_practice import PracticeQuestions
+    from app.llm.roles.generate_practice import PracticeQuestions, practice_batch_matches_target
+
+    if not target.get("recommended_topics") or not target.get("recommended_bloom_levels"):
+        return {"status": "degraded", "reason": "insufficient_evidence"}
 
     prompt = (
-        "Generate practice DBMS questions for a student using only the supplied targeting. "
+        "Generate practice questions for a student using only the supplied targeting. "
+        "Use the exact supplied topics, Bloom levels and difficulty, return exactly number_of_questions "
+        "distinct prompts, and set requested_count to that count. "
         "The target is authoritative; do not perform any numeric calculations.\n"
         "Respond ONLY with JSON matching this schema:\n"
         '{"requested_count": int, "questions": [{"prompt": str, "bloom_level": '
@@ -179,7 +186,10 @@ async def generate_practice_questions(target: dict) -> dict:
         return {"status": "degraded", "reason": "ollama_unavailable"}
     if parsed is None:
         return {"status": "degraded", "reason": "schema_failure"}
-    return {"status": "ok", "questions": [q.model_dump() for q in parsed.questions]}
+    questions = [q.model_dump() for q in parsed.questions]
+    if parsed.requested_count != target.get("number_of_questions") or not practice_batch_matches_target(questions, target):
+        return {"status": "degraded", "reason": "target_mismatch"}
+    return {"status": "ok", "questions": questions}
 
 
 async def generate_candidates(recommendation: dict, count: int = 3) -> dict:

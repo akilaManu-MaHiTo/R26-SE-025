@@ -183,12 +183,10 @@ def test_negative_weights_cannot_produce_out_of_range_scores():
     assert not weights.validates()
 
 
-@pytest.mark.xfail(strict=True, reason="EQ-06 NDCG ideal must be drawn from all candidate relevance before truncation")
 def test_ndcg_ideal_uses_relevant_candidates_below_cutoff():
     assert ndcg_at_k([True, False, True], 2) == pytest.approx(1 / (1 + 1 / math.log2(3)))
 
 
-@pytest.mark.xfail(strict=True, reason="EQ-07 zero cutoff treated as full list by k or len")
 def test_ndcg_zero_cutoff_is_zero():
     assert ndcg_at_k([True], 0) == 0
 
@@ -210,7 +208,6 @@ def test_tutorial_one_practice_endpoint_matches_its_contract():
     assert result["tutorial_evidence"]["SQL"] == 0.6
 
 
-@pytest.mark.xfail(strict=True, reason="EQ-11 accuracy silently drops unmatched labels")
 def test_accuracy_rejects_unpaired_observations():
     with pytest.raises(ValueError):
         accuracy(["A"], ["A", "B"])

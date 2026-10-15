@@ -2,7 +2,13 @@ import csv
 from collections import Counter
 
 
+def _validate_pairs(predictions: list[str], labels: list[str]) -> None:
+    if len(predictions) != len(labels):
+        raise ValueError("Predictions and labels must have equal length")
+
+
 def accuracy(predictions: list[str], labels: list[str]) -> float:
+    _validate_pairs(predictions, labels)
     if not predictions:
         return 0.0
     correct = sum(1 for p, l in zip(predictions, labels) if p == l)
@@ -12,11 +18,15 @@ def accuracy(predictions: list[str], labels: list[str]) -> float:
 def confusion_matrix(
     predictions: list[str], labels: list[str], classes: list[str]
 ) -> list[list[int]]:
+    _validate_pairs(predictions, labels)
+    if len(set(classes)) != len(classes):
+        raise ValueError("Classes must be unique")
+    if (set(predictions) | set(labels)) - set(classes):
+        raise ValueError("Every observed label must be included in classes")
     index = {c: i for i, c in enumerate(classes)}
     matrix = [[0 for _ in classes] for _ in classes]
     for p, l in zip(predictions, labels):
-        if p in index and l in index:
-            matrix[index[l]][index[p]] += 1
+        matrix[index[l]][index[p]] += 1
     return matrix
 
 
@@ -36,15 +46,17 @@ def _per_class_f1(matrix: list[list[int]], classes: list[str]) -> list[float]:
 def macro_f1(
     predictions: list[str], labels: list[str], classes: list[str] | None = None
 ) -> float:
-    classes = classes or sorted(set(labels) | set(predictions))
+    _validate_pairs(predictions, labels)
+    classes = sorted(set(labels) | set(predictions)) if classes is None else classes
+    matrix = confusion_matrix(predictions, labels, classes)
     if not classes:
         return 0.0
-    matrix = confusion_matrix(predictions, labels, classes)
     f1s = _per_class_f1(matrix, classes)
     return sum(f1s) / len(f1s)
 
 
 def cohen_kappa(rater_a: list[str], rater_b: list[str]) -> float:
+    _validate_pairs(rater_a, rater_b)
     n = len(rater_a)
     if n == 0:
         return 0.0
@@ -169,12 +181,14 @@ def ndcg_at_k(ranked_would_use: list[bool], k: int | None = None) -> float:
     """NDCG@k for binary relevance (would_use). Ideal = all True first."""
     import math as _math
 
-    if not ranked_would_use:
+    if k is not None and k < 0:
+        raise ValueError("k must be nonnegative")
+    if not ranked_would_use or k == 0:
         return 0.0
-    k = k or len(ranked_would_use)
+    k = len(ranked_would_use) if k is None else k
     ranked = ranked_would_use[:k]
     dcg = sum((1.0 / _math.log2(i + 2)) for i, rel in enumerate(ranked) if rel)
-    ideal = sorted(ranked, reverse=True)
+    ideal = sorted(ranked_would_use, reverse=True)[:k]
     idcg = sum((1.0 / _math.log2(i + 2)) for i, rel in enumerate(ideal) if rel)
     return dcg / idcg if idcg else 0.0
 

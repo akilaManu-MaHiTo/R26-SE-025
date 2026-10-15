@@ -7,7 +7,7 @@ async def test_generate_practice_questions_caches_document(monkeypatch):
     from app.schemas.student import NextQuestionStrategy
 
     strategy = NextQuestionStrategy(recommended_topics=["SQL"], recommended_bloom_levels=["Understand"], recommended_difficulty="Medium", number_of_questions=5)
-    gen = AsyncMock(return_value={"status": "ok", "questions": [{"prompt": "p", "bloom_level": "Understand", "topic": "SQL", "difficulty": "Medium", "hints": []}]})
+    gen = AsyncMock(return_value={"status": "ok", "questions": [{"prompt": f"SQL exercise {i}", "bloom_level": "Understand", "topic": "SQL", "difficulty": "Medium", "hints": []} for i in range(5)]})
     save = AsyncMock()
     monkeypatch.setattr(practice_questions, "generate_practice_questions_call", gen)
     monkeypatch.setattr(practice_questions, "upsert_generated_questions", save)

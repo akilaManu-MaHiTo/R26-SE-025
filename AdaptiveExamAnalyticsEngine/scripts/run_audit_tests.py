@@ -46,6 +46,7 @@ def main():
         "test_independent_equation_audit", "test_independent_recommendation_audit",
         "test_independent_dashboard_audit", "test_bloom_evidence_audit",
         "test_assessment_evidence_counts",
+        "test_recommendation_evidence", "test_exam_creator",
     ]
     paths = [f"tests/{name}.py" for name in names if (root / f"tests/{name}.py").exists()]
     assert len(paths) == len(names), "Audit selection is incomplete: a required test file is missing"
