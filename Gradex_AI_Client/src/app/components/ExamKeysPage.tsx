@@ -2,11 +2,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { createExamKey, fetchExamKeys, type ExamKeyInput, type ExamKeyRecord } from "../api/examKeysApi";
 import { formatCourseLabel, type CourseItem } from "../utils/courseOptions";
-import { fetchTaxonomyCourses } from "../api/taxonomyApi";
+import { createCourse, fetchTaxonomyCourses } from "../api/taxonomyApi";
 import { MONTH_OPTIONS } from "../utils/dateOptions";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 
 const selectClass = "border rounded-md p-2 bg-background text-sm";
 
@@ -19,6 +21,10 @@ export function ExamKeysPage() {
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
   const [reload, setReload] = useState(0);
+  const [courseDialogOpen, setCourseDialogOpen] = useState(false);
+  const [newCourse, setNewCourse] = useState({ code: "", name: "", description: "" });
+  const [creatingCourse, setCreatingCourse] = useState(false);
+  const [createCourseError, setCreateCourseError] = useState("");
   const loadError = [courseError, examError].filter(Boolean).join(" ");
   const [draft, setDraft] = useState<ExamKeyInput>({
     subjectCode: "", subjectName: "",
@@ -59,6 +65,23 @@ export function ExamKeysPage() {
     } finally { setSaving(false); }
   }
 
+  async function saveCourse(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (creatingCourse) return;
+    setCreatingCourse(true);
+    setCreateCourseError("");
+    try {
+      const course = await createCourse(newCourse);
+      setCourses((current) => [...current, course].sort((a, b) => a.code.localeCompare(b.code)));
+      setDraft((current) => ({ ...current, subjectCode: course.code, subjectName: course.name ?? "" }));
+      setCourseDialogOpen(false);
+      setNewCourse({ code: "", name: "", description: "" });
+      toast.success(`Course ${course.code} added.`);
+    } catch (err) {
+      setCreateCourseError(err instanceof Error ? err.message : "Could not save course.");
+    } finally { setCreatingCourse(false); }
+  }
+
   return (
     <div className="p-8 space-y-6 max-w-6xl mx-auto">
       <div>
@@ -68,20 +91,25 @@ export function ExamKeysPage() {
       {loadError && <div role="alert" className="text-sm text-destructive flex items-center gap-3">
         {loadError}<Button variant="outline" onClick={() => setReload((value) => value + 1)}>Retry</Button>
       </div>}
+      <Dialog open={courseDialogOpen} onOpenChange={(open) => { if (!creatingCourse) setCourseDialogOpen(open); }}>
       <Card className="p-6">
         <form onSubmit={save} className="space-y-5">
           <h3 className="font-medium">Create exam key</h3>
           <fieldset disabled={loading || saving || !!courseError} className="space-y-5">
             <div className="grid sm:grid-cols-2 gap-4">
-              <label className="grid gap-1 text-sm">Subject
-                <select required className={selectClass} value={draft.subjectCode} onChange={(event) => {
+              <div className="grid gap-1 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor="exam-subject">Subject</label>
+                  <DialogTrigger asChild><Button type="button" variant="outline" size="sm" onClick={() => setCreateCourseError("")}>Add course</Button></DialogTrigger>
+                </div>
+                <select id="exam-subject" required className={selectClass} value={draft.subjectCode} onChange={(event) => {
                   const course = courses.find((item) => item.code === event.target.value);
                   setDraft({ ...draft, subjectCode: course?.code ?? "", subjectName: course?.name ?? "" });
                 }}>
                   <option value="">{loading ? "Loading subjects…" : "Select subject"}</option>
                   {courses.map((course) => <option key={course._id} value={course.code}>{formatCourseLabel(course)}</option>)}
                 </select>
-              </label>
+              </div>
               <label className="grid gap-1 text-sm">Subject name
                 <Input required maxLength={200} value={draft.subjectName} onChange={(event) => setDraft({ ...draft, subjectName: event.target.value })} />
               </label>
@@ -127,6 +155,31 @@ export function ExamKeysPage() {
           </fieldset>
         </form>
       </Card>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add course</DialogTitle>
+            <DialogDescription>Save a course and select it for this exam.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={saveCourse} className="space-y-4">
+            <fieldset disabled={creatingCourse} className="space-y-4">
+              <label className="grid gap-1 text-sm">Course code
+                <Input required maxLength={64} placeholder="IT2040" value={newCourse.code} onChange={(event) => setNewCourse({ ...newCourse, code: event.target.value })} />
+              </label>
+              <label className="grid gap-1 text-sm">Course name
+                <Input required maxLength={200} value={newCourse.name} onChange={(event) => setNewCourse({ ...newCourse, name: event.target.value })} />
+              </label>
+              <label className="grid gap-1 text-sm">Description
+                <Textarea maxLength={2000} value={newCourse.description} onChange={(event) => setNewCourse({ ...newCourse, description: event.target.value })} />
+              </label>
+              {createCourseError && <p role="alert" className="text-sm text-destructive">{createCourseError}</p>}
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setCourseDialogOpen(false)}>Cancel</Button>
+                <Button type="submit">{creatingCourse ? "Saving…" : "Save course"}</Button>
+              </div>
+            </fieldset>
+          </form>
+        </DialogContent>
+      </Dialog>
       <Card className="p-6 space-y-4">
         <h3 className="font-medium">Saved exam keys</h3>
         {loading ? <p role="status" className="text-sm text-muted-foreground">Loading exam keys…</p> : !examError && !exams.length ? <p className="text-sm text-muted-foreground">No exam keys yet.</p> : <div className="overflow-x-auto">

@@ -1,7 +1,10 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Header
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pymongo.errors import DuplicateKeyError, PyMongoError
+
+from Gradex_AI_Server.app.auth import require_lecturer
 
 from app.api.deps import get_db
 from app.taxonomy.normalizer import invalidate_taxonomy_cache, slugify_topic
@@ -13,6 +16,28 @@ router = APIRouter(prefix="/api/courses", tags=["taxonomy"])
 async def list_taxonomy_courses(db=Depends(get_db)):
     docs = await db["courses"].find({}).sort("code", 1).to_list(length=500)
     return {"items": [{**doc, "_id": str(doc["_id"])} for doc in docs]}
+
+
+class CourseCreatePayload(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    code: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=2000)
+
+
+@router.post("", status_code=201, dependencies=[Depends(require_lecturer)])
+async def create_course(payload: CourseCreatePayload, db=Depends(get_db)):
+    record = payload.model_dump()
+    record["code"] = " ".join(payload.code.upper().split())
+    try:
+        collection = db["courses"]
+        await collection.create_index("code", unique=True)
+        result = await collection.insert_one(record.copy())
+    except DuplicateKeyError as exc:
+        raise HTTPException(409, "Course code already exists.") from exc
+    except PyMongoError as exc:
+        raise HTTPException(503, "Could not save the course. Please retry.") from exc
+    return {**record, "_id": str(result.inserted_id)}
 
 
 class TopicPayload(BaseModel):

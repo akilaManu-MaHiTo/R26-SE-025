@@ -23,9 +23,9 @@ export interface TaxonomyVersion {
   updated_by: string | null;
 }
 
-async function request<T>(path: string, body?: unknown): Promise<T> {
+async function request<T>(path: string, body?: unknown, method = body === undefined ? "GET" : "PUT"): Promise<T> {
   const response = await apiFetch(`${API_BASE}/api/courses${path}`, {
-    method: body === undefined ? "GET" : "PUT",
+    method,
     headers: {
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
     },
@@ -33,7 +33,7 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   });
   const data = await response.json();
   if (!response.ok) {
-    const message = typeof data.detail === "string" ? data.detail : "Could not load or save taxonomy. Check the topic fields.";
+    const message = typeof data.detail === "string" ? data.detail : "Could not save these details. Check the fields and retry.";
     throw new Error(message);
   }
   return data;
@@ -41,6 +41,9 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
 
 export const fetchTaxonomyCourses = async () =>
   (await request<{ items: CourseItem[] }>("")).items;
+
+export const createCourse = (course: Pick<CourseItem, "code" | "name" | "description">) =>
+  request<CourseItem>("", course, "POST");
 
 export const fetchTaxonomy = (courseCode: string, version?: number) =>
   request<TaxonomyDocument>(`/${encodeURIComponent(courseCode)}/taxonomy${version === undefined ? "" : `/history/${version}`}`);

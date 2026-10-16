@@ -4,13 +4,14 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ExamKeysPage } from "./ExamKeysPage";
 import { createExamKey, fetchExamKeys } from "../api/examKeysApi";
-import { fetchTaxonomyCourses } from "../api/taxonomyApi";
+import { createCourse, fetchTaxonomyCourses } from "../api/taxonomyApi";
 
 vi.mock("../api/examKeysApi", () => ({ fetchExamKeys: vi.fn(), createExamKey: vi.fn() }));
 vi.mock("../utils/courseOptions", () => ({
   formatCourseLabel: (course: { code: string }) => course.code,
 }));
 vi.mock("../api/taxonomyApi", () => ({
+  createCourse: vi.fn(),
   fetchTaxonomyCourses: vi.fn().mockResolvedValue([{ _id: "1", code: "IT2040", name: "Database Management System" }]),
 }));
 
@@ -77,4 +78,33 @@ it("loads subjects from courses even when exam keys cannot load", async () => {
   await fillForm();
   expect((screen.getByLabelText("Subject name") as HTMLInputElement).value).toBe("Database Management System");
   expect(await screen.findByRole("alert")).toHaveProperty("textContent", expect.stringContaining("Could not load exam keys."));
+});
+
+it("adds a course and selects it without submitting the exam", async () => {
+  vi.mocked(fetchExamKeys).mockResolvedValue([]);
+  vi.mocked(createCourse).mockResolvedValue({ _id: "2", code: "IT2050", name: "New Course", description: "Course description" });
+  render(<ExamKeysPage />);
+  await screen.findByRole("option", { name: "IT2040" });
+  fireEvent.click(screen.getByRole("button", { name: "Add course" }));
+  fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "IT2050" } });
+  fireEvent.change(screen.getByLabelText("Course name"), { target: { value: "New Course" } });
+  fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Course description" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save course" }));
+  await waitFor(() => expect((screen.getByLabelText("Subject") as HTMLSelectElement).value).toBe("IT2050"));
+  expect((screen.getByLabelText("Subject name") as HTMLInputElement).value).toBe("New Course");
+  expect(createCourse).toHaveBeenCalledWith({ code: "IT2050", name: "New Course", description: "Course description" });
+  expect(createExamKey).not.toHaveBeenCalled();
+});
+
+it("keeps the course dialog and its draft when the code already exists", async () => {
+  vi.mocked(fetchExamKeys).mockResolvedValue([]);
+  vi.mocked(createCourse).mockRejectedValue(new Error("Course code already exists."));
+  render(<ExamKeysPage />);
+  await screen.findByRole("option", { name: "IT2040" });
+  fireEvent.click(screen.getByRole("button", { name: "Add course" }));
+  fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "IT2040" } });
+  fireEvent.change(screen.getByLabelText("Course name"), { target: { value: "Duplicate" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save course" }));
+  expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Course code already exists.");
+  expect((screen.getByLabelText("Course code") as HTMLInputElement).value).toBe("IT2040");
 });
