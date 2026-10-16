@@ -9,6 +9,8 @@ def test_old_calculation_snapshot_requires_rebuild():
                 "canonical_insights": [], "statistics": {}}
     assert not _is_complete_snapshot(snapshot)
     snapshot["analytics_version"] = "1.1"
+    assert not _is_complete_snapshot(snapshot)
+    snapshot["analytics_version"] = "1.2"
     assert _is_complete_snapshot(snapshot)
 
 

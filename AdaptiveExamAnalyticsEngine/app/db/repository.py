@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path as _Path
 
+from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
@@ -179,15 +180,17 @@ async def find_rubric_for_submission(
     rubric_ref = submission.get("rubric_ref")
     if _is_usable_reference(rubric_ref):
         rubric = await db["rubricCollection"].find_one({"_id": rubric_ref})
+        if rubric is None and isinstance(rubric_ref, str) and ObjectId.is_valid(rubric_ref):
+            rubric = await db["rubricCollection"].find_one({"_id": ObjectId(rubric_ref)})
         if rubric is not None:
             return rubric
 
     subject_code = submission.get("subject_code") or submission.get("course_code")
     session_name = submission.get("session_name")
     if subject_code and session_name:
-        return await db["rubricCollection"].find_one(
-            {"subject_code": subject_code, "session_name": session_name}
-        )
+        identity = {"subject_code": subject_code, "session_name": session_name}
+        identity.update({key: submission[key] for key in ("year", "month", "semester") if submission.get(key) is not None})
+        return await db["rubricCollection"].find_one(identity)
     return None
 
 

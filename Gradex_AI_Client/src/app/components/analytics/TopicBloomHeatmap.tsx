@@ -67,7 +67,7 @@ export function TopicBloomHeatmap({ topic_bloom_matrix }: Props) {
         <tbody>
           {topics.map((topic) => (
             <tr key={topic} className="border-b last:border-0">
-              <td className="p-2 font-medium text-xs whitespace-nowrap">{topic}</td>
+              <td className="p-2 font-medium text-xs whitespace-nowrap">{topic === "Unclassified" ? "Topic assignment pending" : topic}</td>
               {bloomLevels.map((lvl) => {
                 const cell = cellMap.get(`${topic}|${lvl}`);
                 if (!cell) {
@@ -77,11 +77,11 @@ export function TopicBloomHeatmap({ topic_bloom_matrix }: Props) {
                     </td>
                   );
                 }
-                const bg = cellBg(cell.average_percentage);
+                const bg = topic === "Unclassified" ? "hsl(var(--muted))" : cellBg(cell.average_percentage);
                 // Tooltip content: avg% + n + evidence_status
                 const coverage = cell.question_count == null ? "question coverage unavailable" : `${cell.question_count} questions`;
                 const tooltip = `${cell.average_percentage.toFixed(1)}% (n=${cell.student_count}, ${cell.attempt_count} responses, ${coverage}) - ${cell.evidence_status}`;
-                const showWeakBadge = cell.evidence_status === "confirmed_weakness" || cell.evidence_status === "possible_weakness";
+                const showWeakBadge = topic !== "Unclassified" && (cell.evidence_status === "confirmed_weakness" || cell.evidence_status === "possible_weakness");
                 return (
                   <td key={lvl} className="p-1">
                     <div
