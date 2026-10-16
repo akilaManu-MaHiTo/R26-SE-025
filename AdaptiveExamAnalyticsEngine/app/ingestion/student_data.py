@@ -19,6 +19,7 @@ class NormalizedQuestionInput(BaseModel):
     score: float = Field(ge=0)
     max_score: float = Field(gt=0)
     criteria: list[NormalizedCriterion]
+    approved_topic: str | None = None
 
 
 class NormalizedStudentInput(BaseModel):
@@ -167,6 +168,7 @@ def normalize_student_submission(
                 score=score,
                 max_score=max_score,
                 criteria=criteria,
+                approved_topic=rubric_question.get("approved_topic"),
             )
         )
 
