@@ -1,4 +1,4 @@
-"""Stage-1 viva assessment scoring (scoring_version v1).
+"""Stage-1 viva assessment scoring (scoring_version v1.2).
 
 Authoritative pipeline:
   analysis JSON → canonical features → quality gates → AI performance /100
@@ -8,14 +8,16 @@ Does NOT use: LLM criterion scores, UI sliders, engagement_score (diagnostic ble
 audio_grade, pitch_score (180 Hz), transcript_score, segment_score.
 
 Families (equal weight, missing families dropped and renormalized):
-  engagement       — equal mix of CNN average_engagement_score + facial_confidence
-                     (facial_confidence = confidence_score/100; emotion-weighted face tone)
-  audio_acoustics  — pitch stability from std, HNR clarity, jitter/shimmer
+  engagement       — equal mix of CNN average_engagement_score, facial_confidence
+                     (confidence_score/100), facial emotion profile, on-camera gaze ratio,
+                     head stability and blink-rate score (v1.2; unavailable parts dropped)
+  audio_acoustics  — pitch stability from std, HNR clarity, jitter/shimmer, plus
+                     speech-emotion tone at SER_TONE_WEIGHT (v1.2; real SER model only)
                      (not audio_grade; not 180 Hz pitch_score; rms excluded as recording-level)
   transcript       — WPM band, hedges, fillers, long pauses, sentence completion
                      (not word_count/80)
 
-SER / raw emotion ratio bars remain evidence/UI; facial_confidence is the scored face-tone input.
+Raw emotion ratio bars remain UI evidence; the scored face-tone inputs are listed above.
 
 Mode WITHOUT_TECHNICAL_ACCURACY: final = AI performance; technical_accuracy = null
 Mode WITH_TECHNICAL_ACCURACY: final = w_ai * AI + w_tech * technical_0_100
@@ -34,7 +36,12 @@ from services.canonical_features import (
 )
 
 
-SCORING_VERSION = "v1.1"
+SCORING_VERSION = "v1.2"
+
+# Speech-emotion tone is scored inside audio_acoustics at reduced weight: the SER model
+# is trained on acted speech (IEMOCAP) and over-predicts "angry" on real presentations.
+# A weight of 1.0 would equal the other audio parts; change only by bumping SCORING_VERSION.
+SER_TONE_WEIGHT = 0.5
 
 MODE_WITHOUT = "WITHOUT_TECHNICAL_ACCURACY"
 MODE_WITH = "WITH_TECHNICAL_ACCURACY"
@@ -288,8 +295,13 @@ def _engagement_family(features: Dict[str, Any]) -> Tuple[Optional[float], List[
             if video.get("facial_confidence") is not None
             else None
         ),
+        # v1.2: facial behaviour signals count toward the mark.
+        "emotion_profile": video.get("emotion_profile_score"),
+        "gaze_on_camera_ratio": video.get("gaze_on_camera_ratio"),
+        "head_stability": video.get("head_stability"),
+        "blink_score": video.get("blink_score"),
     }
-    available = {k: v for k, v in parts.items() if v is not None}
+    available = {k: _clamp(float(v)) for k, v in parts.items() if v is not None}
     if not available:
         return None, []
     weight = 1.0 / len(available)
@@ -337,11 +349,16 @@ def _audio_family(features: Dict[str, Any]) -> Tuple[Optional[float], List[Dict[
         "clarity_from_hnr": clarity,
         "articulation_from_jitter_shimmer": articulation,
     }
+    tone = (features.get("ser") or {}).get("tone_score")
     available = {k: v for k, v in parts.items() if v is not None}
+    weights = {k: 1.0 for k in available}
+    if tone is not None:
+        available["speech_emotion_tone"] = _clamp(float(tone))
+        weights["speech_emotion_tone"] = SER_TONE_WEIGHT
     if not available:
         return None, []
-    weight = 1.0 / len(available)
-    family = sum(available.values()) / len(available)
+    total_w = sum(weights.values())
+    family = sum(weights[k] * v for k, v in available.items()) / total_w
     components = [
         {
             "feature": name,
@@ -349,7 +366,7 @@ def _audio_family(features: Dict[str, Any]) -> Tuple[Optional[float], List[Dict[
             "direction": "higher_better",
             "missing": False,
             "family": "audio_acoustics",
-            "weight_within_family": round(weight, 4),
+            "weight_within_family": round(weights[name] / total_w, 4),
         }
         for name, value in available.items()
     ]

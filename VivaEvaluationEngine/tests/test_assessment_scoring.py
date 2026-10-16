@@ -343,5 +343,55 @@ class ScorerFamilyTests(unittest.TestCase):
         self.assertIn("facial_confidence", names)
 
 
+class FacialAndSpeechEmotionScoringTests(unittest.TestCase):
+    """v1.2: emotion/gaze/head/blink score inside Engagement; SER tone inside Audio."""
+
+    def _video(self, emotion=0.9, gaze=0.85, head=0.8, blink_bpm=12.0):
+        return {
+            "emotion": {"status": "available", "score": emotion},
+            "gaze": {"status": "available", "gaze_on_camera_ratio": gaze},
+            "head_pose": {"status": "available", "stability_score": head},
+            "blink": {"status": "available", "blink_rate_per_minute": blink_bpm},
+        }
+
+    def test_facial_signals_enter_engagement_family(self):
+        result = _sample_result()
+        result["video_features"] = self._video()
+        scored = score_ai_performance(extract_canonical_features(result))
+        names = {c["feature"] for c in scored["components"] if c["family"] == "engagement"}
+        self.assertEqual(
+            names,
+            {"average_engagement_score", "facial_confidence", "emotion_profile",
+             "gaze_on_camera_ratio", "head_stability", "blink_score"},
+        )
+
+    def test_worse_gaze_lowers_engagement_and_mark(self):
+        good, bad = _sample_result(), _sample_result()
+        good["video_features"] = self._video(gaze=0.95)
+        bad["video_features"] = self._video(gaze=0.10)
+        g = build_assessment(good)["ai_performance"]
+        b = build_assessment(bad)["ai_performance"]
+        self.assertGreater(g["family_scores"]["engagement"], b["family_scores"]["engagement"])
+        self.assertGreater(g["score"], b["score"])
+
+    def test_missing_facial_signals_are_dropped_not_penalised(self):
+        plain = build_assessment(_sample_result())["ai_performance"]["family_scores"]["engagement"]
+        result = _sample_result()
+        result["video_features"] = {"gaze": {"status": "unavailable"}}
+        self.assertEqual(
+            build_assessment(result)["ai_performance"]["family_scores"]["engagement"], plain
+        )
+
+    def test_speech_emotion_counts_only_from_real_model(self):
+        model, heuristic = _sample_result(), _sample_result()
+        model["audio_analysis"]["audio_emotion"] = {"source": "model", "predicted_emotion": "angry", "confidence": 0.9}
+        heuristic["audio_analysis"]["audio_emotion"] = {"source": "heuristic", "predicted_emotion": "angry", "confidence": 0.9}
+        m = build_assessment(model)["ai_performance"]
+        h = build_assessment(heuristic)["ai_performance"]
+        self.assertIn("speech_emotion_tone", {c["feature"] for c in m["components"]})
+        self.assertNotIn("speech_emotion_tone", {c["feature"] for c in h["components"]})
+        self.assertLess(m["family_scores"]["audio_acoustics"], h["family_scores"]["audio_acoustics"])
+
+
 if __name__ == "__main__":
     unittest.main()
