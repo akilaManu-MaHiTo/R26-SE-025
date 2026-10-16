@@ -132,3 +132,13 @@ export async function saveSubjectContent(
   if (!response.ok) throw new Error(await readError(response));
   return (await response.json()) as SubjectRubric;
 }
+
+/** Delete a subject and its whole rubric (DELETE /api/subject-content/{code}). */
+export async function deleteSubjectContent(subjectCode: string): Promise<void> {
+  const response = await apiFetch(
+    `${backendBaseUrl}/api/subject-content/${encodeURIComponent(subjectCode)}`,
+    { method: "DELETE" },
+  );
+
+  if (!response.ok) throw new Error(await readError(response));
+}

@@ -485,3 +485,16 @@ async def replace_subject_rubric(
         upsert=True,
     )
     return await get_subject_rubric(db_instance, subject_code)
+
+
+async def delete_subject_rubric(db_instance, subject_code: str) -> bool:
+    """Remove a subject's whole rubric. Returns False if there was none.
+
+    Only the rubric document goes. Marks already stored in the viva results
+    collection keep their own copy of the technical-accuracy result.
+    """
+    collection = _collection(db_instance)
+    if collection is None:
+        raise RuntimeError("MongoDB is not connected.")
+    result = await collection.delete_one({"subject_code": subject_code})
+    return result.deleted_count > 0
