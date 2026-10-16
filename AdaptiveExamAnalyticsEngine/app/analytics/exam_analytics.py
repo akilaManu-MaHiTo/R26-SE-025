@@ -63,6 +63,7 @@ def build_insights(
     when data available; falls back gracefully when inputs empty.
     """
     insights: list[str] = []
+    topic_performance = [t for t in topic_performance if t.get("topic") != "Unclassified"]
     # --- topic weakest / strongest with sample size ---
     if topic_performance:
         try:
@@ -256,7 +257,7 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
                 "topic": name,
                 "average_percentage": avg_pct,
                 "status": performance_status(score / topic_max[name] * 100.0 if topic_max[name] else 0.0),
-                "evidence_status": _evidence_status(avg_pct, sc, qc, min_students, min_attempts),
+                "evidence_status": "insufficient_evidence" if name == "Unclassified" else _evidence_status(avg_pct, sc, qc, min_students, min_attempts),
                 "student_count": sc,
                 "attempt_count": ac,
                 "question_count": qc,
@@ -419,7 +420,7 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
                 "student_count": sc,
                 "attempt_count": ac,
                 "question_count": qc,
-                "evidence_status": _evidence_status(avg_pct, sc, qc, min_students, min_attempts),
+                "evidence_status": "insufficient_evidence" if topic == "Unclassified" else _evidence_status(avg_pct, sc, qc, min_students, min_attempts),
             }
         )
 
@@ -427,7 +428,7 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
         {"type": "topic", "name": topic["topic"], "average_percentage": topic["average_percentage"],
          "priority": _ATTENTION_PRIORITY[topic["status"]]}
         for topic in topic_performance
-        if topic["status"] in _ATTENTION_PRIORITY
+        if topic["status"] in _ATTENTION_PRIORITY and topic["topic"] != "Unclassified"
     ]
     insights = build_insights(statistics, topic_performance, question_performance, bloom_performance)
     return {

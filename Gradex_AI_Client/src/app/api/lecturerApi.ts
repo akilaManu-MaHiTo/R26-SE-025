@@ -204,6 +204,22 @@ export interface QuestionDetail {
     feedback: string | null;
   }>;
   excluded_count: number;
+  approved_topic: string | null;
+  topic_options: string[];
+}
+
+export async function saveQuestionTopic(
+  exam: Pick<ExamListItem, "course_code" | "session_name" | "year" | "month" | "semester">,
+  questionNo: string,
+  topic: string | null,
+): Promise<{ question_no: string; approved_topic: string | null }> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${encodeURIComponent(exam.course_code)}/${encodeURIComponent(exam.session_name)}/questions/${encodeURIComponent(questionNo)}/topic?${params}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Could not save question topic");
+  return data;
 }
 
 export async function fetchQuestionDetail(
@@ -460,6 +476,32 @@ export interface LecturerStudentDetail {
   diagram?: { evaluation?: DiagramEvaluation; marking?: DiagramMarking };
   diagram_evaluation?: DiagramEvaluation | null;
   diagram_marking?: DiagramMarking | null;
+}
+
+export interface StudentAnswerEvidence {
+  question_no: string;
+  answer_excerpt: string | null;
+  slice_source: string | null;
+  feedback: string | null;
+  justification: string | null;
+  criteria_breakdown: Array<{ point: string; awarded_marks: number | null; reason: string | null }>;
+  grading_source: string | null;
+  grading_error: string | null;
+}
+
+export async function fetchStudentAnswerEvidence(
+  exam: { course_code: string; session_name: string; year: number; month: number; semester: number },
+  studentId: string,
+  questionNo: string,
+): Promise<StudentAnswerEvidence> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const path = [exam.course_code, exam.session_name].map(encodeURIComponent).join("/");
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${path}/student/${encodeURIComponent(studentId)}/questions/${encodeURIComponent(questionNo)}?${params}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Could not load saved answer evidence");
+  }
+  return res.json();
 }
 
 export async function fetchLecturerStudentDetail(

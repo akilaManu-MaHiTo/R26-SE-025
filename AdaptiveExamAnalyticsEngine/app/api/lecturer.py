@@ -26,7 +26,7 @@ from app.services.exam_creator import course_bank, review_paper, generate_for_pa
 from app.llm.ollama import check_llm_detailed_health
 from app.services.exam_analytics import ANALYTICS_VERSION, ExamNotFound, compute_exam_analytics
 from app.services.recommendation import recommend_for_weak_areas
-from app.services.student_dashboard import StudentNotFound, ensure_student_analytics
+from app.services.student_dashboard import StudentNotFound, ensure_student_analytics, is_current_student_analysis
 from app.services.teaching_actions import get_teaching_actions
 from app.ingestion.student_data import normalize_question_no
 from app.ingestion.answer_text import question_excerpt
@@ -114,6 +114,8 @@ def _attach_diagram(target: dict, diagram, diagram_marking) -> dict:
 def _is_complete_snapshot(doc: dict | None) -> bool:
     if not doc:
         return False
+    if doc.get("topic_assignment_pending"):
+        return False
     # Legacy snapshots lack canonical fields or have wrong version
     if doc.get("analytics_version") != ANALYTICS_VERSION:
         return False
@@ -188,17 +190,7 @@ async def list_exams(db=Depends(get_db)):
     return exams
 
 
-@router.get("/exams/{course_code}/{session_name}/questions/{question_no}")
-async def lecturer_question_detail(
-    course_code: str,
-    session_name: str,
-    question_no: str,
-    year: int = Query(...),
-    month: int = Query(...),
-    semester: int = Query(...),
-    db=Depends(get_db),
-):
-    """Read question evidence from the rubric and graded submissions, without AI."""
+async def _exam_question(db, course_code, session_name, question_no, year, month, semester):
     identity = {"subject_code": course_code, "session_name": session_name,
                 "year": year, "month": month, "semester": semester}
     submissions = await find_graded_submissions_for_exam(db, course_code, session_name, year, month, semester)
@@ -216,6 +208,56 @@ async def lecturer_question_detail(
                      if normalize_question_no(q.get("question_no")) == number), None)
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found for this exam session")
+    return rubric, question, submissions
+
+
+class QuestionTopicPayload(BaseModel):
+    topic: str | None = Field(..., max_length=120)
+
+
+@router.put("/exams/{course_code}/{session_name}/questions/{question_no}/topic")
+async def approve_question_topic(
+    course_code: str, session_name: str, question_no: str,
+    payload: QuestionTopicPayload,
+    year: int = Query(...), month: int = Query(...), semester: int = Query(...),
+    db=Depends(get_db),
+):
+    from app.taxonomy.normalizer import load_taxonomy
+
+    rubric, question, _ = await _exam_question(db, course_code, session_name, question_no, year, month, semester)
+    taxonomy = await load_taxonomy(db, course_code)
+    topics = {entry["canonical_topic"] for entry in taxonomy.values()}
+    topic = payload.topic.strip() if payload.topic is not None else None
+    if topic is not None and (topic not in topics or topic == "Unclassified"):
+        raise HTTPException(status_code=422, detail="Choose a topic from this course's taxonomy")
+    questions = [dict(q) for q in rubric["questions"]]
+    for q in questions:
+        if q.get("question_no") == question.get("question_no"):
+            q["approved_topic"] = topic
+            q["topic_reviewed_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db["rubricCollection"].update_one(
+        {"_id": rubric["_id"], "questions": rubric["questions"]}, {"$set": {"questions": questions}},
+    )
+    if not result.matched_count:
+        raise HTTPException(status_code=409, detail="The rubric changed. Reload the question before saving.")
+    identity = {"subject_code": course_code, "session_name": session_name,
+                "year": year, "month": month, "semester": semester}
+    for collection in ("examAnalytics", "analytics_snapshots", "student_analytics", "studentExamAnalysis"):
+        await db[collection].update_many(identity, {"$set": {"topic_assignment_pending": True}})
+    return {"question_no": normalize_question_no(question_no), "approved_topic": topic}
+
+
+@router.get("/exams/{course_code}/{session_name}/questions/{question_no}")
+async def lecturer_question_detail(
+    course_code: str, session_name: str, question_no: str,
+    year: int = Query(...), month: int = Query(...), semester: int = Query(...),
+    db=Depends(get_db),
+):
+    """Read question evidence from the rubric and graded submissions, without AI."""
+    rubric, question, submissions = await _exam_question(db, course_code, session_name, question_no, year, month, semester)
+    number = normalize_question_no(question_no)
+    from app.taxonomy.normalizer import load_taxonomy
+    taxonomy = await load_taxonomy(db, course_code)
     try:
         criteria = question.get("criteria") or []
         maximum = sum(float(c["marks"]) for c in criteria) if criteria else float(question["max_marks"])
@@ -257,6 +299,8 @@ async def lecturer_question_detail(
     counts = Counter(response["score"] for response in responses)
     return {
         "question_no": number,
+        "approved_topic": question.get("approved_topic"),
+        "topic_options": sorted(entry["canonical_topic"] for entry in taxonomy.values()),
         "question_text": question.get("question_text") or None,
         "max_marks": maximum,
         "mark_distribution": [{"marks": marks, "count": count} for marks, count in sorted(counts.items())],
@@ -503,7 +547,7 @@ async def lecturer_student_list(
                     "percentage": round(percentage, 2),
                 },
                 "status": performance_status(percentage),
-                "analysis_status": "generated" if cached else "pending",
+                "analysis_status": "generated" if is_current_student_analysis(cached) else "pending",
                 "submitted_at": submission.get("processed_at"),
             }
         )
@@ -532,7 +576,7 @@ async def lecturer_student_detail(
     Pass `include_ai_tips=true` to get the full document (student-equivalent).
     """
     doc = await find_student_analytics(db, student_id, course_code, session_name, year, month, semester)
-    if doc is None:
+    if not is_current_student_analysis(doc):
         if not auto_analyze:
             from app.db.repository import find_graded_submission, find_diagram_evaluation_for_student, find_diagram_marking_for_student
 
@@ -599,6 +643,57 @@ async def lecturer_student_detail(
     return doc
 
 
+@router.get("/exams/{course_code}/{session_name}/student/{student_id}/questions/{question_no}")
+async def lecturer_student_answer_evidence(
+    course_code: str,
+    session_name: str,
+    student_id: str,
+    question_no: str,
+    year: int = Query(...),
+    month: int = Query(..., ge=1, le=12),
+    semester: int = Query(..., ge=1),
+    db=Depends(get_db),
+):
+    """Read saved grading evidence for this exact student attempt, without analysis."""
+    submission = await db["submissions"].find_one({
+        "student_id": student_id, "subject_code": course_code, "session_name": session_name,
+        "year": year, "month": month, "semester": semester,
+        "status": "graded", "archived_at": None,
+    }, sort=[("_id", -1)])
+    if submission is None:
+        raise HTTPException(status_code=404, detail="No saved submission for this student and exam.")
+    rows = (submission.get("evaluation") or {}).get("results")
+    if rows is None:
+        rows = submission.get("results") or []
+    number = normalize_question_no(question_no)
+    result = next((row for row in rows
+                   if normalize_question_no(row.get("q_no", row.get("question_no"))) == number), None)
+    if result is None:
+        raise HTTPException(status_code=404, detail="No saved grading evidence for this question.")
+    excerpt = result.get("answer_excerpt")
+    source = result.get("slice_source")
+    # An explicitly empty saved slice must not be replaced with a different OCR answer.
+    if excerpt is None and source != "empty":
+        transcript = submission.get("cleaned_ocr_transcript") or submission.get("raw_ocr_transcript") or ""
+        excerpt = question_excerpt(transcript, number)
+        if excerpt:
+            source = "ocr"
+    return {
+        "question_no": number,
+        "answer_excerpt": excerpt or None,
+        "slice_source": source,
+        "feedback": result.get("feedback") or None,
+        "justification": result.get("justification") or None,
+        "criteria_breakdown": [{
+            "point": item.get("point") or item.get("criterion") or "",
+            "awarded_marks": item.get("awarded_marks"),
+            "reason": item.get("reason") or item.get("feedback") or None,
+        } for item in result.get("criteria_breakdown") or []],
+        "grading_source": result.get("grading_source") or (submission.get("evaluation") or {}).get("grading_source"),
+        "grading_error": result.get("error") or None,
+    }
+
+
 @router.get("/exams/{course_code}/{session_name}/student/{student_id}/stream")
 async def lecturer_student_detail_stream(
     course_code: str,
@@ -617,7 +712,7 @@ async def lecturer_student_detail_stream(
 
         # Fast path: cached — real 100% immediately
         cached = await find_student_analytics(db, student_id, course_code, session_name, year, month, semester)
-        if cached is not None:
+        if is_current_student_analysis(cached):
             yield sse("progress", {"phase": "cached", "message": "PULSE·AI — Using cached student analysis", "progress": 100, "studentId": student_id})
             try:
                 from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student

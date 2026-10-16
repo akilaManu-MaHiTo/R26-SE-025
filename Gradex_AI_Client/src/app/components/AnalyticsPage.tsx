@@ -42,6 +42,7 @@ import { TeachingActions } from "./analytics/TeachingActions";
 import { DiagramAnalysisPanel } from "./analytics/DiagramAnalysisPanel";
 import { TopicDetailModal } from "./analytics/TopicDetailModal";
 import { QuestionDetailModal } from "./analytics/QuestionDetailModal";
+import { StudentQuestionRow } from "./analytics/StudentQuestionRow";
 
 function PremiumLoader({
   steps,
@@ -473,6 +474,7 @@ export default function AnalyticsPage() {
               {/* Question performance */}
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold flex items-center gap-2"><FileText className="size-4 text-primary" /> Question Breakdown</h4>
+                <p className="text-xs text-muted-foreground">Select a question number to review the written answer, marking criteria and grading feedback.</p>
                 <div className="rounded-lg border overflow-hidden">
                   <Table>
                     <TableHeader>
@@ -486,13 +488,10 @@ export default function AnalyticsPage() {
                     </TableHeader>
                     <TableBody>
                       {studentDetail.question_performance.map((q) => (
-                        <TableRow key={q.question_id} className="h-10">
-                          <TableCell className="font-medium text-xs">{q.question_no}</TableCell>
-                          <TableCell className="text-xs max-w-[160px] truncate" title={q.topic}>{q.topic}<span className="text-muted-foreground"> · {q.subtopic}</span></TableCell>
-                          <TableCell className="text-xs"><Badge variant="outline" className="text-xs">{q.bloom_analysis.level}</Badge></TableCell>
-                          <TableCell className="text-xs text-right tabular-nums">{q.performance.score.toFixed(1)} / {q.performance.max_score.toFixed(1)}</TableCell>
-                          <TableCell className="text-xs text-right tabular-nums">{q.performance.percentage.toFixed(1)}%</TableCell>
-                        </TableRow>
+                        <StudentQuestionRow key={`${studentDetail.student_id}-${studentDetail.subject_code}-${studentDetail.session_name}-${studentDetail.year}-${studentDetail.month}-${studentDetail.semester}-${q.question_id}`}
+                          question={q} studentId={studentDetail.student_id}
+                          exam={{ course_code: studentDetail.subject_code, session_name: studentDetail.session_name,
+                            year: studentDetail.year, month: studentDetail.month, semester: studentDetail.semester }} />
                       ))}
                     </TableBody>
                   </Table>
@@ -1040,7 +1039,7 @@ export default function AnalyticsPage() {
             <h2 className="tracking-tight text-foreground bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text">{selectedExam.subject_name}</h2>
             <p className="text-sm text-muted-foreground mt-1">{selectedExam.session_name} · {selectedExam.year} {analytics ? `· Generated ${new Date(analytics.generated_at).toLocaleString()}` : ""}</p>
             {analytics && (analytics as any).unclassified_coverage && (
-              <p className="text-xs text-amber-700 mt-1">Unclassified: {(analytics as any).unclassified_coverage.attempt_count} attempts at {(analytics as any).unclassified_coverage.average_percentage}% — review topic assignment</p>
+              <p className="text-xs text-amber-700 mt-1">Topic assignment pending: {analytics.unclassified_coverage.attempt_count} attempts at {analytics.unclassified_coverage.average_percentage}% — open a question below to review its topic</p>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -1235,6 +1234,7 @@ export default function AnalyticsPage() {
         exam={selectedExam}
         open={!!selectedQuestion}
         onClose={() => setSelectedQuestion(null)}
+        onTopicSaved={() => { if (selectedExam) void handleSelectExam(selectedExam, { forceReanalyse: true }); }}
       />
     </div>
   );

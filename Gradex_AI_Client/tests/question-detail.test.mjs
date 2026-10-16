@@ -10,6 +10,33 @@ import { renderToStaticMarkup } from 'react-dom/server';
 const api = await loadApi('../src/app/api/lecturerApi.ts');
 const exam = { course_code: 'IT/2040', session_name: 'Final Examination', year: 2022, month: 7, semester: 1 };
 
+test('topic approval saves a canonical choice or clears it for the exact exam question', async () => {
+  assert.equal(typeof api.saveQuestionTopic, 'function');
+  const originalFetch = globalThis.fetch;
+  const choices = [];
+  globalThis.fetch = async (url, options) => {
+    const request = new URL(url);
+    assert.equal(request.pathname, '/api/lecturers/exams/IT%2F2040/Final%20Examination/questions/01/topic');
+    assert.equal(request.search, '?year=2022&month=7&semester=1');
+    assert.equal(options.method, 'PUT');
+    choices.push(JSON.parse(options.body).topic);
+    return { ok: true, json: async () => ({ approved_topic: choices.at(-1) }) };
+  };
+  try {
+    await api.saveQuestionTopic(exam, '01', 'Schema Refinement');
+    await api.saveQuestionTopic(exam, '01', null);
+    assert.deepEqual(choices, ['Schema Refinement', null]);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('topic approval reports rejected writes instead of implying success', async () => {
+  assert.equal(typeof api.saveQuestionTopic, 'function');
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: false, status: 409, json: async () => ({ detail: 'The rubric changed' }) });
+  try { await assert.rejects(api.saveQuestionTopic(exam, '01', 'SQL'), /rubric changed/); }
+  finally { globalThis.fetch = originalFetch; }
+});
+
 test('question detail request keeps the complete exam identity and encodes path values', async () => {
   assert.equal(typeof api.fetchQuestionDetail, 'function');
   const originalFetch = globalThis.fetch;
@@ -50,19 +77,25 @@ const detail = {
   ],
 };
 
-function popup(fetchDetail) {
+function popup(fetchDetail, saveTopic = async () => ({}), onTopicSaved = () => {}) {
   const states = [];
   let index = 0;
   let effectDeps;
   let cleanup;
   let pendingEffect;
   const clicks = new Map();
+  let chooseTopic;
   const hooks = {
     ...React,
     useState(initial) {
       const slot = index++;
       if (!(slot in states)) states[slot] = initial;
       return [states[slot], (value) => { states[slot] = typeof value === 'function' ? value(states[slot]) : value; }];
+    },
+    useRef(initial) {
+      const slot = index++;
+      if (!(slot in states)) states[slot] = { current: initial };
+      return states[slot];
     },
     useEffect(effect, deps) {
       if (JSON.stringify(deps) !== effectDeps) {
@@ -82,7 +115,11 @@ function popup(fetchDetail) {
     module, exports: module.exports, Error,
     require(name) {
       if (name === 'react') return hooks;
-      if (name.includes('lecturerApi')) return { fetchQuestionDetail: fetchDetail };
+      if (name.includes('lecturerApi')) return { fetchQuestionDetail: fetchDetail, saveQuestionTopic: saveTopic };
+      if (name.includes('/select')) return new Proxy({}, { get: (_, name) => name === 'Select' ? ({ children, onValueChange }) => {
+        chooseTopic = onValueChange;
+        return React.createElement('div', null, children);
+      } : childrenOnly });
       if (name.includes('/button')) return { Button: button };
       return new Proxy({}, { get: () => childrenOnly });
     },
@@ -93,21 +130,70 @@ function popup(fetchDetail) {
       clicks.clear();
       const tree = module.exports.QuestionDetailModal({
         question: { question_id: `Q${number}`, question_no: number, topic: 'DBMS', bloom_level: 'Understand', average_percentage: 50 },
-        exam, open: true, onClose() {},
+        exam, open: true, onClose() {}, onTopicSaved,
       });
       const html = renderToStaticMarkup(tree);
       if (pendingEffect) { const effect = pendingEffect; pendingEffect = null; cleanup = effect(); }
       return html;
     },
-    click(label) { assert.equal(typeof clicks.get(label), 'function'); clicks.get(label)(); },
+    click(label) { assert.equal(typeof clicks.get(label), 'function'); return clicks.get(label)(); },
+    chooseTopic(value) { assert.equal(typeof chooseTopic, 'function'); chooseTopic(value); },
   };
 }
+
+test('lecturer can save a question topic and request refreshed analytics', async () => {
+  const writes = [];
+  let refreshes = 0;
+  const view = popup(async () => ({ ...detail, approved_topic: null, topic_options: ['Schema Refinement'] }),
+    async (...args) => writes.push(args), () => refreshes++);
+  view.render();
+  await new Promise(resolve => setImmediate(resolve));
+  view.render();
+  view.chooseTopic('Schema Refinement');
+  view.render();
+  await view.click('Save & Reanalyse');
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0][1], '01');
+  assert.equal(writes[0][2], 'Schema Refinement');
+  assert.equal(refreshes, 1);
+});
+
+test('failed topic save keeps the popup open and does not request reanalysis', async () => {
+  let refreshes = 0;
+  const view = popup(async () => ({ ...detail, approved_topic: null, topic_options: ['Schema Refinement'] }),
+    async () => { throw new Error('The rubric changed'); }, () => refreshes++);
+  view.render();
+  await new Promise(resolve => setImmediate(resolve));
+  view.render();
+  view.chooseTopic('Schema Refinement');
+  view.render();
+  await view.click('Save & Reanalyse');
+  assert.match(view.render(), /The rubric changed/);
+  assert.equal(refreshes, 0);
+});
+
+test('late topic save cannot refresh a different question or exam', async () => {
+  let resolveSave;
+  let refreshes = 0;
+  const view = popup(async () => ({ ...detail, topic_options: ['Schema Refinement'] }),
+    () => new Promise(resolve => { resolveSave = resolve; }), () => refreshes++);
+  view.render();
+  await new Promise(resolve => setImmediate(resolve));
+  view.render();
+  view.chooseTopic('Schema Refinement');
+  view.render();
+  const saving = view.click('Save & Reanalyse');
+  view.render('02');
+  resolveSave({});
+  await saving;
+  assert.equal(refreshes, 0);
+});
 
 test('popup opens each evidence view and labels missing and full-paper excerpts', async () => {
   const view = popup(async () => detail);
   view.render();
   await new Promise(resolve => setImmediate(resolve));
-  assert.doesNotMatch(view.render(), /disabled=""/);
+  assert.doesNotMatch(view.render(), /<button disabled="">(?:<div><\/div>)?View /);
   view.click('View Question Text');
   assert.match(view.render(), /Explain normalization\./);
   view.click('View Student Responses');
@@ -149,7 +235,7 @@ test('failed evidence load can be retried and enables the views after success', 
   view.click('Retry');
   view.render();
   await new Promise(resolve => setImmediate(resolve));
-  assert.doesNotMatch(view.render(), /disabled=""|Question service unavailable/);
+  assert.doesNotMatch(view.render(), /<button disabled="">(?:<div><\/div>)?View |Question service unavailable/);
   view.click('View Question Text');
   assert.match(view.render(), /Explain normalization/);
 });

@@ -1,7 +1,7 @@
 {
   "intro_dbms": {
     "canonical_topic": "Introduction to DBMS & Conceptual Database Design",
-    "aliases": ["Database Management Systems"],
+    "aliases": ["Database Management Systems", "Database Design Phases", "Weak Entities", "Ternary Relationships"],
     "subtopics": [
       "Definition of Database and DBMS",
       "Advantages of DBMS over File Systems",
@@ -87,7 +87,7 @@
   },
   "database_programming": {
     "canonical_topic": "Database Programming",
-    "aliases": [],
+    "aliases": ["View", "Views"],
     "subtopics": [
       "Views – Definition, Creation, and Querying",
       "Views – Update Restrictions and Advantages/Disadvantages",

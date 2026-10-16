@@ -11,6 +11,11 @@ class StudentNotFound(Exception):
     pass
 
 
+def is_current_student_analysis(document: dict | None) -> bool:
+    return bool(document and document.get("analysis_version") == STUDENT_ANALYSIS_VERSION
+                and not document.get("topic_assignment_pending"))
+
+
 async def ensure_student_analytics(
     db,
     student_id: str,
@@ -24,7 +29,7 @@ async def ensure_student_analytics(
     cached = await find_student_analytics(
         db, student_id, course_code, session_name, year, month, semester
     )
-    if cached is not None and cached.get("analysis_version") == STUDENT_ANALYSIS_VERSION:
+    if is_current_student_analysis(cached):
         return StudentAnalyticsDocument.model_validate(cached)
 
     submission = await find_graded_submission(
