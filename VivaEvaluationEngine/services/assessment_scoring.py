@@ -38,6 +38,22 @@ from services.canonical_features import (
 
 SCORING_VERSION = "v1.2"
 
+# Technical vivas only: the smallest share of the subject's concept weight that the answer
+# must touch. Below this the student almost certainly answered a different topic (or the
+# wrong subject), so no official mark is given and the recording is held for review.
+# Override with VIVA_MIN_TOPIC_COVERAGE (a fraction, e.g. 0.05 for 5%).
+def _min_topic_coverage() -> float:
+    import os
+
+    try:
+        value = float(os.getenv("VIVA_MIN_TOPIC_COVERAGE", "0.05"))
+    except ValueError:
+        return 0.05
+    return value if 0.0 <= value <= 1.0 else 0.05
+
+
+MIN_TOPIC_COVERAGE = _min_topic_coverage()
+
 # Speech-emotion tone is scored inside audio_acoustics at reduced weight: the SER model
 # is trained on acted speech (IEMOCAP) and over-predicts "angry" on real presentations.
 # A weight of 1.0 would equal the other audio parts; change only by bumping SCORING_VERSION.
@@ -104,6 +120,11 @@ REASON_MESSAGES = {
     "audio_insufficient": "Recorded audio is too short or empty to score.",
     "no_scorable_families": "No scorable evidence families were available.",
     "duration_below_engine_minimum": "Audio duration is below the engine minimum.",
+    "insufficient_topic_coverage": (
+        "The answer covered almost none of the subject's concepts. The student may have answered "
+        "a different topic or the wrong subject. No official mark is given — review the recording "
+        "or run the viva again."
+    ),
     "multiple_faces_detected": (
         "More than one person was clearly visible on camera. "
         "Re-record with only the student in frame."
@@ -522,6 +543,41 @@ def fuse_final_score(
     }
 
 
+def summarize_topic_coverage(result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Share of the subject rubric's concept weight the answer touched.
+
+    Read from the AI technical-accuracy result. Returns None when that result is missing or
+    unusable (no subject linked, scoring failed), because coverage cannot be judged then and
+    the recording must not be penalised for it.
+    """
+    tech = result.get("technical_accuracy_ai")
+    if not isinstance(tech, dict) or tech.get("status") not in {"success", "partial"}:
+        return None
+    concepts = [c for c in (tech.get("concepts") or []) if isinstance(c, dict)]
+    if not concepts:
+        return None
+
+    def _weight(concept: Dict[str, Any]) -> float:
+        try:
+            weight = float(concept.get("weight"))
+        except (TypeError, ValueError):
+            return 1.0
+        return weight if weight > 0 else 0.0
+
+    total = sum(_weight(c) for c in concepts)
+    if total <= 0:
+        return None
+    covered = [c for c in concepts if c.get("covered") is True]
+    covered_weight = sum(_weight(c) for c in covered)
+    return {
+        "measured": True,
+        "coverage_ratio": round(covered_weight / total, 4),
+        "minimum": MIN_TOPIC_COVERAGE,
+        "concepts_covered": len(covered),
+        "concepts_total": len(concepts),
+    }
+
+
 def build_assessment(
     result: Dict[str, Any],
     *,
@@ -547,6 +603,22 @@ def build_assessment(
         lip_reason=lip_reason,
         multi_face_reason=multi_face_reason,
     )
+    topic_coverage = summarize_topic_coverage(result) if mode == MODE_WITH else None
+    if (
+        topic_coverage is not None
+        and validation["status"] == STATUS_VALID
+        and topic_coverage["coverage_ratio"] < MIN_TOPIC_COVERAGE
+    ):
+        validation = {
+            "status": STATUS_INCOMPLETE,
+            "reasons": list(validation.get("reasons") or []) + ["insufficient_topic_coverage"],
+            "message": (
+                f"Only {topic_coverage['coverage_ratio'] * 100:.1f}% of the subject's concepts "
+                f"({topic_coverage['concepts_covered']} of {topic_coverage['concepts_total']}) were "
+                f"covered, below the {MIN_TOPIC_COVERAGE * 100:.0f}% minimum. "
+                + REASON_MESSAGES["insufficient_topic_coverage"]
+            ),
+        }
     performance = score_ai_performance(features)
 
     if validation["status"] == STATUS_INCOMPLETE:
@@ -581,6 +653,7 @@ def build_assessment(
         "quality": features["quality"],
         "features": features,
         "validation": validation,
+        "topic_coverage": topic_coverage,
         "lip_motion": lip_motion,
         "multi_face": multi_face,
         "ai_performance": {

@@ -393,5 +393,82 @@ class FacialAndSpeechEmotionScoringTests(unittest.TestCase):
         self.assertLess(m["family_scores"]["audio_acoustics"], h["family_scores"]["audio_acoustics"])
 
 
+
+def _technical_result(covered, weights):
+    """A technical_accuracy_ai block: `covered` flags aligned with `weights`."""
+    return {
+        "status": "success",
+        "overall_score": 5.0,
+        "concepts": [
+            {
+                "concept_id": f"c{i}",
+                "name": f"Concept {i}",
+                "covered": bool(flag),
+                "score": 0.9 if flag else 0.0,
+                "weight": float(weight),
+            }
+            for i, (flag, weight) in enumerate(zip(covered, weights))
+        ],
+    }
+
+
+class TopicCoverageGateTests(unittest.TestCase):
+    """Technical vivas: an answer that touches almost none of the rubric is held, not graded."""
+
+    def _assess(self, technical, mode=MODE_WITH, **overrides):
+        result = _sample_result(**overrides)
+        if technical is not None:
+            result["technical_accuracy_ai"] = technical
+        return build_assessment(result, mode=mode, technical_accuracy=7.0)
+
+    def test_off_topic_answer_is_held_with_no_mark(self):
+        weights = [5, 5, 5, 4, 4, 3, 3, 4, 4, 3, 3, 4]
+        out = self._assess(_technical_result([False] * 12, weights))
+        self.assertEqual(out["status"], STATUS_INCOMPLETE)
+        self.assertIn("insufficient_topic_coverage", out["validation"]["reasons"])
+        self.assertIsNone(out["final_score"])
+        self.assertIsNone(out["grade"])
+        self.assertIsNone(out["ai_performance"]["score"])
+        self.assertEqual(out["topic_coverage"]["coverage_ratio"], 0.0)
+        self.assertEqual(out["topic_coverage"]["concepts_covered"], 0)
+        self.assertIn("0.0%", out["validation"]["message"])
+
+    def test_coverage_is_by_weight_not_by_count(self):
+        # one concept covered, but it carries 4 of the 25 weight = 16%
+        out = self._assess(_technical_result([True, False, False, False], [4, 7, 7, 7]))
+        self.assertEqual(out["status"], STATUS_VALID)
+        self.assertAlmostEqual(out["topic_coverage"]["coverage_ratio"], 0.16, places=4)
+        self.assertIsNotNone(out["final_score"])
+
+    def test_just_below_the_minimum_is_held_and_just_above_passes(self):
+        weights = [1] + [24]          # covering only the weight-1 concept = 1 / 25 = 4%
+        below = self._assess(_technical_result([True, False], weights))
+        self.assertEqual(below["status"], STATUS_INCOMPLETE)
+        weights = [2] + [23]          # covering the weight-2 concept = 2 / 25 = 8%
+        above = self._assess(_technical_result([True, False], weights))
+        self.assertEqual(above["status"], STATUS_VALID)
+
+    def test_not_applied_to_non_technical_vivas(self):
+        out = self._assess(_technical_result([False] * 3, [5, 5, 5]), mode=MODE_WITHOUT)
+        self.assertEqual(out["status"], STATUS_VALID)
+        self.assertIsNone(out["topic_coverage"])
+
+    def test_no_rubric_or_failed_scoring_is_not_a_reason_to_hold(self):
+        no_rubric = self._assess(None)
+        self.assertEqual(no_rubric["status"], STATUS_VALID)
+        self.assertIsNone(no_rubric["topic_coverage"])
+        failed = self._assess({"status": "unavailable", "overall_score": None, "concepts": []})
+        self.assertEqual(failed["status"], STATUS_VALID)
+        self.assertIsNone(failed["topic_coverage"])
+
+    def test_other_incomplete_reasons_still_win(self):
+        out = self._assess(
+            _technical_result([False] * 2, [5, 5]),
+            video_status="insufficient_face_coverage",
+        )
+        self.assertEqual(out["status"], STATUS_INCOMPLETE)
+        self.assertNotIn("insufficient_topic_coverage", out["validation"]["reasons"])
+
+
 if __name__ == "__main__":
     unittest.main()

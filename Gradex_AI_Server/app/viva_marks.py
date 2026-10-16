@@ -107,11 +107,15 @@ async def apply_publish_to_mark(
         student_id=student_id,
         human_published=human_published,
     )
+    assessment = update["assessment"]
+    validation = assessment.get("validation") or {}
+    if "insufficient_topic_coverage" in (validation.get("reasons") or []):
+        # An answer that covered almost none of the subject is held for review, never graded.
+        raise ValueError(validation.get("message") or "The answer did not cover the subject, so no mark can be published.")
     result = await marks_col.update_one({"_id": object_id}, {"$set": update})
     if result.matched_count == 0:
         raise LookupError("Mark not found.")
 
-    assessment = update["assessment"]
     return publish_response_payload(str(object_id), update, assessment)
 
 
