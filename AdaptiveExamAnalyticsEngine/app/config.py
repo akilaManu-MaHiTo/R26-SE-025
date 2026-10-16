@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     @property
     def llm_base_url(self) -> str:
         """Ollama endpoint actually used, resolved from ``env``."""
-        return self.ollama_base_url
+        return self.ollama_base_url if self.env == "colab" else "http://localhost:11434"
 
 
 settings = Settings()

@@ -14,11 +14,13 @@ export interface ExamListItem {
   total_marks: number;
   question_count: number;
   student_count: number;
-  average_score: number;
-  average_percentage: number;
-  highest_score: number;
-  lowest_score: number;
-  pass_rate: number;
+  average_score: number | null;
+  average_percentage: number | null;
+  highest_score: number | null;
+  lowest_score: number | null;
+  pass_rate: number | null;
+  graded_student_count?: number;
+  score_basis?: "Essay" | "Diagram";
   analyzed: boolean;
   analyzed_at: string | null;
 }
@@ -37,6 +39,27 @@ export interface ExamStatistics {
   std_percentage?: number;
   iqr_percentage?: number;
   grade_distribution?: Record<string, number>;
+}
+
+export interface ExamPaperDefinition {
+  exam_key: string;
+  expected_structure: string[];
+  maximum_marks: number | null;
+  essay_questions: { question_no: string | null; question_text: unknown; max_marks: number | null; criteria: { point: unknown; marks: number | null }[] }[];
+  diagram_rubrics: { rubric_id: string; exam_code: string | null; total_marks: number | null; criteria: { id: unknown; criterion: unknown; description: unknown; marks: number | null; expected: unknown }[] }[];
+  validation: { status: string; messages: string[] };
+}
+
+export async function fetchExamPaperDefinition(
+  exam: Pick<ExamListItem, "course_code" | "session_name" | "year" | "month" | "semester">,
+): Promise<ExamPaperDefinition> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${encodeURIComponent(exam.course_code)}/${encodeURIComponent(exam.session_name)}/paper?${params}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : `Failed to load question paper (${res.status})`);
+  }
+  return res.json();
 }
 
 export interface TopicPerformance {
@@ -79,6 +102,9 @@ export interface QuestionPerformance {
   p_value?: number;
   discrimination?: number;
   missed_criterion_rate?: number | null;
+  bloom_confidence?: number | null;
+  needs_review?: boolean;
+  coverage_warning?: string | null;
 }
 
 export interface AttentionArea {
@@ -150,6 +176,9 @@ export interface DiagramAnalysis {
 }
 
 export interface ExamAnalytics {
+  snapshot_status?: "stale";
+  refresh_warning?: string;
+  excluded_submissions?: { student_id: string; reason: string }[];
   subject_code: string;
   subject_name: string;
   year: number;

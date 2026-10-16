@@ -2,7 +2,15 @@ import React from "react";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { TableCell } from "../ui/table";
-import type { StudentRow } from "../../api/lecturerApi";
+import type { StudentRow, ExamListItem } from "../../api/lecturerApi";
+
+export function ExamInventoryScore({ exam }: { exam: ExamListItem }) {
+  if (exam.average_percentage == null) return <span className="text-xs text-muted-foreground">No valid grades</span>;
+  return <div className="text-center text-sm tabular-nums">
+    <strong>{exam.average_percentage.toFixed(1)}%</strong>
+    <div className="text-xs text-muted-foreground">{exam.score_basis ?? "Essay"}{exam.graded_student_count != null ? ` · ${exam.graded_student_count} graded` : ""}</div>
+  </div>;
+}
 
 const labels: Record<string, string> = {
   graded: "Graded", processing: "Processing", not_started: "Not started",

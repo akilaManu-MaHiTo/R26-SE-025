@@ -8,6 +8,7 @@ import statistics as _stats
 import math
 
 from app.ingestion.diagram_data import normalize_diagram_evaluation
+from app.analytics.student_document import performance_status as _performance_status
 
 
 def compute_diagram_analysis(
@@ -214,13 +215,3 @@ def compute_diagram_analysis(
         "weakest_criteria": weakest_criteria,
         "insights": insights,
     }
-
-
-def _performance_status(percentage: float) -> str:
-    if percentage >= 80:
-        return "Strong"
-    if percentage >= 65:
-        return "Developing"
-    if percentage >= 50:
-        return "Needs Improvement"
-    return "Critical"

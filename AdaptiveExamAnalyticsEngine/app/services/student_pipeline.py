@@ -32,7 +32,7 @@ import app.classifier.bloom_classifier as _bc_module
 _ORIG_PREDICT_BLOOM = _bc_module.predict_bloom
 _ORIG_PREDICT_BATCH = _bc_module.predict_bloom_batch
 
-STUDENT_ANALYSIS_VERSION = "1.2"
+STUDENT_ANALYSIS_VERSION = "1.3"
 
 
 @dataclass(frozen=True)

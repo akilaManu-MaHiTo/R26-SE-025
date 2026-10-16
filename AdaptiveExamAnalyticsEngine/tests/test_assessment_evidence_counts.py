@@ -5,12 +5,16 @@ from app.schemas.exam_analytics import DiagramAnalysis, TopicPerformanceSummary,
 
 def test_old_calculation_snapshot_requires_rebuild():
     from app.api.lecturer import _is_complete_snapshot
-    snapshot = {"analytics_version": "1.0", "canonical_topic_performance": [],
-                "canonical_insights": [], "statistics": {}}
+    from app.services.exam_analytics import ANALYTICS_VERSION
+    from tests.test_exam_analytics import exam_document
+    snapshot = {**exam_document(), "analytics_version": "1.0", "canonical_topic_performance": [],
+                "canonical_insights": []}
     assert not _is_complete_snapshot(snapshot)
     snapshot["analytics_version"] = "1.1"
     assert not _is_complete_snapshot(snapshot)
     snapshot["analytics_version"] = "1.2"
+    assert not _is_complete_snapshot(snapshot)
+    snapshot["analytics_version"] = ANALYTICS_VERSION
     assert _is_complete_snapshot(snapshot)
 
 

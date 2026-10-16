@@ -246,7 +246,7 @@ def compute_exam_analytics_stats(normalized_students: list[dict], pass_threshold
             topic_questions.setdefault(name, set()).add(question["question_no"])
     topic_performance = []
     for name, score in sorted(
-        topic_score.items(), key=lambda item: item[1] / topic_max[item[0]]
+        topic_score.items(), key=lambda item: item[1] / topic_max[item[0]] if topic_max[item[0]] else 0.0
     ):
         avg_pct = round(score / topic_max[name] * 100.0, 2) if topic_max[name] else 0.0
         sc = len(topic_students.get(name, set()))
