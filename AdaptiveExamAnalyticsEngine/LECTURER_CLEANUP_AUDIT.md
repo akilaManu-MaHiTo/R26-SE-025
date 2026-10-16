@@ -32,7 +32,9 @@ The project inventory, entry points, settings, dependencies and tests were inspe
 
 `gradev5` has no unique indexes on `student_analytics`, `studentExamAnalysis` or `studentExamResults`. No indexes or database records were changed.
 
-For the 2025 IT2040 Final exam, two saved graded essay records were checked. One passes strict normalization; one requires review for missing, duplicate or mismatched criterion evidence. No answers were regraded and no saved marks were repaired. Exclusion reasons are shown to the lecturer, so trusted essay analytics can use fewer records than the saved graded-submission count.
+The initial strict comparison excluded one of the two graded 2025 IT2040 essays. A follow-up for IT22239199 established that all rows existed: the only label difference was an unmatched closing `)` at the end of one Question 01 rubric criterion. This was a validation false positive, not missing grading evidence. Normalization and reconstruction now share a conservative rule that ignores only excess unmatched terminal closing parentheses, preserving balanced/internal punctuation and rejecting different words or duplicate normalized labels. Error messages identify the question and distinguish duplicate labels from unmatched labels.
+
+Read-only verification after the correction validated this student's five essay questions and all 15 criterion rows. Their combined result is complete: 34.5/35 essay plus 19/20 diagram = 53.5/55 (97.27%). No source labels, answers or saved marks were modified. Calculation versions advanced again to 1.4 so previously cached exclusions are rebuilt when possible.
 
 The five-essay plus diagram structure and 55 maximum marks were preserved. Original diagram question wording remains unavailable and the preview continues to flag that source gap.
 
@@ -46,7 +48,7 @@ The five-essay plus diagram structure and 55 maximum marks were preserved. Origi
 
 ## Verification
 
-- **291 passed** across 20 offline backend test files: integrity, ingestion, reconstruction, grading status, diagrams, schemas, class arithmetic, recommendation/evaluation and configuration. The selected suite's formerly expected equation failures now pass.
+- **298 passed** across 21 offline backend test files after the criterion-label correction: integrity, ingestion, reconstruction, grading status, diagrams, schemas, class arithmetic, recommendation/evaluation and configuration. The selected suite's formerly expected equation failures now pass. Pairing regressions preserve balanced suffixes after list markers such as `a)` and reject normalization collisions.
 - **18 passed** across four frontend test files: inventory failure/retry, null versus zero, classification warnings, suggestion provenance, grading progress and paper preview.
 - `npm run build` passed. Existing npm configuration and Vite bundle-size warnings remain.
 - Independent read-only review reproduced key bugs and confirmed the corrected reference/type guards. Live checks printed only counts, validation reasons and index definitions.
