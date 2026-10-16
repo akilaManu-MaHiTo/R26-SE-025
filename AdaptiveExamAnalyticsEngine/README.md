@@ -4,6 +4,45 @@ DBMS learning analytics pipeline: materializes per-student analytics from graded
 submissions, classifies question semantics (Bloom levels, topics), and serves a
 FastAPI dashboard.
 
+## Reconstruct an exam paper (read only)
+
+```bash
+python scripts/reconstruct_exam_paper.py EXAM-2025-S1-Apr
+```
+
+Uses the existing analytics MongoDB settings. Prints exam validation and counts
+without student IDs/answers. Exit codes: 0 valid, 2 incomplete/ambiguous, 1 I/O
+failure. To export student evidence to a **new** local file, explicitly request:
+
+```bash
+python scripts/reconstruct_exam_paper.py EXAM-2025-S1-Apr --include-student-data --output paper.json
+```
+
+Full exports use MongoDB Extended JSON and contain private assessment data.
+The service keeps question definitions, rubric references and each student's
+results separate. It reads both known essay-rubric collection spellings, joins
+exact references, and reports conflicts/duplicates without choosing a result.
+No grading, indexing, collection creation or database updates are performed.
+
+The 2025 exam now has five essays plus one diagram, as confirmed by the user.
+Student `grading` adds the two verified rubric maxima (35 + 20 = 55) and the
+existing component scores. Percentage = combined awarded marks / 55 * 100.
+Missing evaluations produce a pending grade with null total/percentage;
+duplicates or inconsistent grading evidence require review. Review-needed
+numeric totals are provisional. No letter-grade boundaries are invented.
+
+Grade completeness is separate from recovering the original question paper:
+no numbered original diagram question/prompt is stored, so its question
+definition remains unresolved even when both component grades are available.
+Saved diagram grades remain linked by exact exam/student/guideline references. See the
+[database audit and matching rules](EXAM_PAPER_AUDIT.md).
+See [verification results and remaining source gaps](EXAM_PAPER_VERIFICATION.md)
+and the [synthetic reconstruction](examples/exam_paper.synthetic.json).
+
+Lecturer diagram views now read the saved `diagram_evaluations` agent schema,
+resolve rubrics by guideline ID and refresh diagram results even for cached essay
+analytics. See [diagram dashboard verification](DIAGRAM_DASHBOARD_VALIDATION.md).
+
 The lecturer Exam Creator includes saved blueprints, draft-aware recommendations,
 source-grounded question alternatives, and separate marking-scheme exports.
 See [the exam creator guide](EXAM_CREATOR.md) for usage, model configuration and validation limits.

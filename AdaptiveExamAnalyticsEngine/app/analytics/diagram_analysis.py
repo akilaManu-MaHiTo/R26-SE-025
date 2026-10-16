@@ -7,6 +7,8 @@ alongside text-based question performance in a single view.
 import statistics as _stats
 import math
 
+from app.ingestion.diagram_data import normalize_diagram_evaluation
+
 
 def compute_diagram_analysis(
     diagram_evaluations: list[dict],
@@ -22,6 +24,12 @@ def compute_diagram_analysis(
     """
     if not diagram_evaluations:
         return None
+    # shortcut: criterion IDs belong to one rubric; separate rubric groups before supporting multiple diagram questions.
+    if len({str(ev.get("guideline_object_id")) for ev in diagram_evaluations}) > 1:
+        raise ValueError("Cannot combine diagram criteria from different rubrics")
+    students = [ev.get("student_id") for ev in diagram_evaluations]
+    if len(students) != len(set(students)):
+        raise ValueError("Duplicate diagram students in class analysis")
 
     # ── Per-student scores ────────────────────────────────────────────────
     scores: list[float] = []
@@ -30,6 +38,9 @@ def compute_diagram_analysis(
     # criterion_id -> {criterion, total_marks, awarded, pass_count, partial_count, fail_count, student_count}
     criterion_agg: dict[int, dict] = {}
 
+    guidelines = {str(g.get("_id")): g for g in diagram_markings}
+    diagram_evaluations = [normalize_diagram_evaluation(ev, guidelines.get(str(ev.get("guideline_object_id"))))
+                           for ev in diagram_evaluations]
     for ev in diagram_evaluations:
         student_id = ev.get("student_id", "unknown")
         result = ev.get("evaluation_result") or {}
@@ -140,11 +151,14 @@ def compute_diagram_analysis(
 
     # ── Detection summary from diagram_marking ────────────────────────────
     detection_summary = None
+    detection_records = [ev for ev in diagram_evaluations if isinstance(ev.get("diagram_details"), dict)]
+    diagram_markings = detection_records or [m for m in diagram_markings if isinstance(m.get("diagram_details"), dict)]
     if diagram_markings:
         entity_counts = [m.get("diagram_details", {}).get("entity_count", 0) for m in diagram_markings]
         rel_counts = [m.get("diagram_details", {}).get("relationship_count", 0) for m in diagram_markings]
         label_counts = [m.get("diagram_details", {}).get("label_count", 0) for m in diagram_markings]
-        marking_scores = [float(m.get("diagram_marks", 0)) for m in diagram_markings]
+        marking_scores = [float(m["evaluation_result"]["total_score"]) if "evaluation_result" in m
+                          else float(m.get("diagram_marks", 0)) for m in diagram_markings]
 
         detection_summary = {
             "avg_entity_count": round(sum(entity_counts) / len(entity_counts), 1) if entity_counts else 0,

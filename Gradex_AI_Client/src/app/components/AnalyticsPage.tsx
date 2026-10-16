@@ -555,9 +555,10 @@ export default function AnalyticsPage() {
                 const total = ev.total_score ?? diagMark?.diagram_marks ?? 0;
                 const max = ev.max_score ?? 20;
                 const pct = max ? (total / max) * 100 : 0;
-                const detections: any[] = diagMark?.diagram_details?.detections || [];
-                const entities: any[] = diagMark?.diagram_details?.entities || diagMark?.diagram_entity_relations || [];
-                const rels: any[] = diagMark?.diagram_details?.relationships || diagMark?.diagram_relations || [];
+                const diagramDetails = diagEval?.diagram_details || diagMark?.diagram_details;
+                const detections: any[] = diagramDetails?.detections || [];
+                const entities: any[] = diagramDetails?.entities || diagEval?.diagram_entity_relations || diagMark?.diagram_entity_relations || [];
+                const rels: any[] = diagramDetails?.relationships || diagEval?.diagram_relations || diagMark?.diagram_relations || [];
                 // SVG bounds - normalize bbox to viewBox 0 0 600 600
                 const vbW = 600, vbH = 600;
                 const colorByLabel: Record<string, string> = { Entities: "#8b5cf6", Attributes: "#06b6d4", Subclass: "#f59e0b", Relationships: "#10b981", default: "#6366f1" };

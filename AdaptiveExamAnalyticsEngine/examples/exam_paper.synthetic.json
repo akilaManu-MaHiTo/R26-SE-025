@@ -1,0 +1,508 @@
+{
+  "exam": {
+    "_id": "exam-1",
+    "examKey": "EXAM-2025-S1-Apr",
+    "subjectCode": "IT2040",
+    "subjectName": "DBMS",
+    "examYear": 2025,
+    "examSemester": 1,
+    "examMonth": "April",
+    "session": "Final",
+    "examStructure": [
+      "Essay",
+      "Essay",
+      "Essay",
+      "Essay",
+      "Essay",
+      "Diagram"
+    ]
+  },
+  "questions": [
+    {
+      "questionId": "rubicCollection:rubric-1:01",
+      "questionNumber": "01",
+      "questionType": "Essay",
+      "questionText": "Explain concept 1.",
+      "maximumMarks": 10,
+      "rubricRef": {
+        "collection": "rubicCollection",
+        "id": "rubric-1",
+        "path": "questions.0"
+      }
+    },
+    {
+      "questionId": "rubicCollection:rubric-1:02",
+      "questionNumber": "02",
+      "questionType": "Essay",
+      "questionText": "Explain concept 2.",
+      "maximumMarks": 7,
+      "rubricRef": {
+        "collection": "rubicCollection",
+        "id": "rubric-1",
+        "path": "questions.1"
+      }
+    },
+    {
+      "questionId": "rubicCollection:rubric-1:03",
+      "questionNumber": "03",
+      "questionType": "Essay",
+      "questionText": "Explain concept 3.",
+      "maximumMarks": 6,
+      "rubricRef": {
+        "collection": "rubicCollection",
+        "id": "rubric-1",
+        "path": "questions.2"
+      }
+    },
+    {
+      "questionId": "rubicCollection:rubric-1:04",
+      "questionNumber": "04",
+      "questionType": "Essay",
+      "questionText": "Explain concept 4.",
+      "maximumMarks": 6,
+      "rubricRef": {
+        "collection": "rubicCollection",
+        "id": "rubric-1",
+        "path": "questions.3"
+      }
+    },
+    {
+      "questionId": "rubicCollection:rubric-1:05",
+      "questionNumber": "05",
+      "questionType": "Essay",
+      "questionText": "Explain concept 5.",
+      "maximumMarks": 6,
+      "rubricRef": {
+        "collection": "rubicCollection",
+        "id": "rubric-1",
+        "path": "questions.4"
+      }
+    }
+  ],
+  "rubrics": [
+    {
+      "source": {
+        "collection": "rubicCollection",
+        "id": "rubric-1"
+      },
+      "kind": "Essay",
+      "definition": [
+        {
+          "question_no": "01",
+          "question_text": "Explain concept 1.",
+          "max_marks": 10,
+          "criteria": [
+            {
+              "point": "Criterion 1",
+              "marks": 10
+            }
+          ]
+        },
+        {
+          "question_no": "02",
+          "question_text": "Explain concept 2.",
+          "max_marks": 7,
+          "criteria": [
+            {
+              "point": "Criterion 2",
+              "marks": 7
+            }
+          ]
+        },
+        {
+          "question_no": "03",
+          "question_text": "Explain concept 3.",
+          "max_marks": 6,
+          "criteria": [
+            {
+              "point": "Criterion 3",
+              "marks": 6
+            }
+          ]
+        },
+        {
+          "question_no": "04",
+          "question_text": "Explain concept 4.",
+          "max_marks": 6,
+          "criteria": [
+            {
+              "point": "Criterion 4",
+              "marks": 6
+            }
+          ]
+        },
+        {
+          "question_no": "05",
+          "question_text": "Explain concept 5.",
+          "max_marks": 6,
+          "criteria": [
+            {
+              "point": "Criterion 5",
+              "marks": 6
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
+        "collection": "diagram_marking",
+        "id": "guide-1"
+      },
+      "kind": "Diagram",
+      "definition": {
+        "examCode": "ERD-004",
+        "guideLines": [
+          {
+            "id": 1,
+            "criterion": "Correct diagram",
+            "marks": 20
+          }
+        ],
+        "totalMarks": 20,
+        "source_file": {
+          "filename": "marking.pdf",
+          "extracted_text": "Marking guidance"
+        }
+      }
+    }
+  ],
+  "students": [
+    {
+      "studentId": "EXAMPLE-STUDENT",
+      "answers": [
+        {
+          "questionId": "rubicCollection:rubric-1:01",
+          "questionNumber": "01",
+          "examMatch": "examKey",
+          "source": {
+            "collection": "submissions",
+            "id": "essay-EXAMPLE-STUDENT",
+            "path": "evaluation.results.0"
+          },
+          "awardedMarks": 10,
+          "maximumMarks": 10,
+          "answer": {
+            "text": "EXAMPLE-STUDENT answer 1",
+            "kind": "saved_grading_excerpt",
+            "sliceSource": "split",
+            "transcriptRef": {
+              "collection": "submissions",
+              "id": "essay-EXAMPLE-STUDENT",
+              "path": "cleaned_ocr_transcript"
+            }
+          },
+          "evaluation": {
+            "q_no": "01",
+            "score": 10,
+            "answer_excerpt": "EXAMPLE-STUDENT answer 1",
+            "slice_source": "split",
+            "grading_source": "groq",
+            "error": null,
+            "feedback": "More detail.",
+            "criteria_breakdown": [
+              {
+                "point": "Criterion 1",
+                "awarded_marks": 10,
+                "reason": "Partial"
+              }
+            ]
+          }
+        },
+        {
+          "questionId": "rubicCollection:rubric-1:02",
+          "questionNumber": "02",
+          "examMatch": "examKey",
+          "source": {
+            "collection": "submissions",
+            "id": "essay-EXAMPLE-STUDENT",
+            "path": "evaluation.results.1"
+          },
+          "awardedMarks": 7,
+          "maximumMarks": 7,
+          "answer": {
+            "text": "EXAMPLE-STUDENT answer 2",
+            "kind": "saved_grading_excerpt",
+            "sliceSource": "split",
+            "transcriptRef": {
+              "collection": "submissions",
+              "id": "essay-EXAMPLE-STUDENT",
+              "path": "cleaned_ocr_transcript"
+            }
+          },
+          "evaluation": {
+            "q_no": "02",
+            "score": 7,
+            "answer_excerpt": "EXAMPLE-STUDENT answer 2",
+            "slice_source": "split",
+            "grading_source": "groq",
+            "error": null,
+            "feedback": "More detail.",
+            "criteria_breakdown": [
+              {
+                "point": "Criterion 2",
+                "awarded_marks": 7,
+                "reason": "Partial"
+              }
+            ]
+          }
+        },
+        {
+          "questionId": "rubicCollection:rubric-1:03",
+          "questionNumber": "03",
+          "examMatch": "examKey",
+          "source": {
+            "collection": "submissions",
+            "id": "essay-EXAMPLE-STUDENT",
+            "path": "evaluation.results.2"
+          },
+          "awardedMarks": 5.5,
+          "maximumMarks": 6,
+          "answer": {
+            "text": "EXAMPLE-STUDENT answer 3",
+            "kind": "saved_grading_excerpt",
+            "sliceSource": "split",
+            "transcriptRef": {
+              "collection": "submissions",
+              "id": "essay-EXAMPLE-STUDENT",
+              "path": "cleaned_ocr_transcript"
+            }
+          },
+          "evaluation": {
+            "q_no": "03",
+            "score": 5.5,
+            "answer_excerpt": "EXAMPLE-STUDENT answer 3",
+            "slice_source": "split",
+            "grading_source": "groq",
+            "error": null,
+            "feedback": "More detail.",
+            "criteria_breakdown": [
+              {
+                "point": "Criterion 3",
+                "awarded_marks": 5.5,
+                "reason": "Partial"
+              }
+            ]
+          }
+        },
+        {
+          "questionId": "rubicCollection:rubric-1:04",
+          "questionNumber": "04",
+          "examMatch": "examKey",
+          "source": {
+            "collection": "submissions",
+            "id": "essay-EXAMPLE-STUDENT",
+            "path": "evaluation.results.3"
+          },
+          "awardedMarks": 6,
+          "maximumMarks": 6,
+          "answer": {
+            "text": "EXAMPLE-STUDENT answer 4",
+            "kind": "saved_grading_excerpt",
+            "sliceSource": "split",
+            "transcriptRef": {
+              "collection": "submissions",
+              "id": "essay-EXAMPLE-STUDENT",
+              "path": "cleaned_ocr_transcript"
+            }
+          },
+          "evaluation": {
+            "q_no": "04",
+            "score": 6,
+            "answer_excerpt": "EXAMPLE-STUDENT answer 4",
+            "slice_source": "split",
+            "grading_source": "groq",
+            "error": null,
+            "feedback": "More detail.",
+            "criteria_breakdown": [
+              {
+                "point": "Criterion 4",
+                "awarded_marks": 6,
+                "reason": "Partial"
+              }
+            ]
+          }
+        },
+        {
+          "questionId": "rubicCollection:rubric-1:05",
+          "questionNumber": "05",
+          "examMatch": "examKey",
+          "source": {
+            "collection": "submissions",
+            "id": "essay-EXAMPLE-STUDENT",
+            "path": "evaluation.results.4"
+          },
+          "awardedMarks": 6,
+          "maximumMarks": 6,
+          "answer": {
+            "text": "EXAMPLE-STUDENT answer 5",
+            "kind": "saved_grading_excerpt",
+            "sliceSource": "split",
+            "transcriptRef": {
+              "collection": "submissions",
+              "id": "essay-EXAMPLE-STUDENT",
+              "path": "cleaned_ocr_transcript"
+            }
+          },
+          "evaluation": {
+            "q_no": "05",
+            "score": 6,
+            "answer_excerpt": "EXAMPLE-STUDENT answer 5",
+            "slice_source": "split",
+            "grading_source": "groq",
+            "error": null,
+            "feedback": "More detail.",
+            "criteria_breakdown": [
+              {
+                "point": "Criterion 5",
+                "awarded_marks": 6,
+                "reason": "Partial"
+              }
+            ]
+          }
+        }
+      ],
+      "submissionRefs": [
+        {
+          "collection": "submissions",
+          "id": "essay-EXAMPLE-STUDENT"
+        }
+      ],
+      "unresolvedEvaluations": [
+        {
+          "source": {
+            "collection": "diagram_evaluations",
+            "id": "diagram-EXAMPLE-STUDENT"
+          },
+          "reason": "unverified_diagram_question",
+          "examMatch": "examKey",
+          "rubricRef": {
+            "collection": "diagram_marking",
+            "id": "guide-1"
+          },
+          "awardedMarks": 19,
+          "maximumMarks": 20,
+          "evaluation": {
+            "agent_marks": 19,
+            "max_marks": 20,
+            "criterion_results": [
+              {
+                "id": 1,
+                "marks": 19,
+                "reason": "Partial"
+              }
+            ],
+            "feedback": "Review links"
+          },
+          "answerRef": {
+            "collection": "diagram_evaluations",
+            "id": "diagram-EXAMPLE-STUDENT",
+            "path": "diagram_details"
+          }
+        }
+      ],
+      "issues": [
+        {
+          "code": "unverified_diagram_question",
+          "scope": "record",
+          "source": {
+            "collection": "diagram_evaluations",
+            "id": "diagram-EXAMPLE-STUDENT"
+          }
+        },
+        {
+          "code": "missing_original_diagram_artifact",
+          "scope": "record",
+          "source": {
+            "collection": "diagram_evaluations",
+            "id": "diagram-EXAMPLE-STUDENT"
+          }
+        },
+        {
+          "code": "missing_evaluation",
+          "scope": "record",
+          "questionNumber": "06"
+        }
+      ],
+      "status": "incomplete",
+      "grading": {
+        "components": {
+          "essay": {
+            "awardedMarks": 34.5,
+            "maximumMarks": 35,
+            "sourceRefs": [
+              {
+                "collection": "submissions",
+                "id": "essay-EXAMPLE-STUDENT"
+              }
+            ]
+          },
+          "diagram": {
+            "awardedMarks": 19,
+            "maximumMarks": 20,
+            "sourceRefs": [
+              {
+                "collection": "diagram_evaluations",
+                "id": "diagram-EXAMPLE-STUDENT"
+              }
+            ]
+          }
+        },
+        "awardedMarks": 53.5,
+        "maximumMarks": 55,
+        "percentage": 97.27,
+        "status": "complete"
+      }
+    }
+  ],
+  "issues": [
+    {
+      "code": "unverified_diagram_question",
+      "scope": "paper",
+      "source": {
+        "collection": "diagram_marking",
+        "id": "guide-1"
+      }
+    },
+    {
+      "code": "question_count_mismatch",
+      "scope": "paper"
+    }
+  ],
+  "unresolvedRecords": [],
+  "unresolvedDiagramQuestions": [
+    {
+      "questionId": null,
+      "questionNumber": null,
+      "questionType": "Diagram",
+      "questionText": null,
+      "rubricRef": {
+        "collection": "diagram_marking",
+        "id": "guide-1"
+      },
+      "examAssociation": "referenced_by_matching_evaluations"
+    }
+  ],
+  "validation": {
+    "examDefinitionStatus": "valid",
+    "questionPaperStatus": "incomplete",
+    "expectedQuestionCount": 6,
+    "actualQuestionCount": 5,
+    "missingQuestionNumbers": [
+      "06"
+    ],
+    "missingQuestionTypes": [
+      "Diagram"
+    ],
+    "status": "incomplete"
+  },
+  "grading": {
+    "maximumMarks": 55,
+    "componentMaximumMarks": {
+      "essay": 35,
+      "diagram": 20
+    },
+    "issues": []
+  },
+  "sampleNote": "Synthetic five-essay-plus-diagram fixture: combined grade 53.5/55 (97.27%); original diagram prompt is absent, so question-paper reconstruction remains incomplete."
+}
