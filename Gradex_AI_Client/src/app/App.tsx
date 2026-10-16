@@ -4,6 +4,7 @@ import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { LoginPage } from "./components/LoginPage";
 import { LecturerDashboard } from "./components/LecturerDashboard";
+import { ExamKeysPage } from "./components/ExamKeysPage";
 import { StudentDashboard } from "./components/StudentDashboard";
 import { AgentOverview } from "./components/AgentOverview";
 import { AGENT_CONFIG, titleFor } from "./routeConfig";
@@ -91,6 +92,7 @@ export default function App() {
               role === "student" && studentId ? <StudentDashboard studentId={studentId} /> : <Navigate to={defaultPath} replace />
             }
           />
+          <Route path="/exam-keys" element={role === "lecturer" ? <ExamKeysPage /> : <Navigate to={defaultPath} replace />} />
           {role === "lecturer" &&
             AGENT_CONFIG.map((agent) => (
               <Fragment key={agent.id}>
