@@ -63,19 +63,19 @@ attach_qa_analysis         Q&A relevance            (does NOT affect the mark)
 attach_assessment          the official Stage-1 mark
 ```
 
-The official mark (`assessment.final_score`, scoring version `v1.1`) is computed in
+The official mark (`assessment.final_score`, scoring version `v1.2`) is computed in
 `services/assessment_scoring.py` from **three equally-weighted families**. A family with no
 usable inputs is dropped and the rest renormalize, so a student is never penalised for a
 signal the recording could not provide.
 
 | Family | Inputs |
 |---|---|
-| `engagement` | CNN `average_engagement_score` + `facial_confidence` (from `confidence_score`) |
-| `audio_acoustics` | pitch stability (from std), HNR clarity, jitter/shimmer articulation |
+| `engagement` | CNN `average_engagement_score`, `facial_confidence`, facial emotion profile, on-camera gaze ratio, head stability, blink-rate score (equal parts; unavailable ones dropped) |
+| `audio_acoustics` | pitch stability (from std), HNR clarity, jitter/shimmer articulation, speech-emotion tone (half weight, real SER model only) |
 | `transcript` | speech-rate band, hedge count, filler count, long pauses, sentence completion |
 
 Deliberately **not** used for the mark: LLM criterion scores, UI sliders, the diagnostic
-`engagement_score` blend, `audio_grade`, and the 180 Hz `pitch_score`. Those remain evidence
+`engagement_score` blend (the signals it blends are scored individually as of v1.2), `audio_grade`, and the 180 Hz `pitch_score`. Those remain evidence
 and UI only — changing the LLM's scores does not move the mark.
 
 **A visible face is required.** `validate_features` returns `INCOMPLETE` when

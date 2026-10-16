@@ -343,9 +343,10 @@ export function buildScoreExplain(
     case "supporting_signals":
       return {
         title: "Supporting signals",
-        summary: "Most of these are display-only. Facial positivity also feeds Engagement in scorer v1.1+.",
+        summary: "In scorer v1.2, facial emotion, gaze, head stability and blink feed Engagement, and speech emotion feeds Audio.",
         lines: [
-          "Facial positivity — shown here, and (in v1.1+) half of the Engagement family.",
+          "Facial positivity, facial emotion profile, on-camera gaze, head stability and blink rate — each an equal part of the Engagement family (v1.2).",
+          "Speech emotion — scored in the Audio family at half weight, only when the real voice-emotion model ran (v1.2).",
           "Engagement blend % — diagnostic UI blend only (0% of official mark).",
           "Audio quality /10 — display audio_grade; official mark uses the acoustic family instead.",
           "LLM clarity / confidence / engagement — interpretation only (0% of official mark).",
