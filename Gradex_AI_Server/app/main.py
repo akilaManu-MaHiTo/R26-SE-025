@@ -864,7 +864,7 @@ async def viva_analyze(
         )
 
         print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")
-        # Persist to MongoDB (vivamark.marks) and auto-publish non-technical
+        # Persist to MongoDB (vivamark.viva_analysis_results) and auto-publish non-technical
         # vivas. Shared with the live-copilot path so both grade identically.
         result = await persist_and_autopublish(
             result,

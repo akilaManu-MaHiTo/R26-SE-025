@@ -23,7 +23,7 @@ from Gradex_AI_Server.app.subject_rubric_service import (
 
 
 class FakeSubjectRubricCollection:
-    """In-memory stand-in for db_instance.db["subject_rubrics"], with enough
+    """In-memory stand-in for db_instance.db["viva_subject_rubrics"], with enough
     of Mongo's real semantics (unique-index conflicts, conditional-match
     update_one, $set/$setOnInsert conflict rejection) to actually catch the
     class of bug a naive in-memory dict would silently paper over."""
@@ -105,7 +105,7 @@ class FakeSubjectRubricCollection:
 
 class FakeDbInstance:
     def __init__(self, collection):
-        self.db = {"subject_rubrics": collection}
+        self.db = {"viva_subject_rubrics": collection}
 
 
 def _run(coro):
