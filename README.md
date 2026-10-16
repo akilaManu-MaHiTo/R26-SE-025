@@ -7,6 +7,10 @@ Accounts and sessions use the existing analytics MongoDB database configured in
 `AdaptiveExamAnalyticsEngine/.env` (`MONGODB_MODE`, `MONGODB_LOCAL_URI` or
 `MONGODB_URI`, and `MONGODB_DB`). MongoDB must be available before starting the API.
 
+Exam keys use `MONGODB_URL` and `EXAM_KEYS_DATABASE_NAME` from
+`Gradex_AI_Server/app/.env`. Set `EXAM_KEYS_DATABASE_NAME=gradev5` for the existing
+local exam keys. If omitted, the server uses `DATABASE_NAME` for this collection.
+
 Install the updated requirements in your Python environment. The new password
 dependency is `argon2-cffi`.
 
