@@ -50,6 +50,7 @@ from Gradex_AI_Server.app.mongodb import (
 from DiagramEvaluationEngine.diagram_grading import grade_diagram_with_ollama
 from Gradex_AI_Server.app.analytics_api import router as analytics_router
 from Gradex_AI_Server.app.auth import require_lecturer
+from Gradex_AI_Server.app.exam_keys import router as exam_keys_router
 from Gradex_AI_Server.app.session_auth import setup_auth, initialize_auth, close_auth, allowed_origins
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
@@ -96,6 +97,7 @@ app.add_middleware(
 )
 
 app.include_router(analytics_router)
+app.include_router(exam_keys_router)
 app.include_router(viva_copilot_router)
 app.include_router(v2_lecturer_router, prefix="/api")
 app.include_router(v2_student_router, prefix="/api")

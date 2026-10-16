@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, GraduationCap } from "lucide-react";
+import { LayoutDashboard, LogOut, GraduationCap, KeyRound } from "lucide-react";
 import { NavLink } from "react-router";
 import { Button } from "./ui/button";
 import { cn } from "./ui/utils";
@@ -53,6 +53,10 @@ export function Sidebar({ role, email, onLogout }: SidebarProps) {
             <NavLink to="/dashboard" end className={itemClass}>
               <LayoutDashboard className="size-4" />
               <span>Dashboard</span>
+            </NavLink>
+            <NavLink to="/exam-keys" end className={itemClass}>
+              <KeyRound className="size-4" />
+              <span>Exam Keys</span>
             </NavLink>
 
             <div className="space-y-1">
