@@ -855,6 +855,11 @@ async def viva_analyze(
     )
 
     request_start = time.time()
+    normalized_student_id = (student_id or "").strip()
+    if not normalized_student_id:
+        raise HTTPException(status_code=400, detail="student_id is required.")
+    if len(normalized_student_id) > 64:
+        raise HTTPException(status_code=400, detail="student_id is too long.")
     requested_mode = normalize_mode(assessment_mode)
     job_id = normalize_progress_id(progress_id)
 
@@ -916,7 +921,7 @@ async def viva_analyze(
             extra_doc={
                 key: value
                 for key, value in {
-                    "student_id": (student_id or "").strip() or None,
+                    "student_id": normalized_student_id,
                     "subject_code": (subject_code or "").strip() or None,
                 }.items()
                 if value
