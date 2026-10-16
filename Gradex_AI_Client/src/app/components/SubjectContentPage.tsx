@@ -22,6 +22,16 @@ import { Slider } from "./ui/slider";
 import { AIPageBanner } from "./AIBrand";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
+import {
   CONCEPT_WEIGHT_MAX,
   CONCEPT_WEIGHT_MIN,
   SubjectConcept,
@@ -81,6 +91,8 @@ export function SubjectContentPage() {
   const [subjects, setSubjects] = useState<SubjectRubricSummary[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<SubjectRubricSummary | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -178,16 +190,11 @@ export function SubjectContentPage() {
     }
   }
 
-  /** Delete a whole subject after an explicit confirmation. */
-  async function handleDeleteSubject(code: string) {
-    if (
-      !window.confirm(
-        `Delete subject ${code} and its whole concept rubric? This cannot be undone. ` +
-          "You can upload the material again afterwards.",
-      )
-    ) {
-      return;
-    }
+  /** Runs after the lecturer confirms in the delete dialog. */
+  async function confirmDeleteSubject() {
+    if (!pendingDelete) return;
+    const code = pendingDelete.subject_code;
+    setDeleting(true);
     try {
       await deleteSubjectContent(code);
       if (rubric?.subject_code === code) {
@@ -199,10 +206,13 @@ export function SubjectContentPage() {
       }
       await refreshList();
       toast.success("Subject deleted", { description: code });
+      setPendingDelete(null);
     } catch (err) {
       toast.error("Delete failed", {
         description: err instanceof Error ? err.message : "Request failed",
       });
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -324,7 +334,7 @@ export function SubjectContentPage() {
                     type="button"
                     aria-label={`Delete subject ${subject.subject_code}`}
                     title="Delete subject"
-                    onClick={() => handleDeleteSubject(subject.subject_code)}
+                    onClick={() => setPendingDelete(subject)}
                     className="absolute bottom-2 right-2 cursor-pointer rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="size-4" />
@@ -586,6 +596,37 @@ export function SubjectContentPage() {
           </Tabs>
         </Card>
       )}
+
+      <AlertDialog
+        open={pendingDelete != null}
+        onOpenChange={(open) => !open && !deleting && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this subject?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deletes{" "}
+              <span className="font-medium text-foreground">{pendingDelete?.subject_code}</span>
+              {pendingDelete?.subject_name ? ` (${pendingDelete.subject_name})` : ""} and its whole
+              concept rubric ({pendingDelete?.concept_count ?? 0} concepts). Marks already saved are
+              not affected. You can upload the material again afterwards.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmDeleteSubject();
+              }}
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
