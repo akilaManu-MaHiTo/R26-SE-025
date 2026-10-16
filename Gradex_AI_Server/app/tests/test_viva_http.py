@@ -163,7 +163,7 @@ class AnalyzeHttpTests(unittest.TestCase):
 
     viva_analyze calls ensure_marks_collection() before writing. With
     allow_autoconnect left on, that dials the real Atlas cluster, replaces any
-    injected marks_col, and inserts live rows into vivamark.marks — so these
+    injected marks_col, and inserts live rows into vivamark.viva_analysis_results — so these
     tests must disable it and clear the client for the ping guard.
     """
 
