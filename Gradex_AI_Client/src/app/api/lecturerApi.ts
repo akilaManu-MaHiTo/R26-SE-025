@@ -182,10 +182,13 @@ export interface ExamAnalytics {
 export interface StudentRow {
   student_id: string;
   score: {
-    obtained: number;
-    maximum: number;
-    percentage: number;
+    obtained: number | null;
+    maximum: number | null;
+    percentage: number | null;
   };
+  components?: Record<"essay" | "diagram", { status: string; obtained: number | null; maximum: number | null }>;
+  grading_status?: "complete" | "pending" | "needs_review";
+  review_reasons?: string[];
   status: string;
   analysis_status: string;
   submitted_at: string | null;

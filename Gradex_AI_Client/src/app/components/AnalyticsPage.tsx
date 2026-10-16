@@ -40,6 +40,7 @@ import { QuestionPerformanceTable } from "./analytics/QuestionPerformanceTable";
 import { InsightsPanel } from "./analytics/InsightsPanel";
 import { TeachingActions } from "./analytics/TeachingActions";
 import { DiagramAnalysisPanel } from "./analytics/DiagramAnalysisPanel";
+import { GradingOverview, StudentGradingCells, canViewStudent } from "./analytics/GradingStatus";
 import { TopicDetailModal } from "./analytics/TopicDetailModal";
 import { QuestionDetailModal } from "./analytics/QuestionDetailModal";
 import { StudentQuestionRow } from "./analytics/StudentQuestionRow";
@@ -117,6 +118,7 @@ export default function AnalyticsPage() {
   // lecturer student finder (inside analyzed exam)
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [studentListError, setStudentListError] = useState<string | null>(null);
   const [studentSearch, setStudentSearch] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [studentDetail, setStudentDetail] = useState<LecturerStudentDetail | null>(null);
@@ -150,6 +152,7 @@ export default function AnalyticsPage() {
     setSelectedExam(exam);
     setLoadingAnalytics(true);
     setLoadingStudents(true);
+    setStudentListError(null);
     setAnalytics(null);
     setLiveModelMessage("PULSE·AI — Starting analysis...");
     // reset student finder
@@ -166,6 +169,22 @@ export default function AnalyticsPage() {
     ];
     setLoadSteps(steps);
     setCurrentLoadStep(0);
+
+    // Status does not require model analysis; load it even when analytics fails.
+    const studentsPromise = fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
+      .then(rows => {
+        if ((handleSelectExam as any)._lastRequestId === requestId) setStudents(rows);
+      })
+      .catch(() => {
+        if ((handleSelectExam as any)._lastRequestId === requestId) {
+          setStudents([]);
+          setStudentListError("Could not load grading status. Reopen the exam to retry.");
+        }
+      })
+      .finally(() => {
+        if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingStudents(false);
+      });
+    void studentsPromise;
 
     try {
       setCurrentLoadStep(0);
@@ -205,9 +224,8 @@ export default function AnalyticsPage() {
       setLiveModelMessage("PULSE·AI — Analysis complete");
       setCurrentLoadStep(2);
 
-      // C: parallelize optional fetches (students + teaching) — not waterfall
+      // Grading status is already loading independently; only teaching remains.
       setLoadingActions(true);
-      setLoadingStudents(true);
       const teachingPromise = fetchTeachingActions(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
         .then((actions) => {
           if ((handleSelectExam as any)._lastRequestId !== requestId) return;
@@ -221,24 +239,9 @@ export default function AnalyticsPage() {
           if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingActions(false);
         });
 
-      const studentsPromise = fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
-        .then((rows) => {
-          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
-          setStudents(rows);
-        })
-        .catch(() => {
-          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
-          setStudents([]);
-        })
-        .finally(() => {
-          if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingStudents(false);
-        });
-
-      // Fire both in parallel, optional — never block KPI render
-      void Promise.allSettled([teachingPromise, studentsPromise]);
+      void teachingPromise;
     } catch (err) {
       if ((handleSelectExam as any)._lastRequestId !== requestId) return;
-      setLoadingStudents(false);
       console.error(err);
       const msg = err instanceof Error ? err.message : String(err);
       setLiveModelMessage("PULSE·AI — Analysis failed");
@@ -1057,15 +1060,20 @@ export default function AnalyticsPage() {
         </div>
       </motion.div>
 
+      {studentListError ? <p role="alert" className="text-sm text-destructive">{studentListError}</p>
+        : !loadingStudents && <GradingOverview students={students} />}
+
       {loadingAnalytics ? (
         <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} liveMessage={liveModelMessage} />
       ) : analytics ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <h3 className="mb-2 text-sm font-semibold">Essay analytics · {analytics.statistics.total_students} graded submissions</h3>
             <KpiCards statistics={analytics.statistics} />
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+            <h3 className="mb-2 text-sm font-semibold">Essay score distribution</h3>
             <div className="rounded-xl border bg-card/50 backdrop-blur p-1"><DistributionHistogram statistics={analytics.statistics} /></div>
           </motion.div>
 
@@ -1137,7 +1145,7 @@ export default function AnalyticsPage() {
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
                 className="pl-9 h-9 bg-background"
-                disabled={loadingStudents || !analytics}
+                disabled={loadingStudents}
               />
             </div>
           </div>
@@ -1146,6 +1154,8 @@ export default function AnalyticsPage() {
             <div className="p-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> Loading students…
             </div>
+          ) : studentListError ? (
+            <p role="alert" className="p-4 text-sm text-destructive">{studentListError}</p>
           ) : students.length === 0 ? (
             <div className="p-8 text-center">
               <GraduationCap className="size-8 mx-auto text-muted-foreground/30" />
@@ -1158,9 +1168,10 @@ export default function AnalyticsPage() {
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
                     <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Student</TableHead>
-                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Score</TableHead>
-                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">%</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Essay</TableHead>
+                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Diagram</TableHead>
+                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Overall</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Grading status</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Analyzed</TableHead>
                     <TableHead className="w-[88px] text-right pr-4 text-xs uppercase tracking-wider font-semibold text-muted-foreground">View</TableHead>
                   </TableRow>
@@ -1168,8 +1179,13 @@ export default function AnalyticsPage() {
                 <TableBody>
                   {students
                     .filter((s) => !studentSearch.trim() || s.student_id.toLowerCase().includes(studentSearch.trim().toLowerCase()))
-                    .map((s) => (
-                      <TableRow key={s.student_id} onClick={() => handleSelectStudent(s.student_id)} className="group cursor-pointer h-12 hover:bg-muted/50">
+                    .map((s) => {
+                      const canView = canViewStudent(s);
+                      return (
+                      <TableRow key={s.student_id} aria-disabled={!canView} tabIndex={canView ? 0 : undefined}
+                        onClick={canView ? () => handleSelectStudent(s.student_id) : undefined}
+                        onKeyDown={canView ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void handleSelectStudent(s.student_id); } } : undefined}
+                        className={`group h-12 ${canView ? "cursor-pointer hover:bg-muted/50" : "text-muted-foreground"}`}>
                         <TableCell className="py-2">
                           <div className="flex items-center gap-2">
                             <div className="size-7 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -1178,17 +1194,7 @@ export default function AnalyticsPage() {
                             <span className="text-sm font-medium font-mono">{s.student_id}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="py-2 text-center text-sm tabular-nums">
-                          {s.score.obtained.toFixed(1)} / {s.score.maximum.toFixed(1)}
-                        </TableCell>
-                        <TableCell className="py-2 text-center">
-                          <Badge variant="outline" className={`text-xs tabular-nums ${s.score.percentage >= 50 ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-amber-500/10 text-amber-700 border-amber-500/20"}`}>
-                            {s.score.percentage.toFixed(1)}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <Badge variant="outline" className="text-xs">{s.status}</Badge>
-                        </TableCell>
+                        <StudentGradingCells student={s} />
                         <TableCell className="py-2">
                           {s.analysis_status === "generated" ? (
                             <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><CheckCircle2 className="size-3" /> Ready</span>
@@ -1199,7 +1205,7 @@ export default function AnalyticsPage() {
                           )}
                         </TableCell>
                         <TableCell className="py-2 text-right pr-4">
-                          {loadingStudentDetail && selectedStudentId === s.student_id ? (
+                          {!canView ? <span className="text-xs text-muted-foreground">Awaiting grades</span> : loadingStudentDetail && selectedStudentId === s.student_id ? (
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
                               <Loader2 className="size-3 animate-spin" />
                               <span className="animate-pulse">{["generated", "diagram_only"].includes(s.analysis_status) ? "Loading…" : "Analyzing…"}</span>
@@ -1211,7 +1217,7 @@ export default function AnalyticsPage() {
                           )}
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ); })}
                 </TableBody>
               </Table>
               {students.filter((s) => !studentSearch.trim() || s.student_id.toLowerCase().includes(studentSearch.trim().toLowerCase())).length === 0 && (

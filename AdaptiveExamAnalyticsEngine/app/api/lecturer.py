@@ -32,6 +32,7 @@ from app.services.teaching_actions import get_teaching_actions
 from app.ingestion.student_data import normalize_question_no
 from app.ingestion.answer_text import question_excerpt
 from app.analytics.diagram_analysis import compute_diagram_analysis
+from app.services.lecturer_grading import build_lecturer_grading_rows
 
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
 
@@ -503,6 +504,33 @@ async def lecturer_student_list(
     semester: int | None = Query(None),
     db=Depends(get_db),
 ):
+    from calendar import month_name
+    from app.db.repository import load_exam_paper_sources
+
+    identity = {"subjectCode": course_code, "session": "Final" if session_name == "Final Examination" else session_name}
+    for key, value in (("examYear", year), ("examSemester", semester)):
+        if value is not None:
+            identity[key] = value
+    if month is not None:
+        if not 1 <= month <= 12:
+            raise HTTPException(422, "Invalid exam month")
+        identity["examMonth"] = month_name[month]
+    exams = await db["examkeys"].find(identity).to_list(length=2)
+    if len(exams) > 1:
+        raise HTTPException(409, "Select the exact exam year, month and semester to view grading status")
+    if exams:
+        sources = await load_exam_paper_sources(db, exams[0]["examKey"])
+        try:
+            rows = build_lecturer_grading_rows(exams[0]["examKey"], sources)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        for row in rows:
+            cached = await find_student_analytics(db, row["student_id"], course_code, session_name, year, month, semester)
+            if is_current_student_analysis(cached):
+                row["analysis_status"] = "generated"
+        return rows
+
+    # Legacy exams without a canonical record retain their existing read path.
     submissions = await find_graded_submissions_for_exam(
         db, course_code, session_name, year, month, semester
     )

@@ -43,6 +43,10 @@ Lecturer diagram views now read the saved `diagram_evaluations` agent schema,
 resolve rubrics by guideline ID and refresh diagram results even for cached essay
 analytics. See [diagram dashboard verification](DIAGRAM_DASHBOARD_VALIDATION.md).
 
+The lecturer student list now includes pending/roster students with separate
+essay, diagram and overall grading statuses. The overall average excludes
+pending and review-needed grades. See [grading progress and verification](LECTURER_GRADING_STATUS.md).
+
 The lecturer Exam Creator includes saved blueprints, draft-aware recommendations,
 source-grounded question alternatives, and separate marking-scheme exports.
 See [the exam creator guide](EXAM_CREATOR.md) for usage, model configuration and validation limits.
