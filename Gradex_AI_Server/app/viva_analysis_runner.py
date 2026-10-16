@@ -115,6 +115,17 @@ async def persist_and_autopublish(
     publish(progress_id, "saving", "Saving the mark")
     result["assessment_mode"] = mode
 
+    # The engine scores the recording before the subject rubric is checked. In a technical
+    # viva, re-run the assessment now that the concept coverage is known, so a recording
+    # that covered almost none of the subject is held instead of getting a mark.
+    if mode == MODE_WITH and isinstance(result.get("technical_accuracy_ai"), dict):
+        try:
+            from VivaEvaluationEngine.services.assessment_scoring import build_assessment
+
+            result["assessment"] = build_assessment(result, mode=mode)
+        except Exception as exc:  # noqa: BLE001 - keep the original assessment on any failure
+            print(f"[VIVA] Warning: could not re-check topic coverage ({type(exc).__name__}: {exc})")
+
     if not await ensure_marks_collection():
         result["persistence_error"] = (
             "MongoDB is not connected — mark was not saved. Publish is unavailable."

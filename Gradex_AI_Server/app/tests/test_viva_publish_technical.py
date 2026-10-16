@@ -389,5 +389,48 @@ class PublishRoundTripTests(unittest.TestCase):
         )
 
 
+
+class OffTopicHoldTests(unittest.TestCase):
+    """A technical mark whose answer covered almost none of the subject cannot be published."""
+
+    def _held_mark(self):
+        result = _engine_result()
+        result["technical_accuracy_ai"] = {
+            "status": "success",
+            "overall_score": 0.0,
+            "concepts": [
+                {"concept_id": f"c{i}", "covered": False, "score": 0.0, "weight": 5.0} for i in range(6)
+            ],
+        }
+        result["assessment"] = build_assessment(result, mode=MODE_WITH)
+        return {
+            "_id": ObjectId(),
+            "result": result,
+            "assessment": result["assessment"],
+            "assessment_mode": MODE_WITH,
+            "published": False,
+            "human_published": False,
+            "student_id": None,
+        }
+
+    def test_recording_is_held_incomplete(self):
+        doc = self._held_mark()
+        self.assertEqual(doc["assessment"]["status"], STATUS_INCOMPLETE)
+        self.assertIn("insufficient_topic_coverage", doc["assessment"]["validation"]["reasons"])
+
+    def test_examiner_cannot_publish_it_and_nothing_is_written(self):
+        doc = self._held_mark()
+        col = FakeMarksCollection(doc)
+        with self.assertRaises(ValueError) as ctx:
+            _run(
+                apply_publish_to_mark(
+                    col, doc["_id"], mode=MODE_WITH, technical_accuracy=9.0, student_id="IT21001"
+                )
+            )
+        self.assertIn("concepts", str(ctx.exception))
+        self.assertEqual(col.updates, [])
+        self.assertFalse(doc["published"])
+
+
 if __name__ == "__main__":
     unittest.main()

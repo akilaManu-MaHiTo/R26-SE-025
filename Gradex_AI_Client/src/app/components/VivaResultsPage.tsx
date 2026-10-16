@@ -348,7 +348,11 @@ function ResultDetail({
     (analysis?.assessment?.ai_performance?.family_scores as Record<string, number | null> | undefined) ??
     {};
   const noSeek = () => {};
-  const isTechnicalDraft = assessmentMode === "WITH_TECHNICAL_ACCURACY" && !doc.published;
+  // A recording held by a quality gate (for example an answer that covered almost none of the
+  // subject) cannot be published, so show why instead of offering the publish box.
+  const held = analysis?.assessment?.status === "INCOMPLETE";
+  const heldMessage = analysis?.assessment?.validation?.message;
+  const isTechnicalDraft = assessmentMode === "WITH_TECHNICAL_ACCURACY" && !doc.published && !held;
   const aiSuggestion = analysis?.technical_accuracy_ai?.overall_score;
   const [technicalDraft, setTechnicalDraft] = useState<string>(
     aiSuggestion != null ? String(Math.round(aiSuggestion)) : "",
@@ -512,6 +516,14 @@ function ResultDetail({
                     }
                   />
                 </dl>
+                {held && (
+                  <div className="border-t border-border pt-3 space-y-1">
+                    <div className="text-sm font-medium text-amber-700 dark:text-amber-400">Held for review</div>
+                    <p className="text-xs text-muted-foreground">
+                      {heldMessage || "This recording is incomplete, so no official mark is given."}
+                    </p>
+                  </div>
+                )}
                 {isTechnicalDraft && (
                   <div className="border-t border-border pt-3 space-y-2">
                     <div className="text-sm font-medium text-foreground">Publish technical mark</div>
