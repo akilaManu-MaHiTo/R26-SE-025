@@ -352,6 +352,12 @@ export function VivaPage() {
   const analyzeVideo = async (file: File) => {
     if (!file) return;
 
+    const normalizedStudentId = studentId.trim();
+    if (!normalizedStudentId) {
+      setError("Enter a student ID before analyzing the recording.");
+      return;
+    }
+
     setIsAnalyzing(true);
     setError("");
     setUploadProgress(0);
@@ -377,9 +383,7 @@ export function VivaPage() {
       formData.append("subject_code", subjectCode.trim());
     }
     // Saved with the mark so the result can be found later under Viva Results.
-    if (studentId.trim()) {
-      formData.append("student_id", studentId.trim());
-    }
+    formData.append("student_id", normalizedStudentId);
 
     try {
       const apiUrl = `${backendBaseUrl}/api/viva-analyze`;
@@ -560,7 +564,7 @@ export function VivaPage() {
             </p>
             <div className="mt-3">
               <label className="text-xs text-muted-foreground" htmlFor="viva-student-id">
-                Student ID (optional — lets you find this result later under Viva Results)
+                Student ID (required)
               </label>
               <Input
                 id="viva-student-id"
@@ -569,6 +573,7 @@ export function VivaPage() {
                 onChange={(e) => setStudentId(e.target.value)}
                 placeholder="e.g. IT22557056"
                 maxLength={64}
+                required
               />
             </div>
             {assessmentMode === "WITH_TECHNICAL_ACCURACY" && (
