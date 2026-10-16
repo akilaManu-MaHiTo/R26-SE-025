@@ -40,6 +40,11 @@ const FAMILY_LABELS: Record<string, string> = {
 const COMPONENT_LABELS: Record<string, string> = {
   average_engagement_score: "Face CNN engagement",
   facial_confidence: "Facial confidence / positivity",
+  emotion_profile: "Facial emotion profile",
+  gaze_on_camera_ratio: "Eye gaze on camera",
+  head_stability: "Head stability",
+  blink_score: "Blink rate",
+  speech_emotion_tone: "Speech emotion tone (half weight)",
   pitch_stability_from_std: "Pitch stability",
   clarity_from_hnr: "Voice clarity (HNR)",
   articulation_from_jitter_shimmer: "Articulation (jitter/shimmer)",
@@ -171,10 +176,14 @@ function familyWorking(
     const key = String(c.feature || "");
     const label = COMPONENT_LABELS[key] || key.replace(/_/g, " ");
     const value = typeof c.normalized === "number" ? Number(c.normalized) * 100 : 0;
-    return `${label.slice(0, 24).padEnd(26)} ${value.toFixed(1).padStart(5)}`;
+    const weight =
+      typeof c.weight_within_family === "number"
+        ? `  x ${pct(Number(c.weight_within_family), "").padStart(5)}`
+        : "";
+    return `${label.slice(0, 24).padEnd(26)} ${value.toFixed(1).padStart(5)}${weight}`;
   });
   rows.push(
-    `${`average of ${comps.length}`.padEnd(26)} ${(Number(score) * 100).toFixed(1).padStart(5)}`,
+    `${`weighted average of ${comps.length}`.padEnd(26)} ${(Number(score) * 100).toFixed(1).padStart(5)}`,
   );
   return rows;
 }
@@ -187,7 +196,7 @@ export function buildScoreExplain(
   } = {},
 ): ScoreExplainContent {
   const { assessment, assessmentMode } = options;
-  const version = assessment?.scoring_version || "v1.1";
+  const version = assessment?.scoring_version || "v1.2";
   const weights = assessment?.ai_performance?.family_weights_applied;
   const withTech =
     (assessmentMode || assessment?.assessment_mode) === "WITH_TECHNICAL_ACCURACY";
@@ -221,8 +230,8 @@ export function buildScoreExplain(
               applied === 1 ? "family carries" : "families carry"
             } the whole mark at the percentages above.`
           : "Equal average of available families (missing families are dropped and weights re-balance).",
-        "Emotion: not a separate % of the mark. It enters inside Engagement as facial confidence/positivity (emotion-weighted face tone), mixed 50/50 with Face CNN engagement.",
-        "Still not included: LLM clarity/confidence, audio quality /10, engagement blend %, Positive/Neutral/Negative emotion bars as their own family.",
+        "Face signals count inside Engagement: CNN engagement, facial confidence, facial emotion, eye gaze, head stability and blink rate (equal parts). Voice emotion counts inside Audio at half weight.",
+        "Not included: LLM clarity/confidence, audio quality /10, and the engagement blend %.",
       ];
       if (withTech) {
         lines.push(
@@ -239,7 +248,7 @@ export function buildScoreExplain(
         title: topic === "official_mark" ? "How the official mark is calculated" : "How AI performance is calculated",
         summary: withTech
           ? "Blend of AI performance and technical accuracy."
-          : "Equal mix of engagement, audio acoustics, and transcript. Emotion feeds Engagement via facial confidence.",
+          : "Equal mix of engagement, audio acoustics, and transcript. Facial and voice emotion, gaze, head and blink all feed these families.",
         lines,
         formula: withTech
           ? `Final = ${fusion.weightAi}×AI + ${fusion.weightTechnical}×Technical`
@@ -257,20 +266,24 @@ export function buildScoreExplain(
         familyScoreLine(assessment, "engagement") ||
           `Part of the official mark (${familyWeightLabel(assessment, "engagement")}).`,
         ...(comps.length > 0
-          ? ["Inside this family (equal parts when both measured):", ...comps]
+          ? ["Inside this family (equal parts, only the ones measured):", ...comps]
           : [
-              "Equal mix inside this family (when both are available):",
+              "Equal mix inside this family (only the signals measured):",
               "• Face CNN engagement average",
               "• Facial confidence / positivity",
+              "• Facial emotion profile",
+              "• Eye gaze on camera",
+              "• Head stability",
+              "• Blink rate",
             ]),
-        "Not the hero “engagement blend %” — that stays a supporting signal only.",
-        "Emotion bars (Positive/Neutral/Negative %) are not scored alone; facial confidence is the emotion input here.",
+        "A signal that could not be measured (for example blink rate on a very short clip) is left out, not scored as zero.",
+        "Not the “engagement blend %” — that stays a supporting signal only.",
       ];
       return {
         title: `Engagement (${familyWeightLabel(assessment, "engagement")} of mark)`,
-        summary: "Face CNN engagement + facial confidence (emotion-weighted).",
+        summary: "Face CNN engagement, facial confidence, emotion, eye gaze, head stability and blink rate.",
         lines,
-        formula: "Engagement = (CNN + facial confidence) / 2",
+        formula: "Engagement = average of the available face signals",
         workedExample: familyWorking(assessment, "engagement"),
       };
     }
@@ -282,16 +295,17 @@ export function buildScoreExplain(
         ...(comps.length > 0
           ? ["Acoustic parts used for this recording:", ...comps]
           : [
-              "Equal average of measured acoustic parts:",
+              "Average of measured acoustic parts:",
               "• Pitch stability",
               "• Voice clarity (HNR)",
               "• Articulation (jitter / shimmer)",
+              "• Speech emotion tone (counts half, only when the voice-emotion model ran)",
             ]),
         "Not the supporting “audio quality /10” grade.",
       ];
       return {
         title: `Audio acoustics (${familyWeightLabel(assessment, "audio_acoustics")} of mark)`,
-        summary: "Pitch stability, clarity, and articulation.",
+        summary: "Pitch stability, clarity, articulation, and voice emotion tone.",
         lines,
         formula: "Audio = average of available acoustic parts",
         workedExample: familyWorking(assessment, "audio_acoustics"),

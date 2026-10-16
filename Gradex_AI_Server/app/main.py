@@ -608,10 +608,14 @@ def _summarize_mark_document(document: dict[str, Any]) -> dict[str, Any]:
         "mark_id": str(document.get("_id")),
         "video_filename": document.get("video_filename"),
         "student_id": document.get("student_id"),
+        "subject_code": document.get("subject_code"),
         "processed_at": document.get("processed_at"),
         "published": bool(document.get("published")),
         "published_at": document.get("published_at"),
-        "assessment_mode": document.get("assessment_mode"),
+        # Technical drafts have no top-level mode until published; the mode the
+        # examiner chose is still recorded inside the stored analysis result.
+        "assessment_mode": document.get("assessment_mode")
+        or (document.get("result") or {}).get("assessment_mode"),
         "video_status": document.get("video_status"),
         "confidence_score": document.get("confidence_score"),
         "engagement_score": document.get("engagement_score"),
@@ -703,6 +707,27 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
         ) from None
 
 
+class VivaMarkStudentPayload(BaseModel):
+    student_id: Optional[str] = None
+
+
+@app.patch("/api/viva-marks/{mark_id}/student", dependencies=[Depends(require_lecturer)])
+async def set_viva_mark_student(mark_id: str, payload: VivaMarkStudentPayload):
+    """Assign (or clear) the student a saved mark belongs to."""
+    marks_col = _require_marks_collection()
+    object_id = _parse_object_id(mark_id)
+    student_id = (payload.student_id or "").strip() or None
+    if student_id and len(student_id) > 64:
+        raise HTTPException(status_code=400, detail="student_id is too long.")
+    try:
+        result = await marks_col.update_one({"_id": object_id}, {"$set": {"student_id": student_id}})
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"MongoDB update failed: {exc}") from exc
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Mark not found.")
+    return {"mark_id": mark_id, "student_id": student_id}
+
+
 @app.get("/api/viva-analyze/progress/{progress_id}", dependencies=[Depends(require_lecturer)])
 async def viva_analyze_progress(progress_id: str):
     """One-shot step list for the analyze UI.
@@ -789,6 +814,7 @@ async def viva_analyze(
     assessment_mode: str = Form(default="WITHOUT_TECHNICAL_ACCURACY"),
     subject_code: Optional[str] = Form(default=None),
     progress_id: Optional[str] = Form(default=None),
+    student_id: Optional[str] = Form(default=None),
 ):
     """
     Analyze a viva recording for emotion detection and engagement scoring.
@@ -855,6 +881,7 @@ async def viva_analyze(
     file_saved = time.time()
     print(f"[VIVA] File saved: {file_path.name} in {file_saved - upload_complete:.2f}s")
 
+    saved_mark_id: Optional[str] = None
     try:
         analysis_start = time.time()
         # ML pipeline is CPU/GPU-bound; keep the event loop free for other requests.
@@ -886,8 +913,17 @@ async def viva_analyze(
             mode=requested_mode,
             video_filename=video.filename,
             source="upload",
+            extra_doc={
+                key: value
+                for key, value in {
+                    "student_id": (student_id or "").strip() or None,
+                    "subject_code": (subject_code or "").strip() or None,
+                }.items()
+                if value
+            },
             progress_id=job_id,
         )
+        saved_mark_id = result.get("mark_id")
         return result
     except ModuleNotFoundError as exc:
         raise HTTPException(status_code=503, detail=f"Viva analysis unavailable: {exc}") from exc
@@ -909,7 +945,7 @@ async def viva_analyze(
         # Close any attached SSE stream on success and on failure alike, so the
         # browser stops listening instead of waiting out the keep-alives.
         try:
-            finish_progress(job_id)
+            finish_progress(job_id, saved_mark_id)
         except Exception:
             pass
         try:

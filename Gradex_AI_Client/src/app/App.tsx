@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState, createContext, useContext } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router";
+import { PageErrorBoundary } from "./components/PageErrorBoundary";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { LoginPage } from "./components/LoginPage";
@@ -96,7 +97,11 @@ export default function App() {
               <Fragment key={agent.id}>
                 <Route path={agent.basePath} element={<AgentOverview agent={agent} />} />
                 {agent.features.map((feature) => (
-                  <Route key={feature.path} path={feature.path} element={feature.element} />
+                  <Route
+                    key={feature.path}
+                    path={feature.path}
+                    element={<PageErrorBoundary key={feature.path}>{feature.element}</PageErrorBoundary>}
+                  />
                 ))}
               </Fragment>
             ))}

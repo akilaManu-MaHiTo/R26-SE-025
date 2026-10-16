@@ -7,6 +7,7 @@ returns invalid JSON.
 from __future__ import annotations
 
 import json
+import os
 import urllib.error
 import urllib.request
 from typing import Any, Callable, Dict, List, Optional, Sequence
@@ -19,7 +20,13 @@ from services.conversation import (
     full_transcript_text,
     pair_question_answers,
 )
-from services.llm_judge import _api_key, _extract_json_object, _model_candidates, _model_name
+from services.llm_judge import (
+    _api_key,
+    _extract_json_object,
+    _load_env_files,
+    _model_candidates,
+    _model_name,
+)
 
 
 SEGMENT_TYPES = frozenset(
