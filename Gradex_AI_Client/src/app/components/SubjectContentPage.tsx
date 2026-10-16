@@ -27,6 +27,7 @@ import {
   SubjectConcept,
   SubjectRubric,
   SubjectRubricSummary,
+  deleteSubjectContent,
   fetchSubjectContent,
   listSubjectContent,
   saveSubjectContent,
@@ -58,7 +59,10 @@ function makeConceptId(name: string): string {
 
 function formatDate(value?: string): string {
   if (!value) return "";
-  const parsed = new Date(value);
+  // The server stores UTC but MongoDB hands datetimes back without a zone suffix,
+  // which the browser would read as local time. Treat a bare timestamp as UTC.
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value);
+  const parsed = new Date(hasZone ? value : `${value}Z`);
   return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleString();
 }
 
@@ -174,6 +178,34 @@ export function SubjectContentPage() {
     }
   }
 
+  /** Delete a whole subject after an explicit confirmation. */
+  async function handleDeleteSubject(code: string) {
+    if (
+      !window.confirm(
+        `Delete subject ${code} and its whole concept rubric? This cannot be undone. ` +
+          "You can upload the material again afterwards.",
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteSubjectContent(code);
+      if (rubric?.subject_code === code) {
+        setRubric(null);
+        setConcepts([]);
+        setSubjectCode("");
+        setSubjectName("");
+        setDirty(false);
+      }
+      await refreshList();
+      toast.success("Subject deleted", { description: code });
+    } catch (err) {
+      toast.error("Delete failed", {
+        description: err instanceof Error ? err.message : "Request failed",
+      });
+    }
+  }
+
   async function handleSave() {
     if (!trimmedCode) return;
     const named = concepts.filter((concept) => concept.name.trim());
@@ -262,11 +294,11 @@ export function SubjectContentPage() {
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 {subjects.map((subject) => (
+                  <div key={subject.subject_code} className="relative">
                   <button
-                    key={subject.subject_code}
                     type="button"
                     onClick={() => openSubject(subject.subject_code)}
-                    className="rounded-lg border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/50"
+                    className="w-full cursor-pointer rounded-lg border border-border p-3 pr-10 text-left transition-colors hover:border-primary/40 hover:bg-muted/50"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -288,6 +320,16 @@ export function SubjectContentPage() {
                       {formatDate(subject.updated_at) && ` · updated ${formatDate(subject.updated_at)}`}
                     </div>
                   </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete subject ${subject.subject_code}`}
+                    title="Delete subject"
+                    onClick={() => handleDeleteSubject(subject.subject_code)}
+                    className="absolute bottom-2 right-2 cursor-pointer rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                  </div>
                 ))}
               </div>
             )}

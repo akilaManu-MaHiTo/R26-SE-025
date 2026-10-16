@@ -579,6 +579,20 @@ async def update_subject_content(subject_code: str, payload: SubjectRubricUpdate
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+@app.delete("/api/subject-content/{subject_code}", dependencies=[Depends(require_lecturer)])
+async def delete_subject_content(subject_code: str):
+    """Delete a subject's stored concept rubric (e.g. to re-upload it cleanly)."""
+    from Gradex_AI_Server.app.subject_rubric_service import delete_subject_rubric
+
+    try:
+        deleted = await delete_subject_rubric(db_instance, subject_code)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if not deleted:
+        raise HTTPException(status_code=404, detail="No subject rubric found for this subject_code.")
+    return {"deleted": True, "subject_code": subject_code}
+
+
 def _require_marks_collection():
     if db_instance.marks_col is None:
         raise HTTPException(
