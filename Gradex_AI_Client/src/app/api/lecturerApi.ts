@@ -204,6 +204,22 @@ export interface QuestionDetail {
     feedback: string | null;
   }>;
   excluded_count: number;
+  approved_topic: string | null;
+  topic_options: string[];
+}
+
+export async function saveQuestionTopic(
+  exam: Pick<ExamListItem, "course_code" | "session_name" | "year" | "month" | "semester">,
+  questionNo: string,
+  topic: string | null,
+): Promise<{ question_no: string; approved_topic: string | null }> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${encodeURIComponent(exam.course_code)}/${encodeURIComponent(exam.session_name)}/questions/${encodeURIComponent(questionNo)}/topic?${params}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Could not save question topic");
+  return data;
 }
 
 export async function fetchQuestionDetail(

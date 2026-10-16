@@ -1,23 +1,29 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { BarChart3, FileText, Users } from "lucide-react";
-import { fetchQuestionDetail, type ExamListItem, type QuestionDetail, type QuestionPerformance } from "../../api/lecturerApi";
+import { fetchQuestionDetail, saveQuestionTopic, type ExamListItem, type QuestionDetail, type QuestionPerformance } from "../../api/lecturerApi";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 interface Props {
   question: QuestionPerformance | null;
   exam: ExamListItem | null;
   open: boolean;
   onClose: () => void;
+  onTopicSaved?: () => void;
 }
 
-export function QuestionDetailModal({ question, exam, open, onClose }: Props) {
+export function QuestionDetailModal({ question, exam, open, onClose, onTopicSaved }: Props) {
   const [detail, setDetail] = useState<QuestionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"distribution" | "text" | "responses" | null>(null);
   const [retry, setRetry] = useState(0);
+  const [topic, setTopic] = useState("auto");
+  const [savingTopic, setSavingTopic] = useState(false);
+  const [topicError, setTopicError] = useState<string | null>(null);
+  const topicRequest = useRef(0);
   const questionNo = question?.question_no;
   const courseCode = exam?.course_code;
   const sessionName = exam?.session_name;
@@ -26,17 +32,20 @@ export function QuestionDetailModal({ question, exam, open, onClose }: Props) {
   const semester = exam?.semester;
 
   useEffect(() => {
+    topicRequest.current++;
     if (!open || !questionNo || courseCode === undefined || sessionName === undefined || year === undefined || month === undefined || semester === undefined) return;
     let ignore = false;
     setDetail(null);
     setError(null);
     setLoading(true);
     setView(null);
+    setTopicError(null);
+    setSavingTopic(false);
     fetchQuestionDetail({ course_code: courseCode, session_name: sessionName, year, month, semester }, questionNo)
-      .then((data) => { if (!ignore) setDetail(data); })
+      .then((data) => { if (!ignore) { setDetail(data); setTopic(data.approved_topic ?? "auto"); } })
       .catch((err) => { if (!ignore) setError(err instanceof Error ? err.message : "Failed to load question detail"); })
       .finally(() => { if (!ignore) setLoading(false); });
-    return () => { ignore = true; };
+    return () => { ignore = true; topicRequest.current++; };
   }, [open, questionNo, courseCode, sessionName, year, month, semester, retry]);
 
   if (!open || !question || !exam) return null;
@@ -63,7 +72,7 @@ export function QuestionDetailModal({ question, exam, open, onClose }: Props) {
           </div>
           <div>
             <div className="text-sm text-muted-foreground">Topic</div>
-            <div className="text-sm">{question.topic}</div>
+            <div className="text-sm">{question.topic === "Unclassified" ? "Topic assignment pending" : question.topic}</div>
           </div>
           <div>
             <div className="text-sm text-muted-foreground">Bloom Level</div>
@@ -89,6 +98,31 @@ export function QuestionDetailModal({ question, exam, open, onClose }: Props) {
           <Button variant="outline" size="sm" onClick={() => setRetry((value) => value + 1)}>Retry</Button>
         </div>}
         {detail && <>
+          <section aria-label="Review topic assignment" className="space-y-2 border-t pt-4">
+            <h3 className="font-medium">Review Topic Assignment</h3>
+            <p className="text-xs text-muted-foreground">Choose a course topic for this question, or use automatic assignment. Your choice applies to every student's attempt at this question.</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={topic} onValueChange={setTopic} disabled={savingTopic}>
+                <SelectTrigger aria-label="Question topic" className="w-full sm:w-80"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Automatic assignment</SelectItem>
+                  {(detail.topic_options ?? []).map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button size="sm" disabled={savingTopic || topic === (detail.approved_topic ?? "auto")} onClick={async () => {
+                const request = topicRequest.current;
+                setSavingTopic(true);
+                setTopicError(null);
+                try {
+                  await saveQuestionTopic(exam, question.question_no, topic === "auto" ? null : topic);
+                  if (request === topicRequest.current) onTopicSaved?.();
+                } catch (err) {
+                  if (request === topicRequest.current) setTopicError(err instanceof Error ? err.message : "Could not save question topic");
+                } finally { if (request === topicRequest.current) setSavingTopic(false); }
+              }}>{savingTopic ? "Saving..." : "Save & Reanalyse"}</Button>
+            </div>
+            {topicError && <p role="alert" className="text-sm text-destructive">{topicError}</p>}
+          </section>
           <p className="text-xs text-muted-foreground">Maximum: {detail.max_marks} marks · {detail.responses.length} graded responses. Answers are saved OCR excerpts.</p>
           {detail.excluded_count > 0 && <p role="status" className="text-sm text-muted-foreground">{detail.excluded_count} responses excluded because their saved marks are invalid.</p>}
           {view === "text" && <section aria-label="Question Text" className="space-y-2">

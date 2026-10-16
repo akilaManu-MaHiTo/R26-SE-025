@@ -1040,7 +1040,7 @@ export default function AnalyticsPage() {
             <h2 className="tracking-tight text-foreground bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text">{selectedExam.subject_name}</h2>
             <p className="text-sm text-muted-foreground mt-1">{selectedExam.session_name} · {selectedExam.year} {analytics ? `· Generated ${new Date(analytics.generated_at).toLocaleString()}` : ""}</p>
             {analytics && (analytics as any).unclassified_coverage && (
-              <p className="text-xs text-amber-700 mt-1">Unclassified: {(analytics as any).unclassified_coverage.attempt_count} attempts at {(analytics as any).unclassified_coverage.average_percentage}% — review topic assignment</p>
+              <p className="text-xs text-amber-700 mt-1">Topic assignment pending: {analytics.unclassified_coverage.attempt_count} attempts at {analytics.unclassified_coverage.average_percentage}% — open a question below to review its topic</p>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -1235,6 +1235,7 @@ export default function AnalyticsPage() {
         exam={selectedExam}
         open={!!selectedQuestion}
         onClose={() => setSelectedQuestion(null)}
+        onTopicSaved={() => { if (selectedExam) void handleSelectExam(selectedExam, { forceReanalyse: true }); }}
       />
     </div>
   );
