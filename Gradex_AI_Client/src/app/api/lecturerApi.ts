@@ -478,6 +478,32 @@ export interface LecturerStudentDetail {
   diagram_marking?: DiagramMarking | null;
 }
 
+export interface StudentAnswerEvidence {
+  question_no: string;
+  answer_excerpt: string | null;
+  slice_source: string | null;
+  feedback: string | null;
+  justification: string | null;
+  criteria_breakdown: Array<{ point: string; awarded_marks: number | null; reason: string | null }>;
+  grading_source: string | null;
+  grading_error: string | null;
+}
+
+export async function fetchStudentAnswerEvidence(
+  exam: { course_code: string; session_name: string; year: number; month: number; semester: number },
+  studentId: string,
+  questionNo: string,
+): Promise<StudentAnswerEvidence> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const path = [exam.course_code, exam.session_name].map(encodeURIComponent).join("/");
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${path}/student/${encodeURIComponent(studentId)}/questions/${encodeURIComponent(questionNo)}?${params}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Could not load saved answer evidence");
+  }
+  return res.json();
+}
+
 export async function fetchLecturerStudentDetail(
   courseCode: string,
   sessionName: string,

@@ -643,6 +643,57 @@ async def lecturer_student_detail(
     return doc
 
 
+@router.get("/exams/{course_code}/{session_name}/student/{student_id}/questions/{question_no}")
+async def lecturer_student_answer_evidence(
+    course_code: str,
+    session_name: str,
+    student_id: str,
+    question_no: str,
+    year: int = Query(...),
+    month: int = Query(..., ge=1, le=12),
+    semester: int = Query(..., ge=1),
+    db=Depends(get_db),
+):
+    """Read saved grading evidence for this exact student attempt, without analysis."""
+    submission = await db["submissions"].find_one({
+        "student_id": student_id, "subject_code": course_code, "session_name": session_name,
+        "year": year, "month": month, "semester": semester,
+        "status": "graded", "archived_at": None,
+    }, sort=[("_id", -1)])
+    if submission is None:
+        raise HTTPException(status_code=404, detail="No saved submission for this student and exam.")
+    rows = (submission.get("evaluation") or {}).get("results")
+    if rows is None:
+        rows = submission.get("results") or []
+    number = normalize_question_no(question_no)
+    result = next((row for row in rows
+                   if normalize_question_no(row.get("q_no", row.get("question_no"))) == number), None)
+    if result is None:
+        raise HTTPException(status_code=404, detail="No saved grading evidence for this question.")
+    excerpt = result.get("answer_excerpt")
+    source = result.get("slice_source")
+    # An explicitly empty saved slice must not be replaced with a different OCR answer.
+    if excerpt is None and source != "empty":
+        transcript = submission.get("cleaned_ocr_transcript") or submission.get("raw_ocr_transcript") or ""
+        excerpt = question_excerpt(transcript, number)
+        if excerpt:
+            source = "ocr"
+    return {
+        "question_no": number,
+        "answer_excerpt": excerpt or None,
+        "slice_source": source,
+        "feedback": result.get("feedback") or None,
+        "justification": result.get("justification") or None,
+        "criteria_breakdown": [{
+            "point": item.get("point") or item.get("criterion") or "",
+            "awarded_marks": item.get("awarded_marks"),
+            "reason": item.get("reason") or item.get("feedback") or None,
+        } for item in result.get("criteria_breakdown") or []],
+        "grading_source": result.get("grading_source") or (submission.get("evaluation") or {}).get("grading_source"),
+        "grading_error": result.get("error") or None,
+    }
+
+
 @router.get("/exams/{course_code}/{session_name}/student/{student_id}/stream")
 async def lecturer_student_detail_stream(
     course_code: str,
