@@ -18,6 +18,7 @@ from app.db.repository import (
     find_graded_submissions_for_exam,
     find_student_analytics,
     find_diagram_evaluations_for_exam,
+    find_diagram_markings_for_exam,
     list_all_exams,
 )
 from app.schemas.exam_analytics import ExamAnalyticsDocument
@@ -30,6 +31,7 @@ from app.services.student_dashboard import StudentNotFound, ensure_student_analy
 from app.services.teaching_actions import get_teaching_actions
 from app.ingestion.student_data import normalize_question_no
 from app.ingestion.answer_text import question_excerpt
+from app.analytics.diagram_analysis import compute_diagram_analysis
 
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
 
@@ -127,6 +129,13 @@ def _is_complete_snapshot(doc: dict | None) -> bool:
     if not isinstance(doc.get("statistics"), dict):
         return False
     return True
+
+
+async def _refresh_diagram_analysis(db, document, course_code, session_name, year, month, semester):
+    # Saved essay analytics may predate diagram grading; refresh without model inference.
+    evaluations = await find_diagram_evaluations_for_exam(db, course_code, session_name, year, month, semester)
+    markings = await find_diagram_markings_for_exam(db, course_code, session_name, year, month, semester) if evaluations else []
+    return {**document, "diagram_analysis": compute_diagram_analysis(evaluations, markings)}
 
 
 @router.get("/llm-health")
@@ -347,6 +356,7 @@ async def lecturer_exam_analytics(
     # Analytics reads have no account-creation side effect — provisioning moved to dedicated endpoint
     # (student access no longer depends on opening lecturer dashboard)
     try:
+        document = await _refresh_diagram_analysis(db, document, course_code, session_name, year, month, semester)
         return ExamAnalyticsDocument.model_validate(document)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Analytics document validation failed: {exc}") from exc
@@ -395,6 +405,7 @@ async def lecturer_exam_analytics_stream(
         # Fast path: cached (only if complete snapshot)
         cached = await find_exam_analytics(db, course_code, session_name, year, month, semester)
         if cached is not None and _is_complete_snapshot(cached):
+            cached = await _refresh_diagram_analysis(db, cached, course_code, session_name, year, month, semester)
             yield sse("progress", {"phase": "cached", "message": "PULSE·AI — Using cached analytics"})
             yield sse("result", cached)
             return

@@ -7,6 +7,74 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
+
+async def load_exam_paper_sources(db: AsyncIOMotorDatabase, exam_key: str) -> dict:
+    """Read only one exam's candidates and referenced rubrics, preserving conflicts.
+
+    Both essay-rubric spellings exist in this project/data. Read available
+    collections explicitly; never rename, seed, index or repair them here.
+    """
+    from calendar import month_name
+    from app.services.exam_paper import _identity
+
+    sources = {name: [] for name in (
+        "examkeys", "rubrics", "submissions", "diagram_evaluations", "diagram_marking")}
+    sources["readStartedAt"] = datetime.now(timezone.utc).isoformat()
+    exams = await db["examkeys"].find({"examKey": exam_key}).to_list(length=None)
+    sources["examkeys"] = exams
+    if len(exams) != 1:
+        return sources
+    subject, year, month, semester, session = _identity(exams[0], canonical=True)
+    if None in (subject, year, month, semester, session):
+        return sources
+    session_names = ["Final", "Final Examination"] if session == "Final" else [session]
+    metadata = {"subject_code": subject, "year": {"$in": [year, str(year)]},
+                "month": {"$in": [month, str(month), month_name[month]]},
+                "semester": {"$in": [semester, str(semester)]},
+                "session_name": {"$in": session_names}}
+    canonical_identity = {"subjectCode": subject, "examYear": {"$in": [year, str(year)]},
+                          "examMonth": {"$in": [month, str(month), month_name[month]]},
+                          "examSemester": {"$in": [semester, str(semester)]},
+                          "session": {"$in": session_names}}
+    sources["examkeys"] = await db["examkeys"].find({"$or": [
+        {"examKey": exam_key}, canonical_identity]}).to_list(length=None)
+    candidates = {"$or": [{"examKey": exam_key}, metadata]}
+    for name in ("submissions", "diagram_evaluations"):
+        sources[name] = await db[name].find(candidates, {"raw_ocr_transcript": 0}).to_list(length=None)
+
+    def references(records, field):
+        values = []
+        for record in records:
+            value = record.get(field)
+            if value is None:
+                continue
+            for variant in (value, str(value)):
+                if variant not in values:
+                    values.append(variant)
+            if ObjectId.is_valid(str(value)):
+                oid = ObjectId(str(value))
+                if oid not in values:
+                    values.append(oid)
+        return values
+
+    rubric_refs = references(sources["submissions"], "rubric_ref")
+    rubric_query = {"$or": [*candidates["$or"], {"_id": {"$in": rubric_refs}}]}
+    available = await db.list_collection_names()
+    for name in ("rubricCollection", "rubicCollection"):
+        if name in available:
+            rubrics = await db[name].find(rubric_query, {
+                "exam_roster.students.name": 0, "exam_roster.students.date": 0,
+            }).to_list(length=None)
+            sources["rubrics"].extend({**r, "_source_collection": name} for r in rubrics)
+    guideline_refs = references(sources["diagram_evaluations"], "guideline_object_id")
+    if guideline_refs:
+        sources["diagram_marking"] = await db["diagram_marking"].find({
+            "_id": {"$in": guideline_refs},
+        }).to_list(length=None)
+    sources["readCompletedAt"] = datetime.now(timezone.utc).isoformat()
+    return sources
+
+
 COLLECTIONS = (
     "courses",
     "exams",
@@ -466,11 +534,8 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
         ).to_list(length=500)
 
         # Also count diagram evaluations for this exam
-        diagram_evals = await db["diagram_evaluation"].find(
-            {"subject_code": course_code, "session_name": session_name,
-             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
-            {"_id": 0, "evaluation_result.total_score": 1, "evaluation_result.max_score": 1}
-        ).to_list(length=500)
+        diagram_evals = await find_diagram_evaluations_for_exam(
+            db, course_code, session_name, year, rubric.get("month", 0), rubric.get("semester", 1))
 
         # Merge: use submissions if available, otherwise diagram_evals
         student_count = len(submissions) if submissions else len(diagram_evals)
@@ -707,11 +772,53 @@ async def upsert_user(db, doc: dict) -> None:
 
 
 # ─── Diagram Evaluation & Marking ────────────────────────────────────────
+async def _read_diagram_evaluations(db, query):
+    from calendar import month_name
+    from app.services.exam_paper import _identity
+
+    docs = await db["diagram_evaluations"].find(query).to_list(length=None)
+    if not docs:
+        return []
+    identities = {_identity(d) for d in docs}
+    if len(identities) != 1:
+        raise ValueError("Ambiguous diagram exam identity; select year, month and semester")
+    identity = next(iter(identities))
+    keys = {d["examKey"] for d in docs if isinstance(d.get("examKey"), str) and d["examKey"]}
+    if keys:
+        subject, year, month, semester, session = identity
+        if None in identity:
+            raise ValueError("Incomplete diagram exam metadata")
+        exams = await db["examkeys"].find({"subjectCode": subject, "examYear": year,
+            "examMonth": month_name[month], "examSemester": semester, "session": session}).to_list(length=2)
+        if len(exams) != 1 or keys != {exams[0].get("examKey")}:
+            raise ValueError("Conflicting or ambiguous diagram exam key")
+    students = [d.get("student_id") for d in docs]
+    if any(not isinstance(s, str) or not s.strip() or s.strip().upper() == "UNKNOWN" for s in students):
+        raise ValueError("Missing diagram student identity")
+    if len(students) != len(set(students)):
+        raise ValueError("Duplicate diagram evaluations for a student and exam")
+    return docs
+
+
+async def _find_diagram_guideline(db, reference):
+    if not isinstance(reference, (str, ObjectId)) or not str(reference).strip():
+        return None
+    refs = [reference]
+    if isinstance(reference, str) and ObjectId.is_valid(reference):
+        refs.append(ObjectId(reference))
+    elif isinstance(reference, ObjectId):
+        refs.append(str(reference))
+    docs = await db["diagram_marking"].find({"_id": {"$in": refs}}).to_list(length=2)
+    if len(docs) > 1:
+        raise ValueError("Ambiguous diagram guideline reference")
+    return docs[0] if docs else None
+
+
 async def find_diagram_evaluation_for_student(
     db: AsyncIOMotorDatabase, student_id: str, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> dict | None:
-    """Return single diagram_evaluation for a student/exam (with fallback without year)."""
+    """Return one exact-exam diagram evaluation in the dashboard response format."""
     query: dict = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
     if year is not None:
         query["year"] = year
@@ -719,13 +826,13 @@ async def find_diagram_evaluation_for_student(
         query["month"] = month
     if semester is not None:
         query["semester"] = semester
-    doc = await db["diagram_evaluation"].find_one(query)
-    if doc is None and (year is not None or month is not None or semester is not None):
-        # fallback without year for legacy
-        fallback = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
-        doc = await db["diagram_evaluation"].find_one(fallback)
-    if doc is None:
+    docs = await _read_diagram_evaluations(db, query)
+    if not docs:
         return None
+    from app.ingestion.diagram_data import normalize_diagram_evaluation
+    doc = docs[0]
+    guideline = await _find_diagram_guideline(db, doc.get("guideline_object_id"))
+    doc = normalize_diagram_evaluation(doc, guideline)
     doc.pop("_id", None)
     return doc
 
@@ -734,42 +841,13 @@ async def find_diagram_marking_for_student(
     db: AsyncIOMotorDatabase, student_id: str, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> dict | None:
-    """Return single diagram_marking for a student/exam."""
-    query: dict = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
-    if year is not None:
-        # diagram_marking stores year/month/semester as strings in current gradev2 data
-        # try both int and str
-        query["year"] = year
-    if month is not None:
-        query["month"] = month
-    if semester is not None:
-        query["semester"] = semester
-    doc = await db["diagram_marking"].find_one(query)
-    if doc is None and (year is not None or month is not None or semester is not None):
-        # try string variant and fallback
-        q2 = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
-        if year is not None:
-            q2["year"] = str(year)
-        if month is not None:
-            q2["month"] = str(month)
-        if semester is not None:
-            q2["semester"] = str(semester)
-        doc = await db["diagram_marking"].find_one(q2)
-        if doc is None:
-            doc = await db["diagram_marking"].find_one({"student_id": student_id, "subject_code": course_code, "session_name": session_name})
-    if doc is None:
+    """Resolve the rubric through the saved evaluation, never by student metadata."""
+    evaluation = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
+    if evaluation is None:
         return None
-    doc.pop("_id", None)
-    # parse stringified dict fields if needed
-    import ast
-    for f in ("diagram_details", "diagram_entity_relations", "diagram_relations", "evaluation_result"):
-        v = doc.get(f)
-        if isinstance(v, str):
-            try:
-                # stored as python repr with single quotes
-                doc[f] = ast.literal_eval(v)
-            except Exception:
-                pass
+    doc = await _find_diagram_guideline(db, evaluation.get("guideline_object_id"))
+    if doc is not None:
+        doc["_id"] = str(doc["_id"])
     return doc
 
 
@@ -777,7 +855,7 @@ async def find_diagram_evaluations_for_exam(
     db: AsyncIOMotorDatabase, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> list[dict]:
-    """Return all diagram_evaluation documents matching an exam."""
+    """Read saved diagram agent grades for the exact exam, without regrading."""
     query: dict = {"subject_code": course_code, "session_name": session_name}
     if year is not None:
         query["year"] = year
@@ -785,29 +863,38 @@ async def find_diagram_evaluations_for_exam(
         query["month"] = month
     if semester is not None:
         query["semester"] = semester
-    cursor = db["diagram_evaluation"].find(query)
-    docs = await cursor.to_list(length=None)
+    docs = await _read_diagram_evaluations(db, query)
+    from app.ingestion.diagram_data import normalize_diagram_evaluation
+    guidelines, normalized, seen = {}, [], set()
     for doc in docs:
+        key = (doc.get("student_id"), str(doc.get("guideline_object_id")))
+        if key in seen:
+            raise ValueError("Duplicate diagram evaluation for student and rubric")
+        seen.add(key)
+        gid = str(doc.get("guideline_object_id"))
+        if gid not in guidelines:
+            guidelines[gid] = await _find_diagram_guideline(db, doc.get("guideline_object_id"))
+        doc = normalize_diagram_evaluation(doc, guidelines[gid])
         doc.pop("_id", None)
-    return docs
+        normalized.append(doc)
+    return normalized
 
 
 async def find_diagram_markings_for_exam(
     db: AsyncIOMotorDatabase, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> list[dict]:
-    """Return all diagram_marking documents matching an exam."""
-    query: dict = {"subject_code": course_code, "session_name": session_name}
-    if year is not None:
-        query["year"] = year
-    if month is not None:
-        query["month"] = month
-    if semester is not None:
-        query["semester"] = semester
-    cursor = db["diagram_marking"].find(query)
-    docs = await cursor.to_list(length=None)
-    for doc in docs:
-        doc.pop("_id", None)
+    """Return only guidelines referenced by this exam's saved evaluations."""
+    evaluations = await find_diagram_evaluations_for_exam(db, course_code, session_name, year, month, semester)
+    docs, seen = [], set()
+    for evaluation in evaluations:
+        reference = evaluation.get("guideline_object_id")
+        if str(reference) not in seen:
+            seen.add(str(reference))
+            doc = await _find_diagram_guideline(db, reference)
+            if doc is not None:
+                doc["_id"] = str(doc["_id"])
+                docs.append(doc)
     return docs
 
 

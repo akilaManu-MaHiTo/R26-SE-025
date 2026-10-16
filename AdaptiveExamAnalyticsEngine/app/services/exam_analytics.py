@@ -317,17 +317,13 @@ async def compute_exam_analytics(
             semester = int((rubric or {}).get("semester") or 0)
     except (TypeError, ValueError) as exc:
         raise ExamNotFound(f"invalid rubric session identity for {course_code} {session_name}") from exc
-    # Merge diagram analysis if diagram_evaluation data exists for this exam
+    # Merge saved diagram grades; invalid data must surface rather than disappear.
     diagram_analysis = None
-    try:
-        diagram_evals = await find_diagram_evaluations_for_exam(db, course_code, session_name, year, month, semester)
+    diagram_evals = await find_diagram_evaluations_for_exam(db, course_code, session_name, year, month, semester)
+    if diagram_evals:
         diagram_marks = await find_diagram_markings_for_exam(db, course_code, session_name, year, month, semester)
-        if diagram_evals:
-            diagram_analysis = compute_diagram_analysis(diagram_evals, diagram_marks)
-            if diagram_analysis:
-                _progress(f"PULSE·AI — Diagram analysis: {diagram_analysis['statistics']['total_students']} students, avg {diagram_analysis['statistics']['average_percentage']:.1f}%")
-    except Exception:
-        pass
+        diagram_analysis = compute_diagram_analysis(diagram_evals, diagram_marks)
+        _progress(f"PULSE·AI — Diagram analysis: {diagram_analysis['statistics']['total_students']} students, avg {diagram_analysis['statistics']['average_percentage']:.1f}%")
 
     document = {
         "subject_code": course_code,
