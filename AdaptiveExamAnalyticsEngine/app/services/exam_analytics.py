@@ -21,7 +21,7 @@ from app.db.repository import (
 from app.ingestion.student_data import StudentDataError, normalize_student_submission
 from app.services import student_pipeline as _student_pipeline
 
-ANALYTICS_VERSION = "1.3"
+ANALYTICS_VERSION = "1.4"
 
 
 class ExamNotFound(Exception):

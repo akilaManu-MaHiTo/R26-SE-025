@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, Field
 from math import isfinite, isclose
+from app.ingestion.criterion_labels import criterion_label_key as _point_key
 
 
 class StudentDataError(ValueError):
@@ -74,10 +75,6 @@ def _required(value: object, label: str) -> str:
     return text
 
 
-def _point_key(value: object) -> str:
-    return str(value or "").strip().casefold()
-
-
 def _as_float(value: object, label: str) -> float:
     try:
         number = float(value)
@@ -95,9 +92,15 @@ def _criteria_for_question(rubric_question: dict, result: dict) -> list[Normaliz
         raise StudentDataError("Unreadable criterion evidence")
     by_point = {_point_key(item.get("point")): item for item in evaluated}
     rubric_keys = [_point_key(c.get("point")) for c in rubric_question.get("criteria") or []]
-    if (not rubric_keys or len(set(rubric_keys)) != len(rubric_keys)
-            or len(by_point) != len(evaluated) or set(by_point) != set(rubric_keys)):
-        raise StudentDataError("missing, duplicate or mismatched evaluation criterion")
+    question_no = normalize_question_no(rubric_question.get("question_no"))
+    if not rubric_keys or None in rubric_keys or "" in rubric_keys:
+        raise StudentDataError(f"Question {question_no}: rubric criterion labels are missing")
+    if len(set(rubric_keys)) != len(rubric_keys) or len(by_point) != len(evaluated):
+        raise StudentDataError(f"Question {question_no}: duplicate criterion labels require review")
+    if set(by_point) != set(rubric_keys):
+        missing = len(set(rubric_keys) - set(by_point))
+        unexpected = len(set(by_point) - set(rubric_keys))
+        raise StudentDataError(f"Question {question_no}: criterion labels do not match the rubric ({missing} unmatched rubric labels, {unexpected} unmatched evaluation labels)")
     criteria: list[NormalizedCriterion] = []
 
     for criterion in rubric_question.get("criteria") or []:

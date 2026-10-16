@@ -50,7 +50,7 @@ pending and review-needed grades. See [grading progress and verification](LECTUR
 The lecturer header also offers a read-only [question-paper/rubric preview](EXAM_PAPER_PREVIEW.md).
 See the [lecturer cleanup audit](LECTURER_CLEANUP_AUDIT.md) for corrected matching,
 validation and calculation errors, removed legacy code, checks and remaining cache/index
-limitations. Calculation versions are now 1.3; older snapshots are rebuilt when possible,
+limitations. Calculation versions are now 1.4; older snapshots are rebuilt when possible,
 and retained results are marked stale if refresh fails.
 
 The lecturer Exam Creator includes saved blueprints, draft-aware recommendations,

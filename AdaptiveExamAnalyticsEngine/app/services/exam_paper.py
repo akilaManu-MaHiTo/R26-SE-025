@@ -10,6 +10,7 @@ from copy import deepcopy
 import math
 
 from bson import ObjectId
+from app.ingestion.criterion_labels import criterion_label_key
 
 
 def _identifier(value):
@@ -102,7 +103,7 @@ def _criteria_check(rows, rubric_rows, *, key, score_key, max_key, target, sourc
     def label(row):
         value = row.get(key)
         if key == "point":
-            return value.strip().casefold() if isinstance(value, str) else None
+            return criterion_label_key(value)
         return _integer(value)
 
     rubric_rows = rubric_rows if isinstance(rubric_rows, list) else []
