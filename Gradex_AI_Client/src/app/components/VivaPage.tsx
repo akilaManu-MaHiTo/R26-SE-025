@@ -46,6 +46,8 @@ import {
 import { EvaluationPanel } from "./viva/EvaluationPanel";
 import { ReportPrintView } from "./viva/ReportPrintView";
 import { publishVivaMark } from "./viva/vivaMarksApi";
+import { VivaResumeBanner } from "./viva/VivaResumeBanner";
+import { clearInflightJob, saveInflightJob } from "./viva/inflightJob";
 import {
   SubjectRubricSummary,
   listSubjectContent,
@@ -112,8 +114,14 @@ export function VivaPage() {
     setPublishing(false);
   };
 
+  // Set while the page is being torn down, so an upload aborted by leaving the page does
+  // not forget the running job (the server keeps analysing and the page can reattach).
+  const unmountedRef = useRef(false);
+
   useEffect(() => {
+    unmountedRef.current = false;
     return () => {
+      unmountedRef.current = true;
       xhrRef.current?.abort();
     };
   }, []);
@@ -327,7 +335,10 @@ export function VivaPage() {
     setUploadedFile(file);
     setAnalysisResult(null);
     setVideoDuration(null);
+    // The Student ID is typed before the file is chosen, so keep it across the reset.
+    const keepStudentId = studentId;
     resetAssessmentState();
+    setStudentId(keepStudentId);
 
     setVideoPreview((previous) => {
       if (previous) URL.revokeObjectURL(previous);
@@ -354,6 +365,7 @@ export function VivaPage() {
         ? crypto.randomUUID()
         : `prog_${Date.now()}`;
     progressIdRef.current = progressId;
+    saveInflightJob(progressId, file.name);
     const formData = new FormData();
     formData.append("video", file);
     formData.append("progress_id", progressId);
@@ -363,6 +375,10 @@ export function VivaPage() {
     formData.append("assessment_mode", assessmentMode);
     if (assessmentMode === "WITH_TECHNICAL_ACCURACY" && subjectCode.trim()) {
       formData.append("subject_code", subjectCode.trim());
+    }
+    // Saved with the mark so the result can be found later under Viva Results.
+    if (studentId.trim()) {
+      formData.append("student_id", studentId.trim());
     }
 
     try {
@@ -460,6 +476,8 @@ export function VivaPage() {
       setAnalysisPhase("idle");
     } finally {
       setIsAnalyzing(false);
+      // Keep the job on record if the page is just going away mid-analysis.
+      if (!unmountedRef.current) clearInflightJob();
     }
   };
 
@@ -520,6 +538,8 @@ export function VivaPage() {
         </Card>
       )}
 
+      {!isAnalyzing && !analysisResult && !videoPreview && <VivaResumeBanner />}
+
       {!videoPreview && (
         <Card className="p-6">
           <div className="mb-5">
@@ -538,6 +558,19 @@ export function VivaPage() {
                 ? "Technical modules — the mark stays a draft until an examiner enters a technical accuracy score and publishes. Chosen once, before uploading or recording."
                 : "Communication / presentation vivas — the AI performance score saves automatically once analysis completes. Chosen once, before uploading or recording."}
             </p>
+            <div className="mt-3">
+              <label className="text-xs text-muted-foreground" htmlFor="viva-student-id">
+                Student ID (optional — lets you find this result later under Viva Results)
+              </label>
+              <Input
+                id="viva-student-id"
+                className="mt-1 max-w-xs"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                placeholder="e.g. IT22557056"
+                maxLength={64}
+              />
+            </div>
             {assessmentMode === "WITH_TECHNICAL_ACCURACY" && (
               <div className="mt-3">
                 <label className="text-xs text-muted-foreground" htmlFor="viva-subject-code">

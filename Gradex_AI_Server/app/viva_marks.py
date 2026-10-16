@@ -93,6 +93,9 @@ async def apply_publish_to_mark(
         raise LookupError("Mark not found.")
 
     engine_result = existing.get("result") or {}
+    if student_id is None:
+        # Auto-publish passes no student; keep the one entered at upload time.
+        student_id = existing.get("student_id")
     if mode == MODE_WITH and technical_accuracy is None:
         raise ValueError("technical_accuracy is required for WITH_TECHNICAL_ACCURACY.")
 

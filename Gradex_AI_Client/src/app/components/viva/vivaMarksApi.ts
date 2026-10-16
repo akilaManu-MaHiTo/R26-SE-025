@@ -49,3 +49,85 @@ export async function publishVivaMark(
 
   return (await response.json()) as VivaPublishResponse;
 }
+
+
+/** One row of the saved-results list (GET /api/viva-marks). */
+export interface VivaMarkSummary {
+  mark_id: string;
+  video_filename: string | null;
+  student_id: string | null;
+  subject_code?: string | null;
+  processed_at?: string | null;
+  published: boolean;
+  published_at?: string | null;
+  assessment_mode?: string | null;
+  video_status?: string | null;
+  ai_performance_score?: number | null;
+  technical_accuracy?: number | null;
+  final_score?: number | null;
+  final_grade?: string | null;
+  status?: string | null;
+  scoring_version?: string | null;
+}
+
+/** A full saved mark (GET /api/viva-marks/{id}). `result` is the stored analysis. */
+export interface VivaMarkDocument extends Omit<VivaMarkSummary, "mark_id"> {
+  _id: string;
+  human_published?: boolean;
+  assessment?: Record<string, unknown>;
+  result?: Record<string, unknown>;
+}
+
+async function readMarksError(response: Response): Promise<string> {
+  let detail = `HTTP ${response.status}`;
+  try {
+    const body = (await response.json()) as { detail?: string };
+    if (typeof body.detail === "string" && body.detail.trim()) detail = body.detail.trim();
+  } catch {
+    // non-JSON error body — keep the status line
+  }
+  return detail;
+}
+
+/** Newest first. The server caps `limit` at 100. */
+export async function listVivaMarks(limit = 100, studentId?: string): Promise<VivaMarkSummary[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (studentId?.trim()) params.set("student_id", studentId.trim());
+  const response = await apiFetch(`${backendBaseUrl}/api/viva-marks?${params.toString()}`);
+  if (!response.ok) throw new Error(await readMarksError(response));
+  const body = (await response.json()) as { items?: VivaMarkSummary[] };
+  return body.items ?? [];
+}
+
+export async function fetchVivaMark(markId: string): Promise<VivaMarkDocument> {
+  const response = await apiFetch(
+    `${backendBaseUrl}/api/viva-marks/${encodeURIComponent(markId)}`,
+  );
+  if (!response.ok) throw new Error(await readMarksError(response));
+  return (await response.json()) as VivaMarkDocument;
+}
+
+/** Assign a saved mark to a student; pass null/"" to clear it. */
+export async function setVivaMarkStudent(
+  markId: string,
+  studentId: string | null,
+): Promise<{ mark_id: string; student_id: string | null }> {
+  const response = await apiFetch(
+    `${backendBaseUrl}/api/viva-marks/${encodeURIComponent(markId)}/student`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ student_id: studentId?.trim() || null }),
+    },
+  );
+  if (!response.ok) throw new Error(await readMarksError(response));
+  return (await response.json()) as { mark_id: string; student_id: string | null };
+}
+
+/** Server timestamps are UTC but arrive without a zone suffix; read them as UTC. */
+export function formatServerDate(value?: string | null): string {
+  if (!value) return "";
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value);
+  const parsed = new Date(hasZone ? value : `${value}Z`);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleString();
+}

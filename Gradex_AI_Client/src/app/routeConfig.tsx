@@ -9,6 +9,7 @@ import { DiagramGuidelinePage } from "./components/DiagramGuidelinePage";
 import AnalyticsPage from "./components/AnalyticsPage";
 import { ExamCreator } from "./components/ExamCreator";
 import { VivaPage } from "./components/VivaPage";
+import { VivaResultsPage } from "./components/VivaResultsPage";
 import { SubjectContentPage } from "./components/SubjectContentPage";
 import { TopicTaxonomyPage } from "./components/TopicTaxonomyPage";
 import { LiveCopilotPage } from "./components/viva-copilot/LiveCopilotPage";
@@ -134,6 +135,13 @@ export const AGENT_CONFIG: AgentConfig[] = [
         title: "Viva Assessment",
         subtitle: "AI-aided viva voce evaluation",
         element: <VivaPage />,
+      },
+      {
+        path: "/viva-evaluation/viva-results",
+        label: "Viva Results",
+        title: "Viva Results",
+        subtitle: "Saved viva results, grouped by student",
+        element: <VivaResultsPage />,
       },
       {
         path: "/viva-evaluation/live-copilot",
