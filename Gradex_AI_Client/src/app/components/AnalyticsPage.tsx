@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Download, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight, UserSearch, Eye, AlertCircle, Loader2, GraduationCap, BookOpen, Brain, Award, User } from "lucide-react";
+import { ArrowLeft, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight, UserSearch, Eye, AlertCircle, Loader2, GraduationCap, BookOpen, Brain, Award, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -40,9 +40,10 @@ import { QuestionPerformanceTable } from "./analytics/QuestionPerformanceTable";
 import { InsightsPanel } from "./analytics/InsightsPanel";
 import { TeachingActions } from "./analytics/TeachingActions";
 import { DiagramAnalysisPanel } from "./analytics/DiagramAnalysisPanel";
-import { GradingOverview, StudentGradingCells, canViewStudent } from "./analytics/GradingStatus";
+import { GradingOverview, StudentGradingCells, canViewStudent, ExamInventoryScore } from "./analytics/GradingStatus";
 import { TopicDetailModal } from "./analytics/TopicDetailModal";
 import { QuestionDetailModal } from "./analytics/QuestionDetailModal";
+import { ExamPaperModal } from "./analytics/ExamPaperModal";
 import { StudentQuestionRow } from "./analytics/StudentQuestionRow";
 
 function PremiumLoader({
@@ -100,9 +101,12 @@ export default function AnalyticsPage() {
   const requestedStudentId = searchParams.get("student");
   const [exams, setExams] = useState<ExamListItem[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamListItem | null>(null);
+  const [paperOpen, setPaperOpen] = useState(false);
   const [analytics, setAnalytics] = useState<ExamAnalytics | null>(null);
   const [teachingActions, setTeachingActions] = useState<TeachingAction[]>([]);
   const [loadingExams, setLoadingExams] = useState(true);
+  const [examListError, setExamListError] = useState(false);
+  const [examReload, setExamReload] = useState(0);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [loadingActions, setLoadingActions] = useState(false);
   const [loadSteps, setLoadSteps] = useState<LoadStep[]>([]);
@@ -134,10 +138,19 @@ export default function AnalyticsPage() {
   useEffect(() => {
     setLoadSteps([{ label: "Fetching exams..." }]);
     setCurrentLoadStep(0);
-    fetchExams().then(setExams).catch(console.error).finally(() => setLoadingExams(false));
-  }, []);
+    setLoadingExams(true);
+    setExamListError(false);
+    let ignore = false;
+    fetchExams().then(value => { if (!ignore) setExams(value); })
+      .catch(() => { if (!ignore) setExamListError(true); })
+      .finally(() => { if (!ignore) setLoadingExams(false); });
+    return () => { ignore = true; };
+  }, [examReload]);
 
   const handleSelectExam = useCallback(async (exam: ExamListItem, opts?: { forceReanalyse?: boolean }) => {
+    setPaperOpen(false);
+    setTeachingActions([]);
+    setLoadingActions(false);
     studentRequest.current = null;
     window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
     setLoadingStudentDetail(false);
@@ -206,6 +219,7 @@ export default function AnalyticsPage() {
             exam.month,
             exam.semester,
             (msg) => {
+              if ((handleSelectExam as any)._lastRequestId !== requestId) return;
               setLiveModelMessage(msg);
               // Advance loader step based on message content
               if (msg.includes("Ingesting") || msg.includes("Analyzing student")) setCurrentLoadStep(0);
@@ -214,6 +228,7 @@ export default function AnalyticsPage() {
             },
           );
         } catch {
+          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
           setLiveModelMessage("PULSE·AI — Streaming unavailable, loading...");
           data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
         }
@@ -850,12 +865,17 @@ export default function AnalyticsPage() {
 
         {loadingExams ? (
           <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} />
+        ) : examListError ? (
+          <Card className="p-8 space-y-3" role="alert">
+            <p>Could not load exams. Check the analytics service and retry.</p>
+            <Button variant="outline" onClick={() => setExamReload(value => value + 1)}>Retry</Button>
+          </Card>
         ) : exams.length === 0 ? (
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
             <Card className="p-12 text-center border-border bg-gradient-to-b from-card to-muted/20">
               <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40" />
               <p className="text-muted-foreground">No exams found</p>
-              <p className="text-xs text-muted-foreground mt-1">Exams appear once a rubric is created and submissions are graded.</p>
+              <p className="text-xs text-muted-foreground mt-1">Exams appear once an essay rubric is saved. Grades are shown when available.</p>
             </Card>
           </motion.div>
         ) : (
@@ -971,12 +991,7 @@ export default function AnalyticsPage() {
                             </span>
                           </TableCell>
                           <TableCell className="py-3 text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <span className={`text-sm font-semibold tabular-nums ${exam.average_percentage >= 50 ? "text-emerald-700" : "text-amber-700"}`}>{exam.average_percentage.toFixed(1)}%</span>
-                              <div className="hidden sm:block h-1 w-12 bg-muted rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full ${exam.average_percentage >= 50 ? "bg-emerald-500" : "bg-amber-500"}`} style={{ width: `${Math.min(exam.average_percentage, 100)}%` }} />
-                              </div>
-                            </div>
+                            <ExamInventoryScore exam={exam} />
                           </TableCell>
                           <TableCell className="py-3">
                             {exam.analyzed ? (
@@ -1047,21 +1062,24 @@ export default function AnalyticsPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPaperOpen(true)}>
+              <FileText className="h-4 w-4 mr-1" /> View question paper
+            </Button>
             <Button variant="outline" size="sm" onClick={() => selectedExam && handleSelectExam(selectedExam, { forceReanalyse: true })} disabled={loadingAnalytics} title="Recompute analytics for this exam (ignores cache)">
               <Loader2 className={`h-4 w-4 mr-1 ${loadingAnalytics ? "animate-spin" : ""}`} /> Reanalyse
             </Button>
-            <Button variant="outline" size="sm" disabled title="Coming soon" className="backdrop-blur">
-              <Download className="h-4 w-4 mr-1" /> Export
-            </Button>
-            <Button variant="outline" size="sm" disabled title="Coming soon" className="backdrop-blur">
-              <FileText className="h-4 w-4 mr-1" /> Report
-            </Button>
+
           </div>
         </div>
       </motion.div>
 
       {studentListError ? <p role="alert" className="text-sm text-destructive">{studentListError}</p>
         : !loadingStudents && <GradingOverview students={students} />}
+      {!!analytics?.excluded_submissions?.length && <div role="alert" className="rounded-md border border-amber-300 p-3 text-sm">
+        <p className="font-medium">Some essay results were excluded from analytics because their grading evidence needs review.</p>
+        <ul className="list-disc pl-5">{analytics.excluded_submissions.map((item, i) => <li key={i}>{item.student_id}: {item.reason}</li>)}</ul>
+      </div>}
+      {analytics?.snapshot_status === "stale" && <p role="alert" className="rounded-md border border-amber-300 p-3 text-sm">{analytics.refresh_warning}</p>}
 
       {loadingAnalytics ? (
         <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} liveMessage={liveModelMessage} />
@@ -1235,6 +1253,7 @@ export default function AnalyticsPage() {
       </motion.div>
 
       <TopicDetailModal topic={selectedTopic} open={!!selectedTopic} onClose={() => setSelectedTopic(null)} />
+      <ExamPaperModal exam={selectedExam} open={paperOpen} onClose={() => setPaperOpen(false)} />
       <QuestionDetailModal
         key={`${selectedExam?.course_code}-${selectedExam?.session_name}-${selectedExam?.year}-${selectedExam?.month}-${selectedExam?.semester}-${selectedQuestion?.question_no}`}
         question={selectedQuestion}

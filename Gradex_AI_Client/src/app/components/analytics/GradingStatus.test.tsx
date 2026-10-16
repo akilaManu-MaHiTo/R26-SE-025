@@ -2,10 +2,19 @@
 import React from "react";
 import { afterEach, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { GradingOverview, StudentGradingCells, canViewStudent } from "./GradingStatus";
-import type { StudentRow } from "../../api/lecturerApi";
+import { GradingOverview, StudentGradingCells, canViewStudent, ExamInventoryScore } from "./GradingStatus";
+import type { StudentRow, ExamListItem } from "../../api/lecturerApi";
 
 afterEach(cleanup);
+
+it("distinguishes an ungraded exam from an awarded zero in the exam inventory", () => {
+  const exam = { average_percentage: null, score_basis: "Essay", graded_student_count: 0 } as ExamListItem;
+  const view = render(<ExamInventoryScore exam={exam} />);
+  expect(screen.getByText("No valid grades")).toBeTruthy();
+  view.rerender(<ExamInventoryScore exam={{ ...exam, average_percentage: 0, graded_student_count: 1 }} />);
+  expect(screen.getByText("0.0%")).toBeTruthy();
+  expect(screen.getByText("Essay · 1 graded")).toBeTruthy();
+});
 
 function student(id: string, status: "complete" | "pending" | "needs_review", essay = "graded"): StudentRow {
   return {

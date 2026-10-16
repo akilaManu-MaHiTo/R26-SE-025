@@ -111,16 +111,19 @@ _UNIQUE_INDEXES = {
         ("student_id", 1),
         ("subject_code", 1),
         ("session_name", 1),
+        ("year", 1), ("month", 1), ("semester", 1),
     ],
     "studentExamAnalysis": [
         ("student_id", 1),
         ("subject_code", 1),
         ("session_name", 1),
+        ("year", 1), ("month", 1), ("semester", 1),
     ],
     "studentExamResults": [
         ("student_id", 1),
         ("subject_code", 1),
         ("session_name", 1),
+        ("year", 1), ("month", 1), ("semester", 1),
     ],
     "exam_drafts": [("draft_id", 1)],
     "users": [("email", 1)],
@@ -245,21 +248,41 @@ def _is_usable_reference(value: object) -> bool:
 async def find_rubric_for_submission(
     db: AsyncIOMotorDatabase, submission: dict
 ) -> dict | None:
-    rubric_ref = submission.get("rubric_ref")
-    if _is_usable_reference(rubric_ref):
-        rubric = await db["rubricCollection"].find_one({"_id": rubric_ref})
-        if rubric is None and isinstance(rubric_ref, str) and ObjectId.is_valid(rubric_ref):
-            rubric = await db["rubricCollection"].find_one({"_id": ObjectId(rubric_ref)})
-        if rubric is not None:
-            return rubric
+    from app.services.exam_paper import _identity
 
-    subject_code = submission.get("subject_code") or submission.get("course_code")
-    session_name = submission.get("session_name")
-    if subject_code and session_name:
-        identity = {"subject_code": subject_code, "session_name": session_name}
-        identity.update({key: submission[key] for key in ("year", "month", "semester") if submission.get(key) is not None})
-        return await db["rubricCollection"].find_one(identity)
-    return None
+    rubric_ref = submission.get("rubric_ref")
+    if rubric_ref is not None and not isinstance(rubric_ref, (str, ObjectId)):
+        return None
+    explicit = _is_usable_reference(rubric_ref)
+    if explicit:
+        references = [rubric_ref]
+        if ObjectId.is_valid(str(rubric_ref)):
+            references.extend([ObjectId(str(rubric_ref)), str(rubric_ref)])
+        query = {"_id": {"$in": references}}
+    else:
+        fields = ("subject_code", "year", "month", "semester", "session_name")
+        identity = _identity(submission)
+        if None in identity:
+            return None
+        from calendar import month_name
+        subject, year, month, semester, session = identity
+        query = dict(zip(fields, (subject, {"$in": [year, str(year)]},
+            {"$in": [month, str(month), month_name[month]]}, {"$in": [semester, str(semester)]},
+            {"$in": ["Final", "Final Examination"] if session == "Final" else [session]})))
+    available = await db.list_collection_names()
+    candidates = []
+    for name in ("rubricCollection", "rubicCollection"):
+        if name in available:
+            candidates.extend(await db[name].find(query).to_list(length=2))
+    if len(candidates) != 1:
+        return None
+    rubric = candidates[0]
+    expected, actual = _identity(submission), _identity(rubric)
+    if any(a is not None and b is not None and a != b for a, b in zip(expected, actual)):
+        return None
+    if submission.get("examKey") and rubric.get("examKey") and submission["examKey"] != rubric["examKey"]:
+        return None
+    return rubric
 
 
 def _with_spec_aliases(document: dict) -> dict:
@@ -285,6 +308,7 @@ async def upsert_student_analytics(
         "student_id": document["student_id"],
         "subject_code": document["subject_code"],
         "session_name": document["session_name"],
+        **{key: document.get(key) for key in ("year", "month", "semester")},
     }
     enriched = _with_spec_aliases(document)
     await db["student_analytics"].replace_one(
@@ -348,6 +372,7 @@ async def find_graded_submission(
         "subject_code": course_code,
         "session_name": session_name,
         "status": "graded",
+        "archived_at": None,
     }
     if year is not None:
         query["year"] = year
@@ -355,15 +380,11 @@ async def find_graded_submission(
         query["month"] = month
     if semester is not None:
         query["semester"] = semester
-    # Try exact match with year if provided, else fallback to most recent
-    if year is not None or month is not None or semester is not None:
-        doc = await db["submissions"].find_one(query, sort=[("_id", -1)])
-        if doc is not None:
-            return doc
-        # fallback without year for legacy data
-        query_no_year = {k: v for k, v in query.items() if k not in ("year", "month", "semester")}
-        return await db["submissions"].find_one(query_no_year, sort=[("year", -1), ("_id", -1)])
-    return await db["submissions"].find_one(query, sort=[("year", -1), ("_id", -1)])
+    documents = await db["submissions"].find(query).to_list(length=2)
+    if len(documents) > 1:
+        from app.ingestion.student_data import StudentDataError
+        raise StudentDataError("Ambiguous active student submissions; select an exact exam and resolve duplicate attempts")
+    return documents[0] if documents else None
 
 
 async def find_graded_submissions_for_exam(
@@ -483,9 +504,10 @@ async def upsert_student_exam_result(
         "student_id": document["student_id"],
         "subject_code": document.get("subject_code") or document.get("course", {}).get("code"),
         "session_name": document.get("session_name") or document.get("exam", {}).get("session_name"),
+        **{key: document.get(key) for key in ("year", "month", "semester")},
     }
-    # Filter out None keys to avoid collision
-    identity = {k: v for k, v in identity.items() if v}
+    if not all(identity.get(k) for k in ("student_id", "subject_code", "session_name")):
+        raise ValueError("Missing student exam result identity")
     await db["studentExamResults"].replace_one(identity, deepcopy(document), upsert=True)
 
 
@@ -529,7 +551,7 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
 
         submissions = await db["submissions"].find(
             {"subject_code": course_code, "session_name": session_name, "status": "graded",
-             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
+             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1), "archived_at": None},
             {"_id": 0, "evaluation.total_score": 1, "evaluation.max_score": 1, "max_marks_paper_total": 1}
         ).to_list(length=500)
 
@@ -539,48 +561,18 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
 
         # Merge: use submissions if available, otherwise diagram_evals
         student_count = len(submissions) if submissions else len(diagram_evals)
-        avg_score = 0.0
-        avg_percentage = 0.0
-        highest_score = 0.0
-        lowest_score = 0.0
-        pass_count = 0
-        total_marks = 0.0
-
-        if submissions:
-            percentages = []
-            scores = []
-            for sub in submissions:
-                ev = sub.get("evaluation") or {}
-                obtained = ev.get("total_score") or sub.get("max_marks_paper_total") or 0.0
-                maximum = ev.get("max_score") or sub.get("max_marks_paper_total") or 1.0
-                obtained = float(obtained)
-                maximum = float(maximum) if float(maximum) > 0 else 1.0
-                pct = (obtained / maximum) * 100.0
-                percentages.append(pct)
-                scores.append(obtained)
-            if percentages:
-                avg_percentage = round(sum(percentages) / len(percentages), 2)
-                avg_score = round(sum(scores) / len(scores), 2)
-                highest_score = round(max(scores), 2)
-                lowest_score = round(min(scores), 2)
-                pass_count = sum(1 for p in percentages if p >= 50.0)
-        elif diagram_evals:
-            # Diagram-only exam: compute stats from diagram evaluations
-            percentages = []
-            scores = []
-            for de in diagram_evals:
-                ev_result = de.get("evaluation_result") or {}
-                obtained = float(ev_result.get("total_score", 0))
-                maximum = float(ev_result.get("max_score", 20))
-                pct = (obtained / maximum * 100.0) if maximum > 0 else 0.0
-                percentages.append(pct)
-                scores.append(obtained)
-            if percentages:
-                avg_percentage = round(sum(percentages) / len(percentages), 2)
-                avg_score = round(sum(scores) / len(scores), 2)
-                highest_score = round(max(scores), 2)
-                lowest_score = round(min(scores), 2)
-                pass_count = sum(1 for p in percentages if p >= 50.0)
+        from app.ingestion.student_data import saved_total_score
+        evidence = submissions if submissions else [
+            {"evaluation": de.get("evaluation_result")} for de in diagram_evals]
+        valid_scores = [saved_total_score(sub) for sub in evidence]
+        valid_scores = [score for score in valid_scores if score["percentage"] is not None]
+        scores = [score["obtained"] for score in valid_scores]
+        percentages = [score["percentage"] for score in valid_scores]
+        avg_score = round(sum(scores) / len(scores), 2) if scores else None
+        avg_percentage = round(sum(percentages) / len(percentages), 2) if percentages else None
+        highest_score = max(scores) if scores else None
+        lowest_score = min(scores) if scores else None
+        pass_count = sum(p >= 50 for p in percentages)
 
         questions = rubric.get("questions") or []
         total_marks = sum(float(q.get("max_marks", 0)) for q in questions)
@@ -616,25 +608,6 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
                 if ae is not None and (ae.get("analyzed") == "done" or ae.get("analyzed") is True or ae.get("generated_at") or ae.get("analyzed_at")):
                     analyzed = True
                     analyzed_at = ae.get("analyzed_at") or ae.get("generated_at")
-                else:
-                    # fallback without year/month/semester (legacy docs)
-                    snap_any = await db["analytics_snapshots"].find_one(
-                        {"subject_code": course_code, "session_name": session_name},
-                        {"_id": 0, "generated_at": 1},
-                        sort=[("_id", -1)],
-                    )
-                    if snap_any:
-                        analyzed = True
-                        analyzed_at = snap_any.get("generated_at")
-                    else:
-                        ea_any = await db["examAnalytics"].find_one(
-                            {"subject_code": course_code, "session_name": session_name},
-                            {"_id": 0, "generated_at": 1},
-                            sort=[("_id", -1)],
-                        )
-                        if ea_any:
-                            analyzed = True
-                            analyzed_at = ea_any.get("generated_at")
 
         result.append({
             "course_code": course_code,
@@ -650,7 +623,9 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
             "average_percentage": avg_percentage,
             "highest_score": highest_score,
             "lowest_score": lowest_score,
-            "pass_rate": round((pass_count / student_count * 100.0) if student_count > 0 else 0.0, 2),
+            "pass_rate": round(pass_count / len(valid_scores) * 100, 2) if valid_scores else None,
+            "graded_student_count": len(valid_scores),
+            "score_basis": "Essay" if submissions else "Diagram",
             "analyzed": analyzed,
             "analyzed_at": analyzed_at,
         })

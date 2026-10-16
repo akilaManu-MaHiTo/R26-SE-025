@@ -47,6 +47,12 @@ The lecturer student list now includes pending/roster students with separate
 essay, diagram and overall grading statuses. The overall average excludes
 pending and review-needed grades. See [grading progress and verification](LECTURER_GRADING_STATUS.md).
 
+The lecturer header also offers a read-only [question-paper/rubric preview](EXAM_PAPER_PREVIEW.md).
+See the [lecturer cleanup audit](LECTURER_CLEANUP_AUDIT.md) for corrected matching,
+validation and calculation errors, removed legacy code, checks and remaining cache/index
+limitations. Calculation versions are now 1.3; older snapshots are rebuilt when possible,
+and retained results are marked stale if refresh fails.
+
 The lecturer Exam Creator includes saved blueprints, draft-aware recommendations,
 source-grounded question alternatives, and separate marking-scheme exports.
 See [the exam creator guide](EXAM_CREATOR.md) for usage, model configuration and validation limits.

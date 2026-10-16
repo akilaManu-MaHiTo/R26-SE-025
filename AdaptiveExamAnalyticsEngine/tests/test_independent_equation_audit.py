@@ -172,12 +172,10 @@ def test_partial_diagram_criterion_uses_authoritative_maximum():
 
 
 @pytest.mark.parametrize("pct", [40, 49.99, 60, 64.99])
-@pytest.mark.xfail(strict=True, reason="EQ-04 diagram status diverges from student/config thresholds")
 def test_diagram_status_matches_shared_performance_scale(pct):
     assert _performance_status(pct) == student.performance_status(pct)
 
 
-@pytest.mark.xfail(strict=True, reason="EQ-05 negative weights pass sum validation and break [0,1] guarantee")
 def test_negative_weights_cannot_produce_out_of_range_scores():
     weights = ScoreWeights(weakness=2, lecture_coverage=-1, tutorial_evidence=0, exam_relevance=0, bloom_gap=0)
     assert not weights.validates()
@@ -191,7 +189,6 @@ def test_ndcg_zero_cutoff_is_zero():
     assert ndcg_at_k([True], 0) == 0
 
 
-@pytest.mark.xfail(strict=True, reason="EQ-08 topic sorting divides by zero before guarded percentage calculation")
 def test_exam_zero_maximum_does_not_crash_before_guard():
     assert exam.compute_exam_analytics_stats(normalized([0], [0]), 0.5)["topic_performance"][0]["average_percentage"] == 0
 
@@ -202,7 +199,6 @@ def test_topic_attempts_are_question_evidence_not_student_count():
     assert result["topic_performance"][0]["evidence_status"] == "insufficient_evidence"  # Only one distinct question.
 
 
-@pytest.mark.xfail(strict=True, reason="EQ-10 tutorial signal contradicts documented one-question endpoint 0.6")
 def test_tutorial_one_practice_endpoint_matches_its_contract():
     result = signals._compute_signals([{"canonical_topic": "SQL", "source_type": "tutorial"}], 2026)
     assert result["tutorial_evidence"]["SQL"] == 0.6
@@ -213,7 +209,6 @@ def test_accuracy_rejects_unpaired_observations():
         accuracy(["A"], ["A", "B"])
 
 
-@pytest.mark.xfail(strict=True, reason="EQ-12 zero limit is treated as no limit")
 def test_weak_topic_zero_limit_returns_no_rows():
     assert rank_weak_topics({"SQL": {"weakness": 0.9}}, limit=0) == []
 
