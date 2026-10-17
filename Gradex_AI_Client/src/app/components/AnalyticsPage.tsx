@@ -277,14 +277,11 @@ export default function AnalyticsPage() {
 
   const handleSelectStudent = useCallback(async (studentId: string) => {
     if (!selectedExam) return;
-    if (studentRequest.current !== null) {
-      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
-    }
     const request = {};
     studentRequest.current = request;
     const isCurrent = () => studentRequest.current === request;
     const targetRow = students.find((r) => r.student_id === studentId);
-    const needsAnalysis = !targetRow || !["generated", "diagram_only"].includes(targetRow.analysis_status);
+    const needsAnalysis = !targetRow || targetRow.analysis_status !== "generated";
     setSelectedStudentId(studentId);
     setLoadingStudentDetail(true);
     setStudentDetail(null);
@@ -302,7 +299,6 @@ export default function AnalyticsPage() {
     if (needsAnalysis) {
       try {
         const health = await fetchLlmHealth();
-        if (!isCurrent()) return;
         if (!health.online || !health.model_available) throw new Error("Model unavailable");
       } catch {
         if (!isCurrent()) return;
@@ -313,11 +309,13 @@ export default function AnalyticsPage() {
         return;
       }
     }
-    const dispatchTopbar = (active: boolean, message?: string, progress?: number) => {
-      if (!needsAnalysis || !isCurrent()) return;
-      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active, studentId, message: message || "", progress } }));
+    const dispatchTopbar = (active: boolean, message?: string, progress?: number, status = "analyzing") => {
+      if (!needsAnalysis) return;
+      const jobId = JSON.stringify([studentId, selectedExam.course_code, selectedExam.session_name, selectedExam.year, selectedExam.month, selectedExam.semester]);
+      const examLabel = `${selectedExam.course_code} · ${selectedExam.session_name} · ${selectedExam.year}/${selectedExam.month} · Semester ${selectedExam.semester}`;
+      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active, studentId, jobId, examLabel, message: message || "", progress, status } }));
     };
-    dispatchTopbar(true, `PULSE·AI — Starting analysis for ${studentId}…`, 0);
+    dispatchTopbar(true, `Submitting analysis for ${studentId}…`, 0, "queued");
     try {
       if (!needsAnalysis) {
         const detail = await fetchLecturerStudentDetail(
@@ -345,14 +343,13 @@ export default function AnalyticsPage() {
           selectedExam.year,
           selectedExam.month,
           selectedExam.semester,
-          (msg, prog) => {
-            dispatchTopbar(true, msg, prog);
+          (msg, prog, phase) => {
+            dispatchTopbar(true, msg, prog, phase === "queued" ? "queued" : "analyzing");
           },
           false
         );
       } catch {
-        if (!isCurrent()) return;
-        dispatchTopbar(true, `PULSE·AI — Analyzing ${studentId}…`, 45);
+        dispatchTopbar(true, `Reconnecting to analysis for ${studentId}…`, 0, "queued");
         detail = await fetchLecturerStudentDetail(
           selectedExam.course_code,
           selectedExam.session_name,
@@ -363,18 +360,16 @@ export default function AnalyticsPage() {
           false
         );
       }
+      dispatchTopbar(false, `Analysis complete for ${studentId}`, 100, "complete");
       if (!isCurrent()) return;
       setStudentDetail(detail);
-      dispatchTopbar(true, `PULSE·AI — ${studentId} analysis complete`, 100);
       // Update row status optimistically
       setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: detail.analysis_status ?? "generated" } : r));
-      setTimeout(() => dispatchTopbar(false), 2500);
     } catch (e) {
-      if (!isCurrent()) return;
       const msg = e instanceof Error ? e.message : "Failed to load student detail";
+      dispatchTopbar(false, `Analysis failed for ${studentId}: ${msg}`, 0, "failed");
+      if (!isCurrent()) return;
       setStudentDetailError(msg);
-      dispatchTopbar(true, `Analysis failed for ${studentId}`, 0);
-      setTimeout(() => dispatchTopbar(false), 3000);
       // Fallback: if pending student failed due to model down, toast
       if (needsAnalysis) {
         const lower = msg.toLowerCase();
@@ -1223,7 +1218,7 @@ export default function AnalyticsPage() {
                           {!canView ? <span className="text-xs text-muted-foreground">Awaiting grades</span> : loadingStudentDetail && selectedStudentId === s.student_id ? (
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
                               <ThinkingOrb state="solving" size={20} aria-label="Analysing student" />
-                              <span>{["generated", "diagram_only"].includes(s.analysis_status) ? "Loading…" : "Analyzing…"}</span>
+                              <span>{s.analysis_status === "generated" ? "Loading…" : "Analyzing…"}</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">

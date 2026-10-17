@@ -571,7 +571,7 @@ export async function fetchLecturerStudentDetailStream(
   year: number | undefined,
   month: number | undefined,
   semester: number | undefined,
-  onProgress: (msg: string, progress?: number) => void,
+  onProgress: (msg: string, progress?: number, phase?: string) => void,
   includeAiTips = false,
 ): Promise<LecturerStudentDetail> {
   const encodedCourse = encodeURIComponent(courseCode);
@@ -607,8 +607,8 @@ export async function fetchLecturerStudentDetailStream(
       if (!dataStr) continue;
       try {
         const data = JSON.parse(dataStr);
-        if (event === "progress" || event === "ping") {
-          if (data.message) onProgress(data.message, typeof data.progress === "number" ? data.progress : undefined);
+        if (event === "progress") {
+          if (data.message) onProgress(data.message, typeof data.progress === "number" ? data.progress : undefined, data.phase);
         } else if (event === "result") {
           result = data as LecturerStudentDetail;
         } else if (event === "error") {
