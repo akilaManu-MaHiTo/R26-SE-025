@@ -11,6 +11,14 @@ import { QuestionPerformanceTable } from "./analytics/QuestionPerformanceTable";
 vi.mock("../api/lecturerApi", async importOriginal => ({ ...await importOriginal<typeof import("../api/lecturerApi")>(), fetchExams: vi.fn() }));
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
+it("shows a searching orb while loading exam analytics inventory", () => {
+  vi.mocked(fetchExams).mockReturnValue(new Promise(() => {}));
+  render(<MemoryRouter><AnalyticsPage /></MemoryRouter>);
+  const orb = screen.getByRole("img", { name: "Loading exam analytics" });
+  expect(orb.tagName).toBe("CANVAS");
+  expect(orb.style.width).toBe("64px");
+});
+
 it("distinguishes an inventory read failure from no exams and allows retry", async () => {
   vi.mocked(fetchExams).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce([]);
   render(<MemoryRouter><AnalyticsPage /></MemoryRouter>);

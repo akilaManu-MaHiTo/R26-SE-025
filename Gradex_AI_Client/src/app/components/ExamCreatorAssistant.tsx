@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { ThinkingOrb } from "thinking-orbs";
 import { toast } from "sonner";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -113,7 +114,7 @@ export function ExamCreatorAssistant({ courseCode, paper, setPaper }: Props) {
 
     <Card className="p-4 space-y-2" aria-live="polite">
       <h3 className="font-semibold">Paper checks</h3>
-      {loading && <p className="text-sm">Checking draft…</p>}
+      {loading && <p className="flex items-center gap-2 text-sm"><ThinkingOrb state="solving" size={20} aria-hidden="true" />Checking draft…</p>}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {review && <>
         <p className="text-sm">{review.review.total_marks}/{blueprint.total_marks} marks · {review.review.remaining_marks} remaining</p>
@@ -129,7 +130,7 @@ export function ExamCreatorAssistant({ courseCode, paper, setPaper }: Props) {
       <label className="block text-xs">Topic<Input list="creator-topics" value={topic} onChange={e => { setTopic(e.target.value); clearGeneration(); }} placeholder="Select or enter a course topic" /></label>
       <div className="grid grid-cols-2 gap-2"><label className="text-xs">Bloom level<select className={selectClass} value={bloom} onChange={e => { setBloom(e.target.value); clearGeneration(); }}>{BLOOM_LEVELS.map(l => <option key={l}>{l}</option>)}</select></label>
         <label className="text-xs">Marks per alternative<Input type="number" min={1} value={marks} onChange={e => { setMarks(Number(e.target.value)); clearGeneration(); }} /></label></div>
-      <Button className="w-full" disabled={generating || loading || !!error || !topic.trim() || marks <= 0} onClick={generate}>{generating ? "Generating questions…" : "Generate 2 alternatives"}</Button>
+      <Button className="w-full" disabled={generating || loading || !!error || !topic.trim() || marks <= 0} onClick={generate}>{generating ? <><ThinkingOrb state="composing" size={20} aria-hidden="true" />Generating questions…</> : "Generate 2 alternatives"}</Button>
       <p className="text-xs text-muted-foreground">Review the answer, rubric, sources and Bloom level before approving a question.</p>
       {generationError && <p role="alert" className="text-sm text-red-600">{generationError}</p>}
       {generation && <>
