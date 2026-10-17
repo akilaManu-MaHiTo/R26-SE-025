@@ -76,7 +76,16 @@ function formatDate(value?: string): string {
   return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleString();
 }
 
-export function SubjectContentPage() {
+interface SubjectContentPageProps {
+  /** Rendered inside another page (the Viva Workspace): no banner, no subject browser. */
+  embedded?: boolean;
+  /** Pin the page to one subject — the subject of the viva it sits under. */
+  lockedSubject?: { code: string; name: string };
+  /** Called after material is uploaded or the rubric is saved. */
+  onChanged?: () => void;
+}
+
+export function SubjectContentPage({ embedded = false, lockedSubject, onChanged }: SubjectContentPageProps = {}) {
   const [subjectCode, setSubjectCode] = useState("");
   const [subjectName, setSubjectName] = useState("");
   const [rubric, setRubric] = useState<SubjectRubric | null>(null);
@@ -113,6 +122,26 @@ export function SubjectContentPage() {
   useEffect(() => {
     void refreshList();
   }, [refreshList]);
+
+  // Pinned to one subject: show its code and name, and load its rubric if one exists.
+  // A missing rubric is the normal state for a viva that was just created, not an error.
+  const lockedCode = lockedSubject?.code;
+  const lockedName = lockedSubject?.name;
+  useEffect(() => {
+    if (!lockedCode) return;
+    let cancelled = false;
+    setSubjectCode(lockedCode);
+    setSubjectName(lockedName ?? lockedCode);
+    fetchSubjectContent(lockedCode)
+      .then((found) => {
+        if (!cancelled && found) applyRubric(found);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lockedCode]);
 
   /** Adopt a server response as the current editing state. */
   function applyRubric(next: SubjectRubric) {
@@ -177,6 +206,7 @@ export function SubjectContentPage() {
       );
       applyRubric(next);
       void refreshList();
+      onChanged?.();
       toast.success("Concepts generated", {
         description: `${next.concepts?.length ?? 0} concepts now stored for ${next.subject_code}. Review them before grading.`,
       });
@@ -232,6 +262,7 @@ export function SubjectContentPage() {
       );
       applyRubric(next);
       void refreshList();
+      onChanged?.();
       toast.success("Rubric saved", {
         description: "Vivas using this subject code will be checked against these concepts.",
       });
@@ -266,9 +297,9 @@ export function SubjectContentPage() {
 
   return (
     <div className="space-y-6">
-      <AIPageBanner model="voca" />
+      {embedded ? null : <AIPageBanner model="voca" />}
 
-      {rubric ? (
+      {embedded ? null : rubric ? (
         <Button variant="ghost" className="-ml-2" onClick={closeSubject}>
           <ArrowLeft className="size-4 mr-1.5" />
           All subjects
@@ -353,8 +384,8 @@ export function SubjectContentPage() {
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
           Upload lecture material for a subject, and the AI drafts the list of concepts a student
-          is expected to cover. Technical vivas entered with this subject code are checked against
-          these concepts to suggest a technical-accuracy score.
+          is expected to cover. Technical vivas for this subject code are checked against these
+          concepts to suggest a technical-accuracy score.
         </p>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2 max-w-2xl">
@@ -368,10 +399,12 @@ export function SubjectContentPage() {
               value={subjectCode}
               onChange={(e) => setSubjectCode(e.target.value)}
               placeholder="e.g. CS3021"
+              readOnly={Boolean(lockedSubject)}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Must match the code entered on the Viva Assessment page. Uploading to an existing
-              code adds to that subject.
+              {lockedSubject
+                ? "Fixed to the subject of this viva. Uploading again adds to its concepts."
+                : "Must match the subject code of the viva it is used for. Uploading to an existing code adds to that subject."}
             </p>
           </div>
 
@@ -388,6 +421,7 @@ export function SubjectContentPage() {
                 setDirty(true);
               }}
               placeholder="e.g. Database Systems"
+              readOnly={Boolean(lockedSubject)}
             />
             <p className="text-xs text-muted-foreground mt-1">
               Gives the AI context when drafting concepts.

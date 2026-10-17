@@ -50,6 +50,14 @@ from Gradex_AI_Server.app.mongodb import (
 from DiagramEvaluationEngine.diagram_grading import grade_diagram_with_ollama
 from Gradex_AI_Server.app.analytics_api import router as analytics_router
 from Gradex_AI_Server.app.auth import require_lecturer
+from Gradex_AI_Server.app.viva_sessions import (
+    ensure_no_duplicate_mark,
+    fetch_viva_for_analysis,
+    mode_for_category,
+    normalize_student_id,
+    router as vivas_router,
+    viva_extra_doc,
+)
 from Gradex_AI_Server.app.session_auth import setup_auth, initialize_auth, close_auth, allowed_origins
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
@@ -97,6 +105,7 @@ app.add_middleware(
 
 app.include_router(analytics_router)
 app.include_router(viva_copilot_router)
+app.include_router(vivas_router)
 app.include_router(v2_lecturer_router, prefix="/api")
 app.include_router(v2_student_router, prefix="/api")
 app.include_router(taxonomy_router, dependencies=[Depends(require_lecturer)])
@@ -602,13 +611,25 @@ def _require_marks_collection():
     return db_instance.marks_col
 
 
+def _examiner_email(request: Request) -> Optional[str]:
+    """Email of the lecturer whose login session made this request."""
+    user = getattr(request.state, "user", None) or {}
+    return user.get("email")
+
+
 def _summarize_mark_document(document: dict[str, Any]) -> dict[str, Any]:
     assessment = document.get("assessment") or {}
     return {
+        "examiner_email": document.get("examiner_email"),
+        "published_by": document.get("published_by"),
         "mark_id": str(document.get("_id")),
         "video_filename": document.get("video_filename"),
         "student_id": document.get("student_id"),
         "subject_code": document.get("subject_code"),
+        "subject_name": document.get("subject_name"),
+        "viva_id": document.get("viva_id"),
+        "viva_label": document.get("viva_label"),
+        "viva_category": document.get("viva_category"),
         "processed_at": document.get("processed_at"),
         "published": bool(document.get("published")),
         "published_at": document.get("published_at"),
@@ -630,9 +651,12 @@ def _summarize_mark_document(document: dict[str, Any]) -> dict[str, Any]:
 
 @app.get("/api/viva-marks", dependencies=[Depends(require_lecturer)])
 async def list_viva_marks(
+    request: Request,
     limit: int = 20,
     student_id: Optional[str] = None,
     published: Optional[bool] = None,
+    mine: bool = False,
+    viva_id: Optional[str] = None,
 ):
     """List recent viva marks saved after POST /api/viva-analyze."""
     marks_col = _require_marks_collection()
@@ -642,6 +666,11 @@ async def list_viva_marks(
         query["student_id"] = student_id.strip()
     if published is not None:
         query["published"] = published
+    if viva_id and viva_id.strip():
+        query["viva_id"] = viva_id.strip()
+    if mine:
+        # Only marks created under the signed-in lecturer's own session.
+        query["examiner_email"] = _examiner_email(request)
 
     try:
         cursor = marks_col.find(query).sort("processed_at", -1).limit(safe_limit)
@@ -670,7 +699,7 @@ async def get_viva_mark(mark_id: str):
 
 
 @app.patch("/api/viva-marks/{mark_id}/publish", dependencies=[Depends(require_lecturer)])
-async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
+async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload, request: Request):
     """Persist published assessment: canonical X, human technical (or null), server-computed /100 + grade."""
     from Gradex_AI_Server.app.viva_marks import apply_publish_to_mark
     from VivaEvaluationEngine.services.assessment_scoring import MODE_WITH, MODE_WITHOUT
@@ -684,11 +713,11 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
     if mode == MODE_WITH and payload.technical_accuracy is None:
         raise HTTPException(status_code=400, detail="technical_accuracy is required for WITH_TECHNICAL_ACCURACY.")
 
-    student_id = (payload.student_id or "").strip() or None
+    student_id = normalize_student_id(payload.student_id, required=False)
     technical = None if mode == MODE_WITHOUT else payload.technical_accuracy
 
     try:
-        return await apply_publish_to_mark(
+        response = await apply_publish_to_mark(
             marks_col,
             object_id,
             mode=mode,
@@ -696,6 +725,11 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
             student_id=student_id,
             human_published=True,
         )
+        # Record which signed-in lecturer made the human publish decision.
+        await marks_col.update_one(
+            {"_id": object_id}, {"$set": {"published_by": _examiner_email(request)}}
+        )
+        return response
     except LookupError:
         raise HTTPException(status_code=404, detail="Mark not found.") from None
     except ValueError as exc:
@@ -716,9 +750,7 @@ async def set_viva_mark_student(mark_id: str, payload: VivaMarkStudentPayload):
     """Assign (or clear) the student a saved mark belongs to."""
     marks_col = _require_marks_collection()
     object_id = _parse_object_id(mark_id)
-    student_id = (payload.student_id or "").strip() or None
-    if student_id and len(student_id) > 64:
-        raise HTTPException(status_code=400, detail="student_id is too long.")
+    student_id = normalize_student_id(payload.student_id, required=False)
     try:
         result = await marks_col.update_one({"_id": object_id}, {"$set": {"student_id": student_id}})
     except Exception as exc:
@@ -780,6 +812,11 @@ async def viva_analyze_progress_stream(progress_id: str, request: Request):
         current = snapshot(job_id)
         yield _sse_event("progress", current)
         version = int(current.get("version") or 0)
+        if current.get("finished"):
+            # A reattached client (reloaded page) can arrive after the job ended;
+            # there is nothing left to wait for, so close instead of idling forever.
+            yield _sse_event("done", {"stage": current.get("stage")})
+            return
 
         while True:
             if await request.is_disconnected():
@@ -810,24 +847,26 @@ async def viva_analyze_progress_stream(progress_id: str, request: Request):
 
 @app.post("/api/viva-analyze", dependencies=[Depends(require_lecturer)])
 async def viva_analyze(
+    request: Request,
     video: UploadFile = File(...),
-    assessment_mode: str = Form(default="WITHOUT_TECHNICAL_ACCURACY"),
-    subject_code: Optional[str] = Form(default=None),
+    viva_id: Optional[str] = Form(default=None),
     progress_id: Optional[str] = Form(default=None),
     student_id: Optional[str] = Form(default=None),
+    allow_duplicate: bool = Form(default=False),
 ):
     """
     Analyze a viva recording for emotion detection and engagement scoring.
 
-    `assessment_mode` is the examiner's upfront choice (before upload/recording,
-    not changeable afterward — see VivaPage.tsx): WITHOUT_TECHNICAL_ACCURACY for
-    communication/presentation vivas, WITH_TECHNICAL_ACCURACY for technical
-    modules. Only WITHOUT auto-publishes; WITH always leaves the mark as an
+    `viva_id` is required: the recording is filed under a viva the lecturer
+    created first (see /api/vivas). The viva's category fixes the assessment
+    mode — non-technical is WITHOUT_TECHNICAL_ACCURACY, technical is
+    WITH_TECHNICAL_ACCURACY — and its subject code selects the concept rubric.
+    Only WITHOUT auto-publishes; WITH always leaves the mark as an
     unpublished draft so a human must enter a technical score and publish before
     it counts as a grade — see PRD "no grade issued purely on AI authority".
 
-    `subject_code` is optional. When set and a concept rubric exists for it
-    (see /api/subject-content), an AI-suggested technical_accuracy_ai score is
+    For a technical viva, the rubric for the viva's subject code (see
+    /api/subject-content) produces an AI-suggested technical_accuracy_ai score is
     attached to the result as an advisory panel — never auto-published; the
     examiner still enters/reviews the technical score themselves.
 
@@ -855,12 +894,11 @@ async def viva_analyze(
     )
 
     request_start = time.time()
-    normalized_student_id = (student_id or "").strip()
-    if not normalized_student_id:
-        raise HTTPException(status_code=400, detail="student_id is required.")
-    if len(normalized_student_id) > 64:
-        raise HTTPException(status_code=400, detail="student_id is too long.")
-    requested_mode = normalize_mode(assessment_mode)
+    normalized_student_id = normalize_student_id(student_id)
+    viva = await fetch_viva_for_analysis(viva_id, request)
+    requested_mode = normalize_mode(mode_for_category(viva["category"]))
+    subject_code = viva["subject_code"] if viva["category"] == "technical" else None
+    await ensure_no_duplicate_mark(str(viva["_id"]), normalized_student_id, allow_duplicate)
     job_id = normalize_progress_id(progress_id)
 
     filename = video.filename or ""
@@ -919,12 +957,9 @@ async def viva_analyze(
             video_filename=video.filename,
             source="upload",
             extra_doc={
-                key: value
-                for key, value in {
-                    "student_id": normalized_student_id,
-                    "subject_code": (subject_code or "").strip() or None,
-                }.items()
-                if value
+                **viva_extra_doc(viva),
+                "student_id": normalized_student_id,
+                "examiner_email": _examiner_email(request),
             },
             progress_id=job_id,
         )

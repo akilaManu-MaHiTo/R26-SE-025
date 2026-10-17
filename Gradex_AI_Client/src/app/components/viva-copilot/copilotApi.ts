@@ -197,9 +197,11 @@ export function updateCopilotContext(sessionId: string, projectContext: ProjectC
 export type CopilotAssessmentMode = "WITH_TECHNICAL_ACCURACY" | "WITHOUT_TECHNICAL_ACCURACY";
 
 export interface AnalyzeSessionOptions {
-  assessmentMode: CopilotAssessmentMode;
-  subjectCode?: string;
+  /** The viva the session is filed under; it fixes the mode and subject server-side. */
+  vivaId: string;
   studentId?: string;
+  /** True once the examiner confirmed adding another mark for a student who already has one. */
+  allowDuplicate?: boolean;
   progressId?: string;
 }
 
@@ -214,9 +216,9 @@ export async function analyzeCopilotSession(
   const form = new FormData();
   const ext = recording.type.includes("mp4") ? "mp4" : "webm";
   form.append("video", recording, `live-viva-${sessionId}.${ext}`);
-  form.append("assessment_mode", options.assessmentMode);
-  if (options.subjectCode) form.append("subject_code", options.subjectCode);
+  form.append("viva_id", options.vivaId);
   if (options.studentId) form.append("student_id", options.studentId);
+  if (options.allowDuplicate) form.append("allow_duplicate", "true");
   if (options.progressId) form.append("progress_id", options.progressId);
 
   const url = `${copilotHttpBase()}/api/viva-copilot/sessions/${sessionId}/analyze`;

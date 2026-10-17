@@ -24,3 +24,6 @@ chromadb>=0.5.0
 sentence-transformers>=3.0.0
 requests>=2.32.0
 Pillow>=10.0.0
+
+# Tests (Gradex_AI_Server/tests uses pytest; app/tests uses unittest)
+pytest>=8.0.0

@@ -57,6 +57,12 @@ export interface VivaMarkSummary {
   video_filename: string | null;
   student_id: string | null;
   subject_code?: string | null;
+  subject_name?: string | null;
+  viva_id?: string | null;
+  viva_label?: string | null;
+  viva_category?: string | null;
+  examiner_email?: string | null;
+  published_by?: string | null;
   processed_at?: string | null;
   published: boolean;
   published_at?: string | null;
@@ -90,8 +96,13 @@ async function readMarksError(response: Response): Promise<string> {
 }
 
 /** Newest first. The server caps `limit` at 100. */
-export async function listVivaMarks(limit = 100, studentId?: string): Promise<VivaMarkSummary[]> {
+export async function listVivaMarks(
+  limit = 100,
+  studentId?: string,
+  vivaId?: string,
+): Promise<VivaMarkSummary[]> {
   const params = new URLSearchParams({ limit: String(limit) });
+  if (vivaId?.trim()) params.set("viva_id", vivaId.trim());
   if (studentId?.trim()) params.set("student_id", studentId.trim());
   const response = await apiFetch(`${backendBaseUrl}/api/viva-marks?${params.toString()}`);
   if (!response.ok) throw new Error(await readMarksError(response));

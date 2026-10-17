@@ -65,6 +65,8 @@ async def analyze_live_session(
     video_filename: Optional[str] = None,
     subject_code: Optional[str] = None,
     student_id: Optional[str] = None,
+    examiner_email: Optional[str] = None,
+    viva_extra: Optional[Dict[str, Any]] = None,
     progress_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Full live-session assessment: recording -> engine -> mark -> publish."""
@@ -88,6 +90,10 @@ async def analyze_live_session(
     }
     if student_id:
         extra_doc["student_id"] = student_id
+    if viva_extra:
+        extra_doc.update(viva_extra)
+    if examiner_email:
+        extra_doc["examiner_email"] = examiner_email
 
     return await persist_and_autopublish(
         result,
