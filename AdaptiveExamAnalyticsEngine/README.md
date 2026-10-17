@@ -98,6 +98,14 @@ then runs the analytics pipeline (Bloom-level classification, numeric analysis,
 student insights) and persists results to `student_analytics`. A progress bar
 shows each LLM step.
 
+Individual student analyses run in a FIFO queue, one at a time per backend
+process. Current saved results bypass the queue; waiting requests recheck the
+cache before generating. The lecturer bell shows each student's queued,
+analyzing, complete, or failed status, even after selecting another student.
+This queue is in memory: run one backend worker for shared ordering. Pending
+work is not restored after a server restart, and notifications are not restored
+after a browser refresh. Full-exam batch analysis uses its existing workflow.
+
 ## Running with Colab (Qwen 3)
 
 The LLM backend can run on Google Colab's free T4 GPU with `qwen3:8b`,

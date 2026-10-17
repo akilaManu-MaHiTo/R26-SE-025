@@ -668,18 +668,7 @@ async def lecturer_student_detail(
             except Exception:
                 raise HTTPException(status_code=404, detail=str(exc)) from exc
         except Exception as exc:
-            try:
-                from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
-                _d2 = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
-                _m2 = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
-                if _d2 is not None or _m2 is not None:
-                    doc = _synthesize_diagram_doc(student_id, course_code, session_name, year, month, semester, (_d2 or {}).get("evaluation_result") or {})
-                else:
-                    raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
-            except HTTPException:
-                raise
-            except Exception:
-                raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
+            raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
     # Enrich with diagram data (best-effort)
     try:
         from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
@@ -808,19 +797,24 @@ async def lecturer_student_detail_stream(
             ensure_student_analytics(db, student_id, course_code, session_name, year, month, semester, progress_callback=progress_cb)
         )
 
-        # Emit initial 0%
-        yield sse("progress", {"phase": "analyzing", "message": f"PULSE·AI — Starting analysis for {student_id}…", "progress": 0, "studentId": student_id})
+        def progress_event(msg: str) -> str:
+            nonlocal steps_done
+            if msg == "queued":
+                return sse("progress", {"phase": "queued", "message": "Queued — waiting for the previous student analysis", "progress": 0, "studentId": student_id})
+            if msg == "started":
+                return sse("progress", {"phase": "analyzing", "message": f"Analyzing {student_id}…", "progress": 0, "studentId": student_id})
+            steps_done += 1
+            prog = min(90, max(5, round((steps_done / total_steps) * 90)))
+            if "insight" in msg.lower():
+                prog = max(prog, 85)
+            return sse("progress", {"phase": "analyzing", "message": msg, "progress": prog, "studentId": student_id, "stepsDone": steps_done, "totalSteps": total_steps})
+
+        yield sse("progress", {"phase": "queued", "message": f"Submitting analysis for {student_id}…", "progress": 0, "studentId": student_id})
 
         while not compute_task.done():
             try:
                 msg = await asyncio.wait_for(queue.get(), timeout=0.35)
-                steps_done += 1
-                # progress 5%..90% during classifying/insights; reserve 100 for final
-                prog = min(90, max(5, round((steps_done / total_steps) * 90)))
-                # bump a bit for insight phase
-                if "insights" in msg.lower() or "insight" in msg.lower():
-                    prog = max(prog, 85)
-                yield sse("progress", {"phase": "analyzing", "message": msg, "progress": prog, "studentId": student_id, "stepsDone": steps_done, "totalSteps": total_steps})
+                yield progress_event(msg)
             except asyncio.TimeoutError:
                 yield sse("ping", {"message": "alive", "progress": min(90, round((steps_done / total_steps) * 90)) if total_steps else 0, "studentId": student_id})
             except Exception:
@@ -829,9 +823,7 @@ async def lecturer_student_detail_stream(
         while not queue.empty():
             try:
                 msg = queue.get_nowait()
-                steps_done += 1
-                prog = min(95, round((steps_done / total_steps) * 90)) if total_steps else 90
-                yield sse("progress", {"phase": "analyzing", "message": msg, "progress": prog, "studentId": student_id})
+                yield progress_event(msg)
             except Exception:
                 break
 
