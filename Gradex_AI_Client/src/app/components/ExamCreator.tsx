@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { ThinkingOrb } from "thinking-orbs";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Plus, X, BookOpen, ChevronRight, Layers, FileDown, Eye, CloudUpload } from "lucide-react";
 import { useHideSidebar } from "../App";
@@ -42,8 +43,8 @@ function totalMarks(paper: Paper): number {
 function PremiumExamLoader({ steps, currentStep }: { steps: LoadStep[]; currentStep: number }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 space-y-6">
-      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }} className="size-10 rounded-full border-2 border-primary/20 border-t-primary" />
-      <div className="space-y-2 text-center">
+      <ThinkingOrb state="searching" size={64} aria-label="Loading exams" />
+      <div className="space-y-2 text-center" role="status">
         <motion.p key={currentStep} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="text-sm font-medium">
           {steps[currentStep]?.label || "Loading..."}
         </motion.p>
@@ -513,7 +514,7 @@ export function ExamCreator() {
                 </Select>
               </div>
               {loadingBank ? (
-                <p className="text-xs text-muted-foreground">Loading question bank...</p>
+                <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground"><ThinkingOrb state="searching" size={20} aria-hidden="true" />Loading question bank...</p>
               ) : bankItems.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No questions. Adjust filters or switch to Recommended tab.</p>
               ) : (
