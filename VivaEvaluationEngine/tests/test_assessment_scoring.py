@@ -10,12 +10,16 @@ if str(ENGINE_ROOT) not in sys.path:
     sys.path.insert(0, str(ENGINE_ROOT))
 
 from services.assessment_scoring import (
+    MARKING_SCALE,
     MODE_WITH,
+    fuse_final_score,
     MODE_WITHOUT,
     STATUS_INCOMPLETE,
     STATUS_VALID,
     build_assessment,
     resolve_grade,
+    resolve_grade_from_mark,
+    percent_to_mark,
     score_ai_performance,
 )
 from services.canonical_features import extract_canonical_features
@@ -137,7 +141,10 @@ class ModeAndFusionTests(unittest.TestCase):
         self.assertIsNone(assessment["technical_accuracy"])
         self.assertEqual(assessment["final_score"], assessment["ai_performance"]["score"])
         self.assertIsNotNone(assessment["grade"])
-        self.assertEqual(assessment["grade"], resolve_grade(assessment["final_score"]))
+        self.assertEqual(assessment["grade"], resolve_grade_from_mark(assessment["final_mark"]))
+        self.assertEqual(assessment["final_mark_max"], MARKING_SCALE.mark_max)
+        self.assertEqual(assessment["final_mark"], percent_to_mark(assessment["final_score"]))
+        self.assertEqual(assessment["ai_performance"]["mark"], percent_to_mark(assessment["ai_performance"]["score"]))
 
     def test_mode_b_requires_technical_for_final(self):
         pending = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=None)
@@ -145,11 +152,14 @@ class ModeAndFusionTests(unittest.TestCase):
         self.assertIsNone(pending["final_score"])
         self.assertIsNone(pending["grade"])
 
-        done = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=3)
-        self.assertEqual(done["technical_accuracy"], 3)
+        # Technical accuracy is entered out of technical_max: 30% of it is 30% of the technical share.
+        entered = round(MARKING_SCALE.technical_max * 0.3, 2)
+        done = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=entered)
+        self.assertEqual(done["technical_accuracy"], entered)
         expected = 0.5 * done["ai_performance"]["score"] + 0.5 * 30.0
         self.assertAlmostEqual(done["final_score"], round(expected, 2))
-        self.assertEqual(done["grade"], resolve_grade(done["final_score"]))
+        self.assertEqual(done["final_mark"], percent_to_mark(done["final_score"]))
+        self.assertEqual(done["grade"], resolve_grade_from_mark(done["final_mark"]))
 
     def test_without_mode_publishes_with_technical_preview_weights(self):
         """Examiner UI previews a fused mark before publishing.
@@ -169,7 +179,9 @@ class ModeAndFusionTests(unittest.TestCase):
 
         # Preview weights must reproduce what a real WITH publish computes.
         ai_score = assessment["ai_performance"]["score"]
-        published = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=8)
+        published = build_assessment(
+            _sample_result(), mode=MODE_WITH, technical_accuracy=round(MARKING_SCALE.technical_max * 0.8, 2)
+        )
         expected = preview["weight_ai"] * ai_score + preview["weight_technical"] * 80.0
         self.assertAlmostEqual(published["final_score"], round(expected, 2))
 
@@ -468,6 +480,66 @@ class TopicCoverageGateTests(unittest.TestCase):
         )
         self.assertEqual(out["status"], STATUS_INCOMPLETE)
         self.assertNotIn("insufficient_topic_coverage", out["validation"]["reasons"])
+
+
+class MarkOnDefaultScaleTests(unittest.TestCase):
+    """Marks on the default scale (out of 20); other scales are covered in test_marking_scale.py."""
+
+    def setUp(self):
+        from unittest.mock import patch
+
+        from services import assessment_scoring
+        from services.marking_scale import MarkingScale
+
+        patcher = patch.object(assessment_scoring, "MARKING_SCALE", MarkingScale())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_percent_to_mark_scales_and_rounds(self):
+        self.assertEqual(percent_to_mark(100), 20.0)
+        self.assertEqual(percent_to_mark(0), 0.0)
+        self.assertEqual(percent_to_mark(69.44), 13.89)
+        self.assertEqual(percent_to_mark(79.06), 15.81)
+        self.assertIsNone(percent_to_mark(None))
+        self.assertEqual(percent_to_mark(150), 20.0)  # clamped
+
+    def test_grade_bands_out_of_20(self):
+        cases = {
+            20: "A+", 18: "A+", 17.99: "A", 16: "A", 15.99: "B+", 14: "B+",
+            13.99: "B", 12: "B", 11.99: "C+", 10: "C+", 9.99: "C", 8: "C", 7.99: "F", 0: "F",
+        }
+        for mark, grade in cases.items():
+            self.assertEqual(resolve_grade_from_mark(mark), grade, mark)
+        self.assertIsNone(resolve_grade_from_mark(None))
+
+    def test_bands_match_the_percentage_bands(self):
+        for percent in (0, 39.9, 40, 49.9, 50, 59.9, 60, 69.9, 70, 79.9, 80, 89.9, 90, 100):
+            self.assertEqual(
+                resolve_grade_from_mark(percent_to_mark(percent)), resolve_grade(percent), percent
+            )
+
+    def test_grade_follows_the_rounded_displayed_mark(self):
+        """69.98% is 13.996/20, which displays as 14.00, so it grades as B+ (not B)."""
+        mark = percent_to_mark(69.98)
+        self.assertEqual(mark, 14.0)
+        self.assertEqual(resolve_grade_from_mark(mark), "B+")
+        self.assertEqual(resolve_grade(69.98), "B")  # the raw percentage would say B
+
+    def test_technical_fusion_out_of_20(self):
+        fused = fuse_final_score(mode=MODE_WITH, ai_performance=60.0, technical_accuracy=16.0)
+        self.assertEqual(fused["technical_accuracy"], 16.0)
+        self.assertEqual(fused["technical_accuracy_100"], 80.0)
+        self.assertEqual(fused["final_score"], 70.0)  # 0.5*60 + 0.5*80
+        self.assertEqual(fused["final_mark"], 14.0)
+        # The technical score is clamped to its 20-mark scale.
+        over = fuse_final_score(mode=MODE_WITH, ai_performance=60.0, technical_accuracy=25.0)
+        self.assertEqual(over["technical_accuracy"], 20.0)
+        self.assertEqual(over["final_mark"], 16.0)  # 0.5*60 + 0.5*100 = 80% -> 16/20
+
+    def test_pending_without_technical_has_no_mark(self):
+        pending = fuse_final_score(mode=MODE_WITH, ai_performance=60.0, technical_accuracy=None)
+        self.assertIsNone(pending["final_mark"])
+        self.assertIsNone(pending["final_score"])
 
 
 if __name__ == "__main__":

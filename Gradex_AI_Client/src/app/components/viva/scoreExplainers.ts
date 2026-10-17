@@ -1,4 +1,11 @@
-import type { AssessmentMode, VivaAssessment } from "./types";
+import { getMarkingScale } from "./markingScale";
+import {
+  formatMarkValue,
+  percentToMark,
+  resolveGradeFromMark,
+  type AssessmentMode,
+  type VivaAssessment,
+} from "./types";
 import { parseFusionWeights } from "./officialMark";
 
 export type ScoreExplainTopic =
@@ -21,15 +28,19 @@ export interface ScoreExplainContent {
   workedExample?: string[];
 }
 
-const GRADE_BANDS = [
-  "A+ ≥ 90",
-  "A ≥ 80",
-  "B+ ≥ 70",
-  "B ≥ 60",
-  "C+ ≥ 50",
-  "C ≥ 40",
-  "F < 40",
-];
+/** The grade bands on the current mark scale, e.g. "A+ ≥ 18 (90%)" ... "F < 8 (below 40%)". */
+function gradeBandLines(): string[] {
+  const { gradeBands } = getMarkingScale();
+  return gradeBands.map((band, index) => {
+    if (index === gradeBands.length - 1) {
+      const above = gradeBands[index - 1];
+      return above
+        ? `${band.grade} < ${above.minMark} (below ${above.minPercent}%)`
+        : `${band.grade} (any mark)`;
+    }
+    return `${band.grade} ≥ ${band.minMark} (${band.minPercent}%)`;
+  });
+}
 
 const FAMILY_LABELS: Record<string, string> = {
   engagement: "Engagement",
@@ -66,7 +77,7 @@ function familyScoreLine(
 ): string | null {
   const score = assessment?.ai_performance?.family_scores?.[family];
   if (score == null) return null;
-  return `This recording: ${Math.round(score * 100)} / 100`;
+  return `This recording: ${Math.round(score * 100)}%`;
 }
 
 function componentLines(
@@ -82,7 +93,7 @@ function componentLines(
     const label = COMPONENT_LABELS[key] || key.replace(/_/g, " ");
     const value =
       typeof c.normalized === "number"
-        ? `${Math.round(Number(c.normalized) * 100)}/100`
+        ? `${Math.round(Number(c.normalized) * 100)}%`
         : "—";
     const w =
       typeof c.weight_within_family === "number"
@@ -132,10 +143,14 @@ function officialMarkWorking(
     ).padStart(5)} = ${(score * 100 * weight).toFixed(1).padStart(5)}`;
   });
 
-  rows.push(`${"AI performance".padEnd(16)} ${" ".repeat(16)}= ${ai.toFixed(1).padStart(5)}`);
+  const aiMark = percentToMark(ai) ?? 0;
+  const { markMax } = getMarkingScale();
+  rows.push(
+    `${"AI performance".padEnd(16)} ${" ".repeat(16)}= ${ai.toFixed(1).padStart(5)}%  →  ${formatMarkValue(aiMark)} / ${markMax}`,
+  );
 
   if (!withTech) {
-    rows.push(`${"Official mark".padEnd(16)} ${" ".repeat(16)}= ${ai.toFixed(1).padStart(5)}`);
+    rows.push(`${"Official mark".padEnd(16)} ${" ".repeat(16)}= ${formatMarkValue(aiMark).padStart(5)} / ${markMax}`);
     return rows;
   }
 
@@ -144,19 +159,20 @@ function officialMarkWorking(
     rows.push("Technical accuracy not entered yet — final mark is pending.");
     return rows;
   }
-  const tech100 = Number(tech) * 10;
-  const final = fusion.weightAi * ai + fusion.weightTechnical * tech100;
+  // Both parts are put on the mark scale: the AI score scaled from its percentage, and the
+  // examiner's technical score scaled from the technical maximum.
+  const technicalMark = (Number(tech) / getMarkingScale().technicalMax) * markMax;
+  const blended = fusion.weightAi * aiMark + fusion.weightTechnical * technicalMark;
+  const finalMark = percentToMark((blended / markMax) * 100) ?? blended;
   rows.push(
-    `${"AI".padEnd(16)} ${ai.toFixed(1).padStart(5)} x ${pct(fusion.weightAi, "").padStart(5)} = ${(
-      fusion.weightAi * ai
-    )
-      .toFixed(1)
-      .padStart(5)}`,
-    `${"Technical".padEnd(16)} ${tech100.toFixed(1).padStart(5)} x ${pct(
+    `${"AI".padEnd(16)} ${formatMarkValue(aiMark).padStart(5)} x ${pct(fusion.weightAi, "").padStart(5)} = ${formatMarkValue(
+      fusion.weightAi * aiMark,
+    ).padStart(5)}`,
+    `${"Technical".padEnd(16)} ${formatMarkValue(technicalMark).padStart(5)} x ${pct(
       fusion.weightTechnical,
       "",
-    ).padStart(5)} = ${(fusion.weightTechnical * tech100).toFixed(1).padStart(5)}`,
-    `${"Official mark".padEnd(16)} ${" ".repeat(16)}= ${final.toFixed(1).padStart(5)}`,
+    ).padStart(5)} = ${formatMarkValue(fusion.weightTechnical * technicalMark).padStart(5)}`,
+    `${"Official mark".padEnd(16)} ${" ".repeat(16)}= ${formatMarkValue(finalMark).padStart(5)} / ${markMax}`,
   );
   return rows;
 }
@@ -196,7 +212,7 @@ export function buildScoreExplain(
   } = {},
 ): ScoreExplainContent {
   const { assessment, assessmentMode } = options;
-  const version = assessment?.scoring_version || "v1.2";
+  const version = assessment?.scoring_version || "v1.3";
   const weights = assessment?.ai_performance?.family_weights_applied;
   const withTech =
     (assessmentMode || assessment?.assessment_mode) === "WITH_TECHNICAL_ACCURACY";
@@ -235,14 +251,20 @@ export function buildScoreExplain(
       ];
       if (withTech) {
         lines.push(
-          `Technical mode: final = ${Math.round(fusion.weightAi * 100)}% AI performance + ${Math.round(fusion.weightTechnical * 100)}% technical accuracy.`,
+          `Technical mode: final = ${Math.round(fusion.weightAi * 100)}% AI performance + ${Math.round(fusion.weightTechnical * 100)}% technical accuracy (the examiner enters technical accuracy out of ${getMarkingScale().technicalMax}).`,
         );
       } else {
         lines.push("Non-technical mode: official mark = AI performance score (100%).");
       }
+      const { markMax: scaleMax, decimals } = getMarkingScale();
+      lines.push(
+        `Every viva is marked out of ${scaleMax}: the mark is the 0–100 percentage ÷ 100 × ${scaleMax}, rounded to ${decimals} decimals.`,
+      );
       const score = assessment?.ai_performance?.score;
       if (score != null) {
-        lines.unshift(`This recording: ${score.toFixed(1)} / 100`);
+        lines.unshift(
+          `This recording: AI performance ${score.toFixed(1)}% = ${formatMarkValue(percentToMark(score))} / ${scaleMax}`,
+        );
       }
       return {
         title: topic === "official_mark" ? "How the official mark is calculated" : "How AI performance is calculated",
@@ -251,7 +273,7 @@ export function buildScoreExplain(
           : "Equal mix of engagement, audio acoustics, and transcript. Facial and voice emotion, gaze, head and blink all feed these families.",
         lines,
         formula: withTech
-          ? `Final = ${fusion.weightAi}×AI + ${fusion.weightTechnical}×Technical`
+          ? `Final = ${fusion.weightAi}×AI + ${fusion.weightTechnical}×Technical (each on the ${getMarkingScale().markMax}-mark scale)`
           : weights && Object.keys(weights).length > 0
             ? `AI = (${Object.keys(weights)
                 .map((name) => FAMILY_LABELS[name] || name)
@@ -335,14 +357,17 @@ export function buildScoreExplain(
       };
     }
     case "grade":
+      const { markMax: gradeMax } = getMarkingScale();
+      const exampleMark = percentToMark(66.7);
       return {
         title: "How the letter grade is assigned",
-        summary: "Letter band from the official mark /100.",
+        summary: `Letter band from the official mark out of ${gradeMax}.`,
         lines: [
-          ...GRADE_BANDS,
-          "Example: 66.7 → Grade B (60–69).",
+          ...gradeBandLines(),
+          "The grade follows the rounded mark you see, so a mark that rounds up to a band's minimum gets that band.",
+          `Example: 66.7% → ${formatMarkValue(exampleMark)} / ${gradeMax} → Grade ${resolveGradeFromMark(exampleMark) ?? "—"}.`,
         ],
-        formula: "Grade = band for official mark",
+        formula: `Grade = band for official mark (out of ${gradeMax})`,
       };
     case "face_coverage":
       return {

@@ -6,7 +6,17 @@
 // is the mechanism this relies on — no PDF-generation library is added for
 // what a print stylesheet already covers.
 
-import { AnalysisResult, AssessmentMode, KeyMoment, formatTime } from "./types";
+import {
+  AnalysisResult,
+  AssessmentMode,
+  KeyMoment,
+  formatMarkValue,
+  formatOfficialMark,
+  formatTime,
+  percentToMark,
+  suggestedTechnicalMark,
+} from "./types";
+import { useMarkingScale } from "./useMarkingScale";
 import { resolveOfficialMark } from "./officialMark";
 
 interface ReportPrintViewProps {
@@ -33,6 +43,7 @@ export function ReportPrintView({
   const audio = analysisResult.audio_analysis;
   const summary = analysisResult.summary;
   const engagementSummary = analysisResult.engagement_summary;
+  const { technicalMax } = useMarkingScale();
   const coverage = analysisResult.coverage;
   const llm = analysisResult.llm_evaluation;
   const qaPairs = analysisResult.qa_analysis?.pairs ?? [];
@@ -45,8 +56,8 @@ export function ReportPrintView({
   const hasAISuggestion =
     withTech &&
     (technicalAccuracyAI?.status === "success" || technicalAccuracyAI?.status === "partial") &&
-    technicalAccuracyAI.overall_score != null;
-  const { finalScore, grade } = resolveOfficialMark({
+    suggestedTechnicalMark(technicalAccuracyAI) != null;
+  const { finalMark, markMax, grade } = resolveOfficialMark({
     assessment,
     analysisResult,
     assessmentMode,
@@ -75,8 +86,8 @@ export function ReportPrintView({
         <div className="border border-gray-300 rounded p-3">
           <div className="text-[10px] uppercase tracking-wide text-gray-500">Official mark</div>
           <div className="text-2xl font-semibold mt-1">
-            {finalScore != null ? finalScore.toFixed(1) : "—"}
-            <span className="text-xs font-normal text-gray-500"> / 100</span>
+            {formatMarkValue(finalMark)}
+            <span className="text-xs font-normal text-gray-500"> / {markMax}</span>
           </div>
         </div>
         <div className="border border-gray-300 rounded p-3">
@@ -97,22 +108,27 @@ export function ReportPrintView({
         <div className="font-semibold border-b border-gray-300 pb-1">Official assessment</div>
         <div className="mt-2 space-y-1">
           <div>Mode: {withTech ? "With technical accuracy" : "Without technical accuracy"}</div>
-          <div>AI performance: {aiScore != null ? `${aiScore.toFixed(1)} / 100` : "—"}</div>
+          <div>
+            AI performance:{" "}
+            {aiScore != null
+              ? `${formatOfficialMark(assessment?.ai_performance?.mark ?? percentToMark(aiScore))} (${aiScore.toFixed(1)}%)`
+              : "—"}
+          </div>
           {withTech && (
             <div>
-              Technical accuracy: {technicalAccuracy != null ? `${technicalAccuracy} / 10` : "—"}
+              Technical accuracy: {technicalAccuracy != null ? `${technicalAccuracy} / ${technicalMax}` : "—"}
               {hasAISuggestion && (
                 <span className="text-gray-500">
                   {" "}
-                  (AI suggested {technicalAccuracyAI!.overall_score!.toFixed(1)} / 10
+                  (AI suggested {suggestedTechnicalMark(technicalAccuracyAI)!.toFixed(1)} / {technicalMax}
                   {technicalAccuracyAI?.model ? ` via ${technicalAccuracyAI.model}` : ""}; examiner{" "}
-                  {technicalAccuracy === Math.round(technicalAccuracyAI!.overall_score!) ? "accepted" : "adjusted"} this value)
+                  {technicalAccuracy === Math.round(suggestedTechnicalMark(technicalAccuracyAI)! * 2) / 2 ? "accepted" : "adjusted"} this value)
                 </span>
               )}
             </div>
           )}
           <div className="font-medium pt-1">
-            Final score: {finalScore != null ? `${finalScore.toFixed(1)} / 100` : "—"}
+            Final mark: {formatOfficialMark(finalMark, markMax)}
             {" · "}
             Grade: {grade ?? "—"}
           </div>
@@ -127,7 +143,7 @@ export function ReportPrintView({
           </div>
           <div className="mt-2 space-y-1 text-xs">
             <div>
-              Suggested score: {technicalAccuracyAI!.overall_score!.toFixed(1)} / 10
+              Suggested score: {suggestedTechnicalMark(technicalAccuracyAI)!.toFixed(1)} / {technicalMax}
               {technicalAccuracyAI?.model ? ` (model: ${technicalAccuracyAI.model})` : ""}
             </div>
             {technicalAccuracyAI?.status === "partial" && (
@@ -290,7 +306,7 @@ export function ReportPrintView({
           <div>
             Engagement (Stage-1 CNN):{" "}
             {engagementSummary?.average_engagement_score != null
-              ? `${(engagementSummary.average_engagement_score * 100).toFixed(1)} / 100`
+              ? `${(engagementSummary.average_engagement_score * 100).toFixed(1)}%`
               : "—"}
           </div>
           <div>
@@ -308,7 +324,7 @@ export function ReportPrintView({
           <div>
             Facial positivity (supporting):{" "}
             {analysisResult.confidence_score != null
-              ? `${analysisResult.confidence_score.toFixed(1)} / 100`
+              ? `${analysisResult.confidence_score.toFixed(1)}%`
               : "—"}
           </div>
           <div>
