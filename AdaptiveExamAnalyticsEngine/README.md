@@ -84,6 +84,11 @@ files, cleanup findings, test results and remaining reproducibility limits.
 
 ## Running with sample data
 
+For the verified 20-student dataset copied/extended from gradev5 into gradev6,
+see [the gradev6 dataset guide](GRADEV6_DATASET.md). It contains five original
+students and fifteen clearly labelled synthetic students, preserving three pending
+real essays. The running application's database setting is unchanged.
+
 ```bash
 python run_sample.py dbms_analytics_test
 ```
