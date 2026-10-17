@@ -415,6 +415,79 @@ class VivaFlowHttpTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200, response.text)
 
+    # --- the marking scale is configuration ----------------------------
+    def test_viva_config_shares_the_scale_with_the_client(self):
+        from VivaEvaluationEngine.services.assessment_scoring import MARKING_SCALE
+
+        config = self.client.get("/api/viva-config").json()
+        self.assertEqual(config["mark_max"], MARKING_SCALE.mark_max)
+        self.assertEqual(config["technical_max"], MARKING_SCALE.technical_max)
+        self.assertEqual(config["decimals"], MARKING_SCALE.decimals)
+        grades = [band["grade"] for band in config["grade_bands"]]
+        self.assertEqual(grades[0], "A+")
+        self.assertEqual(grades[-1], "F")
+        self.assertEqual(config["grade_bands"][0]["min_mark"], MARKING_SCALE.mark_max * 0.9)
+
+    def test_viva_config_requires_a_lecturer(self):
+        self.user = STUDENT
+        self.assertEqual(self.client.get("/api/viva-config").status_code, 403)
+
+    # --- marks are on the configured scale -------------------------------------------
+    def _real_analysis(self, mode="WITHOUT_TECHNICAL_ACCURACY"):
+        """An analysis result with real engine inputs, so the engine produces a mark."""
+        import copy
+
+        from Gradex_AI_Server.app.tests.test_viva_publish_technical import _engine_result
+        from VivaEvaluationEngine.services.assessment_scoring import build_assessment
+
+        result = _engine_result()
+        result["assessment"] = build_assessment(result, mode=mode)
+        return patch(
+            "Gradex_AI_Server.app.viva_service.analyze_video_file",
+            lambda *_a, **_k: copy.deepcopy(result),
+        )
+
+    def test_non_technical_mark_is_on_the_configured_scale_with_matching_grade(self):
+        from VivaEvaluationEngine.services.assessment_scoring import MARKING_SCALE, resolve_grade_from_mark
+
+        viva = self._viva().json()
+        with self._real_analysis():
+            body = self._upload(viva["viva_id"]).json()
+        self.assertIsNotNone(body["final_mark"])
+        self.assertEqual(body["final_mark_max"], MARKING_SCALE.mark_max)
+        self.assertLessEqual(body["final_mark"], MARKING_SCALE.mark_max)
+        self.assertEqual(body["final_mark"], MARKING_SCALE.percent_to_mark(body["final_score"]))
+        self.assertEqual(body["final_grade"], resolve_grade_from_mark(body["final_mark"]))
+        row = self.client.get("/api/viva-marks").json()["items"][0]
+        self.assertEqual(row["final_mark"], body["final_mark"])
+        self.assertEqual(row["final_mark_max"], MARKING_SCALE.mark_max)
+        self.assertEqual(row["final_grade"], body["final_grade"])
+
+    def test_technical_publish_takes_a_score_out_of_the_technical_maximum(self):
+        from VivaEvaluationEngine.services.assessment_scoring import MARKING_SCALE, resolve_grade_from_mark
+
+        technical_max = MARKING_SCALE.technical_max
+        entered = round(technical_max * 0.9, 2)
+
+        viva = self._viva(category="technical", subject_code="Cs3021").json()
+        with self._real_analysis("WITH_TECHNICAL_ACCURACY"):
+            mark_id = self._upload(viva["viva_id"]).json()["mark_id"]
+        too_high = self.client.patch(
+            f"/api/viva-marks/{mark_id}/publish",
+            json={"assessment_mode": "WITH_TECHNICAL_ACCURACY", "technical_accuracy": technical_max + 1, "published": True},
+        )
+        self.assertEqual(too_high.status_code, 422)
+        ok = self.client.patch(
+            f"/api/viva-marks/{mark_id}/publish",
+            json={"assessment_mode": "WITH_TECHNICAL_ACCURACY", "technical_accuracy": entered, "published": True},
+        )
+        self.assertEqual(ok.status_code, 200, ok.text)
+        data = ok.json()
+        self.assertEqual(data["technical_accuracy"], entered)
+        self.assertEqual(data["final_mark_max"], MARKING_SCALE.mark_max)
+        self.assertEqual(data["final_mark"], MARKING_SCALE.percent_to_mark(data["final_score"]))
+        self.assertEqual(data["final_grade"], resolve_grade_from_mark(data["final_mark"]))
+
     # --- resume banner: reattach to a running analysis ------------------
     def test_progress_survives_the_uploading_connection(self):
         """A reloaded page has no upload request any more; it must still be able to

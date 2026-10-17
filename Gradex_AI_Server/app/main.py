@@ -28,6 +28,10 @@ for path in (PROJECT_ROOT, ENGINE_ROOT, ANALYTICS_ENGINE_ROOT):
     if path_str not in sys.path:
         sys.path.append(path_str)
 
+# Load app/.env BEFORE the engines are imported: some settings (the viva marking scale,
+# VIVA_MARK_MAX etc.) are read once when their module is imported.
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
 # GradingEngine must preload before analytics_api (V2 also uses top-level ``app``).
 from Gradex_AI_Server.app.grading_integration import (
     close_grading_mongo,
@@ -50,14 +54,15 @@ from Gradex_AI_Server.app.mongodb import (
 from DiagramEvaluationEngine.diagram_grading import grade_diagram_with_ollama
 from Gradex_AI_Server.app.analytics_api import router as analytics_router
 from Gradex_AI_Server.app.auth import require_lecturer
+from VivaEvaluationEngine.services.assessment_scoring import MARKING_SCALE
 from Gradex_AI_Server.app.viva_sessions import (
     ensure_no_duplicate_mark,
     fetch_viva_for_analysis,
     mode_for_category,
-    normalize_student_id,
     router as vivas_router,
     viva_extra_doc,
 )
+from Gradex_AI_Server.app.viva_student_id import normalize_student_id
 from Gradex_AI_Server.app.session_auth import setup_auth, initialize_auth, close_auth, allowed_origins
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
@@ -91,7 +96,6 @@ async def lifespan(app: FastAPI):
     close_auth()
 
 
-load_dotenv(Path(__file__).resolve().parent / ".env")
 app = FastAPI(title="Gradex AI Server", version="1.0.0", lifespan=lifespan)
 setup_auth(app)
 
@@ -129,7 +133,8 @@ class RubricCriterionPayload(BaseModel):
 
 class PublishVivaMarkPayload(BaseModel):
     assessment_mode: str
-    technical_accuracy: Optional[float] = Field(default=None, ge=0, le=10)
+    # The examiner's technical score, out of the configured technical maximum (VIVA_TECHNICAL_MAX).
+    technical_accuracy: Optional[float] = Field(default=None, ge=0, le=MARKING_SCALE.technical_max)
     student_id: Optional[str] = None
     published: bool = True
 
@@ -641,12 +646,25 @@ def _summarize_mark_document(document: dict[str, Any]) -> dict[str, Any]:
         "confidence_score": document.get("confidence_score"),
         "engagement_score": document.get("engagement_score"),
         "ai_performance_score": document.get("ai_performance_score"),
+        "ai_performance_mark": document.get("ai_performance_mark"),
         "technical_accuracy": document.get("technical_accuracy"),
         "final_score": document.get("final_score"),
+        "final_mark": document.get("final_mark"),
+        "final_mark_max": document.get("final_mark_max"),
         "final_grade": document.get("final_grade"),
         "status": assessment.get("status"),
         "scoring_version": document.get("scoring_version"),
     }
+
+
+@app.get("/api/viva-config", dependencies=[Depends(require_lecturer)])
+async def get_viva_config():
+    """How vivas are marked: the mark scale, the technical-score scale and the grade bands.
+
+    The web client reads these instead of hard-coding them, so a different scale (out of 25, 30
+    or 100) is a server configuration change (see VivaEvaluationEngine/services/marking_scale.py).
+    """
+    return MARKING_SCALE.as_dict()
 
 
 @app.get("/api/viva-marks", dependencies=[Depends(require_lecturer)])
@@ -700,7 +718,7 @@ async def get_viva_mark(mark_id: str):
 
 @app.patch("/api/viva-marks/{mark_id}/publish", dependencies=[Depends(require_lecturer)])
 async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload, request: Request):
-    """Persist published assessment: canonical X, human technical (or null), server-computed /100 + grade."""
+    """Persist published assessment: canonical X, human technical /20 (or null), server-computed mark /20 + grade."""
     from Gradex_AI_Server.app.viva_marks import apply_publish_to_mark
     from VivaEvaluationEngine.services.assessment_scoring import MODE_WITH, MODE_WITHOUT
 

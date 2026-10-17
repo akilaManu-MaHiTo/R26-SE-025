@@ -7,7 +7,6 @@ technical viva to its concept rubric.
 """
 from __future__ import annotations
 
-import re
 from datetime import datetime, timezone
 from typing import Any, Dict, Literal, Optional
 
@@ -29,22 +28,16 @@ VIVA_COLLECTION = "viva_sessions"
 CATEGORY_TECHNICAL = "technical"
 CATEGORY_NON_TECHNICAL = "non_technical"
 
+# Limits on what a lecturer can enter when creating a viva.
+MAX_VIVA_NAME_LENGTH = 120
+MAX_SUBJECT_CODE_LENGTH = 32
+MAX_SUBJECT_NAME_LENGTH = 120
+MAX_NOTES_LENGTH = 500
+MIN_YEAR, MAX_YEAR = 2000, 2100
+MIN_SEMESTER, MAX_SEMESTER = 1, 4
 
-# Every student ID in the system (sample data, accounts, exams) is "IT" + 8 digits.
-STUDENT_ID_PATTERN = re.compile(r"^IT\d{8}$")
-STUDENT_ID_HINT = "Student ID must look like IT22557056 (IT followed by 8 digits)."
-
-
-def normalize_student_id(value: Optional[str], *, required: bool = True) -> Optional[str]:
-    """Trim, upper-case and validate a student ID; raise 400 when it is wrong."""
-    cleaned = (value or "").strip().upper()
-    if not cleaned:
-        if required:
-            raise HTTPException(status_code=400, detail="student_id is required.")
-        return None
-    if not STUDENT_ID_PATTERN.fullmatch(cleaned):
-        raise HTTPException(status_code=400, detail=STUDENT_ID_HINT)
-    return cleaned
+# Page size for the viva list.
+MAX_LIST_LIMIT = 200
 
 
 async def ensure_no_duplicate_mark(viva_id: str, student_id: str, allow_duplicate: bool) -> None:
@@ -80,13 +73,13 @@ async def _ensure_indexes(col) -> None:
 
 
 class CreateVivaPayload(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
-    subject_code: str = Field(min_length=1, max_length=32)
-    subject_name: str = Field(min_length=1, max_length=120)
+    name: str = Field(min_length=1, max_length=MAX_VIVA_NAME_LENGTH)
+    subject_code: str = Field(min_length=1, max_length=MAX_SUBJECT_CODE_LENGTH)
+    subject_name: str = Field(min_length=1, max_length=MAX_SUBJECT_NAME_LENGTH)
     category: Literal["technical", "non_technical"]
-    year: int = Field(ge=2000, le=2100)
-    semester: int = Field(ge=1, le=4)  # semesters 1-4
-    notes: Optional[str] = Field(default=None, max_length=500)
+    year: int = Field(ge=MIN_YEAR, le=MAX_YEAR)
+    semester: int = Field(ge=MIN_SEMESTER, le=MAX_SEMESTER)
+    notes: Optional[str] = Field(default=None, max_length=MAX_NOTES_LENGTH)
 
 
 def mode_for_category(category: str) -> str:
@@ -238,7 +231,7 @@ async def list_vivas(
         query["subject_code"] = subject_code.strip()
     if category:
         query["category"] = category
-    safe_limit = max(1, min(limit, 200))
+    safe_limit = max(1, min(limit, MAX_LIST_LIMIT))
     docs = await col.find(query).sort("created_at", -1).limit(safe_limit).to_list(length=safe_limit)
 
     counts: Dict[str, Dict[str, int]] = {}

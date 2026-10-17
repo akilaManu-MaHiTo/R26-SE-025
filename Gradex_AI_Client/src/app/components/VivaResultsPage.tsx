@@ -10,6 +10,7 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
 import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "./viva/studentId";
+import { useMarkingScale } from "./viva/useMarkingScale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { AIPageBanner } from "./AIBrand";
 import { ScoreOverview } from "./viva/ScoreOverview";
@@ -35,6 +36,9 @@ import {
   AssessmentMode,
   buildAIInterpretation,
   buildKeyMoments,
+  formatOfficialMark,
+  percentToMark,
+  suggestedTechnicalMark,
 } from "./viva/types";
 
 /** Group key for marks saved without a student ID. */
@@ -51,7 +55,10 @@ function statusOf(item: VivaMarkSummary): { label: string; className: string } {
 }
 
 function formatMark(item: VivaMarkSummary): string {
-  return item.final_score != null ? `${item.final_score.toFixed(1)} / 100` : "—";
+  // A saved mark shows the scale it was given on; rows with no saved mark fall back to scaling
+  // the percentage onto the current scale.
+  if (item.final_mark != null) return formatOfficialMark(item.final_mark, item.final_mark_max);
+  return formatOfficialMark(percentToMark(item.final_score));
 }
 
 /**
@@ -60,6 +67,8 @@ function formatMark(item: VivaMarkSummary): string {
  * not kept on the server, so a reopened result has no video to play.
  */
 export function VivaResultsPage() {
+  // Re-render the list when the server's marking scale arrives (marks show "/ <scale>").
+  const { technicalMax } = useMarkingScale();
   const [items, setItems] = useState<VivaMarkSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -175,7 +184,7 @@ export function VivaResultsPage() {
       // Re-read the mark: publishing rewrites its assessment and final score.
       setSelected(await fetchVivaMark(selected._id));
       await refresh();
-      toast.success("Mark published", { description: `Technical accuracy ${technical} / 10 saved.` });
+      toast.success("Mark published", { description: `Technical accuracy ${technical} / ${technicalMax} saved.` });
     } catch (err) {
       toast.error("Could not publish", {
         description: err instanceof Error ? err.message : "Request failed",
@@ -201,7 +210,7 @@ export function VivaResultsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <AIPageBanner model="voca" />
 
       <Card className="p-6">
@@ -257,7 +266,7 @@ export function VivaResultsPage() {
         </Card>
       ) : (
         groups.map(({ student, rows }) => (
-          <Card key={student || "__unassigned__"} className="p-5">
+          <Card key={student || "__unassigned__"} className="p-6">
             <div className="flex items-center gap-2 mb-3">
               <UserRound className="size-4 text-primary" />
               <span className="text-sm font-medium text-foreground">
@@ -272,7 +281,7 @@ export function VivaResultsPage() {
                 </span>
               )}
             </div>
-            <div className="divide-y divide-border rounded-lg border border-border">
+            <div className="mt-4 divide-y divide-border rounded-lg border border-border">
               {rows.map((row) => {
                 const status = statusOf(row);
                 return (
@@ -281,7 +290,7 @@ export function VivaResultsPage() {
                     type="button"
                     onClick={() => void openMark(row.mark_id)}
                     disabled={opening != null}
-                    className="flex w-full cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 disabled:cursor-wait"
+                    className="flex w-full cursor-pointer flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 disabled:cursor-wait"
                   >
                     <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                       {row.video_filename || "Untitled recording"}
@@ -331,6 +340,7 @@ function ResultDetail({
   savingStudent,
   onBack,
 }: ResultDetailProps) {
+  const { technicalMax } = useMarkingScale();
   const stored = doc.result as unknown as AnalysisResult | undefined;
   // A technical draft has no mode on the mark itself until it is published, so fall
   // back to the mode saved inside the analysis (otherwise it would look non-technical
@@ -350,6 +360,8 @@ function ResultDetail({
       published: Boolean(doc.published),
       assessment_mode: assessmentMode,
       final_score: doc.final_score ?? stored.final_score,
+      final_mark: doc.final_mark ?? stored.final_mark,
+      final_mark_max: doc.final_mark_max ?? stored.final_mark_max,
       final_grade: doc.final_grade ?? stored.final_grade,
     };
   }, [doc, stored, assessmentMode]);
@@ -369,16 +381,18 @@ function ResultDetail({
   const held = analysis?.assessment?.status === "INCOMPLETE";
   const heldMessage = analysis?.assessment?.validation?.message;
   const isTechnicalDraft = assessmentMode === "WITH_TECHNICAL_ACCURACY" && !doc.published && !held;
-  const aiSuggestion = analysis?.technical_accuracy_ai?.overall_score;
+  const aiSuggestion = suggestedTechnicalMark(analysis?.technical_accuracy_ai);
   const [technicalDraft, setTechnicalDraft] = useState<string>(
-    aiSuggestion != null ? String(Math.round(aiSuggestion)) : "",
+    aiSuggestion != null ? String(Math.round(aiSuggestion * 2) / 2) : "",
   );
   const technicalValue = technicalDraft.trim() === "" ? null : Number(technicalDraft);
   const technicalValid =
-    technicalValue != null && Number.isFinite(technicalValue) && technicalValue >= 0 && technicalValue <= 10;
+    technicalValue != null && Number.isFinite(technicalValue) && technicalValue >= 0 && technicalValue <= technicalMax;
   const aiScore = analysis?.assessment?.ai_performance?.score ?? null;
   const previewFinal =
-    technicalValid && aiScore != null ? 0.5 * aiScore + 0.5 * (technicalValue as number) * 10 : null;
+    technicalValid && aiScore != null
+      ? percentToMark(0.5 * aiScore + 0.5 * ((technicalValue as number) / technicalMax) * 100)
+      : null;
   const dirty = (doc.student_id ?? "") !== normalizeStudentId(studentDraft);
   const draftInvalid = studentDraft.trim() !== "" && !isValidStudentId(studentDraft);
 
@@ -503,20 +517,27 @@ function ResultDetail({
               </Card>
             </div>
 
-            <div className="lg:sticky lg:top-6 self-start">
+            <div className="lg:sticky lg:top-6 self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
               <Card className="p-5 space-y-3">
                 <div className="text-sm font-medium text-foreground">Mark summary</div>
                 <dl className="space-y-2 text-sm">
-                  <SummaryRow label="Final mark" value={doc.final_score != null ? `${doc.final_score.toFixed(1)} / 100` : "—"} />
+                  <SummaryRow
+                    label="Final mark"
+                    value={
+                      doc.final_mark != null
+                        ? formatOfficialMark(doc.final_mark, doc.final_mark_max)
+                        : formatOfficialMark(percentToMark(doc.final_score))
+                    }
+                  />
                   <SummaryRow label="Grade" value={doc.final_grade ?? "—"} />
-                  <SummaryRow label="AI performance" value={doc.ai_performance_score != null ? `${doc.ai_performance_score.toFixed(1)} / 100` : "—"} />
+                  <SummaryRow label="AI performance" value={formatOfficialMark(doc.ai_performance_mark ?? percentToMark(doc.ai_performance_score))} />
                   {assessmentMode === "WITH_TECHNICAL_ACCURACY" && (
                     <>
-                      <SummaryRow label="Technical accuracy" value={doc.technical_accuracy != null ? `${doc.technical_accuracy} / 10` : "Not entered"} />
-                      {analysis.technical_accuracy_ai?.overall_score != null && (
+                      <SummaryRow label="Technical accuracy" value={doc.technical_accuracy != null ? `${doc.technical_accuracy} / ${technicalMax}` : "Not entered"} />
+                      {suggestedTechnicalMark(analysis.technical_accuracy_ai) != null && (
                         <SummaryRow
                           label="AI-suggested technical"
-                          value={`${analysis.technical_accuracy_ai.overall_score.toFixed(1)} / 10`}
+                          value={`${suggestedTechnicalMark(analysis.technical_accuracy_ai)!.toFixed(1)} / ${technicalMax}`}
                         />
                       )}
                     </>
@@ -555,19 +576,19 @@ function ResultDetail({
                       <Input
                         type="number"
                         min={0}
-                        max={10}
+                        max={technicalMax}
                         step={0.5}
                         className="w-24"
                         value={technicalDraft}
                         onChange={(e) => setTechnicalDraft(e.target.value)}
-                        placeholder="0–10"
-                        aria-label="Technical accuracy out of 10"
+                        placeholder={`0–${technicalMax}`}
+                        aria-label={`Technical accuracy out of ${technicalMax}`}
                       />
-                      <span className="text-xs text-muted-foreground">/ 10</span>
+                      <span className="text-xs text-muted-foreground">/ {technicalMax}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {previewFinal != null
-                        ? `Final mark will be ${previewFinal.toFixed(1)} / 100`
+                        ? `Final mark will be ${formatOfficialMark(previewFinal)}`
                         : "Final mark appears once a score is entered."}
                     </div>
                     <Button
@@ -587,7 +608,7 @@ function ResultDetail({
                       <SummaryRow
                         key={family}
                         label={family === "audio_acoustics" ? "Audio acoustics" : family === "engagement" ? "Engagement" : "Transcript"}
-                        value={familyScores[family] != null ? `${Math.round((familyScores[family] as number) * 100)} / 100` : "—"}
+                        value={familyScores[family] != null ? `${Math.round((familyScores[family] as number) * 100)}%` : "—"}
                       />
                     ))}
                   </div>

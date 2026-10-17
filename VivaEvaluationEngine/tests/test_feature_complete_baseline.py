@@ -23,6 +23,7 @@ from services.assessment_scoring import (
     FUSION_WEIGHT_AI,
     FUSION_WEIGHT_TECHNICAL,
     GRADE_BANDS,
+    MARKING_SCALE,
     MODE_WITH,
     MODE_WITHOUT,
     STATUS_INCOMPLETE,
@@ -559,7 +560,9 @@ class IntegrationAndRegressionTests(unittest.TestCase):
         mode_a = build_assessment(_sample_result(), mode=MODE_WITHOUT, technical_accuracy=9)
         self.assertEqual(mode_a["final_score"], mode_a["ai_performance"]["score"])
         self.assertIsNone(mode_a["technical_accuracy"])
-        mode_b = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=3)
+        mode_b = build_assessment(
+            _sample_result(), mode=MODE_WITH, technical_accuracy=round(MARKING_SCALE.technical_max * 0.3, 2)
+        )
         expected = 0.5 * mode_b["ai_performance"]["score"] + 0.5 * 30.0
         self.assertAlmostEqual(mode_b["final_score"], round(expected, 2))
 

@@ -17,6 +17,7 @@ import urllib.request
 from typing import Any, Dict, List, Optional
 
 from services.llm_judge import _api_key, _extract_json_object, _model_candidates, _model_name
+from services.marking_scale import MARKING_SCALE
 
 
 CONCEPT_BATCH_SIZE = 12
@@ -344,7 +345,10 @@ def run_technical_accuracy(
 
     total_weight = sum(c["weight"] for c in scored) or 1.0
     weighted = sum(c["weight"] * c["score"] for c in scored)
-    overall_score = round((weighted / total_weight) * 10.0, 2)
+    coverage_ratio = weighted / total_weight
+    overall_score = round(coverage_ratio * 10.0, 2)  # legacy 0-10 field
+    # The same result on the scale the examiner enters the technical mark on.
+    overall_mark = round(coverage_ratio * MARKING_SCALE.technical_max, MARKING_SCALE.decimals)
 
     payload: Dict[str, Any] = {
         "status": "success" if not errors else "partial",
@@ -352,6 +356,7 @@ def run_technical_accuracy(
         # the configured model is retired and the call falls through.
         "model": used_model or model,
         "overall_score": overall_score,
+        "overall_mark": overall_mark,
         "concepts": scored,
     }
     if errors:

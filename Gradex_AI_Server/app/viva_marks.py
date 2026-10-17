@@ -49,9 +49,16 @@ def build_publish_update(
         "features": assessment.get("training_features"),
         "feature_schema_version": assessment.get("feature_schema_version"),
         "scoring_version": assessment.get("scoring_version"),
+        # Official marks are on the configured scale (VIVA_MARK_MAX, see marking_scale.py).
+        # `final_score` / `ai_performance_score` stay as the 0-100 percentages the mark is
+        # derived from; the grade follows `final_mark`, and `final_mark_max` records the scale it
+        # was given on so the mark keeps its meaning if the scale changes later.
         "ai_performance_score": (assessment.get("ai_performance") or {}).get("score"),
-        "technical_accuracy": assessment.get("technical_accuracy"),
+        "ai_performance_mark": (assessment.get("ai_performance") or {}).get("mark"),
+        "technical_accuracy": assessment.get("technical_accuracy"),  # out of technical_max
         "final_score": assessment.get("final_score"),
+        "final_mark": assessment.get("final_mark"),
+        "final_mark_max": assessment.get("final_mark_max"),
         "final_grade": assessment.get("grade"),
         "assessment": assessment,
     }
@@ -70,8 +77,11 @@ def publish_response_payload(
         "student_id": update.get("student_id"),
         "assessment_mode": update.get("assessment_mode"),
         "ai_performance_score": update.get("ai_performance_score"),
+        "ai_performance_mark": update.get("ai_performance_mark"),
         "technical_accuracy": update.get("technical_accuracy"),
         "final_score": update.get("final_score"),
+        "final_mark": update.get("final_mark"),
+        "final_mark_max": update.get("final_mark_max"),
         "final_grade": update.get("final_grade"),
         "status": assessment.get("status"),
         "scoring_version": update.get("scoring_version"),
@@ -150,11 +160,15 @@ def merge_auto_publish_into_analyze_result(
     analyze_result["auto_published"] = True
     analyze_result["assessment_mode"] = publish_payload.get("assessment_mode")
     analyze_result["final_score"] = publish_payload.get("final_score")
+    analyze_result["final_mark"] = publish_payload.get("final_mark")
+    analyze_result["final_mark_max"] = publish_payload.get("final_mark_max")
     analyze_result["final_grade"] = publish_payload.get("final_grade")
     assessment = analyze_result.get("assessment")
     if isinstance(assessment, dict):
         assessment = dict(assessment)
         assessment["final_score"] = publish_payload.get("final_score")
+        assessment["final_mark"] = publish_payload.get("final_mark")
+        assessment["final_mark_max"] = publish_payload.get("final_mark_max")
         assessment["grade"] = publish_payload.get("final_grade")
         assessment["status"] = publish_payload.get("status") or STATUS_VALID
         analyze_result["assessment"] = assessment

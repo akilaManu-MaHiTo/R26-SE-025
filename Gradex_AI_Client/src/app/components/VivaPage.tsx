@@ -45,13 +45,17 @@ import { Link } from "react-router";
 import { useSelectedViva } from "./viva/useSelectedViva";
 import { VivaPicker } from "./viva/VivaPicker";
 import { useConfirmDialog } from "./viva/useConfirmDialog";
+import { useMarkingScale } from "./viva/useMarkingScale";
 import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "./viva/studentId";
 import {
   AnalysisResult,
   AssessmentMode,
   buildAIInterpretation,
   buildKeyMoments,
+  formatOfficialMark,
   formatTime,
+  percentToMark,
+  suggestedTechnicalMark,
 } from "./viva/types";
 
 export function VivaPage() {
@@ -76,6 +80,7 @@ export function VivaPage() {
   // uploaded or recorded here.
   const { vivaId, viva, loading: vivaLoading, error: vivaError } = useSelectedViva();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
+  useMarkingScale(); // load the server's marking scale and re-render the marks when it arrives
   const [studentId, setStudentId] = useState("");
   const [published, setPublished] = useState(false);
   const [autoPublishedWithoutTech, setAutoPublishedWithoutTech] = useState(false);
@@ -145,6 +150,8 @@ export function VivaPage() {
         const merged: AnalysisResult = {
           ...previous,
           final_score: saved.final_score ?? previous.final_score,
+          final_mark: saved.final_mark ?? previous.final_mark,
+          final_mark_max: saved.final_mark_max ?? previous.final_mark_max,
           final_grade: saved.final_grade ?? previous.final_grade,
           assessment_mode: assessmentMode,
         };
@@ -152,6 +159,8 @@ export function VivaPage() {
           merged.assessment = {
             ...previous.assessment,
             final_score: saved.final_score ?? previous.assessment.final_score,
+            final_mark: saved.final_mark ?? previous.assessment.final_mark,
+            final_mark_max: saved.final_mark_max ?? previous.assessment.final_mark_max,
             grade: saved.final_grade ?? previous.assessment.grade,
             technical_accuracy: technicalAccuracy,
             assessment_mode: assessmentMode,
@@ -162,8 +171,8 @@ export function VivaPage() {
       setPublished(true);
       toast.success("Assessment published", {
         description: `Final mark ${
-          saved.final_score != null ? saved.final_score.toFixed(1) : "—"
-        }/100 (grade ${saved.final_grade ?? "—"}) saved.`,
+          saved.final_mark != null ? saved.final_mark.toFixed(2) : "—"
+        } / 20 (grade ${saved.final_grade ?? "—"}) saved.`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to publish";
@@ -441,8 +450,9 @@ export function VivaPage() {
       setAnalysisPhase("complete");
       // Pre-fill from the AI suggestion when available; the examiner can still
       // adjust it before publishing — see EvaluationPanel's Technical accuracy slider.
-      const suggested = data.technical_accuracy_ai?.overall_score;
-      setTechnicalAccuracy(suggested != null ? Math.round(suggested) : null);
+      // The AI suggestion is out of 20; round it to the nearest half mark for the slider.
+      const suggested = suggestedTechnicalMark(data.technical_accuracy_ai);
+      setTechnicalAccuracy(suggested != null ? Math.round(suggested * 2) / 2 : null);
       const wasAutoPublished = Boolean(data.auto_published && data.published);
       setAutoPublishedWithoutTech(wasAutoPublished);
       setPublished(wasAutoPublished);
@@ -453,7 +463,9 @@ export function VivaPage() {
         });
       } else if (wasAutoPublished) {
         toast.success("Analysis complete — score saved", {
-          description: `Final mark ${data.final_score?.toFixed(1) ?? data.assessment?.final_score ?? "—"}/100 (grade ${data.final_grade ?? data.assessment?.grade ?? "—"}) saved.`,
+          description: `Final mark ${formatOfficialMark(
+            data.final_mark ?? data.assessment?.final_mark ?? percentToMark(data.final_score ?? data.assessment?.final_score),
+          )} (grade ${data.final_grade ?? data.assessment?.grade ?? "—"}) saved.`,
         });
       } else if (data.mark_id) {
         toast.success("Analysis complete", {
@@ -469,7 +481,9 @@ export function VivaPage() {
           description:
             data.assessment.status === "INCOMPLETE"
               ? "Recording is incomplete — no official grade."
-              : `AI performance ${data.assessment.ai_performance?.score ?? "—"} / 100.`,
+              : `AI performance ${formatOfficialMark(
+                  data.assessment.ai_performance?.mark ?? percentToMark(data.assessment.ai_performance?.score),
+                )}.`,
         });
       }
     } catch (err) {
@@ -875,7 +889,7 @@ export function VivaPage() {
               </Card>
             </div>
 
-            <div className="lg:sticky lg:top-6 self-start">
+            <div className="lg:sticky lg:top-6 self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
               <Card className="p-5">
                 <EvaluationPanel
                   assessment={analysisResult.assessment}
@@ -894,6 +908,7 @@ export function VivaPage() {
                   onPublish={handlePublish}
                   analysisResult={{
                     final_score: analysisResult.final_score,
+                    final_mark: analysisResult.final_mark,
                     final_grade: analysisResult.final_grade,
                     auto_published: analysisResult.auto_published,
                   }}

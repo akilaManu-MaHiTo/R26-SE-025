@@ -17,7 +17,11 @@ export interface VivaPublishPayload {
 export interface VivaPublishResponse {
   mark_id: string;
   published: boolean;
+  /** 0-100 percentage the official mark is derived from. */
   final_score?: number | null;
+  /** The official mark, out of `final_mark_max` (the scale it was given on). */
+  final_mark?: number | null;
+  final_mark_max?: number | null;
   final_grade?: string | null;
   assessment_mode?: string;
 }
@@ -69,8 +73,14 @@ export interface VivaMarkSummary {
   assessment_mode?: string | null;
   video_status?: string | null;
   ai_performance_score?: number | null;
+  /** Out of the scale's technical maximum. */
   technical_accuracy?: number | null;
+  /** 0-100 percentage the official mark is derived from. */
   final_score?: number | null;
+  /** The official mark, out of `final_mark_max` (the scale it was given on). */
+  final_mark?: number | null;
+  final_mark_max?: number | null;
+  ai_performance_mark?: number | null;
   final_grade?: string | null;
   status?: string | null;
   scoring_version?: string | null;

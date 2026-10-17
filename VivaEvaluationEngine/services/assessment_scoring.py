@@ -1,8 +1,14 @@
-"""Stage-1 viva assessment scoring (scoring_version v1.2).
+"""Stage-1 viva assessment scoring (scoring_version v1.3).
 
 Authoritative pipeline:
   analysis JSON → canonical features → quality gates → AI performance /100
-  → optional technical fusion → final_score /100 → grade resolver
+  → optional technical fusion → final_score /100 → official mark → grade resolver
+
+Marks: the official mark is out of `MARKING_SCALE.mark_max` (20 by default; see
+services/marking_scale.py, set with VIVA_MARK_MAX). The pipeline computes on a 0-100 percentage
+(the families, the fusion and `final_score` are percentages), and the official mark is that
+percentage scaled to the mark scale and rounded:  final_mark = final_score / 100 * mark_max.
+The grade follows the rounded mark, i.e. the number the examiner sees.
 
 Does NOT use: LLM criterion scores, UI sliders, engagement_score (diagnostic blend),
 audio_grade, pitch_score (180 Hz), transcript_score, segment_score.
@@ -21,14 +27,18 @@ Raw emotion ratio bars remain UI evidence; the scored face-tone inputs are liste
 
 Mode WITHOUT_TECHNICAL_ACCURACY: final = AI performance; technical_accuracy = null
 Mode WITH_TECHNICAL_ACCURACY: final = w_ai * AI + w_tech * technical_0_100
+  where the examiner enters technical accuracy out of `MARKING_SCALE.technical_max` and
+  technical_0_100 = technical / technical_max * 100.
   Fusion weights are explicit below (v1: equal 0.5 / 0.5).
 
-Grade bands match Gradex_AI_Client viva/types.ts GRADE_BANDS (unchanged).
+Grade bands are defined once, as percentages, in services/marking_scale.py; the web client reads
+the scale and bands from the server (GET /api/viva-config) instead of keeping its own copy.
 """
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from services.marking_scale import MARKING_SCALE, PERCENT_MAX
 from services.canonical_features import (
     FEATURE_SCHEMA_VERSION,
     extract_canonical_features,
@@ -36,7 +46,8 @@ from services.canonical_features import (
 )
 
 
-SCORING_VERSION = "v1.2"
+SCORING_VERSION = "v1.3"
+
 
 # Technical vivas only: the smallest share of the subject's concept weight that the answer
 # must touch. Below this the student almost certainly answered a different topic (or the
@@ -131,15 +142,8 @@ REASON_MESSAGES = {
     ),
 }
 
-GRADE_BANDS: List[Tuple[str, float]] = [
-    ("A+", 90.0),
-    ("A", 80.0),
-    ("B+", 70.0),
-    ("B", 60.0),
-    ("C+", 50.0),
-    ("C", 40.0),
-    ("F", 0.0),
-]
+# Grade bands as percentages, derived from the marking scale (the single definition).
+GRADE_BANDS: List[Tuple[str, float]] = list(MARKING_SCALE.grade_bands_percent)
 
 
 def _clamp(value: float, minimum: float = 0.0, maximum: float = 1.0) -> float:
@@ -155,13 +159,18 @@ def _quality_score(raw: Optional[float], good: float, poor: float) -> Optional[f
 
 
 def resolve_grade(score: Optional[float]) -> Optional[str]:
-    if score is None:
-        return None
-    percent = max(0.0, min(100.0, float(score)))
-    for grade, minimum in GRADE_BANDS:
-        if percent >= minimum:
-            return grade
-    return "F"
+    """Grade for a 0-100 percentage."""
+    return MARKING_SCALE.resolve_grade_from_percent(score)
+
+
+def percent_to_mark(percent: Optional[float]) -> Optional[float]:
+    """Scale a 0-100 percentage to the official mark on the configured scale."""
+    return MARKING_SCALE.percent_to_mark(percent)
+
+
+def resolve_grade_from_mark(mark: Optional[float]) -> Optional[str]:
+    """Grade for an official mark. Pass the ROUNDED mark so the grade matches what is shown."""
+    return MARKING_SCALE.resolve_grade(mark)
 
 
 def _whisper_available(quality: Dict[str, Any]) -> bool:
@@ -486,11 +495,17 @@ def fuse_final_score(
     *,
     mode: str,
     ai_performance: Optional[float],
-    technical_accuracy_0_10: Optional[float],
+    technical_accuracy: Optional[float],
 ) -> Dict[str, Any]:
+    """Fuse the AI performance percentage with the examiner's technical score.
+
+    The technical score is out of `MARKING_SCALE.technical_max`. `final_score` stays a 0-100
+    percentage; `final_mark` is the official mark on the configured scale.
+    """
     if ai_performance is None:
         return {
             "final_score": None,
+            "final_mark": None,
             "technical_accuracy": None,
             "technical_accuracy_100": None,
             "fusion": None,
@@ -499,6 +514,7 @@ def fuse_final_score(
     if mode == MODE_WITHOUT:
         return {
             "final_score": round(float(ai_performance), 2),
+            "final_mark": percent_to_mark(ai_performance),
             "technical_accuracy": None,
             "technical_accuracy_100": None,
             "fusion": {
@@ -516,9 +532,10 @@ def fuse_final_score(
             },
         }
 
-    if technical_accuracy_0_10 is None:
+    if technical_accuracy is None:
         return {
             "final_score": None,
+            "final_mark": None,
             "technical_accuracy": None,
             "technical_accuracy_100": None,
             "fusion": {
@@ -529,11 +546,13 @@ def fuse_final_score(
             },
         }
 
-    technical_100 = _clamp(float(technical_accuracy_0_10) / 10.0) * 100.0
+    technical_100 = MARKING_SCALE.technical_to_percent(technical_accuracy)
     final = FUSION_WEIGHT_AI * float(ai_performance) + FUSION_WEIGHT_TECHNICAL * technical_100
+    final_percent = round(_clamp(final / PERCENT_MAX) * PERCENT_MAX, 2)
     return {
-        "final_score": round(_clamp(final / 100.0) * 100.0, 2),
-        "technical_accuracy": round(float(technical_accuracy_0_10), 2),
+        "final_score": final_percent,
+        "final_mark": percent_to_mark(final_percent),
+        "technical_accuracy": MARKING_SCALE.clamp_technical(technical_accuracy),
         "technical_accuracy_100": round(technical_100, 2),
         "fusion": {
             "mode": mode,
@@ -635,13 +654,15 @@ def build_assessment(
     fused = fuse_final_score(
         mode=mode,
         ai_performance=performance.get("score"),
-        technical_accuracy_0_10=tech_input,
+        technical_accuracy=tech_input,
     )
     final_score = fused["final_score"] if validation["status"] == STATUS_VALID else None
+    final_mark = fused.get("final_mark") if validation["status"] == STATUS_VALID else None
     if validation["status"] == STATUS_INCOMPLETE:
         fused = {
             **fused,
             "final_score": None,
+            "final_mark": None,
             "technical_accuracy": None if mode == MODE_WITHOUT else fused.get("technical_accuracy"),
         }
 
@@ -658,6 +679,7 @@ def build_assessment(
         "multi_face": multi_face,
         "ai_performance": {
             "score": performance.get("score"),
+            "mark": percent_to_mark(performance.get("score")),
             "family_scores": performance.get("family_scores"),
             "family_weights_applied": performance.get("family_weights_applied"),
             "components": performance.get("components"),
@@ -665,7 +687,10 @@ def build_assessment(
         "technical_accuracy": fused.get("technical_accuracy"),
         "fusion": fused.get("fusion"),
         "final_score": final_score,
-        "grade": resolve_grade(final_score),
+        "final_mark": final_mark,
+        "final_mark_max": MARKING_SCALE.mark_max,
+        "technical_max": MARKING_SCALE.technical_max,
+        "grade": resolve_grade_from_mark(final_mark),
         "training_features": flatten_canonical_features(features),
     }
 

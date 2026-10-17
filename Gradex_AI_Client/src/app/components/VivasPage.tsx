@@ -77,11 +77,8 @@ function CreateVivaForm({
 
   return (
     <Card className="p-6">
-      <h3 className="text-base font-medium text-foreground">Create a viva</h3>
-      <p className="text-xs text-muted-foreground mt-1">
-        Every upload and live recording is filed under a viva. The category is fixed once created.
-      </p>
-      <form onSubmit={submit} className="mt-4 grid gap-4 sm:grid-cols-2">
+      {/* <h3 className="text-base font-medium text-foreground">Create a viveeea</h3> */}
+      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="text-xs text-muted-foreground" htmlFor="viva-name">
             Viva name
@@ -162,16 +159,22 @@ function CreateVivaForm({
           <label className="text-xs text-muted-foreground" htmlFor="viva-year">
             Year
           </label>
-          <Input
+          <select
             id="viva-year"
-            className="mt-1"
-            type="number"
-            min={2000}
-            max={2100}
+            className={SELECT_CLASS}
             value={year}
             onChange={(e) => setYear(e.target.value)}
             required
-          />
+          >
+            {Array.from({ length: 101 }, (_, index) => {
+              const optionYear = 2000 + index;
+              return (
+                <option key={optionYear} value={optionYear}>
+                  {optionYear}
+                </option>
+              );
+            })}
+          </select>
         </div>
         <div>
           <label className="text-xs text-muted-foreground" htmlFor="viva-semester">
@@ -323,7 +326,6 @@ export function VivasPage() {
   const [vivas, setVivas] = useState<Viva[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showAll, setShowAll] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"" | VivaCategory>("");
   const [rubrics, setRubrics] = useState<SubjectRubricSummary[]>([]);
@@ -346,13 +348,13 @@ export function VivasPage() {
     setLoading(true);
     setError("");
     try {
-      setVivas(await listVivas({ all: showAll }));
+      setVivas(await listVivas());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load vivas");
     } finally {
       setLoading(false);
     }
-  }, [showAll]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -411,10 +413,6 @@ export function VivasPage() {
               <option value="technical">Technical</option>
               <option value="non_technical">Non-technical</option>
             </select>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-              All lecturers
-            </label>
           </div>
         </div>
 

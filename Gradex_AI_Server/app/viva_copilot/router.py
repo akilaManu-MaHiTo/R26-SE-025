@@ -28,9 +28,9 @@ from Gradex_AI_Server.app.viva_sessions import (
     ensure_no_duplicate_mark,
     fetch_viva_for_analysis,
     mode_for_category,
-    normalize_student_id,
     viva_extra_doc,
 )
+from Gradex_AI_Server.app.viva_student_id import normalize_student_id
 from Gradex_AI_Server.app.viva_analysis_runner import (
     MAX_VIVA_UPLOAD_BYTES,
     UPLOAD_DIR,
