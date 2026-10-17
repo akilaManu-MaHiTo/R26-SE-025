@@ -9,6 +9,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
+import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "./viva/studentId";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { AIPageBanner } from "./AIBrand";
 import { ScoreOverview } from "./viva/ScoreOverview";
@@ -63,6 +64,10 @@ export function VivaResultsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  // /viva-results?viva=<id> narrows the list to one viva; kept in state because
+  // the ?mark= handler below clears the URL params.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [vivaFilter, setVivaFilter] = useState(() => searchParams.get("viva") ?? "");
 
   const [selected, setSelected] = useState<VivaMarkDocument | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
@@ -73,21 +78,20 @@ export function VivaResultsPage() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(await listVivaMarks(100));
+      setItems(await listVivaMarks(100, undefined, vivaFilter || undefined));
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Could not load results");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [vivaFilter]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
   // A link such as /viva-results?mark=<id> opens that result straight away.
-  const [searchParams, setSearchParams] = useSearchParams();
   const requestedMark = searchParams.get("mark");
   useEffect(() => {
     if (!requestedMark) return;
@@ -135,6 +139,10 @@ export function VivaResultsPage() {
 
   async function saveStudent() {
     if (!selected) return;
+    if (studentDraft.trim() && !isValidStudentId(studentDraft)) {
+      toast.error("Invalid student ID", { description: STUDENT_ID_HINT });
+      return;
+    }
     setSavingStudent(true);
     try {
       const saved = await setVivaMarkStudent(selected._id, studentDraft);
@@ -220,6 +228,14 @@ export function VivaResultsPage() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
+        {vivaFilter && (
+          <div className="mt-3 flex items-center gap-2 text-sm">
+            <Badge variant="secondary">Viva: {items[0]?.viva_label ?? "selected viva"}</Badge>
+            <Button variant="ghost" size="sm" onClick={() => setVivaFilter("")}>
+              Show all vivas
+            </Button>
+          </div>
+        )}
       </Card>
 
       {loadError && (
@@ -275,7 +291,7 @@ export function VivaResultsPage() {
                     </span>
                     <Badge variant="outline" className="text-xs">
                       {row.assessment_mode === "WITH_TECHNICAL_ACCURACY" ? "Technical" : "Non-technical"}
-                      {row.subject_code ? ` · ${row.subject_code}` : ""}
+                      {row.viva_label ? ` · ${row.viva_label}` : row.subject_code ? ` · ${row.subject_code}` : ""}
                     </Badge>
                     <span className="w-24 text-right text-sm font-medium tabular-nums text-foreground">
                       {formatMark(row)}
@@ -363,7 +379,8 @@ function ResultDetail({
   const aiScore = analysis?.assessment?.ai_performance?.score ?? null;
   const previewFinal =
     technicalValid && aiScore != null ? 0.5 * aiScore + 0.5 * (technicalValue as number) * 10 : null;
-  const dirty = (doc.student_id ?? "") !== studentDraft.trim();
+  const dirty = (doc.student_id ?? "") !== normalizeStudentId(studentDraft);
+  const draftInvalid = studentDraft.trim() !== "" && !isValidStudentId(studentDraft);
 
   return (
     <div className="space-y-6">
@@ -394,12 +411,15 @@ function ResultDetail({
                 id="result-student-id"
                 className="mt-1 w-52"
                 value={studentDraft}
-                onChange={(e) => onStudentDraft(e.target.value)}
+                onChange={(e) => onStudentDraft(e.target.value.toUpperCase())}
                 placeholder="e.g. IT22557056"
-                maxLength={64}
+                maxLength={10}
+                title={STUDENT_ID_HINT}
+                aria-invalid={draftInvalid}
               />
+              {draftInvalid && <p className="mt-1 text-xs text-destructive">{STUDENT_ID_HINT}</p>}
             </div>
-            <Button size="sm" onClick={onSaveStudent} disabled={!dirty || savingStudent}>
+            <Button size="sm" onClick={onSaveStudent} disabled={!dirty || draftInvalid || savingStudent}>
               {savingStudent ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
               Save
             </Button>

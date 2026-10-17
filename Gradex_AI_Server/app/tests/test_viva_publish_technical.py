@@ -14,12 +14,15 @@ from __future__ import annotations
 
 import asyncio
 import unittest
+from types import SimpleNamespace
 from typing import Any, Dict, Optional
 
 from bson import ObjectId
 from fastapi import HTTPException
 
 from Gradex_AI_Server.app.main import PublishVivaMarkPayload, publish_viva_mark
+# Stand-in for a request that already passed the session middleware.
+_REQUEST = SimpleNamespace(state=SimpleNamespace(user={"email": "lecturer@example.com", "role": "lecturer"}))
 from Gradex_AI_Server.app.core.database import db_instance
 from Gradex_AI_Server.app.viva_marks import (
     apply_publish_to_mark,
@@ -166,7 +169,7 @@ class TechnicalPublishTests(unittest.TestCase):
                 doc["_id"],
                 mode=MODE_WITH,
                 technical_accuracy=8.0,
-                student_id="IT21001",
+                student_id="IT22000011",
             )
         )
 
@@ -176,7 +179,7 @@ class TechnicalPublishTests(unittest.TestCase):
         # The mark actually stored must match what was returned to the client.
         self.assertAlmostEqual(col.doc["final_score"], expected, places=2)
         self.assertEqual(col.doc["technical_accuracy"], 8.0)
-        self.assertEqual(col.doc["student_id"], "IT21001")
+        self.assertEqual(col.doc["student_id"], "IT22000011")
         self.assertTrue(col.doc["published"])
         self.assertTrue(col.doc["human_published"])
 
@@ -246,7 +249,7 @@ class TechnicalPublishTests(unittest.TestCase):
                 assessment_mode=MODE_WITH, technical_accuracy=None
             )
             with self.assertRaises(HTTPException) as ctx:
-                _run(publish_viva_mark(str(doc["_id"]), payload))
+                _run(publish_viva_mark(str(doc["_id"]), payload, _REQUEST))
             self.assertEqual(ctx.exception.status_code, 400)
         finally:
             db_instance.marks_col = prev
@@ -261,7 +264,7 @@ class TechnicalPublishTests(unittest.TestCase):
                 assessment_mode="SOMETHING_ELSE", technical_accuracy=5.0
             )
             with self.assertRaises(HTTPException) as ctx:
-                _run(publish_viva_mark(str(doc["_id"]), payload))
+                _run(publish_viva_mark(str(doc["_id"]), payload, _REQUEST))
             self.assertEqual(ctx.exception.status_code, 400)
         finally:
             db_instance.marks_col = prev
@@ -276,16 +279,16 @@ class TechnicalPublishTests(unittest.TestCase):
             payload = PublishVivaMarkPayload(
                 assessment_mode=MODE_WITH,
                 technical_accuracy=7.5,
-                student_id="IT21002",
+                student_id="IT22000012",
             )
-            response = _run(publish_viva_mark(str(doc["_id"]), payload))
+            response = _run(publish_viva_mark(str(doc["_id"]), payload, _REQUEST))
         finally:
             db_instance.marks_col = prev
 
         expected = round(0.5 * ai + 0.5 * 75.0, 2)
         self.assertAlmostEqual(response["final_score"], expected, places=2)
         self.assertTrue(col.doc["published"])
-        self.assertEqual(col.doc["student_id"], "IT21002")
+        self.assertEqual(col.doc["student_id"], "IT22000012")
 
 
 class NonTechnicalPublishTests(unittest.TestCase):
@@ -424,7 +427,7 @@ class OffTopicHoldTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             _run(
                 apply_publish_to_mark(
-                    col, doc["_id"], mode=MODE_WITH, technical_accuracy=9.0, student_id="IT21001"
+                    col, doc["_id"], mode=MODE_WITH, technical_accuracy=9.0, student_id="IT22000011"
                 )
             )
         self.assertIn("concepts", str(ctx.exception))
