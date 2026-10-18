@@ -59,7 +59,7 @@ def _mongo_url() -> str:
 
 def _database_name() -> str:
     _load_env_files()
-    return _strip_env(os.getenv("DATABASE_NAME")) or "vivamark"
+    return _strip_env(os.getenv("DATABASE_NAME")) or "Grading"
 
 
 def _mongo_url_candidates() -> list[tuple[str, str]]:
