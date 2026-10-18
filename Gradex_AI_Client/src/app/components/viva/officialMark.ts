@@ -49,7 +49,9 @@ export function fusePreviewMark(
   weights: FusionWeights = FALLBACK_FUSION,
 ): number {
   const technicalPercent = (technicalAccuracy / getMarkingScale().technicalMax) * 100;
-  const finalPercent = weights.weightAi * aiPercent + weights.weightTechnical * technicalPercent;
+  // The server rounds the blended percentage to 2 decimals before turning it into a mark, so the
+  // preview does too; otherwise it can differ from the published mark by 0.01.
+  const finalPercent = Number((weights.weightAi * aiPercent + weights.weightTechnical * technicalPercent).toFixed(2));
   return percentToMark(finalPercent) ?? 0;
 }
 

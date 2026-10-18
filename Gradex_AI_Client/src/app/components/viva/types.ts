@@ -412,10 +412,13 @@ export interface VivaFusion {
   pending?: string;
 }
 
-/** Round to the scale's decimals, like the server does for an official mark. */
+/**
+ * Round to the scale's decimals, like the server does for an official mark.
+ * `toFixed` rounds the exact decimal value, the way Python's `round` does, so a value that sits on
+ * a half (23.305) rounds the same on both sides instead of the client rounding it up.
+ */
 function roundToDecimals(value: number): number {
-  const factor = 10 ** getMarkingScale().decimals;
-  return Math.round(value * factor) / factor;
+  return Number(value.toFixed(getMarkingScale().decimals));
 }
 
 /** Scale a 0-100 percentage to the official mark on the current mark scale. */
