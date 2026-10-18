@@ -31,6 +31,11 @@ COLAB_STRICT_GRADING = os.getenv("COLAB_STRICT_GRADING", "1").strip().lower() in
     "true",
     "yes",
 }
+GROQ_ONLY = os.getenv("GROQ_ONLY", "0").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+}
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_API_KEY = os.getenv("BACKUP_API_KEY") or os.getenv("AI_API_KEY")
 
@@ -730,7 +735,7 @@ def _probe_colab_endpoint(url: str) -> tuple[bool, str]:
 
 
 def probe_colab_availability(*, force: bool = False) -> bool:
-    if not COLAB_URL:
+    if GROQ_ONLY or not COLAB_URL:
         return False
 
     if not force:
@@ -761,6 +766,9 @@ def probe_colab_availability(*, force: bool = False) -> bool:
 
 
 def try_forward_to_colab(payload: dict) -> dict | None:
+    if GROQ_ONLY:
+        print("GROQ_ONLY enabled — skipping Colab.")
+        return None
     if not COLAB_URL:
         print("COLAB_EVALUATE_URL not set — skipping Colab, using fallback.")
         return None
@@ -1076,6 +1084,19 @@ def _apply_colab_or_recover(enriched: dict, questions_list: list[dict], colab_re
 def evaluate_grading(payload: dict) -> dict:
     questions_list = _parse_rubric_questions(payload.get("rubric", ""))
     enriched = _enrich_payload_with_rag(payload)
+    if GROQ_ONLY:
+        print("GROQ_ONLY enabled — grading with Groq only.")
+        try:
+            return _attach_rag_meta(grade_with_groq(enriched), enriched)
+        except Exception as err:
+            print(f"Groq failed: {err}")
+            if GROQ_API_KEY:
+                raise
+            return _attach_rag_meta(
+                normalize_evaluation(_emergency_fallback_response(), questions_list),
+                enriched,
+            )
+
     colab_result = try_forward_to_colab(enriched)
     if colab_result is not None:
         try:
