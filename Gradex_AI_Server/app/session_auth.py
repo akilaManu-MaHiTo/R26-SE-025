@@ -78,7 +78,9 @@ def verify_password(password: str, stored: str) -> bool:
 
 def allowed_origins() -> list[str]:
     return [origin.strip().rstrip("/") for origin in os.getenv(
-        "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,"
+        "http://127.0.0.1:3000,https://r26-se-025-brown.vercel.app",
     ).split(",") if origin.strip() and origin.strip() != "*"]
 
 
