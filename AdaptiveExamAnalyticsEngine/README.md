@@ -4,6 +4,58 @@ DBMS learning analytics pipeline: materializes per-student analytics from graded
 submissions, classifies question semantics (Bloom levels, topics), and serves a
 FastAPI dashboard.
 
+Exam Creator can retrieve course evidence from an independent analytics-owned
+index. See [course RAG setup, import, and search](COURSE_RAG.md).
+
+## Reconstruct an exam paper (read only)
+
+```bash
+python scripts/reconstruct_exam_paper.py EXAM-2025-S1-Apr
+```
+
+Uses the existing analytics MongoDB settings. Prints exam validation and counts
+without student IDs/answers. Exit codes: 0 valid, 2 incomplete/ambiguous, 1 I/O
+failure. To export student evidence to a **new** local file, explicitly request:
+
+```bash
+python scripts/reconstruct_exam_paper.py EXAM-2025-S1-Apr --include-student-data --output paper.json
+```
+
+Full exports use MongoDB Extended JSON and contain private assessment data.
+The service keeps question definitions, rubric references and each student's
+results separate. It reads both known essay-rubric collection spellings, joins
+exact references, and reports conflicts/duplicates without choosing a result.
+No grading, indexing, collection creation or database updates are performed.
+
+The 2025 exam now has five essays plus one diagram, as confirmed by the user.
+Student `grading` adds the two verified rubric maxima (35 + 20 = 55) and the
+existing component scores. Percentage = combined awarded marks / 55 * 100.
+Missing evaluations produce a pending grade with null total/percentage;
+duplicates or inconsistent grading evidence require review. Review-needed
+numeric totals are provisional. No letter-grade boundaries are invented.
+
+Grade completeness is separate from recovering the original question paper:
+no numbered original diagram question/prompt is stored, so its question
+definition remains unresolved even when both component grades are available.
+Saved diagram grades remain linked by exact exam/student/guideline references. See the
+[database audit and matching rules](EXAM_PAPER_AUDIT.md).
+See [verification results and remaining source gaps](EXAM_PAPER_VERIFICATION.md)
+and the [synthetic reconstruction](examples/exam_paper.synthetic.json).
+
+Lecturer diagram views now read the saved `diagram_evaluations` agent schema,
+resolve rubrics by guideline ID and refresh diagram results even for cached essay
+analytics. See [diagram dashboard verification](DIAGRAM_DASHBOARD_VALIDATION.md).
+
+The lecturer student list now includes pending/roster students with separate
+essay, diagram and overall grading statuses. The overall average excludes
+pending and review-needed grades. See [grading progress and verification](LECTURER_GRADING_STATUS.md).
+
+The lecturer header also offers a read-only [question-paper/rubric preview](EXAM_PAPER_PREVIEW.md).
+See the [lecturer cleanup audit](LECTURER_CLEANUP_AUDIT.md) for corrected matching,
+validation and calculation errors, removed legacy code, checks and remaining cache/index
+limitations. Calculation versions are now 1.4; older snapshots are rebuilt when possible,
+and retained results are marked stale if refresh fails.
+
 The lecturer Exam Creator includes saved blueprints, draft-aware recommendations,
 source-grounded question alternatives, and separate marking-scheme exports.
 See [the exam creator guide](EXAM_CREATOR.md) for usage, model configuration and validation limits.
@@ -35,6 +87,11 @@ files, cleanup findings, test results and remaining reproducibility limits.
 
 ## Running with sample data
 
+For the verified 20-student dataset copied/extended from gradev5 into gradev6,
+see [the gradev6 dataset guide](GRADEV6_DATASET.md). It contains five original
+students and fifteen clearly labelled synthetic students, preserving three pending
+real essays. The running application's database setting is unchanged.
+
 ```bash
 python run_sample.py dbms_analytics_test
 ```
@@ -43,6 +100,14 @@ Seeds `courses`, `rubricCollection`, and `submissions` from `app/sample_data/`,
 then runs the analytics pipeline (Bloom-level classification, numeric analysis,
 student insights) and persists results to `student_analytics`. A progress bar
 shows each LLM step.
+
+Individual student analyses run in a FIFO queue, one at a time per backend
+process. Current saved results bypass the queue; waiting requests recheck the
+cache before generating. The lecturer bell shows each student's queued,
+analyzing, complete, or failed status, even after selecting another student.
+This queue is in memory: run one backend worker for shared ordering. Pending
+work is not restored after a server restart, and notifications are not restored
+after a browser refresh. Full-exam batch analysis uses its existing workflow.
 
 ## Running with Colab (Qwen 3)
 

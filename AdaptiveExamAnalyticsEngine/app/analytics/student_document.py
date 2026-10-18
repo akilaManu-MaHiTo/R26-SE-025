@@ -200,6 +200,8 @@ def fallback_learning_gaps(
     seen: set[tuple[str, str]] = set()
     gaps: list[LearningGap] = []
     for question in questions:
+        if question.topic == "Unclassified":
+            continue
         missed = [
             criterion
             for criterion in question.criteria_performance
@@ -238,6 +240,8 @@ def fallback_recommendations(
 ) -> list[Recommendation]:
     recommendations = []
     for topic in topics:
+        if topic.topic == "Unclassified":
+            continue
         evidence = [question for question in questions if question.topic == topic.topic]
         if topic.status == "Strong" or not evidence:
             continue
@@ -255,11 +259,12 @@ def fallback_generation_target(
 ) -> NextQuestionStrategy:
     if not topics or not blooms:
         raise ValueError("topic and Bloom performance are required")
+    topics = [topic for topic in topics if topic.topic != "Unclassified"]
     weakest = min(blooms, key=lambda bloom: bloom.average_score)
     weak_topics = [topic.topic for topic in topics if topic.status != "Strong"]
-    recommended_topics = weak_topics or [
+    recommended_topics = weak_topics or ([
         min(topics, key=lambda topic: topic.percentage).topic
-    ]
+    ] if topics else [])
     recommended_bloom_levels = [weakest.level] + [
         bloom.level
         for bloom in blooms
@@ -290,18 +295,19 @@ def build_numeric_analysis(
     overall_percentage = percentage(total_score, max_score)
     topics = _topic_performance(questions)
     blooms = _bloom_performance(questions)
+    classified_topics = [topic for topic in topics if topic.topic != "Unclassified"]
 
-    strong_topics = [topic.topic for topic in topics if topic.status == "Strong"]
+    strong_topics = [topic.topic for topic in classified_topics if topic.status == "Strong"]
     developing_topics = [
-        topic.topic for topic in topics if topic.status == "Developing"
+        topic.topic for topic in classified_topics if topic.status == "Developing"
     ]
     weak_topics = [
         topic.topic
-        for topic in topics
+        for topic in classified_topics
         if topic.status == "Needs Improvement"
     ]
     critical_topics = [
-        topic.topic for topic in topics if topic.status == "Critical"
+        topic.topic for topic in classified_topics if topic.status == "Critical"
     ]
 
     return NumericStudentAnalysis(

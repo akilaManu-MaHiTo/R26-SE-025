@@ -42,6 +42,24 @@ async def test_saved_detail_without_analysis_or_diagram_still_returns_423(monkey
     assert error.value.status_code == 423
 
 
+async def test_analysis_failure_is_not_hidden_by_saved_diagram(monkeypatch):
+    monkeypatch.setattr(lecturer, "find_student_analytics", AsyncMock(return_value=None))
+    monkeypatch.setattr(lecturer, "ensure_student_analytics", AsyncMock(side_effect=RuntimeError("analysis failed")))
+    monkeypatch.setattr(repository, "find_diagram_evaluation_for_student", AsyncMock(return_value={
+        "student_id": "IT21230101", "evaluation_result": {"total_score": 16, "max_score": 20},
+    }))
+    monkeypatch.setattr(repository, "find_diagram_marking_for_student", AsyncMock(return_value=None))
+
+    with pytest.raises(HTTPException) as error:
+        await lecturer.lecturer_student_detail(
+            "IT2040", "Final Examination", "IT21230101",
+            year=2022, month=6, semester=1, include_ai_tips=False, auto_analyze=True, db=object(),
+        )
+
+    assert error.value.status_code == 500
+    assert "analysis failed" in error.value.detail
+
+
 def test_sample_v4_submissions_supply_required_analysis_metadata():
     from load_sample_v4 import COLLECTION_FILES, load_documents
     for submission in load_documents(COLLECTION_FILES["submissions"]):

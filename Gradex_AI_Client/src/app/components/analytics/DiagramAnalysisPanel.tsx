@@ -228,7 +228,7 @@ export function DiagramAnalysisPanel({ diagramAnalysis }: Props) {
                       <Badge variant="outline" className="text-xs">{s.status}</Badge>
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground max-w-[300px] truncate" title={s.feedback}>
+                  <TableCell className="text-xs text-muted-foreground max-w-[300px] whitespace-pre-wrap break-words" title={s.feedback}>
                     {s.feedback}
                   </TableCell>
                 </TableRow>

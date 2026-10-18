@@ -12,6 +12,7 @@ import { VivaPage } from "./components/VivaPage";
 import { VivasPage } from "./components/VivasPage";
 import { VivaResultsPage } from "./components/VivaResultsPage";
 import { TopicTaxonomyPage } from "./components/TopicTaxonomyPage";
+import { CourseMaterialsPage } from "./components/CourseMaterialsPage";
 import { LiveCopilotPage } from "./components/viva-copilot/LiveCopilotPage";
 
 export type AgentId = "diagram-evaluation" | "grading" | "question-exam" | "viva-evaluation";
@@ -106,6 +107,13 @@ export const AGENT_CONFIG: AgentConfig[] = [
         element: <ExamCreator />,
       },
       {
+        path: "/question-exam/course-materials",
+        label: "Course Materials",
+        title: "Course Materials",
+        subtitle: "Manage lectures, tutorials and previous exam PDFs for Exam Creator",
+        element: <CourseMaterialsPage />,
+      },
+      {
         path: "/question-exam/topic-taxonomy",
         label: "Topic Taxonomy",
         title: "Topic Taxonomy",
@@ -155,6 +163,7 @@ export const AGENT_CONFIG: AgentConfig[] = [
 ];
 
 const PATH_TITLES: Record<string, { title: string; subtitle?: string }> = {
+  "/exam-keys": { title: "Exam Keys", subtitle: "Register exam identities before grading" },
   "/dashboard": { title: "Dashboard", subtitle: "Your AI-powered command center" },
   "/student-dashboard": { title: "My Dashboard", subtitle: "Track your progress and upcoming work" },
 };

@@ -13,6 +13,7 @@ Weights tunable experimentally - defaults below.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 
 
 @dataclass(frozen=True)
@@ -33,7 +34,8 @@ class ScoreWeights:
         }
 
     def validates(self) -> bool:
-        return abs(sum(self.as_dict().values()) - 1.0) < 1e-6
+        values = self.as_dict().values()
+        return all(isfinite(v) and v >= 0 for v in values) and abs(sum(values) - 1.0) < 1e-6
 
 
 DEFAULT_WEIGHTS = ScoreWeights()

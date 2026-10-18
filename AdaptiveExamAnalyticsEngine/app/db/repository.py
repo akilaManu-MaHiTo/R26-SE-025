@@ -3,8 +3,77 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path as _Path
 
+from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
+
+
+async def load_exam_paper_sources(db: AsyncIOMotorDatabase, exam_key: str) -> dict:
+    """Read only one exam's candidates and referenced rubrics, preserving conflicts.
+
+    Both essay-rubric spellings exist in this project/data. Read available
+    collections explicitly; never rename, seed, index or repair them here.
+    """
+    from calendar import month_name
+    from app.services.exam_paper import _identity
+
+    sources = {name: [] for name in (
+        "examkeys", "rubrics", "submissions", "diagram_evaluations", "diagram_marking")}
+    sources["readStartedAt"] = datetime.now(timezone.utc).isoformat()
+    exams = await db["examkeys"].find({"examKey": exam_key}).to_list(length=None)
+    sources["examkeys"] = exams
+    if len(exams) != 1:
+        return sources
+    subject, year, month, semester, session = _identity(exams[0], canonical=True)
+    if None in (subject, year, month, semester, session):
+        return sources
+    session_names = ["Final", "Final Examination"] if session == "Final" else [session]
+    metadata = {"subject_code": subject, "year": {"$in": [year, str(year)]},
+                "month": {"$in": [month, str(month), month_name[month]]},
+                "semester": {"$in": [semester, str(semester)]},
+                "session_name": {"$in": session_names}}
+    canonical_identity = {"subjectCode": subject, "examYear": {"$in": [year, str(year)]},
+                          "examMonth": {"$in": [month, str(month), month_name[month]]},
+                          "examSemester": {"$in": [semester, str(semester)]},
+                          "session": {"$in": session_names}}
+    sources["examkeys"] = await db["examkeys"].find({"$or": [
+        {"examKey": exam_key}, canonical_identity]}).to_list(length=None)
+    candidates = {"$or": [{"examKey": exam_key}, metadata]}
+    for name in ("submissions", "diagram_evaluations"):
+        sources[name] = await db[name].find(candidates, {"raw_ocr_transcript": 0}).to_list(length=None)
+
+    def references(records, field):
+        values = []
+        for record in records:
+            value = record.get(field)
+            if value is None:
+                continue
+            for variant in (value, str(value)):
+                if variant not in values:
+                    values.append(variant)
+            if ObjectId.is_valid(str(value)):
+                oid = ObjectId(str(value))
+                if oid not in values:
+                    values.append(oid)
+        return values
+
+    rubric_refs = references(sources["submissions"], "rubric_ref")
+    rubric_query = {"$or": [*candidates["$or"], {"_id": {"$in": rubric_refs}}]}
+    available = await db.list_collection_names()
+    for name in ("rubricCollection", "rubicCollection"):
+        if name in available:
+            rubrics = await db[name].find(rubric_query, {
+                "exam_roster.students.name": 0, "exam_roster.students.date": 0,
+            }).to_list(length=None)
+            sources["rubrics"].extend({**r, "_source_collection": name} for r in rubrics)
+    guideline_refs = references(sources["diagram_evaluations"], "guideline_object_id")
+    if guideline_refs:
+        sources["diagram_marking"] = await db["diagram_marking"].find({
+            "_id": {"$in": guideline_refs},
+        }).to_list(length=None)
+    sources["readCompletedAt"] = datetime.now(timezone.utc).isoformat()
+    return sources
+
 
 COLLECTIONS = (
     "courses",
@@ -42,16 +111,19 @@ _UNIQUE_INDEXES = {
         ("student_id", 1),
         ("subject_code", 1),
         ("session_name", 1),
+        ("year", 1), ("month", 1), ("semester", 1),
     ],
     "studentExamAnalysis": [
         ("student_id", 1),
         ("subject_code", 1),
         ("session_name", 1),
+        ("year", 1), ("month", 1), ("semester", 1),
     ],
     "studentExamResults": [
         ("student_id", 1),
         ("subject_code", 1),
         ("session_name", 1),
+        ("year", 1), ("month", 1), ("semester", 1),
     ],
     "exam_drafts": [("draft_id", 1)],
     "users": [("email", 1)],
@@ -176,19 +248,41 @@ def _is_usable_reference(value: object) -> bool:
 async def find_rubric_for_submission(
     db: AsyncIOMotorDatabase, submission: dict
 ) -> dict | None:
-    rubric_ref = submission.get("rubric_ref")
-    if _is_usable_reference(rubric_ref):
-        rubric = await db["rubricCollection"].find_one({"_id": rubric_ref})
-        if rubric is not None:
-            return rubric
+    from app.services.exam_paper import _identity
 
-    subject_code = submission.get("subject_code") or submission.get("course_code")
-    session_name = submission.get("session_name")
-    if subject_code and session_name:
-        return await db["rubricCollection"].find_one(
-            {"subject_code": subject_code, "session_name": session_name}
-        )
-    return None
+    rubric_ref = submission.get("rubric_ref")
+    if rubric_ref is not None and not isinstance(rubric_ref, (str, ObjectId)):
+        return None
+    explicit = _is_usable_reference(rubric_ref)
+    if explicit:
+        references = [rubric_ref]
+        if ObjectId.is_valid(str(rubric_ref)):
+            references.extend([ObjectId(str(rubric_ref)), str(rubric_ref)])
+        query = {"_id": {"$in": references}}
+    else:
+        fields = ("subject_code", "year", "month", "semester", "session_name")
+        identity = _identity(submission)
+        if None in identity:
+            return None
+        from calendar import month_name
+        subject, year, month, semester, session = identity
+        query = dict(zip(fields, (subject, {"$in": [year, str(year)]},
+            {"$in": [month, str(month), month_name[month]]}, {"$in": [semester, str(semester)]},
+            {"$in": ["Final", "Final Examination"] if session == "Final" else [session]})))
+    available = await db.list_collection_names()
+    candidates = []
+    for name in ("rubricCollection", "rubicCollection"):
+        if name in available:
+            candidates.extend(await db[name].find(query).to_list(length=2))
+    if len(candidates) != 1:
+        return None
+    rubric = candidates[0]
+    expected, actual = _identity(submission), _identity(rubric)
+    if any(a is not None and b is not None and a != b for a, b in zip(expected, actual)):
+        return None
+    if submission.get("examKey") and rubric.get("examKey") and submission["examKey"] != rubric["examKey"]:
+        return None
+    return rubric
 
 
 def _with_spec_aliases(document: dict) -> dict:
@@ -214,6 +308,7 @@ async def upsert_student_analytics(
         "student_id": document["student_id"],
         "subject_code": document["subject_code"],
         "session_name": document["session_name"],
+        **{key: document.get(key) for key in ("year", "month", "semester")},
     }
     enriched = _with_spec_aliases(document)
     await db["student_analytics"].replace_one(
@@ -277,6 +372,7 @@ async def find_graded_submission(
         "subject_code": course_code,
         "session_name": session_name,
         "status": "graded",
+        "archived_at": None,
     }
     if year is not None:
         query["year"] = year
@@ -284,15 +380,11 @@ async def find_graded_submission(
         query["month"] = month
     if semester is not None:
         query["semester"] = semester
-    # Try exact match with year if provided, else fallback to most recent
-    if year is not None or month is not None or semester is not None:
-        doc = await db["submissions"].find_one(query, sort=[("_id", -1)])
-        if doc is not None:
-            return doc
-        # fallback without year for legacy data
-        query_no_year = {k: v for k, v in query.items() if k not in ("year", "month", "semester")}
-        return await db["submissions"].find_one(query_no_year, sort=[("year", -1), ("_id", -1)])
-    return await db["submissions"].find_one(query, sort=[("year", -1), ("_id", -1)])
+    documents = await db["submissions"].find(query).to_list(length=2)
+    if len(documents) > 1:
+        from app.ingestion.student_data import StudentDataError
+        raise StudentDataError("Ambiguous active student submissions; select an exact exam and resolve duplicate attempts")
+    return documents[0] if documents else None
 
 
 async def find_graded_submissions_for_exam(
@@ -412,9 +504,10 @@ async def upsert_student_exam_result(
         "student_id": document["student_id"],
         "subject_code": document.get("subject_code") or document.get("course", {}).get("code"),
         "session_name": document.get("session_name") or document.get("exam", {}).get("session_name"),
+        **{key: document.get(key) for key in ("year", "month", "semester")},
     }
-    # Filter out None keys to avoid collision
-    identity = {k: v for k, v in identity.items() if v}
+    if not all(identity.get(k) for k in ("student_id", "subject_code", "session_name")):
+        raise ValueError("Missing student exam result identity")
     await db["studentExamResults"].replace_one(identity, deepcopy(document), upsert=True)
 
 
@@ -458,61 +551,28 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
 
         submissions = await db["submissions"].find(
             {"subject_code": course_code, "session_name": session_name, "status": "graded",
-             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
+             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1), "archived_at": None},
             {"_id": 0, "evaluation.total_score": 1, "evaluation.max_score": 1, "max_marks_paper_total": 1}
         ).to_list(length=500)
 
         # Also count diagram evaluations for this exam
-        diagram_evals = await db["diagram_evaluation"].find(
-            {"subject_code": course_code, "session_name": session_name,
-             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1)},
-            {"_id": 0, "evaluation_result.total_score": 1, "evaluation_result.max_score": 1}
-        ).to_list(length=500)
+        diagram_evals = await find_diagram_evaluations_for_exam(
+            db, course_code, session_name, year, rubric.get("month", 0), rubric.get("semester", 1))
 
         # Merge: use submissions if available, otherwise diagram_evals
         student_count = len(submissions) if submissions else len(diagram_evals)
-        avg_score = 0.0
-        avg_percentage = 0.0
-        highest_score = 0.0
-        lowest_score = 0.0
-        pass_count = 0
-        total_marks = 0.0
-
-        if submissions:
-            percentages = []
-            scores = []
-            for sub in submissions:
-                ev = sub.get("evaluation") or {}
-                obtained = ev.get("total_score") or sub.get("max_marks_paper_total") or 0.0
-                maximum = ev.get("max_score") or sub.get("max_marks_paper_total") or 1.0
-                obtained = float(obtained)
-                maximum = float(maximum) if float(maximum) > 0 else 1.0
-                pct = (obtained / maximum) * 100.0
-                percentages.append(pct)
-                scores.append(obtained)
-            if percentages:
-                avg_percentage = round(sum(percentages) / len(percentages), 2)
-                avg_score = round(sum(scores) / len(scores), 2)
-                highest_score = round(max(scores), 2)
-                lowest_score = round(min(scores), 2)
-                pass_count = sum(1 for p in percentages if p >= 50.0)
-        elif diagram_evals:
-            # Diagram-only exam: compute stats from diagram evaluations
-            percentages = []
-            scores = []
-            for de in diagram_evals:
-                ev_result = de.get("evaluation_result") or {}
-                obtained = float(ev_result.get("total_score", 0))
-                maximum = float(ev_result.get("max_score", 20))
-                pct = (obtained / maximum * 100.0) if maximum > 0 else 0.0
-                percentages.append(pct)
-                scores.append(obtained)
-            if percentages:
-                avg_percentage = round(sum(percentages) / len(percentages), 2)
-                avg_score = round(sum(scores) / len(scores), 2)
-                highest_score = round(max(scores), 2)
-                lowest_score = round(min(scores), 2)
-                pass_count = sum(1 for p in percentages if p >= 50.0)
+        from app.ingestion.student_data import saved_total_score
+        evidence = submissions if submissions else [
+            {"evaluation": de.get("evaluation_result")} for de in diagram_evals]
+        valid_scores = [saved_total_score(sub) for sub in evidence]
+        valid_scores = [score for score in valid_scores if score["percentage"] is not None]
+        scores = [score["obtained"] for score in valid_scores]
+        percentages = [score["percentage"] for score in valid_scores]
+        avg_score = round(sum(scores) / len(scores), 2) if scores else None
+        avg_percentage = round(sum(percentages) / len(percentages), 2) if percentages else None
+        highest_score = max(scores) if scores else None
+        lowest_score = min(scores) if scores else None
+        pass_count = sum(p >= 50 for p in percentages)
 
         questions = rubric.get("questions") or []
         total_marks = sum(float(q.get("max_marks", 0)) for q in questions)
@@ -548,25 +608,6 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
                 if ae is not None and (ae.get("analyzed") == "done" or ae.get("analyzed") is True or ae.get("generated_at") or ae.get("analyzed_at")):
                     analyzed = True
                     analyzed_at = ae.get("analyzed_at") or ae.get("generated_at")
-                else:
-                    # fallback without year/month/semester (legacy docs)
-                    snap_any = await db["analytics_snapshots"].find_one(
-                        {"subject_code": course_code, "session_name": session_name},
-                        {"_id": 0, "generated_at": 1},
-                        sort=[("_id", -1)],
-                    )
-                    if snap_any:
-                        analyzed = True
-                        analyzed_at = snap_any.get("generated_at")
-                    else:
-                        ea_any = await db["examAnalytics"].find_one(
-                            {"subject_code": course_code, "session_name": session_name},
-                            {"_id": 0, "generated_at": 1},
-                            sort=[("_id", -1)],
-                        )
-                        if ea_any:
-                            analyzed = True
-                            analyzed_at = ea_any.get("generated_at")
 
         result.append({
             "course_code": course_code,
@@ -582,7 +623,9 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
             "average_percentage": avg_percentage,
             "highest_score": highest_score,
             "lowest_score": lowest_score,
-            "pass_rate": round((pass_count / student_count * 100.0) if student_count > 0 else 0.0, 2),
+            "pass_rate": round(pass_count / len(valid_scores) * 100, 2) if valid_scores else None,
+            "graded_student_count": len(valid_scores),
+            "score_basis": "Essay" if submissions else "Diagram",
             "analyzed": analyzed,
             "analyzed_at": analyzed_at,
         })
@@ -704,11 +747,53 @@ async def upsert_user(db, doc: dict) -> None:
 
 
 # ─── Diagram Evaluation & Marking ────────────────────────────────────────
+async def _read_diagram_evaluations(db, query):
+    from calendar import month_name
+    from app.services.exam_paper import _identity
+
+    docs = await db["diagram_evaluations"].find(query).to_list(length=None)
+    if not docs:
+        return []
+    identities = {_identity(d) for d in docs}
+    if len(identities) != 1:
+        raise ValueError("Ambiguous diagram exam identity; select year, month and semester")
+    identity = next(iter(identities))
+    keys = {d["examKey"] for d in docs if isinstance(d.get("examKey"), str) and d["examKey"]}
+    if keys:
+        subject, year, month, semester, session = identity
+        if None in identity:
+            raise ValueError("Incomplete diagram exam metadata")
+        exams = await db["examkeys"].find({"subjectCode": subject, "examYear": year,
+            "examMonth": month_name[month], "examSemester": semester, "session": session}).to_list(length=2)
+        if len(exams) != 1 or keys != {exams[0].get("examKey")}:
+            raise ValueError("Conflicting or ambiguous diagram exam key")
+    students = [d.get("student_id") for d in docs]
+    if any(not isinstance(s, str) or not s.strip() or s.strip().upper() == "UNKNOWN" for s in students):
+        raise ValueError("Missing diagram student identity")
+    if len(students) != len(set(students)):
+        raise ValueError("Duplicate diagram evaluations for a student and exam")
+    return docs
+
+
+async def _find_diagram_guideline(db, reference):
+    if not isinstance(reference, (str, ObjectId)) or not str(reference).strip():
+        return None
+    refs = [reference]
+    if isinstance(reference, str) and ObjectId.is_valid(reference):
+        refs.append(ObjectId(reference))
+    elif isinstance(reference, ObjectId):
+        refs.append(str(reference))
+    docs = await db["diagram_marking"].find({"_id": {"$in": refs}}).to_list(length=2)
+    if len(docs) > 1:
+        raise ValueError("Ambiguous diagram guideline reference")
+    return docs[0] if docs else None
+
+
 async def find_diagram_evaluation_for_student(
     db: AsyncIOMotorDatabase, student_id: str, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> dict | None:
-    """Return single diagram_evaluation for a student/exam (with fallback without year)."""
+    """Return one exact-exam diagram evaluation in the dashboard response format."""
     query: dict = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
     if year is not None:
         query["year"] = year
@@ -716,13 +801,13 @@ async def find_diagram_evaluation_for_student(
         query["month"] = month
     if semester is not None:
         query["semester"] = semester
-    doc = await db["diagram_evaluation"].find_one(query)
-    if doc is None and (year is not None or month is not None or semester is not None):
-        # fallback without year for legacy
-        fallback = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
-        doc = await db["diagram_evaluation"].find_one(fallback)
-    if doc is None:
+    docs = await _read_diagram_evaluations(db, query)
+    if not docs:
         return None
+    from app.ingestion.diagram_data import normalize_diagram_evaluation
+    doc = docs[0]
+    guideline = await _find_diagram_guideline(db, doc.get("guideline_object_id"))
+    doc = normalize_diagram_evaluation(doc, guideline)
     doc.pop("_id", None)
     return doc
 
@@ -731,42 +816,13 @@ async def find_diagram_marking_for_student(
     db: AsyncIOMotorDatabase, student_id: str, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> dict | None:
-    """Return single diagram_marking for a student/exam."""
-    query: dict = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
-    if year is not None:
-        # diagram_marking stores year/month/semester as strings in current gradev2 data
-        # try both int and str
-        query["year"] = year
-    if month is not None:
-        query["month"] = month
-    if semester is not None:
-        query["semester"] = semester
-    doc = await db["diagram_marking"].find_one(query)
-    if doc is None and (year is not None or month is not None or semester is not None):
-        # try string variant and fallback
-        q2 = {"student_id": student_id, "subject_code": course_code, "session_name": session_name}
-        if year is not None:
-            q2["year"] = str(year)
-        if month is not None:
-            q2["month"] = str(month)
-        if semester is not None:
-            q2["semester"] = str(semester)
-        doc = await db["diagram_marking"].find_one(q2)
-        if doc is None:
-            doc = await db["diagram_marking"].find_one({"student_id": student_id, "subject_code": course_code, "session_name": session_name})
-    if doc is None:
+    """Resolve the rubric through the saved evaluation, never by student metadata."""
+    evaluation = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
+    if evaluation is None:
         return None
-    doc.pop("_id", None)
-    # parse stringified dict fields if needed
-    import ast
-    for f in ("diagram_details", "diagram_entity_relations", "diagram_relations", "evaluation_result"):
-        v = doc.get(f)
-        if isinstance(v, str):
-            try:
-                # stored as python repr with single quotes
-                doc[f] = ast.literal_eval(v)
-            except Exception:
-                pass
+    doc = await _find_diagram_guideline(db, evaluation.get("guideline_object_id"))
+    if doc is not None:
+        doc["_id"] = str(doc["_id"])
     return doc
 
 
@@ -774,7 +830,7 @@ async def find_diagram_evaluations_for_exam(
     db: AsyncIOMotorDatabase, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> list[dict]:
-    """Return all diagram_evaluation documents matching an exam."""
+    """Read saved diagram agent grades for the exact exam, without regrading."""
     query: dict = {"subject_code": course_code, "session_name": session_name}
     if year is not None:
         query["year"] = year
@@ -782,29 +838,38 @@ async def find_diagram_evaluations_for_exam(
         query["month"] = month
     if semester is not None:
         query["semester"] = semester
-    cursor = db["diagram_evaluation"].find(query)
-    docs = await cursor.to_list(length=None)
+    docs = await _read_diagram_evaluations(db, query)
+    from app.ingestion.diagram_data import normalize_diagram_evaluation
+    guidelines, normalized, seen = {}, [], set()
     for doc in docs:
+        key = (doc.get("student_id"), str(doc.get("guideline_object_id")))
+        if key in seen:
+            raise ValueError("Duplicate diagram evaluation for student and rubric")
+        seen.add(key)
+        gid = str(doc.get("guideline_object_id"))
+        if gid not in guidelines:
+            guidelines[gid] = await _find_diagram_guideline(db, doc.get("guideline_object_id"))
+        doc = normalize_diagram_evaluation(doc, guidelines[gid])
         doc.pop("_id", None)
-    return docs
+        normalized.append(doc)
+    return normalized
 
 
 async def find_diagram_markings_for_exam(
     db: AsyncIOMotorDatabase, course_code: str, session_name: str,
     year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> list[dict]:
-    """Return all diagram_marking documents matching an exam."""
-    query: dict = {"subject_code": course_code, "session_name": session_name}
-    if year is not None:
-        query["year"] = year
-    if month is not None:
-        query["month"] = month
-    if semester is not None:
-        query["semester"] = semester
-    cursor = db["diagram_marking"].find(query)
-    docs = await cursor.to_list(length=None)
-    for doc in docs:
-        doc.pop("_id", None)
+    """Return only guidelines referenced by this exam's saved evaluations."""
+    evaluations = await find_diagram_evaluations_for_exam(db, course_code, session_name, year, month, semester)
+    docs, seen = [], set()
+    for evaluation in evaluations:
+        reference = evaluation.get("guideline_object_id")
+        if str(reference) not in seen:
+            seen.add(str(reference))
+            doc = await _find_diagram_guideline(db, reference)
+            if doc is not None:
+                doc["_id"] = str(doc["_id"])
+                docs.append(doc)
     return docs
 
 

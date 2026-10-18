@@ -41,6 +41,7 @@ export function QuestionPerformanceTable({ questions, onSelectQuestion }: Props)
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{q.question_id}</span>
+                  {q.needs_review && <Badge variant="outline">Classification needs review</Badge>}
                   {isLowest && (
                     <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 border-0 text-xs">
                       <AlertTriangle className="h-3 w-3 mr-1" />
@@ -51,7 +52,8 @@ export function QuestionPerformanceTable({ questions, onSelectQuestion }: Props)
                 <span className="text-sm font-mono font-semibold">{q.average_percentage.toFixed(1)}%</span>
               </div>
               <div className="text-xs text-muted-foreground mb-2">
-                {q.topic} · {q.bloom_level}
+                {q.topic === "Unclassified" ? "Topic assignment pending" : q.topic} · {q.bloom_level}
+                {q.coverage_warning && " · Limited assessment evidence"}
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div

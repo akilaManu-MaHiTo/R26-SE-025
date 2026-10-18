@@ -56,6 +56,9 @@ class QuestionPerformanceSummary(BaseModel):
     p_value: float = Field(ge=0, le=100, default=0.0)
     discrimination: float = Field(ge=-1, le=1, default=0.0)
     missed_criterion_rate: float | None = Field(default=None, ge=0, le=1)
+    bloom_confidence: float | None = Field(default=None, ge=0, le=1)
+    needs_review: bool = False
+    coverage_warning: str | None = None
 
 
 class TopicBloomCell(BaseModel):

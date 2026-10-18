@@ -62,7 +62,6 @@ def _compute_signals(question_bank: list[dict[str, Any]], reference_year: int | 
     tut_counts: Counter = Counter(
         r["canonical_topic"] for r in question_bank if r["source_type"] == "tutorial"
     )
-    max_tut = max(tut_counts.values()) if tut_counts else 1
 
     reference_year = reference_year if reference_year is not None else date.today().year
     recent_exams = [r for r in question_bank if r["source_type"] == "exam"
@@ -81,7 +80,7 @@ def _compute_signals(question_bank: list[dict[str, Any]], reference_year: int | 
         if count >= 3:
             tut_ev_thresholded[topic] = 1.0
         elif count >= 1:
-            tut_ev_thresholded[topic] = 0.6 + 0.4 * (count / 3)
+            tut_ev_thresholded[topic] = 0.6 + 0.4 * ((count - 1) / 2)
         else:
             tut_ev_thresholded[topic] = 0.0
 

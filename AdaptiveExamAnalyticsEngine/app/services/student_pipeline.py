@@ -32,7 +32,7 @@ import app.classifier.bloom_classifier as _bc_module
 _ORIG_PREDICT_BLOOM = _bc_module.predict_bloom
 _ORIG_PREDICT_BATCH = _bc_module.predict_bloom_batch
 
-STUDENT_ANALYSIS_VERSION = "1.1"
+STUDENT_ANALYSIS_VERSION = "1.4"
 
 
 @dataclass(frozen=True)
@@ -140,6 +140,16 @@ async def _classify_questions(
 ) -> dict[str, QuestionSemantics]:
     """Classify questions using ONLY bloom_modernbert for Bloom level (topic from approved metadata or rules).
     Bounded inference via semaphore and thread executor; persistent cache by question-text hash + model version."""
+    def reviewed_topics(semantics):
+        reviewed = dict(semantics)
+        for question in normalized.questions:
+            topic = getattr(question, "approved_topic", None)
+            if topic and topic != "Unclassified" and question.question_no in reviewed:
+                reviewed[question.question_no] = reviewed[question.question_no].model_copy(update={
+                    "topic": topic, "subtopic": topic, "reason": "source=lecturer",
+                })
+        return reviewed
+
     # Compat shim: if tests patched legacy classify_question_semantics, honor it
     compat = globals().get("classify_question_semantics")
     if compat is not None and callable(compat) and compat is not _classify_questions:
@@ -170,7 +180,7 @@ async def _classify_questions(
                 if progress is not None:
                     progress(f"classify q{question.question_no} (compat)")
             if semantics_by_question:
-                return semantics_by_question
+                return reviewed_topics(semantics_by_question)
         except Exception:
             pass
     semantics_by_question: dict[str, QuestionSemantics] = {}
@@ -209,7 +219,7 @@ async def _classify_questions(
             uncached.append(question)
 
     if not uncached:
-        return semantics_by_question
+        return reviewed_topics(semantics_by_question)
 
     # Forced reanalysis bypasses saved classifications, but reuses each question within this job.
     persistent_hits: dict[str, QuestionSemantics] = {}
@@ -218,7 +228,7 @@ async def _classify_questions(
             model_version = "modernbert-bloom-v1"
             for q in list(uncached):
                 text_hash = hashlib.sha256(q.question_text.strip().encode()).hexdigest()[:16]
-                key = f"{text_hash}:{model_version}:{normalized.course_code}"
+                key = f"{text_hash}:{model_version}:{normalized.course_code}:topics-v2"
                 doc = await db["bloom_classification_cache"].find_one({"cache_key": key})
                 if doc and doc.get("semantics"):
                     s = doc["semantics"]
@@ -230,7 +240,7 @@ async def _classify_questions(
                         progress(f"classify q{q.question_no} (persistent cached)")
             uncached = [q for q in uncached if q.question_no not in persistent_hits]
             if not uncached:
-                return semantics_by_question
+                return reviewed_topics(semantics_by_question)
         except Exception:
             pass
 
@@ -285,7 +295,7 @@ async def _classify_questions(
                 if db is not None:
                     try:
                         text_hash = hashlib.sha256(q.question_text.strip().encode()).hexdigest()[:16]
-                        key = f"{text_hash}:modernbert-bloom-v1:{normalized.course_code}"
+                        key = f"{text_hash}:modernbert-bloom-v1:{normalized.course_code}:topics-v2"
                         await db["bloom_classification_cache"].update_one(
                             {"cache_key": key},
                             {"$set": {"cache_key": key, "question_text": q.question_text[:500], "semantics": {"level": semantics.level, "topic": semantics.topic, "subtopic": semantics.subtopic, "confidence": semantics.confidence, "reason": semantics.reason}, "model_version": "modernbert-bloom-v1", "created_at": datetime.now(timezone.utc).isoformat()}},
@@ -293,7 +303,7 @@ async def _classify_questions(
                         )
                     except Exception:
                         pass
-            return semantics_by_question
+            return reviewed_topics(semantics_by_question)
         # Non-patched path: true batch
         texts = [q.question_text for q in uncached]
         async with _BLOOM_SEMAPHORE:
@@ -341,7 +351,7 @@ async def _classify_questions(
             if db is not None:
                 try:
                     text_hash = hashlib.sha256(q.question_text.strip().encode()).hexdigest()[:16]
-                    key = f"{text_hash}:modernbert-bloom-v1:{normalized.course_code}"
+                    key = f"{text_hash}:modernbert-bloom-v1:{normalized.course_code}:topics-v2"
                     await db["bloom_classification_cache"].update_one(
                         {"cache_key": key},
                         {"$set": {"cache_key": key, "question_text": q.question_text[:500], "semantics": {"level": semantics.level, "topic": semantics.topic, "subtopic": semantics.subtopic, "confidence": semantics.confidence, "reason": semantics.reason}, "model_version": "modernbert-bloom-v1", "created_at": datetime.now(timezone.utc).isoformat()}},
@@ -350,7 +360,7 @@ async def _classify_questions(
                 except Exception:
                     pass
 
-    return semantics_by_question
+    return reviewed_topics(semantics_by_question)
 
 
 def _validated_insights(insights: dict, numeric: NumericStudentAnalysis) -> StudentInsightResponse | None:
