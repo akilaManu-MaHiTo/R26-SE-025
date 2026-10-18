@@ -38,8 +38,12 @@ environment or `Gradex_AI_Server/app/.env`. For a standalone engine, set it in t
 engine's process environment. Cookies default to Secure for HTTPS deployments.
 `CORS_ORIGINS` is a comma-separated list of exact frontend origins; defaults cover
 localhost/127.0.0.1 on ports 5173 and 3000. Set it explicitly for other ports or
-deployed frontends. Deploy the frontend and API under the same HTTPS origin and
-proxy `/api` and `/courses` to the main server.
+deployed frontends. Deploy the frontend and API under the same HTTPS origin and proxy `/api` and
+`/courses` to the main server. The Vercel configuration in
+`Gradex_AI_Client/vercel.json` does this before the SPA fallback; keep these
+rewrites above the catch-all route. If the API is deployed at a different
+host, replace those destinations with that host and add the frontend URL to
+the server's `CORS_ORIGINS` setting.
 
 Sessions expire after eight hours. Login is limited to 20 attempts per IP per
 15-minute window; behind a reverse proxy, configure Uvicorn to trust forwarded
