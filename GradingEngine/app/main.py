@@ -65,7 +65,8 @@ _cors_origins = [
     o.strip()
     for o in os.getenv(
         "CORS_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,"
+        "http://127.0.0.1:3000,https://r26-se-025-brown.vercel.app,https://gradex-orpin.vercel.app",
     ).split(",")
     if o.strip()
 ]
