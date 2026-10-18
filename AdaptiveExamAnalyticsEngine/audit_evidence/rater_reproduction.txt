@@ -1,0 +1,22 @@
+scoring datasets/bloom_dataset/usefulness_lec01.csv vs datasets/bloom_dataset/usefulness_lec02.csv
+loaded r1=10 r2=10
+rating_overall         lec01 3.80  lec02 4.40  diff +0.60
+rating_weakness_fit    lec01 3.30  lec02 5.00  diff +1.70
+rating_curriculum_fit  lec01 5.00  lec02 5.00  diff +0.00
+rating_difficulty_fit  lec01 3.80  lec02 4.40  diff +0.60
+rating_clarity         lec01 4.20  lec02 4.30  diff +0.10
+kappa would_use 1.0
+kappa would_edit 0.13793103448275862
+kappa overall exact -0.15384615384615377
+kappa overall binned >=4 0.0
+kappa weakness_fit 0.0
+kappa difficulty 0.07407407407407403
+kappa clarity 0.49152542372881347
+P@5 1.0 NDCG@5 1.0
+would_edit lec01 true 1 /10
+would_edit lec02 true 6 /10
+
+weakness_fit lec01 ['3', '3', '3', '4', '4', '4', '3', '2', '4', '3']
+weakness_fit lec02 ['5', '5', '5', '5', '5', '5', '5', '5', '5', '5']
+overall lec01 ['4', '4', '4', '4', '4', '4', '4', '3', '4', '3']
+overall lec02 ['4', '4', '4', '5', '5', '5', '4', '4', '5', '4']

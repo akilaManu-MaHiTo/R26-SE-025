@@ -1,3 +1,5 @@
+import { SERVER_BASE_URL } from "../api/gradingApiBase";
+import { apiFetch } from "../api/authApi";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -14,9 +16,7 @@ import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
 import { AIPageBanner, AIBadgePill } from "./AIBrand";
 
-const API_BASE_URL =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ??
-  "http://127.0.0.1:8000";
+const API_BASE_URL = SERVER_BASE_URL;
 
 type DiagramDetailRecord = {
   _id?: string;
@@ -130,7 +130,7 @@ export function DiagramReconstructionPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/diagram-evaluate-details`);
+        const response = await apiFetch(`${API_BASE_URL}/api/diagram-evaluate-details`);
         const data = (await parseJsonResponse(response)) as DiagramDetailRecord[] | { detail?: unknown };
         if (!response.ok) {
           const detail = data && typeof data === "object" ? (data as { detail?: unknown }).detail : null;

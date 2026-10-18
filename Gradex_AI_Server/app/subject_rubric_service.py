@@ -275,7 +275,7 @@ def generate_concept_rubric(pdf_text: str, subject_name: str) -> List[Dict[str, 
 def _collection(db_instance):
     if db_instance.db is None:
         return None
-    return db_instance.db["subject_rubrics"]
+    return db_instance.db["viva_subject_rubrics"]
 
 
 async def get_subject_rubric(db_instance, subject_code: str) -> Optional[Dict[str, Any]]:

@@ -1,0 +1,834 @@
+{
+  "interpretation": "Stored evidence only; no model inference, no held-out accuracy claim.",
+  "source_csv": {
+    "rows": 8767,
+    "unique_normalized_texts": 8721,
+    "duplicate_rows": 46,
+    "conflicting_label_texts": 13,
+    "label_counts": {
+      "BT1": 2582,
+      "BT2": 1801,
+      "BT3": 1508,
+      "BT4": 1293,
+      "BT6": 800,
+      "BT5": 783
+    },
+    "sha256": "399916f9715753ab7ccd011e1fb5f8f177dc153cc7f95704257d47a6847b50f0"
+  },
+  "gold_v2_csv": {
+    "rows": 500,
+    "unique_normalized_texts": 500,
+    "duplicate_rows": 0,
+    "conflicting_label_texts": 0,
+    "label_counts": {
+      "BT2": 84,
+      "BT5": 83,
+      "BT1": 84,
+      "BT4": 83,
+      "BT3": 83,
+      "BT6": 83
+    },
+    "sha256": "c8e186ce1cf9c57ac383ef2b4b171fab833d724fcba0ce0ee1db67984341f198"
+  },
+  "gold_v1_bytes": 0,
+  "source_gold_v2_overlap": {
+    "normalized_texts": 500,
+    "gold_rows_matching_source": 500,
+    "label_set_disagreements": 1
+  },
+  "pilots": {
+    "docs/validation/bloom_20/before_combined_scores/bloom_results.json": {
+      "sha256": "15e620ad4867f3347f3c5e38ea41a6c14a954dd5f3c9aebafe9c0d8bd05230e8",
+      "gold_status": "not collected",
+      "roles": {
+        "question_bloom": {
+          "prediction_counts": {
+            "Understand": 3,
+            "Create": 1,
+            "Analyze": 3,
+            "Apply": 12,
+            "Remember": 1
+          },
+          "low_confidence_below_0_6": 8,
+          "truncated": 0,
+          "input_hash_mismatches": 0,
+          "requested_target_agreement_NOT_accuracy": {
+            "n": 20,
+            "agreement": 0.45,
+            "macro_f1_all_six": 0.3063492063492063,
+            "per_class": {
+              "Remember": {
+                "support": 2,
+                "predicted": 1,
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666
+              },
+              "Understand": {
+                "support": 4,
+                "predicted": 3,
+                "precision": 0.6666666666666666,
+                "recall": 0.5,
+                "f1": 0.5714285714285714
+              },
+              "Apply": {
+                "support": 8,
+                "predicted": 12,
+                "precision": 0.5,
+                "recall": 0.75,
+                "f1": 0.6
+              },
+              "Analyze": {
+                "support": 4,
+                "predicted": 3,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Evaluate": {
+                "support": 1,
+                "predicted": 0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Create": {
+                "support": 1,
+                "predicted": 1,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              }
+            },
+            "confusion_rows_target_columns_prediction": [
+              [
+                1,
+                0,
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                2,
+                1,
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                6,
+                2,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                4,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "student_answer_bloom": {
+          "prediction_counts": {
+            "Analyze": 8,
+            "Understand": 2,
+            "Apply": 7,
+            "Remember": 1,
+            "Create": 2
+          },
+          "low_confidence_below_0_6": 10,
+          "truncated": 0,
+          "input_hash_mismatches": 0,
+          "requested_target_agreement_NOT_accuracy": {
+            "n": 20,
+            "agreement": 0.3,
+            "macro_f1_all_six": 0.1722222222222222,
+            "per_class": {
+              "Remember": {
+                "support": 2,
+                "predicted": 1,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Understand": {
+                "support": 4,
+                "predicted": 2,
+                "precision": 0.5,
+                "recall": 0.25,
+                "f1": 0.3333333333333333
+              },
+              "Apply": {
+                "support": 8,
+                "predicted": 7,
+                "precision": 0.5714285714285714,
+                "recall": 0.5,
+                "f1": 0.5333333333333333
+              },
+              "Analyze": {
+                "support": 4,
+                "predicted": 8,
+                "precision": 0.125,
+                "recall": 0.25,
+                "f1": 0.16666666666666666
+              },
+              "Evaluate": {
+                "support": 1,
+                "predicted": 0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Create": {
+                "support": 1,
+                "predicted": 2,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              }
+            },
+            "confusion_rows_target_columns_prediction": [
+              [
+                0,
+                0,
+                0,
+                1,
+                0,
+                1
+              ],
+              [
+                0,
+                1,
+                1,
+                1,
+                0,
+                1
+              ],
+              [
+                1,
+                0,
+                4,
+                3,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                2,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                1,
+                0,
+                0
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "docs/validation/bloom_20/bloom_results.json": {
+      "sha256": "016d6ce85976b593b6b4671e8cc43f6a9e502ca9caf58b853ccab2f256c206c3",
+      "gold_status": "not collected",
+      "roles": {
+        "question_bloom": {
+          "prediction_counts": {
+            "Understand": 3,
+            "Create": 1,
+            "Analyze": 3,
+            "Apply": 12,
+            "Remember": 1
+          },
+          "low_confidence_below_0_6": 8,
+          "truncated": 0,
+          "input_hash_mismatches": 0,
+          "requested_target_agreement_NOT_accuracy": {
+            "n": 20,
+            "agreement": 0.45,
+            "macro_f1_all_six": 0.3063492063492063,
+            "per_class": {
+              "Remember": {
+                "support": 2,
+                "predicted": 1,
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666
+              },
+              "Understand": {
+                "support": 4,
+                "predicted": 3,
+                "precision": 0.6666666666666666,
+                "recall": 0.5,
+                "f1": 0.5714285714285714
+              },
+              "Apply": {
+                "support": 8,
+                "predicted": 12,
+                "precision": 0.5,
+                "recall": 0.75,
+                "f1": 0.6
+              },
+              "Analyze": {
+                "support": 4,
+                "predicted": 3,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Evaluate": {
+                "support": 1,
+                "predicted": 0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Create": {
+                "support": 1,
+                "predicted": 1,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              }
+            },
+            "confusion_rows_target_columns_prediction": [
+              [
+                1,
+                0,
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                2,
+                1,
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                6,
+                2,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                4,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "student_answer_bloom": {
+          "prediction_counts": {
+            "Analyze": 8,
+            "Understand": 2,
+            "Apply": 7,
+            "Remember": 1,
+            "Create": 2
+          },
+          "low_confidence_below_0_6": 10,
+          "truncated": 0,
+          "input_hash_mismatches": 0,
+          "requested_target_agreement_NOT_accuracy": {
+            "n": 20,
+            "agreement": 0.3,
+            "macro_f1_all_six": 0.1722222222222222,
+            "per_class": {
+              "Remember": {
+                "support": 2,
+                "predicted": 1,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Understand": {
+                "support": 4,
+                "predicted": 2,
+                "precision": 0.5,
+                "recall": 0.25,
+                "f1": 0.3333333333333333
+              },
+              "Apply": {
+                "support": 8,
+                "predicted": 7,
+                "precision": 0.5714285714285714,
+                "recall": 0.5,
+                "f1": 0.5333333333333333
+              },
+              "Analyze": {
+                "support": 4,
+                "predicted": 8,
+                "precision": 0.125,
+                "recall": 0.25,
+                "f1": 0.16666666666666666
+              },
+              "Evaluate": {
+                "support": 1,
+                "predicted": 0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Create": {
+                "support": 1,
+                "predicted": 2,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              }
+            },
+            "confusion_rows_target_columns_prediction": [
+              [
+                0,
+                0,
+                0,
+                1,
+                0,
+                1
+              ],
+              [
+                0,
+                1,
+                1,
+                1,
+                0,
+                1
+              ],
+              [
+                1,
+                0,
+                4,
+                3,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                2,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                1,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "combined_bloom": {
+          "prediction_counts": {
+            "Understand": 3,
+            "Analyze": 7,
+            "Apply": 10
+          },
+          "low_confidence_below_0_6": 7,
+          "truncated": 0,
+          "input_hash_mismatches": 0,
+          "requested_target_agreement_NOT_accuracy": {
+            "n": 20,
+            "agreement": 0.35,
+            "macro_f1_all_six": 0.18783068783068782,
+            "per_class": {
+              "Remember": {
+                "support": 2,
+                "predicted": 0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Understand": {
+                "support": 4,
+                "predicted": 3,
+                "precision": 0.6666666666666666,
+                "recall": 0.5,
+                "f1": 0.5714285714285714
+              },
+              "Apply": {
+                "support": 8,
+                "predicted": 10,
+                "precision": 0.5,
+                "recall": 0.625,
+                "f1": 0.5555555555555556
+              },
+              "Analyze": {
+                "support": 4,
+                "predicted": 7,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Evaluate": {
+                "support": 1,
+                "predicted": 0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Create": {
+                "support": 1,
+                "predicted": 0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              }
+            },
+            "confusion_rows_target_columns_prediction": [
+              [
+                0,
+                1,
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                2,
+                1,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                5,
+                3,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                4,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                1,
+                0,
+                0
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "docs/validation/bloom_20/original_without_diagrams/bloom_results.json": {
+      "sha256": "f794ac0debe9d02b0d447d037dd65bb0bf254faaf14f9878951d43d57c8b0b71",
+      "gold_status": "not collected",
+      "roles": {
+        "question_bloom": {
+          "prediction_counts": {
+            "Understand": 3,
+            "Create": 1,
+            "Apply": 14,
+            "Remember": 1,
+            "Analyze": 1
+          },
+          "low_confidence_below_0_6": 7,
+          "truncated": 0,
+          "input_hash_mismatches": 0,
+          "requested_target_agreement_NOT_accuracy": {
+            "n": 20,
+            "agreement": 0.55,
+            "macro_f1_all_six": 0.32756132756132755,
+            "per_class": {
+              "Remember": {
+                "support": 2,
+                "predicted": 1,
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666
+              },
+              "Understand": {
+                "support": 4,
+                "predicted": 3,
+                "precision": 0.6666666666666666,
+                "recall": 0.5,
+                "f1": 0.5714285714285714
+              },
+              "Apply": {
+                "support": 8,
+                "predicted": 14,
+                "precision": 0.5714285714285714,
+                "recall": 1.0,
+                "f1": 0.7272727272727273
+              },
+              "Analyze": {
+                "support": 4,
+                "predicted": 1,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Evaluate": {
+                "support": 1,
+                "predicted": 0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Create": {
+                "support": 1,
+                "predicted": 1,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              }
+            },
+            "confusion_rows_target_columns_prediction": [
+              [
+                1,
+                0,
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                2,
+                1,
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                8,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                4,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                0,
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "student_answer_bloom": {
+          "prediction_counts": {
+            "Analyze": 8,
+            "Understand": 2,
+            "Apply": 7,
+            "Remember": 1,
+            "Create": 2
+          },
+          "low_confidence_below_0_6": 9,
+          "truncated": 0,
+          "input_hash_mismatches": 0,
+          "requested_target_agreement_NOT_accuracy": {
+            "n": 20,
+            "agreement": 0.3,
+            "macro_f1_all_six": 0.1722222222222222,
+            "per_class": {
+              "Remember": {
+                "support": 2,
+                "predicted": 1,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Understand": {
+                "support": 4,
+                "predicted": 2,
+                "precision": 0.5,
+                "recall": 0.25,
+                "f1": 0.3333333333333333
+              },
+              "Apply": {
+                "support": 8,
+                "predicted": 7,
+                "precision": 0.5714285714285714,
+                "recall": 0.5,
+                "f1": 0.5333333333333333
+              },
+              "Analyze": {
+                "support": 4,
+                "predicted": 8,
+                "precision": 0.125,
+                "recall": 0.25,
+                "f1": 0.16666666666666666
+              },
+              "Evaluate": {
+                "support": 1,
+                "predicted": 0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              },
+              "Create": {
+                "support": 1,
+                "predicted": 2,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0
+              }
+            },
+            "confusion_rows_target_columns_prediction": [
+              [
+                0,
+                0,
+                0,
+                1,
+                0,
+                1
+              ],
+              [
+                0,
+                1,
+                1,
+                1,
+                0,
+                1
+              ],
+              [
+                1,
+                0,
+                4,
+                3,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                2,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0,
+                1,
+                0,
+                0
+              ]
+            ]
+          }
+        }
+      }
+    }
+  }
+}

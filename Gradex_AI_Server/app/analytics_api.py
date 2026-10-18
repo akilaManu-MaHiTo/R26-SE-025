@@ -1,4 +1,4 @@
-"""Proxy routes for V2_QuestionExamPredictionEngine — spec §2-§14 three-level architecture.
+"""Proxy routes for AdaptiveExamAnalyticsEngine — spec §2-§14 three-level architecture.
 
 Level 1 (precomputed, lecturer): examAnalytics — class statistics, topic/Bloom/question
 performance, attention areas, insights. Generated after submissions are graded.

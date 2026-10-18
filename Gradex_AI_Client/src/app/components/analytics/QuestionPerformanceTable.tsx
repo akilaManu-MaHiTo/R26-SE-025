@@ -51,7 +51,7 @@ export function QuestionPerformanceTable({ questions, onSelectQuestion }: Props)
                 <span className="text-sm font-mono font-semibold">{q.average_percentage.toFixed(1)}%</span>
               </div>
               <div className="text-xs text-muted-foreground mb-2">
-                {q.topic} · {q.bloom_level}
+                {q.topic === "Unclassified" ? "Topic assignment pending" : q.topic} · {q.bloom_level}
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div

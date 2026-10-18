@@ -2,7 +2,7 @@
 
 Date: 2026-08-24
 Status: Approved
-Scope: V2_QuestionExamPredictionEngine (V2 engine) + Gradex_AI_Server routing
+Scope: AdaptiveExamAnalyticsEngine + Gradex_AI_Server routing
 
 ## 1. Goal
 When a lecturer triggers **Analyze** for an exam in the Lecturer Dashboard (`GET /api/lecturers/exams/{course_code}/{session_name}/analytics`), automatically create student accounts for every student who faced that exam (i.e., has a `graded` submission for `course_code` + `session_name`). Email = `{lower(student_id)}@my.sliit.lk`, default password = `Student@123` (hashed).
