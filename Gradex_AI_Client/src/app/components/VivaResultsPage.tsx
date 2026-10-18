@@ -505,7 +505,7 @@ function ResultDetail({
   const draftInvalid = studentDraft.trim() !== "" && !isValidStudentId(studentDraft);
 
   return (
-    <div className="space-y-6">
+    <div className="m-4 space-y-6">
       <AIPageBanner model="voca" />
 
       <Card className="p-5">
