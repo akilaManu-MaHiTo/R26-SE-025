@@ -133,8 +133,8 @@ class RubricCriterionPayload(BaseModel):
 
 class PublishVivaMarkPayload(BaseModel):
     assessment_mode: str
-    # The examiner's technical score, out of the configured technical maximum (VIVA_TECHNICAL_MAX).
-    technical_accuracy: Optional[float] = Field(default=None, ge=0, le=MARKING_SCALE.technical_max)
+    # The examiner's technical score, out of the viva's total marks (checked when it is published).
+    technical_accuracy: Optional[float] = Field(default=None, ge=0)
     student_id: Optional[str] = None
     published: bool = True
 
@@ -633,6 +633,7 @@ def _summarize_mark_document(document: dict[str, Any]) -> dict[str, Any]:
         "subject_code": document.get("subject_code"),
         "subject_name": document.get("subject_name"),
         "viva_id": document.get("viva_id"),
+        "viva_total_marks": document.get("viva_total_marks"),
         "viva_label": document.get("viva_label"),
         "viva_category": document.get("viva_category"),
         "processed_at": document.get("processed_at"),
@@ -719,7 +720,7 @@ async def get_viva_mark(mark_id: str):
 @app.patch("/api/viva-marks/{mark_id}/publish", dependencies=[Depends(require_lecturer)])
 async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload, request: Request):
     """Persist published assessment: canonical X, human technical /20 (or null), server-computed mark /20 + grade."""
-    from Gradex_AI_Server.app.viva_marks import apply_publish_to_mark
+    from Gradex_AI_Server.app.viva_marks import TechnicalScoreOutOfRange, apply_publish_to_mark
     from VivaEvaluationEngine.services.assessment_scoring import MODE_WITH, MODE_WITHOUT
 
     object_id = _parse_object_id(mark_id)
@@ -750,6 +751,8 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload, reque
         return response
     except LookupError:
         raise HTTPException(status_code=404, detail="Mark not found.") from None
+    except TechnicalScoreOutOfRange as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception:
@@ -962,7 +965,8 @@ async def viva_analyze(
         # on here as a decoupled post-processing call so that file, and the
         # rest of VivaEvaluationEngine's existing pipeline, stay untouched.
         result = await attach_subject_technical_accuracy(
-            result, subject_code, db_instance, progress_id=job_id
+            result, subject_code, db_instance, progress_id=job_id,
+            total_marks=viva_extra_doc(viva)["viva_total_marks"],
         )
 
         print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")

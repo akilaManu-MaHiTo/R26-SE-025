@@ -14,6 +14,11 @@ from VivaEvaluationEngine.services.assessment_scoring import (
     STATUS_VALID,
     build_assessment,
 )
+from VivaEvaluationEngine.services.marking_scale import MARKING_SCALE, MarkingScale
+
+
+class TechnicalScoreOutOfRange(ValueError):
+    """The examiner's technical score is above what this viva is marked out of."""
 
 
 def assessment_is_publishable(assessment: Any) -> bool:
@@ -33,11 +38,13 @@ def build_publish_update(
     student_id: Optional[str],
     published: bool = True,
     human_published: bool = True,
+    scale: Optional[MarkingScale] = None,
 ) -> dict[str, Any]:
     assessment = build_assessment(
         engine_result,
         mode=mode,
         technical_accuracy=technical_accuracy,
+        scale=scale,
     )
     published_at = datetime.now(timezone.utc)
     return {
@@ -109,13 +116,20 @@ async def apply_publish_to_mark(
     if mode == MODE_WITH and technical_accuracy is None:
         raise ValueError("technical_accuracy is required for WITH_TECHNICAL_ACCURACY.")
 
+    # Marked out of the total its viva had when the recording was analysed.
+    scale = MARKING_SCALE.for_total(existing.get("viva_total_marks"))
     technical = None if mode == MODE_WITHOUT else technical_accuracy
+    if technical is not None and not 0 <= technical <= scale.technical_max:
+        raise TechnicalScoreOutOfRange(
+            f"technical_accuracy must be between 0 and {scale.technical_max:g} for this viva."
+        )
     update = build_publish_update(
         engine_result,
         mode=mode,
         technical_accuracy=technical,
         student_id=student_id,
         human_published=human_published,
+        scale=scale,
     )
     assessment = update["assessment"]
     validation = assessment.get("validation") or {}

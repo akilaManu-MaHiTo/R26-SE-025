@@ -63,6 +63,8 @@ export interface VivaMarkSummary {
   subject_code?: string | null;
   subject_name?: string | null;
   viva_id?: string | null;
+  /** What the viva was marked out of when this recording was analysed. */
+  viva_total_marks?: number | null;
   viva_label?: string | null;
   viva_category?: string | null;
   examiner_email?: string | null;

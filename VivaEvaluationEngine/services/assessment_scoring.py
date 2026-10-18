@@ -38,7 +38,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from services.marking_scale import MARKING_SCALE, PERCENT_MAX
+from services.marking_scale import MARKING_SCALE, PERCENT_MAX, MarkingScale
 from services.canonical_features import (
     FEATURE_SCHEMA_VERSION,
     extract_canonical_features,
@@ -163,14 +163,14 @@ def resolve_grade(score: Optional[float]) -> Optional[str]:
     return MARKING_SCALE.resolve_grade_from_percent(score)
 
 
-def percent_to_mark(percent: Optional[float]) -> Optional[float]:
-    """Scale a 0-100 percentage to the official mark on the configured scale."""
-    return MARKING_SCALE.percent_to_mark(percent)
+def percent_to_mark(percent: Optional[float], scale: Optional[MarkingScale] = None) -> Optional[float]:
+    """Scale a 0-100 percentage to the official mark (on `scale`, default the configured one)."""
+    return (scale or MARKING_SCALE).percent_to_mark(percent)
 
 
-def resolve_grade_from_mark(mark: Optional[float]) -> Optional[str]:
+def resolve_grade_from_mark(mark: Optional[float], scale: Optional[MarkingScale] = None) -> Optional[str]:
     """Grade for an official mark. Pass the ROUNDED mark so the grade matches what is shown."""
-    return MARKING_SCALE.resolve_grade(mark)
+    return (scale or MARKING_SCALE).resolve_grade(mark)
 
 
 def _whisper_available(quality: Dict[str, Any]) -> bool:
@@ -496,12 +496,14 @@ def fuse_final_score(
     mode: str,
     ai_performance: Optional[float],
     technical_accuracy: Optional[float],
+    scale: Optional[MarkingScale] = None,
 ) -> Dict[str, Any]:
     """Fuse the AI performance percentage with the examiner's technical score.
 
-    The technical score is out of `MARKING_SCALE.technical_max`. `final_score` stays a 0-100
+    The technical score is out of `scale.technical_max` (default: `MARKING_SCALE`). `final_score` stays a 0-100
     percentage; `final_mark` is the official mark on the configured scale.
     """
+    scale = scale or MARKING_SCALE
     if ai_performance is None:
         return {
             "final_score": None,
@@ -514,7 +516,7 @@ def fuse_final_score(
     if mode == MODE_WITHOUT:
         return {
             "final_score": round(float(ai_performance), 2),
-            "final_mark": percent_to_mark(ai_performance),
+            "final_mark": percent_to_mark(ai_performance, scale),
             "technical_accuracy": None,
             "technical_accuracy_100": None,
             "fusion": {
@@ -546,13 +548,13 @@ def fuse_final_score(
             },
         }
 
-    technical_100 = MARKING_SCALE.technical_to_percent(technical_accuracy)
+    technical_100 = scale.technical_to_percent(technical_accuracy)
     final = FUSION_WEIGHT_AI * float(ai_performance) + FUSION_WEIGHT_TECHNICAL * technical_100
     final_percent = round(_clamp(final / PERCENT_MAX) * PERCENT_MAX, 2)
     return {
         "final_score": final_percent,
-        "final_mark": percent_to_mark(final_percent),
-        "technical_accuracy": MARKING_SCALE.clamp_technical(technical_accuracy),
+        "final_mark": percent_to_mark(final_percent, scale),
+        "technical_accuracy": scale.clamp_technical(technical_accuracy),
         "technical_accuracy_100": round(technical_100, 2),
         "fusion": {
             "mode": mode,
@@ -602,9 +604,11 @@ def build_assessment(
     *,
     mode: str = MODE_WITHOUT,
     technical_accuracy: Optional[float] = None,
+    scale: Optional[MarkingScale] = None,
 ) -> Dict[str, Any]:
     if mode not in {MODE_WITHOUT, MODE_WITH}:
         mode = MODE_WITHOUT
+    scale = scale or MARKING_SCALE
 
     from services.pipeline_progress import emit
     from services.lip_motion_validation import classify_lip_motion_evidence, summarize_lip_motion
@@ -655,6 +659,7 @@ def build_assessment(
         mode=mode,
         ai_performance=performance.get("score"),
         technical_accuracy=tech_input,
+        scale=scale,
     )
     final_score = fused["final_score"] if validation["status"] == STATUS_VALID else None
     final_mark = fused.get("final_mark") if validation["status"] == STATUS_VALID else None
@@ -679,7 +684,7 @@ def build_assessment(
         "multi_face": multi_face,
         "ai_performance": {
             "score": performance.get("score"),
-            "mark": percent_to_mark(performance.get("score")),
+            "mark": percent_to_mark(performance.get("score"), scale),
             "family_scores": performance.get("family_scores"),
             "family_weights_applied": performance.get("family_weights_applied"),
             "components": performance.get("components"),
@@ -688,9 +693,9 @@ def build_assessment(
         "fusion": fused.get("fusion"),
         "final_score": final_score,
         "final_mark": final_mark,
-        "final_mark_max": MARKING_SCALE.mark_max,
-        "technical_max": MARKING_SCALE.technical_max,
-        "grade": resolve_grade_from_mark(final_mark),
+        "final_mark_max": scale.mark_max,
+        "technical_max": scale.technical_max,
+        "grade": resolve_grade_from_mark(final_mark, scale),
         "training_features": flatten_canonical_features(features),
     }
 
@@ -700,12 +705,14 @@ def attach_assessment(
     *,
     mode: str = MODE_WITHOUT,
     technical_accuracy: Optional[float] = None,
+    scale: Optional[MarkingScale] = None,
 ) -> Dict[str, Any]:
     enriched = dict(result)
     assessment = build_assessment(
         enriched,
         mode=mode,
         technical_accuracy=technical_accuracy,
+        scale=scale,
     )
     enriched["assessment"] = assessment
     if isinstance(assessment.get("lip_motion"), dict):

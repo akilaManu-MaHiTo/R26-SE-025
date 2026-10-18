@@ -10,7 +10,7 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
 import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "./viva/studentId";
-import { useMarkingScale } from "./viva/useMarkingScale";
+import { useMarkingScale, useVivaMarkingScale } from "./viva/useMarkingScale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { AIPageBanner } from "./AIBrand";
 import { ScoreOverview } from "./viva/ScoreOverview";
@@ -340,7 +340,8 @@ function ResultDetail({
   savingStudent,
   onBack,
 }: ResultDetailProps) {
-  const { technicalMax } = useMarkingScale();
+  // Mark this recording on the total its viva was marked out of (older marks: the scale they were given on).
+  const { technicalMax } = useVivaMarkingScale(doc.viva_total_marks ?? doc.final_mark_max);
   const stored = doc.result as unknown as AnalysisResult | undefined;
   // A technical draft has no mode on the mark itself until it is published, so fall
   // back to the mode saved inside the analysis (otherwise it would look non-technical

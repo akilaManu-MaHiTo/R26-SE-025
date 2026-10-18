@@ -19,6 +19,7 @@ from pymongo.errors import DuplicateKeyError
 from Gradex_AI_Server.app.auth import require_lecturer
 from Gradex_AI_Server.app.core.database import db_instance, ensure_marks_collection
 from VivaEvaluationEngine.services.assessment_scoring import MODE_WITH, MODE_WITHOUT
+from VivaEvaluationEngine.services.marking_scale import MARKING_SCALE, MarkingScale
 
 router = APIRouter(prefix="/api/vivas", tags=["vivas"], dependencies=[Depends(require_lecturer)])
 
@@ -35,6 +36,8 @@ MAX_SUBJECT_NAME_LENGTH = 120
 MAX_NOTES_LENGTH = 500
 MIN_YEAR, MAX_YEAR = 2000, 2100
 MIN_SEMESTER, MAX_SEMESTER = 1, 4
+# What the official mark of a viva can be out of (the lecturer chooses it per viva).
+MAX_VIVA_TOTAL_MARKS = 1000
 
 # Page size for the viva list.
 MAX_LIST_LIMIT = 200
@@ -79,7 +82,18 @@ class CreateVivaPayload(BaseModel):
     category: Literal["technical", "non_technical"]
     year: int = Field(ge=MIN_YEAR, le=MAX_YEAR)
     semester: int = Field(ge=MIN_SEMESTER, le=MAX_SEMESTER)
+    # What this viva is marked out of. Left out, the server default (VIVA_MARK_MAX) applies.
+    total_marks: Optional[float] = Field(default=None, gt=0, le=MAX_VIVA_TOTAL_MARKS)
     notes: Optional[str] = Field(default=None, max_length=MAX_NOTES_LENGTH)
+
+
+def scale_for_total(total: Optional[float]) -> MarkingScale:
+    """The marking scale for a viva total; the configured default when there is none."""
+    return MARKING_SCALE.for_total(total)
+
+
+def viva_scale(viva: Dict[str, Any]) -> MarkingScale:
+    return scale_for_total(viva.get("total_marks"))
 
 
 def mode_for_category(category: str) -> str:
@@ -113,6 +127,8 @@ def _public(doc: Dict[str, Any]) -> Dict[str, Any]:
     out["viva_id"] = str(doc["_id"])
     out["label"] = display_label(doc)
     out["assessment_mode"] = mode_for_category(doc.get("category", ""))
+    # Always present, so the client shows the scale the viva is really marked on.
+    out["total_marks"] = viva_scale(doc).mark_max
     created = out.get("created_at")
     if isinstance(created, datetime):
         out["created_at"] = created.isoformat()
@@ -166,6 +182,8 @@ def viva_extra_doc(viva: Dict[str, Any]) -> Dict[str, Any]:
         "subject_name": viva["subject_name"],
         "year": viva["year"],
         "semester": viva["semester"],
+        # The scale this mark is given on, kept with the mark so it never changes meaning later.
+        "viva_total_marks": viva_scale(viva).mark_max,
     }
 
 
@@ -202,6 +220,7 @@ async def create_viva(payload: CreateVivaPayload, request: Request):
         "category": payload.category,
         "year": payload.year,
         "semester": payload.semester,
+        "total_marks": payload.total_marks,
         "notes": (payload.notes or "").strip() or None,
         "examiner_email": examiner,
         "created_at": datetime.now(timezone.utc),

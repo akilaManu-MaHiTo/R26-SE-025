@@ -81,7 +81,8 @@ async def analyze_live_session(
     result = await run_analysis(video_path, progress_id=progress_id)
     result = attach_live_session(result, live)
     result = await attach_subject_technical_accuracy(
-        result, subject_code, db_instance, progress_id=progress_id
+        result, subject_code, db_instance, progress_id=progress_id,
+        total_marks=(viva_extra or {}).get("viva_total_marks"),
     )
 
     extra_doc: Dict[str, Any] = {
