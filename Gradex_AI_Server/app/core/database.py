@@ -91,7 +91,7 @@ async def _try_connect(source: str, url: str, db_name: str) -> None:
     await client.admin.command("ping")
     db_instance.client = client
     db_instance.db = client[db_name]
-    db_instance.marks_col = db_instance.db["marks"]
+    db_instance.marks_col = db_instance.db["viva_analysis_results"]
     db_instance.mongo_source = source
     db_instance.last_error = None
     await _ensure_marks_indexes()

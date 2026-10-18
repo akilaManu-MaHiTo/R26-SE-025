@@ -10,6 +10,7 @@ from threading import Thread
 from uuid import uuid4
 from typing import Any, Optional
 import os
+from dotenv import load_dotenv
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,9 +21,9 @@ from bson.errors import InvalidId
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENGINE_ROOT = PROJECT_ROOT / "DiagramEvaluationEngine"
-V2_ROOT = PROJECT_ROOT / "V2_QuestionExamPredictionEngine"
+ANALYTICS_ENGINE_ROOT = PROJECT_ROOT / "AdaptiveExamAnalyticsEngine"
 GRADING_ROOT = PROJECT_ROOT / "GradingEngine"
-for path in (PROJECT_ROOT, ENGINE_ROOT, V2_ROOT):
+for path in (PROJECT_ROOT, ENGINE_ROOT, ANALYTICS_ENGINE_ROOT):
     path_str = str(path)
     if path_str not in sys.path:
         sys.path.append(path_str)
@@ -48,11 +49,14 @@ from Gradex_AI_Server.app.mongodb import (
 )
 from DiagramEvaluationEngine.diagram_grading import grade_diagram_with_ollama
 from Gradex_AI_Server.app.analytics_api import router as analytics_router
-from Gradex_AI_Server.app.auth import configured_api_key, ensure_dev_api_key, require_api_key
+from Gradex_AI_Server.app.auth import require_lecturer
+from Gradex_AI_Server.app.exam_keys import router as exam_keys_router
+from Gradex_AI_Server.app.session_auth import setup_auth, initialize_auth, close_auth, allowed_origins
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
-from V2_QuestionExamPredictionEngine.app.api.dashboard import router as v2_student_router
-from V2_QuestionExamPredictionEngine.app.api.lecturer import router as v2_lecturer_router
+from AdaptiveExamAnalyticsEngine.app.api.dashboard import router as v2_student_router
+from AdaptiveExamAnalyticsEngine.app.api.lecturer import router as v2_lecturer_router
+from AdaptiveExamAnalyticsEngine.app.api.taxonomy import router as taxonomy_router
 
 
 MAX_VIVA_UPLOAD_BYTES = 1024 * 1024 * 1024
@@ -71,29 +75,33 @@ def _analyze_timeout_seconds() -> float:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if not configured_api_key():
-        ensure_dev_api_key()
+    await initialize_auth()
     await connect_to_mongo()
     await connect_grading_mongo()
     yield
     await close_grading_mongo()
     await close_mongo_connection()
+    close_auth()
 
 
+load_dotenv(Path(__file__).resolve().parent / ".env")
 app = FastAPI(title="Gradex AI Server", version="1.0.0", lifespan=lifespan)
+setup_auth(app)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=allowed_origins(),
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(analytics_router)
+app.include_router(exam_keys_router)
 app.include_router(viva_copilot_router)
 app.include_router(v2_lecturer_router, prefix="/api")
 app.include_router(v2_student_router, prefix="/api")
+app.include_router(taxonomy_router, dependencies=[Depends(require_lecturer)])
 
 setup_grading_api(app)
 
@@ -487,7 +495,7 @@ class SubjectRubricUpdatePayload(BaseModel):
     concepts: list[SubjectRubricConceptPayload]
 
 
-@app.post("/api/subject-content/upload", dependencies=[Depends(require_api_key)])
+@app.post("/api/subject-content/upload", dependencies=[Depends(require_lecturer)])
 async def upload_subject_content(
     file: UploadFile = File(...),
     subject_code: str = Form(...),
@@ -535,7 +543,7 @@ async def upload_subject_content(
         tmp_path.unlink(missing_ok=True)
 
 
-@app.get("/api/subject-content", dependencies=[Depends(require_api_key)])
+@app.get("/api/subject-content", dependencies=[Depends(require_lecturer)])
 async def list_subject_content():
     """Summaries of every stored subject rubric, newest first.
 
@@ -550,7 +558,7 @@ async def list_subject_content():
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@app.get("/api/subject-content/{subject_code}", dependencies=[Depends(require_api_key)])
+@app.get("/api/subject-content/{subject_code}", dependencies=[Depends(require_lecturer)])
 async def get_subject_content(subject_code: str):
     from Gradex_AI_Server.app.subject_rubric_service import get_subject_rubric
 
@@ -560,7 +568,7 @@ async def get_subject_content(subject_code: str):
     return rubric
 
 
-@app.put("/api/subject-content/{subject_code}", dependencies=[Depends(require_api_key)])
+@app.put("/api/subject-content/{subject_code}", dependencies=[Depends(require_lecturer)])
 async def update_subject_content(subject_code: str, payload: SubjectRubricUpdatePayload):
     """Lets a lecturer review/curate the AI-drafted concept rubric before it's
     used for grading."""
@@ -604,7 +612,7 @@ def _summarize_mark_document(document: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-@app.get("/api/viva-marks", dependencies=[Depends(require_api_key)])
+@app.get("/api/viva-marks", dependencies=[Depends(require_lecturer)])
 async def list_viva_marks(
     limit: int = 20,
     student_id: Optional[str] = None,
@@ -631,7 +639,7 @@ async def list_viva_marks(
     }
 
 
-@app.get("/api/viva-marks/{mark_id}", dependencies=[Depends(require_api_key)])
+@app.get("/api/viva-marks/{mark_id}", dependencies=[Depends(require_lecturer)])
 async def get_viva_mark(mark_id: str):
     """Fetch one saved viva mark by Mongo ObjectId."""
     marks_col = _require_marks_collection()
@@ -645,7 +653,7 @@ async def get_viva_mark(mark_id: str):
     return _json_safe(document)
 
 
-@app.patch("/api/viva-marks/{mark_id}/publish", dependencies=[Depends(require_api_key)])
+@app.patch("/api/viva-marks/{mark_id}/publish", dependencies=[Depends(require_lecturer)])
 async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
     """Persist published assessment: canonical X, human technical (or null), server-computed /100 + grade."""
     from Gradex_AI_Server.app.viva_marks import apply_publish_to_mark
@@ -683,7 +691,7 @@ async def publish_viva_mark(mark_id: str, payload: PublishVivaMarkPayload):
         ) from None
 
 
-@app.get("/api/viva-analyze/progress/{progress_id}", dependencies=[Depends(require_api_key)])
+@app.get("/api/viva-analyze/progress/{progress_id}", dependencies=[Depends(require_lecturer)])
 async def viva_analyze_progress(progress_id: str):
     """One-shot step list for the analyze UI.
 
@@ -706,7 +714,7 @@ _PROGRESS_KEEPALIVE_SECONDS = 15.0
 
 @app.get(
     "/api/viva-analyze/progress/{progress_id}/stream",
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_lecturer)],
 )
 async def viva_analyze_progress_stream(progress_id: str, request: Request):
     """Server-sent progress for the analyze UI -- one connection per analysis.
@@ -717,7 +725,7 @@ async def viva_analyze_progress_stream(progress_id: str, request: Request):
     changes and the server does no work in between.
 
     EventSource cannot set headers, so the API key arrives as ?api_key= --
-    require_api_key already accepts that form.
+    require_lecturer already accepts that form.
     """
     from Gradex_AI_Server.app.viva_progress import (
         normalize_progress_id,
@@ -763,7 +771,7 @@ async def viva_analyze_progress_stream(progress_id: str, request: Request):
     )
 
 
-@app.post("/api/viva-analyze", dependencies=[Depends(require_api_key)])
+@app.post("/api/viva-analyze", dependencies=[Depends(require_lecturer)])
 async def viva_analyze(
     video: UploadFile = File(...),
     assessment_mode: str = Form(default="WITHOUT_TECHNICAL_ACCURACY"),
@@ -858,7 +866,7 @@ async def viva_analyze(
         )
 
         print(f"[VIVA] Analysis complete in {analysis_time:.2f}s (Total: {total_time:.2f}s)")
-        # Persist to MongoDB (vivamark.marks) and auto-publish non-technical
+        # Persist to MongoDB (vivamark.viva_analysis_results) and auto-publish non-technical
         # vivas. Shared with the live-copilot path so both grade identically.
         result = await persist_and_autopublish(
             result,

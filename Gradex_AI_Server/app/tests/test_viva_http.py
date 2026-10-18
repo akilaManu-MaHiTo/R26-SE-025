@@ -20,7 +20,7 @@ from pydantic_core import PydanticUndefined
 from starlette.datastructures import Headers
 from starlette.requests import Request
 
-from Gradex_AI_Server.app.auth import require_api_key
+from Gradex_AI_Server.app.auth import require_lecturer
 from Gradex_AI_Server.app.core.database import db_instance
 from Gradex_AI_Server.app.main import (
     UPLOAD_DIR,
@@ -88,7 +88,7 @@ class AnalyzeTimeoutHelperTests(unittest.TestCase):
 
 
 class AuthTests(unittest.TestCase):
-    def test_missing_key_is_401(self):
+    def test_missing_session_is_401(self):
         scope = {
             "type": "http",
             "asgi": {"version": "3.0"},
@@ -103,12 +103,11 @@ class AuthTests(unittest.TestCase):
             "server": ("test", 80),
         }
         request = Request(scope)
-        with patch("Gradex_AI_Server.app.auth.configured_api_key", return_value="secret"):
-            with self.assertRaises(HTTPException) as ctx:
-                _run(require_api_key(request))
+        with self.assertRaises(HTTPException) as ctx:
+            _run(require_lecturer(request))
         self.assertEqual(ctx.exception.status_code, 401)
 
-    def test_matching_header_is_ok(self):
+    def test_authenticated_lecturer_is_ok(self):
         scope = {
             "type": "http",
             "asgi": {"version": "3.0"},
@@ -123,12 +122,12 @@ class AuthTests(unittest.TestCase):
             "server": ("test", 80),
         }
         request = Request(scope)
-        with patch("Gradex_AI_Server.app.auth.configured_api_key", return_value="secret"):
-            _run(require_api_key(request))
+        request.state.user = {"email": "teacher@example.edu", "role": "lecturer"}
+        _run(require_lecturer(request))
 
 
 class SubjectContentRouteAuthTests(unittest.TestCase):
-    """Route-level check (same style as require_api_key above — this repo has
+    """Route-level check (same style as require_lecturer above — this repo has
     no TestClient/ASGI-level HTTP tests elsewhere) that the three new
     subject-content endpoints actually carry the auth dependency, so an
     unauthenticated request would be rejected the same way /api/viva-analyze
@@ -141,20 +140,20 @@ class SubjectContentRouteAuthTests(unittest.TestCase):
                 return [dep.dependency.__name__ for dep in deps]
         raise AssertionError(f"No route registered for {method} {path}")
 
-    def test_upload_requires_api_key(self):
+    def test_upload_requires_lecturer(self):
         self.assertIn(
-            "require_api_key", self._route_dependency_names("/api/subject-content/upload", "POST")
+            "require_lecturer", self._route_dependency_names("/api/subject-content/upload", "POST")
         )
 
-    def test_get_requires_api_key(self):
+    def test_get_requires_lecturer(self):
         self.assertIn(
-            "require_api_key",
+            "require_lecturer",
             self._route_dependency_names("/api/subject-content/{subject_code}", "GET"),
         )
 
-    def test_put_requires_api_key(self):
+    def test_put_requires_lecturer(self):
         self.assertIn(
-            "require_api_key",
+            "require_lecturer",
             self._route_dependency_names("/api/subject-content/{subject_code}", "PUT"),
         )
 
@@ -164,7 +163,7 @@ class AnalyzeHttpTests(unittest.TestCase):
 
     viva_analyze calls ensure_marks_collection() before writing. With
     allow_autoconnect left on, that dials the real Atlas cluster, replaces any
-    injected marks_col, and inserts live rows into vivamark.marks — so these
+    injected marks_col, and inserts live rows into vivamark.viva_analysis_results — so these
     tests must disable it and clear the client for the ping guard.
     """
 

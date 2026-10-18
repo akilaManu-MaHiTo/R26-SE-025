@@ -1,0 +1,3352 @@
+[
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d02"
+    },
+    "student_id": "IT21230101",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d05"
+    },
+    "student_id": "IT21230102",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d08"
+    },
+    "student_id": "IT21230103",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d0b"
+    },
+    "student_id": "IT21230104",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d0e"
+    },
+    "student_id": "IT21230105",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d11"
+    },
+    "student_id": "IT21230106",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 18,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d14"
+    },
+    "student_id": "IT21230107",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 14,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Good design diagram; a minor element such as the index or the composite key annotation is missing.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d17"
+    },
+    "student_id": "IT21230108",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 11,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Recognisable design, but cardinalities, crow's-foot notation and some physical elements are only partly shown.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d1a"
+    },
+    "student_id": "IT21230109",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d1d"
+    },
+    "student_id": "IT21230110",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d20"
+    },
+    "student_id": "IT21230111",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d23"
+    },
+    "student_id": "IT21230112",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 18,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d26"
+    },
+    "student_id": "IT21230113",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d29"
+    },
+    "student_id": "IT21230114",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d2c"
+    },
+    "student_id": "IT21230115",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 17,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d2f"
+    },
+    "student_id": "IT21230116",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 14,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Good design diagram; a minor element such as the index or the composite key annotation is missing.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d32"
+    },
+    "student_id": "IT21230117",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d35"
+    },
+    "student_id": "IT21230118",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 14,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Good design diagram; a minor element such as the index or the composite key annotation is missing.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d38"
+    },
+    "student_id": "IT21230119",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d3b"
+    },
+    "student_id": "IT21230120",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d3e"
+    },
+    "student_id": "IT21230121",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 16,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Good design diagram; a minor element such as the index or the composite key annotation is missing.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d41"
+    },
+    "student_id": "IT21230122",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 15,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Good design diagram; a minor element such as the index or the composite key annotation is missing.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d44"
+    },
+    "student_id": "IT21230123",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 17,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d47"
+    },
+    "student_id": "IT21230124",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 13,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Good design diagram; a minor element such as the index or the composite key annotation is missing.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d4a"
+    },
+    "student_id": "IT21230125",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 14,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Good design diagram; a minor element such as the index or the composite key annotation is missing.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d4d"
+    },
+    "student_id": "IT21230126",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 9,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Recognisable design, but cardinalities, crow's-foot notation and some physical elements are only partly shown.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d50"
+    },
+    "student_id": "IT21230127",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 20,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d53"
+    },
+    "student_id": "IT21230128",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 19,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Complete design diagram with all entities, keys, cardinalities, the derived value, index and validation module clearly presented.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d56"
+    },
+    "student_id": "IT21230129",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 11,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Recognisable design, but cardinalities, crow's-foot notation and some physical elements are only partly shown.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d59"
+    },
+    "student_id": "IT21230130",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 14,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Good design diagram; a minor element such as the index or the composite key annotation is missing.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d5c"
+    },
+    "student_id": "IT21230131",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 15,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        }
+      ],
+      "overall_feedback": "Good design diagram; a minor element such as the index or the composite key annotation is missing.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d5f"
+    },
+    "student_id": "IT21230132",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 13,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Good design diagram; a minor element such as the index or the composite key annotation is missing.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d62"
+    },
+    "student_id": "IT21230133",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 7,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Partial diagram; most required entities, keys and relationships are missing or wrongly notated.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d65"
+    },
+    "student_id": "IT21230134",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 9,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Recognisable design, but cardinalities, crow's-foot notation and some physical elements are only partly shown.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d68"
+    },
+    "student_id": "IT21230135",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 6,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Partial diagram; most required entities, keys and relationships are missing or wrongly notated.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d6b"
+    },
+    "student_id": "IT21230136",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 4,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Diagram does not show the required entities, keys or relationships clearly enough to award marks.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d6e"
+    },
+    "student_id": "IT21230137",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 7,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Partial diagram; most required entities, keys and relationships are missing or wrongly notated.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d71"
+    },
+    "student_id": "IT21230138",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 10,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        }
+      ],
+      "overall_feedback": "Recognisable design, but cardinalities, crow's-foot notation and some physical elements are only partly shown.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d74"
+    },
+    "student_id": "IT21230139",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 3,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Diagram does not show the required entities, keys or relationships clearly enough to award marks.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d77"
+    },
+    "student_id": "IT21230140",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 9,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Recognisable design, but cardinalities, crow's-foot notation and some physical elements are only partly shown.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d7a"
+    },
+    "student_id": "IT21230141",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 3,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Diagram does not show the required entities, keys or relationships clearly enough to award marks.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d7d"
+    },
+    "student_id": "IT21230142",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 5,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Partial diagram; most required entities, keys and relationships are missing or wrongly notated.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d80"
+    },
+    "student_id": "IT21230143",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 1,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Diagram does not show the required entities, keys or relationships clearly enough to award marks.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d83"
+    },
+    "student_id": "IT21230144",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 5,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Partial diagram; most required entities, keys and relationships are missing or wrongly notated.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d86"
+    },
+    "student_id": "IT21230145",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 6,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 2,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 4,
+          "max_marks": 4,
+          "status": "pass",
+          "remarks": "Fully demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Partial diagram; most required entities, keys and relationships are missing or wrongly notated.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d89"
+    },
+    "student_id": "IT21230146",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 1,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Diagram does not show the required entities, keys or relationships clearly enough to award marks.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d8c"
+    },
+    "student_id": "IT21230147",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 3,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Diagram does not show the required entities, keys or relationships clearly enough to award marks.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d8f"
+    },
+    "student_id": "IT21230148",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 5,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 3,
+          "max_marks": 4,
+          "status": "partial",
+          "remarks": "Mostly correct with a minor omission"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Partial diagram; most required entities, keys and relationships are missing or wrongly notated.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d92"
+    },
+    "student_id": "IT21230149",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 3,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 1,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        }
+      ],
+      "overall_feedback": "Diagram does not show the required entities, keys or relationships clearly enough to award marks.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  },
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d95"
+    },
+    "student_id": "IT21230150",
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "exam_code": "IT2040-2022-FINAL",
+    "rubric_ref": "6c1149ab7d0e5c1a3f2b8d40",
+    "question_no": "05",
+    "evaluation_result": {
+      "total_score": 0,
+      "max_score": 20,
+      "criteria_results": [
+        {
+          "criterion_id": 1,
+          "criterion": "Creates all five core entities with the correct attributes",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 2,
+          "criterion": "Marks the primary, foreign and composite primary keys correctly",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 3,
+          "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Partially demonstrated"
+        },
+        {
+          "criterion_id": 4,
+          "criterion": "Includes the derived total order value, the index and the validation module",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        },
+        {
+          "criterion_id": 5,
+          "criterion": "Produces clear labels and a coherent design justification note",
+          "awarded_marks": 0,
+          "max_marks": 4,
+          "status": "fail",
+          "remarks": "Not demonstrated"
+        }
+      ],
+      "overall_feedback": "Diagram does not show the required entities, keys or relationships clearly enough to award marks.",
+      "grading_source": "sample-v4-diagram-evaluator"
+    },
+    "created_at": "2026-09-05T09:30:00+05:30",
+    "updated_at": "2026-09-05T11:45:00+05:30",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create"
+  }
+]

@@ -7,7 +7,7 @@ end-of-session analysis runs the *same* chain rather than a divergent copy:
       -> viva_service.analyze_video_file      (emotion / engagement / audio / LLM / QA)
       -> optional technical_accuracy_ai        (when subject_code has a rubric)
       -> assessment_scoring.attach_assessment  (official Stage-1 mark)
-      -> vivamark.marks persistence
+      -> vivamark.viva_analysis_results persistence
       -> auto-publish for WITHOUT_TECHNICAL_ACCURACY
 
 Callers differ only in `source` ("upload" vs "live_copilot") and in any extra
