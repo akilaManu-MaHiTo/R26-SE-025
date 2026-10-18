@@ -72,6 +72,12 @@ class FakeCol:
             doc.update(update.get("$set", {}))
         return SimpleNamespace(matched_count=1 if doc else 0)
 
+    async def delete_one(self, query):
+        doc = await self.find_one(query)
+        if doc:
+            self.docs.remove(doc)
+        return SimpleNamespace(deleted_count=1 if doc else 0)
+
     async def create_index(self, *_a, **_k):
         return None
 
@@ -548,6 +554,84 @@ class VivaFlowHttpTests(unittest.TestCase):
         for good in (20, 90):
             response = self._viva(name=f"P{good}", category="technical", subject_code="Cs3021", technical_percent=good)
             self.assertEqual(response.status_code, 200, good)
+
+    # --- editing and deleting a viva before any student is graded ---------------------------------
+    def _edit(self, viva_id, **overrides):
+        body = {
+            "name": "ER Viva",
+            "subject_code": "SE3040",
+            "subject_name": "Software Testing",
+            "category": "non_technical",
+            "year": 2026,
+            "semester": 2,
+        }
+        body.update(overrides)
+        return self.client.patch(f"/api/vivas/{viva_id}", json=body)
+
+    def test_a_viva_without_marks_can_be_corrected(self):
+        viva = self._viva(total_marks=20).json()
+        response = self._edit(viva["viva_id"], name="ER Viva B", subject_name="Testing", total_marks=50, semester=1)
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual((body["name"], body["subject_name"], body["total_marks"]), ("ER Viva B", "Testing", 50))
+        self.assertIn("ER Viva B", body["label"])
+        stored = self.client.get(f"/api/vivas/{viva['viva_id']}").json()
+        self.assertEqual((stored["total_marks"], stored["semester"]), (50, 1))
+
+    def test_changing_the_category_re_validates_the_technical_percentage(self):
+        technical = self._viva(category="technical", subject_code="Cs3021", technical_percent=70).json()
+        self.assertEqual(technical["technical_percent"], 70)
+        # Non-technical vivas have no technical share; sending one is refused.
+        refused = self._edit(technical["viva_id"], subject_code="Cs3021", technical_percent=70)
+        self.assertEqual(refused.status_code, 422)
+        # Switching to non-technical without a share clears it.
+        switched = self._edit(technical["viva_id"], subject_code="Cs3021")
+        self.assertEqual(switched.status_code, 200, switched.text)
+        self.assertIsNone(switched.json()["technical_percent"])
+        self.assertEqual(switched.json()["assessment_mode"], "WITHOUT_TECHNICAL_ACCURACY")
+
+    def test_a_viva_with_a_mark_is_locked(self):
+        viva = self._viva().json()
+        with self._real_analysis():
+            self.assertEqual(self._upload(viva["viva_id"]).status_code, 200)
+        edit = self._edit(viva["viva_id"], total_marks=99)
+        delete = self.client.delete(f"/api/vivas/{viva['viva_id']}")
+        self.assertEqual((edit.status_code, delete.status_code), (409, 409))
+        unchanged = self.client.get(f"/api/vivas/{viva['viva_id']}").json()
+        self.assertNotEqual(unchanged["total_marks"], 99)
+
+    def test_a_viva_without_marks_can_be_deleted(self):
+        viva = self._viva().json()
+        response = self.client.delete(f"/api/vivas/{viva['viva_id']}")
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(self.client.get(f"/api/vivas/{viva['viva_id']}").status_code, 404)
+        self.assertEqual(self.client.get("/api/vivas").json()["count"], 0)
+
+    def test_only_the_owner_can_edit_or_delete(self):
+        viva = self._viva().json()
+        self.user = LECTURER_B
+        self.assertEqual(self._edit(viva["viva_id"], name="Hijack").status_code, 403)
+        self.assertEqual(self.client.delete(f"/api/vivas/{viva['viva_id']}").status_code, 403)
+        self.user = STUDENT
+        self.assertEqual(self._edit(viva["viva_id"], name="Hijack").status_code, 403)
+        self.assertEqual(self.client.delete(f"/api/vivas/{viva['viva_id']}").status_code, 403)
+        self.user = LECTURER_A
+        self.assertEqual(self.client.get(f"/api/vivas/{viva['viva_id']}").json()["name"], "ER Viva")
+
+    def test_editing_cannot_create_a_duplicate_but_may_keep_its_own_name(self):
+        first = self._viva(name="One").json()
+        second = self._viva(name="Two").json()
+        self.assertEqual(self._edit(second["viva_id"], name="One").status_code, 409)
+        self.assertEqual(self._edit(first["viva_id"], name="One", total_marks=40).status_code, 200)
+
+    def test_edit_and_delete_reject_bad_input_and_unknown_ids(self):
+        viva = self._viva().json()
+        for bad in ({"total_marks": 0}, {"total_marks": 101}, {"technical_percent": 5}, {"name": ""}):
+            self.assertEqual(self._edit(viva["viva_id"], **bad).status_code, 422, bad)
+        self.assertEqual(self._edit("not-an-id").status_code, 400)
+        self.assertEqual(self._edit("000000000000000000000000").status_code, 404)
+        self.assertEqual(self.client.delete("/api/vivas/000000000000000000000000").status_code, 404)
+        self.assertEqual(self.client.delete("/api/vivas/not-an-id").status_code, 400)
 
     def test_total_marks_must_be_positive(self):
         for bad in (0, -5, 0.5, 101, 1001):

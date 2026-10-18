@@ -1,13 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
-import { AlertCircle, BarChart3, BookOpen, ChevronUp, Loader2, Plus, Radio, Upload } from "lucide-react";
+import { AlertCircle, BarChart3, BookOpen, ChevronUp, Loader2, Pencil, Plus, Radio, Save, Trash2, Upload } from "lucide-react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
-import { createViva, listVivas, type Viva, type VivaCategory } from "./viva/vivasApi";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
+import { createViva, deleteViva, listVivas, updateViva, type Viva, type VivaCategory } from "./viva/vivasApi";
 import { listSubjectContent, type SubjectRubricSummary } from "./viva/subjectContentApi";
 import { SubjectContentPage } from "./SubjectContentPage";
 
@@ -32,21 +43,28 @@ function raiseToMin(value: string, min: number): string {
   return value !== "" && Number(value) < min ? String(min) : value;
 }
 
-function CreateVivaForm({
+/**
+ * The viva details form. Without `viva` it creates one; with `viva` it edits that viva (the server
+ * only allows this while no student has a mark under it).
+ */
+function VivaForm({
   rubrics,
-  onCreated,
+  viva,
+  onSaved,
 }: {
   rubrics: SubjectRubricSummary[];
-  onCreated: (viva: Viva) => void;
+  viva?: Viva;
+  onSaved: (viva: Viva) => void;
 }) {
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState<VivaCategory>("non_technical");
-  const [subjectCode, setSubjectCode] = useState("");
-  const [subjectName, setSubjectName] = useState("");
-  const [year, setYear] = useState(String(new Date().getFullYear()));
-  const [semester, setSemester] = useState("1");
-  const [totalMarks, setTotalMarks] = useState("");
-  const [technicalPercent, setTechnicalPercent] = useState("50");
+  const editing = Boolean(viva);
+  const [name, setName] = useState(viva?.name ?? "");
+  const [category, setCategory] = useState<VivaCategory>(viva?.category ?? "non_technical");
+  const [subjectCode, setSubjectCode] = useState(viva?.subject_code ?? "");
+  const [subjectName, setSubjectName] = useState(viva?.subject_name ?? "");
+  const [year, setYear] = useState(String(viva?.year ?? new Date().getFullYear()));
+  const [semester, setSemester] = useState(String(viva?.semester ?? 1));
+  const [totalMarks, setTotalMarks] = useState(viva ? String(viva.total_marks) : "");
+  const [technicalPercent, setTechnicalPercent] = useState(String(viva?.technical_percent ?? 50));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -70,7 +88,7 @@ function CreateVivaForm({
     setError("");
     setSaving(true);
     try {
-      const viva = await createViva({
+      const input = {
         name: name.trim(),
         subject_code: subjectCode.trim(),
         subject_name: subjectName.trim(),
@@ -79,14 +97,17 @@ function CreateVivaForm({
         semester: Number(semester),
         total_marks: totalMarks.trim() ? Number(totalMarks) : undefined,
         technical_percent: technical ? Number(technicalPercent) : undefined,
-      });
-      toast.success(`Created ${viva.label}`);
-      setName("");
-      setTotalMarks("");
-      setTechnicalPercent("50");
-      onCreated(viva);
+      };
+      const saved = viva ? await updateViva(viva.viva_id, input) : await createViva(input);
+      toast.success(`${editing ? "Updated" : "Created"} ${saved.label}`);
+      if (!editing) {
+        setName("");
+        setTotalMarks("");
+        setTechnicalPercent("50");
+      }
+      onSaved(saved);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the viva");
+      setError(err instanceof Error ? err.message : `Could not ${editing ? "update" : "create"} the viva`);
     } finally {
       setSaving(false);
     }
@@ -109,185 +130,202 @@ function CreateVivaForm({
   );
 
   return (
-    <Card className="p-6">
-      {/* <h3 className="text-base font-medium text-foreground">Create a viveeea</h3> */}
-      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label className="text-xs text-muted-foreground" htmlFor="viva-name">
-            Viva name
-          </label>
-          <Input
-            id="viva-name"
-            className="mt-1"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. ER Viva, Group A"
-            maxLength={120}
-            required
-          />
-        </div>
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <label className="text-xs text-muted-foreground" htmlFor="viva-name">
+          Viva name
+        </label>
+        <Input
+          id="viva-name"
+          className="mt-1"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. ER Viva, Group A"
+          maxLength={120}
+          required
+        />
+      </div>
 
-        <div>
-          <label className="text-xs text-muted-foreground" htmlFor="viva-category">
-            Category
-          </label>
-          <select
-            id="viva-category"
-            className={SELECT_CLASS}
-            value={category}
-            onChange={(e) => changeCategory(e.target.value as VivaCategory)}
-          >
-            <option value="non_technical">Non-technical — communication / presentation</option>
-            <option value="technical">Technical — scored against a subject rubric</option>
-          </select>
-        </div>
+      <div>
+        <label className="text-xs text-muted-foreground" htmlFor="viva-category">
+          Category
+        </label>
+        <select
+          id="viva-category"
+          className={SELECT_CLASS}
+          value={category}
+          onChange={(e) => changeCategory(e.target.value as VivaCategory)}
+        >
+          <option value="non_technical">Non-technical — communication / presentation</option>
+          <option value="technical">Technical — scored against a subject rubric</option>
+        </select>
+      </div>
 
-        <div>
-          <label className="text-xs text-muted-foreground" htmlFor="viva-subject-code">
-            Subject code
-          </label>
-          <Input
-            id="viva-subject-code"
-            className="mt-1"
-            value={subjectCode}
-            onChange={(e) => changeSubjectCode(e.target.value)}
-            placeholder="e.g. SE3040"
-            maxLength={32}
-            list={technical ? "viva-subject-options" : undefined}
-            required
-          />
-          {technical && (
-            <>
-              <datalist id="viva-subject-options">
-                {rubrics.map((row) => (
-                  <option key={row.subject_code} value={row.subject_code}>
-                    {row.subject_name}
-                  </option>
-                ))}
-              </datalist>
-              <p className="text-xs text-muted-foreground mt-1">
-                Technical vivas are scored against the subject content (lecture PDFs). Add it right
-                after you create the viva, or pick a subject that already has it.
-              </p>
-            </>
-          )}
-        </div>
-
-        <div className="sm:col-span-2">
-          <label className="text-xs text-muted-foreground" htmlFor="viva-subject-name">
-            Subject name
-          </label>
-          <Input
-            id="viva-subject-name"
-            className="mt-1"
-            value={subjectName}
-            onChange={(e) => setSubjectName(e.target.value)}
-            placeholder="e.g. Software Testing"
-            maxLength={120}
-            required
-          />
-        </div>
-
-        <div>
-          <label className="text-xs text-muted-foreground" htmlFor="viva-year">
-            Year
-          </label>
-          <select
-            id="viva-year"
-            className={SELECT_CLASS}
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            required
-          >
-            {Array.from({ length: 101 }, (_, index) => {
-              const optionYear = 2000 + index;
-              return (
-                <option key={optionYear} value={optionYear}>
-                  {optionYear}
+      <div>
+        <label className="text-xs text-muted-foreground" htmlFor="viva-subject-code">
+          Subject code
+        </label>
+        <Input
+          id="viva-subject-code"
+          className="mt-1"
+          value={subjectCode}
+          onChange={(e) => changeSubjectCode(e.target.value)}
+          placeholder="e.g. SE3040"
+          maxLength={32}
+          list={technical ? "viva-subject-options" : undefined}
+          required
+        />
+        {technical && (
+          <>
+            <datalist id="viva-subject-options">
+              {rubrics.map((row) => (
+                <option key={row.subject_code} value={row.subject_code}>
+                  {row.subject_name}
                 </option>
-              );
-            })}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground" htmlFor="viva-semester">
-            Semester
-          </label>
-          <select
-            id="viva-semester"
-            className={SELECT_CLASS}
-            value={semester}
-            onChange={(e) => setSemester(e.target.value)}
-          >
-            <option value="1">Semester 1</option>
-            <option value="2">Semester 2</option>
-            <option value="3">Semester 3</option>
-            <option value="4">Semester 4</option>
-          </select>
-        </div>
+              ))}
+            </datalist>
+            <p className="text-xs text-muted-foreground mt-1">
+              Technical vivas are scored against the subject content (lecture PDFs). Add it right
+              after you create the viva, or pick a subject that already has it.
+            </p>
+          </>
+        )}
+      </div>
 
+      <div className="sm:col-span-2">
+        <label className="text-xs text-muted-foreground" htmlFor="viva-subject-name">
+          Subject name
+        </label>
+        <Input
+          id="viva-subject-name"
+          className="mt-1"
+          value={subjectName}
+          onChange={(e) => setSubjectName(e.target.value)}
+          placeholder="e.g. Software Testing"
+          maxLength={120}
+          required
+        />
+      </div>
+
+      <div>
+        <label className="text-xs text-muted-foreground" htmlFor="viva-year">
+          Year
+        </label>
+        <select
+          id="viva-year"
+          className={SELECT_CLASS}
+          value={year}
+          onChange={(e) => setYear(e.target.value)}
+          required
+        >
+          {Array.from({ length: 101 }, (_, index) => {
+            const optionYear = 2000 + index;
+            return (
+              <option key={optionYear} value={optionYear}>
+                {optionYear}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground" htmlFor="viva-semester">
+          Semester
+        </label>
+        <select
+          id="viva-semester"
+          className={SELECT_CLASS}
+          value={semester}
+          onChange={(e) => setSemester(e.target.value)}
+        >
+          <option value="1">Semester 1</option>
+          <option value="2">Semester 2</option>
+          <option value="3">Semester 3</option>
+          <option value="4">Semester 4</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="text-xs text-muted-foreground" htmlFor="viva-total-marks">
+          Total marks for this viva
+        </label>
+        <Input
+          id="viva-total-marks"
+          className="mt-1"
+          type="number"
+          inputMode="decimal"
+          min={TOTAL_MARKS_MIN}
+          max={TOTAL_MARKS_MAX}
+          step="any"
+          value={totalMarks}
+          onChange={(e) => setTotalMarks(limitMax(e.target.value, TOTAL_MARKS_MAX, true))}
+          onBlur={() => setTotalMarks((v) => raiseToMin(v, TOTAL_MARKS_MIN))}
+          placeholder="e.g. 20, 30, 50, 100"
+          aria-invalid={!totalMarksValid}
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Marks are given out of this. Leave empty for the system default.
+        </p>
+      </div>
+      {technical && (
         <div>
-          <label className="text-xs text-muted-foreground" htmlFor="viva-total-marks">
-            Total marks for this viva
+          <label className="text-xs text-muted-foreground" htmlFor="viva-technical-percent">
+            Technical accuracy share of the final mark (%)
           </label>
           <Input
-            id="viva-total-marks"
+            id="viva-technical-percent"
             className="mt-1"
             type="number"
-            inputMode="decimal"
-            min={TOTAL_MARKS_MIN}
-            max={TOTAL_MARKS_MAX}
-            step="any"
-            value={totalMarks}
-            onChange={(e) => setTotalMarks(limitMax(e.target.value, TOTAL_MARKS_MAX, true))}
-            onBlur={() => setTotalMarks((v) => raiseToMin(v, TOTAL_MARKS_MIN))}
-            placeholder="e.g. 20, 30, 50, 100"
-            aria-invalid={!totalMarksValid}
+            inputMode="numeric"
+            min={TECHNICAL_PERCENT_MIN}
+            max={TECHNICAL_PERCENT_MAX}
+            step={1}
+            value={technicalPercent}
+            onChange={(e) => setTechnicalPercent(limitMax(e.target.value, TECHNICAL_PERCENT_MAX, false))}
+            onBlur={() => setTechnicalPercent((v) => raiseToMin(v, TECHNICAL_PERCENT_MIN))}
+            aria-invalid={!technicalPercentValid}
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Marks are given out of this. Leave empty for the system default.
+            {technicalPercentValid
+              ? `Final mark = ${technicalPercentNumber}% technical accuracy + ${100 - technicalPercentNumber}% AI performance.`
+              : `Enter a whole number from ${TECHNICAL_PERCENT_MIN} to ${TECHNICAL_PERCENT_MAX}.`}{" "}
+            Default 50%.
           </p>
         </div>
-        {technical && (
-          <div>
-            <label className="text-xs text-muted-foreground" htmlFor="viva-technical-percent">
-              Technical accuracy share of the final mark (%)
-            </label>
-            <Input
-              id="viva-technical-percent"
-              className="mt-1"
-              type="number"
-              inputMode="numeric"
-              min={TECHNICAL_PERCENT_MIN}
-              max={TECHNICAL_PERCENT_MAX}
-              step={1}
-              value={technicalPercent}
-              onChange={(e) => setTechnicalPercent(limitMax(e.target.value, TECHNICAL_PERCENT_MAX, false))}
-              onBlur={() => setTechnicalPercent((v) => raiseToMin(v, TECHNICAL_PERCENT_MIN))}
-              aria-invalid={!technicalPercentValid}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              {technicalPercentValid
-                ? `Final mark = ${technicalPercentNumber}% technical accuracy + ${100 - technicalPercentNumber}% AI performance.`
-                : `Enter a whole number from ${TECHNICAL_PERCENT_MIN} to ${TECHNICAL_PERCENT_MAX}.`}{" "}
-              Default 50%.
-            </p>
-          </div>
-        )}
-        {error && (
-          <div className="sm:col-span-2 flex items-start gap-2 text-sm text-destructive">
-            <AlertCircle className="size-4 mt-0.5 shrink-0" />
-            {error}
-          </div>
-        )}
-
-        <div className="sm:col-span-2">
-          <Button type="submit" disabled={saving || !ready}>
-            {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-            Create viva
-          </Button>
+      )}
+      {error && (
+        <div className="sm:col-span-2 flex items-start gap-2 text-sm text-destructive">
+          <AlertCircle className="size-4 mt-0.5 shrink-0" />
+          {error}
         </div>
-      </form>
+      )}
+
+      <div className="sm:col-span-2">
+        <Button type="submit" disabled={saving || !ready}>
+          {saving ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : editing ? (
+            <Save className="size-4" />
+          ) : (
+            <Plus className="size-4" />
+          )}
+          {editing ? "Save changes" : "Create viva"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function CreateVivaForm({
+  rubrics,
+  onCreated,
+}: {
+  rubrics: SubjectRubricSummary[];
+  onCreated: (viva: Viva) => void;
+}) {
+  return (
+    <Card className="p-6">
+      <VivaForm rubrics={rubrics} onSaved={onCreated} />
     </Card>
   );
 }
@@ -295,17 +333,45 @@ function CreateVivaForm({
 function VivaCard({
   viva,
   rubric,
+  rubrics,
   expanded,
   onToggle,
   onRubricChanged,
+  onChanged,
 }: {
   viva: Viva;
   rubric: SubjectRubricSummary | undefined;
+  rubrics: SubjectRubricSummary[];
   expanded: boolean;
   onToggle: () => void;
   onRubricChanged: () => void;
+  /** The viva was edited or deleted: reload the list. */
+  onChanged: () => void;
 }) {
   const query = `?viva=${encodeURIComponent(viva.viva_id)}`;
+  // A viva can be corrected or removed only until the first student has a mark under it.
+  const editable = (viva.mark_count ?? 0) === 0;
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteViva(viva.viva_id);
+      toast.success(`Deleted ${viva.label}`);
+      setDeleteOpen(false);
+      onChanged();
+    } catch (err) {
+      toast.error("Could not delete the viva", {
+        description: err instanceof Error ? err.message : "Request failed",
+      });
+      // The server refuses when a mark appeared meanwhile; reload so the icons disappear.
+      onChanged();
+    } finally {
+      setDeleting(false);
+    }
+  };
   const technical = viva.category === "technical";
   // A technical viva cannot be analyzed until its subject content exists.
   const needsContent = technical && !rubric;
@@ -335,8 +401,80 @@ function VivaCard({
           <Badge variant="outline">
             {viva.mark_count ?? 0} analysed · {viva.published_count ?? 0} published
           </Badge>
+          {editable && (
+            <div className="flex items-center">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="size-8"
+                aria-label={`Edit ${viva.label}`}
+                title="Edit viva"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="size-8 text-destructive hover:text-destructive"
+                aria-label={`Delete ${viva.label}`}
+                title="Delete viva"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
+
+      {editable && (
+        <>
+          <Dialog open={editOpen} onOpenChange={setEditOpen}>
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Edit viva</DialogTitle>
+                <DialogDescription>
+                  You can change this until the first student is graded under it.
+                </DialogDescription>
+              </DialogHeader>
+              <VivaForm
+                rubrics={rubrics}
+                viva={viva}
+                onSaved={() => {
+                  setEditOpen(false);
+                  onChanged();
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this viva?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {viva.label} has no marks yet. Deleting it cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={deleting}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void confirmDelete();
+                  }}
+                >
+                  {deleting && <Loader2 className="size-4 animate-spin" />}
+                  Delete viva
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
 
       <div className="mt-3 flex flex-wrap gap-2">
         {technical && (
@@ -508,9 +646,11 @@ export function VivasPage() {
                       key={viva.viva_id}
                       viva={viva}
                       rubric={rubrics.find((row) => row.subject_code === viva.subject_code)}
+                      rubrics={rubrics}
                       expanded={expandedId === viva.viva_id}
                       onToggle={() => setExpandedId((current) => (current === viva.viva_id ? null : viva.viva_id))}
                       onRubricChanged={() => void refreshRubrics()}
+                      onChanged={() => void load()}
                     />
                   ))}
                 </div>

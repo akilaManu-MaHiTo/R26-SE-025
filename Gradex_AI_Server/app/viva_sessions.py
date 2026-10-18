@@ -77,6 +77,30 @@ async def _ensure_indexes(col) -> None:
         print(f"[VIVA] Warning: could not create the viva unique index ({type(exc).__name__})")
 
 
+async def _assert_unique(
+    col, examiner: str, name: str, code: str, payload: "CreateVivaPayload", own_id: Optional[ObjectId] = None
+) -> str:
+    """409 when this lecturer already has a viva with the same name, subject, year and semester.
+
+    Returns the normalised name key. `own_id` is the viva being edited, which never counts as a
+    duplicate of itself.
+    """
+    name_key = " ".join(name.lower().split())
+    duplicate = await col.find_one({
+        "examiner_email": examiner,
+        "name_key": name_key,
+        "subject_code": code,
+        "year": payload.year,
+        "semester": payload.semester,
+    })
+    if duplicate and duplicate["_id"] != own_id:
+        raise HTTPException(
+            status_code=409,
+            detail=f"You already created \"{name}\" for {code}, semester {payload.semester} {payload.year}.",
+        )
+    return name_key
+
+
 class CreateVivaPayload(BaseModel):
     name: str = Field(min_length=1, max_length=MAX_VIVA_NAME_LENGTH)
     subject_code: str = Field(min_length=1, max_length=MAX_SUBJECT_CODE_LENGTH)
@@ -216,19 +240,7 @@ async def create_viva(payload: CreateVivaPayload, request: Request):
 
     col = await _vivas_col()
     await _ensure_indexes(col)
-    name_key = " ".join(name.lower().split())
-    duplicate = await col.find_one({
-        "examiner_email": examiner,
-        "name_key": name_key,
-        "subject_code": code,
-        "year": payload.year,
-        "semester": payload.semester,
-    })
-    if duplicate:
-        raise HTTPException(
-            status_code=409,
-            detail=f"You already created \"{name}\" for {code}, semester {payload.semester} {payload.year}.",
-        )
+    name_key = await _assert_unique(col, examiner, name, code, payload)
     doc = {
         "name_key": name_key,
         "name": name,
@@ -293,6 +305,69 @@ async def list_vivas(
         item["published_count"] = stats["published"]
         items.append(item)
     return {"items": items, "count": len(items)}
+
+
+async def _load_editable_viva(col, viva_id: str, request: Request) -> Dict[str, Any]:
+    """The viva, if the signed-in lecturer owns it and no student has a mark under it yet.
+
+    Once any recording has been analysed under a viva its total marks, category and subject are
+    part of those marks' meaning, so the viva is locked. The UI hides the controls, this is the
+    rule that is actually enforced.
+    """
+    doc = await col.find_one({"_id": _parse_id(viva_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Viva not found.")
+    if doc.get("examiner_email") != _examiner(request):
+        raise HTTPException(status_code=403, detail="This viva belongs to another lecturer.")
+    marks_col = db_instance.marks_col
+    if marks_col is not None and await marks_col.find_one({"viva_id": str(doc["_id"])}):
+        raise HTTPException(
+            status_code=409,
+            detail="This viva already has marks, so it can no longer be edited or deleted.",
+        )
+    return doc
+
+
+@router.patch("/{viva_id}")
+async def update_viva(viva_id: str, payload: CreateVivaPayload, request: Request):
+    """Correct a viva's details. Only while no student has a mark under it."""
+    col = await _vivas_col()
+    doc = await _load_editable_viva(col, viva_id, request)
+    code = payload.subject_code.strip()
+    name = payload.name.strip()
+    subject_name = payload.subject_name.strip()
+    if not (code and name and subject_name):
+        raise HTTPException(status_code=400, detail="Name, subject code and subject name are required.")
+    if payload.technical_percent is not None and payload.category != CATEGORY_TECHNICAL:
+        raise HTTPException(status_code=422, detail="Technical percentage only applies to technical vivas.")
+    name_key = await _assert_unique(col, doc["examiner_email"], name, code, payload, own_id=doc["_id"])
+    changes = {
+        "name_key": name_key,
+        "name": name,
+        "subject_code": code,
+        "subject_name": subject_name,
+        "category": payload.category,
+        "year": payload.year,
+        "semester": payload.semester,
+        "total_marks": payload.total_marks,
+        "technical_percent": payload.technical_percent,
+        "notes": (payload.notes or "").strip() or None,
+        "updated_at": datetime.now(timezone.utc),
+    }
+    try:
+        await col.update_one({"_id": doc["_id"]}, {"$set": changes})
+    except DuplicateKeyError:
+        raise HTTPException(status_code=409, detail="This viva already exists.") from None
+    return _public({**doc, **changes})
+
+
+@router.delete("/{viva_id}")
+async def delete_viva(viva_id: str, request: Request):
+    """Delete a viva that has no marks yet (for example one created with a wrong subject)."""
+    col = await _vivas_col()
+    doc = await _load_editable_viva(col, viva_id, request)
+    await col.delete_one({"_id": doc["_id"]})
+    return {"deleted": True, "viva_id": str(doc["_id"])}
 
 
 @router.get("/{viva_id}")
