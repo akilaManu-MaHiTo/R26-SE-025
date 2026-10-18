@@ -19,6 +19,16 @@ test('the default scale is out of 20', () => {
   assert.equal(scale.decimals, 2);
 });
 
+test('the preview of a fused mark matches the mark the server publishes', () => {
+  // A real published mark: AI 69.04%, technical 18.5/50, 30% AI + 70% technical, out of 50.
+  // The server stores 46.61% and 23.3; the preview used to show 23.31.
+  useScale(50);
+  const weights = { weightAi: 0.3, weightTechnical: 0.7 };
+  assert.equal(api.fusePreviewMark(69.04, 18.5, weights), 23.3);
+  // A value exactly on a half rounds the same way the server's round() does.
+  assert.equal(api.percentToMark(46.61), 23.3);
+});
+
 test('percentToMark scales a 0-100 percentage to the mark (2 decimals)', () => {
   assert.equal(api.percentToMark(100), 20);
   assert.equal(api.percentToMark(0), 0);
