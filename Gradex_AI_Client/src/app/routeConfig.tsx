@@ -11,6 +11,7 @@ import { ExamCreator } from "./components/ExamCreator";
 import { VivaPage } from "./components/VivaPage";
 import { SubjectContentPage } from "./components/SubjectContentPage";
 import { TopicTaxonomyPage } from "./components/TopicTaxonomyPage";
+import { CourseMaterialsPage } from "./components/CourseMaterialsPage";
 import { LiveCopilotPage } from "./components/viva-copilot/LiveCopilotPage";
 
 export type AgentId = "diagram-evaluation" | "grading" | "question-exam" | "viva-evaluation";
@@ -103,6 +104,13 @@ export const AGENT_CONFIG: AgentConfig[] = [
         title: "Exam Creator",
         subtitle: "Compose balanced, level-appropriate exams",
         element: <ExamCreator />,
+      },
+      {
+        path: "/question-exam/course-materials",
+        label: "Course Materials",
+        title: "Course Materials",
+        subtitle: "Manage lectures, tutorials and previous exam PDFs for Exam Creator",
+        element: <CourseMaterialsPage />,
       },
       {
         path: "/question-exam/topic-taxonomy",

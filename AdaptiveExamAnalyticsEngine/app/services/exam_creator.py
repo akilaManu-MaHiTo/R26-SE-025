@@ -183,6 +183,8 @@ async def generate_for_paper(request: GenerateRequest, bank: list[dict]) -> dict
         "assessment_examples": examples,
         "historical_questions": [{**h, "question_text": h["question_text"][:1500]} for h in historical[:20]],
     }, count=request.count)
+    if result.get("context_truncated"):
+        retrieval["lectures"]["warnings"].append("A shortened selection of evidence and learning outcomes was sent to keep generation responsive. Upload long notes as PDFs for topic-based retrieval.")
     if result["status"] != "ok":
         return {"status": "degraded", "reason": result.get("reason", "generation_failed"),
                 "detail": result.get("detail"), "candidates": [], "retrieval": retrieval}

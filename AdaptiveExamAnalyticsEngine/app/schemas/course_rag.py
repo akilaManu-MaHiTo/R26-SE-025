@@ -35,3 +35,23 @@ class SearchResult(BaseModel):
     mode: Literal["hybrid", "keyword", "unavailable"]
     warnings: list[str] = Field(default_factory=list)
     sources: list[RetrievedSource] = Field(default_factory=list)
+
+
+class MaterialDocument(BaseModel):
+    document_id: str
+    course_code: str
+    document_type: DocumentType
+    filename: str
+    year: int | None = None
+    pages: int
+    chunks: int
+    empty_pages: list[int] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    mode: Literal["hybrid", "keyword"]
+    pdf_available: bool = False
+
+
+class MaterialInventory(BaseModel):
+    status: Literal["ok", "unavailable"]
+    items: list[MaterialDocument] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)

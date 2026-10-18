@@ -12,20 +12,21 @@ import fitz
 import numpy as np
 
 from app.config import settings
-from app.schemas.course_rag import RetrievedSource, SearchRequest, SearchResult
+from app.schemas.course_rag import RetrievedSource, SearchRequest, SearchResult, MaterialDocument, MaterialInventory
 
 logger = logging.getLogger(__name__)
 ENGINE_ROOT = Path(__file__).resolve().parents[2]
 CHUNK_CHARS = 1400
 OVERLAP = 200
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 STOP_WORDS = set("a an and are as at be by describe discuss explain for from how in is it of on or the to what with".split())
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS documents (
     id TEXT PRIMARY KEY, course_code TEXT NOT NULL, kind TEXT NOT NULL,
     filename TEXT NOT NULL, year INTEGER, checksum TEXT NOT NULL,
-    model TEXT NOT NULL, pages INTEGER NOT NULL, empty_pages TEXT NOT NULL
+    model TEXT NOT NULL, pages INTEGER NOT NULL, empty_pages TEXT NOT NULL,
+    warnings TEXT NOT NULL DEFAULT '[]', original_pdf BLOB
 );
 CREATE INDEX IF NOT EXISTS document_scope ON documents(course_code, kind);
 CREATE TABLE IF NOT EXISTS chunks (
@@ -76,7 +77,7 @@ def _unit_vectors(values, count):
 
 class CourseRag:
     def __init__(self, index_path=None, embedder=None, semantic=None):
-        self.index_path = Path(index_path or settings.course_rag_index or ENGINE_ROOT / ".cache/course_rag/index.sqlite3").resolve()
+        self.index_path = Path(index_path or settings.course_rag_index or ENGINE_ROOT / "storage/course_rag/index.sqlite3").resolve()
         self.semantic = settings.embedding_available if semantic is None else semantic
         self.model_name = settings.embedding_model
         self._embedder = embedder
@@ -101,19 +102,44 @@ class CourseRag:
         return db
 
     def index_pdf(self, path, course_code, document_type, year=None, *, rebuild=False):
-        scope = SearchRequest(course_code=course_code, query="index", document_types=[document_type])
         path = Path(path)
-        if path.suffix.lower() != ".pdf":
-            raise ValueError("Only PDF source files can be indexed")
-        content = path.read_bytes()
+        return self.index_bytes(path.read_bytes(), path.name, course_code, document_type, year, rebuild=rebuild)
+
+    def _prepare_schema(self, db):
+        version = db.execute("PRAGMA user_version").fetchone()[0]
+        if version not in (0, 1, SCHEMA_VERSION):
+            raise ValueError("Unsupported course RAG index version; use a new index path")
+        db.executescript(SCHEMA)
+        columns = {r["name"] for r in db.execute("PRAGMA table_info(documents)")}
+        with db:
+            if "warnings" not in columns:
+                db.execute("ALTER TABLE documents ADD COLUMN warnings TEXT NOT NULL DEFAULT '[]'")
+            if "original_pdf" not in columns:
+                db.execute("ALTER TABLE documents ADD COLUMN original_pdf BLOB")
+            db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+
+    def index_bytes(self, content, filename, course_code, document_type, year=None, *, rebuild=False,
+                    overwrite=True, require_existing=False):
+        scope = SearchRequest(course_code=course_code, query="index", document_types=[document_type])
+        if not filename or len(filename) > 255 or re.search(r'[<>:"/\\|?*\x00-\x1f]', filename) or not filename.lower().endswith(".pdf"):
+            raise ValueError("Provide a PDF filename without path characters")
         checksum = sha256(content).hexdigest()
-        identity = sha256(f"{scope.course_code}:{document_type}:{path.name}".encode()).hexdigest()[:24]
+        identity = sha256(f"{scope.course_code}:{document_type}:{filename}".encode()).hexdigest()[:24]
         model = self.model_name if self.semantic else ""
-        if self.index_path.exists() and not rebuild:
-            with closing(self._connect()) as db:
-                old = db.execute("SELECT * FROM documents WHERE id=?", (identity,)).fetchone()
-            if old and old["checksum"] == checksum and old["model"] == model and old["year"] == year:
-                return {"status": "unchanged", "filename": path.name}
+        with closing(self._connect(write=True)) as db:
+            self._prepare_schema(db)
+            old = db.execute("SELECT checksum, model, year FROM documents WHERE id=?", (identity,)).fetchone()
+            if old and not overwrite:
+                raise FileExistsError("This PDF is already indexed for this course and type. Use Replace to update it.")
+            if not old and require_existing:
+                raise FileNotFoundError("This material no longer exists")
+            if not rebuild and old and old["checksum"] == checksum and old["model"] == model and old["year"] == year:
+                with db:
+                    matched = db.execute("""UPDATE documents SET original_pdf=?
+                        WHERE id=? AND checksum=? AND model=? AND year IS ?""",
+                        (content, identity, checksum, model, year)).rowcount
+                if matched:
+                    return {"status": "unchanged", "filename": filename, "document_id": identity}
 
         chunks, empty_pages, warnings = [], [], []
         try:
@@ -131,9 +157,9 @@ class CourseRag:
                     for position, chunk in enumerate(page_chunks(text)):
                         chunks.append((number, position, chunk))
         except Exception as exc:
-            raise ValueError(f"Could not extract {path.name}: {exc}") from exc
+            raise ValueError(f"Could not extract {filename}: {exc}") from exc
         if not chunks:
-            raise ValueError(f"No usable text in {path.name}; OCR is not included")
+            raise ValueError(f"No usable text in {filename}; OCR is not included")
         vectors = [None] * len(chunks)
         if self.semantic:
             # Prepare before replacing: a model failure must preserve an existing index entry.
@@ -141,21 +167,61 @@ class CourseRag:
             vectors = [vector.tobytes() for vector in encoded]
 
         with closing(self._connect(write=True)) as db:
-            version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, SCHEMA_VERSION):
-                raise ValueError("Unsupported course RAG index version; use a new index path")
-            db.executescript(SCHEMA)
-            db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             with db:
+                # Serialize existence checks with writes so a concurrent upload/delete cannot be undone.
+                db.execute("BEGIN IMMEDIATE")
+                exists = db.execute("SELECT 1 FROM documents WHERE id=?", (identity,)).fetchone()
+                if exists and not overwrite:
+                    raise FileExistsError("This PDF was already uploaded. Use Replace to update it.")
+                if not exists and require_existing:
+                    raise FileNotFoundError("This material no longer exists")
                 db.execute("DELETE FROM documents WHERE id=?", (identity,))
-                db.execute("INSERT INTO documents VALUES (?,?,?,?,?,?,?,?,?)", (
-                    identity, scope.course_code, document_type, path.name, year, checksum,
-                    model, pages, json.dumps(empty_pages)))
+                db.execute("INSERT INTO documents VALUES (?,?,?,?,?,?,?,?,?,?,?)", (
+                    identity, scope.course_code, document_type, filename, year, checksum,
+                    model, pages, json.dumps(empty_pages), json.dumps(warnings), content))
                 db.executemany("INSERT INTO chunks VALUES (?,?,?,?,?,?)", [
                     (f"{identity}:p{page}:c{position}", identity, page, position, text, vector)
                     for (page, position, text), vector in zip(chunks, vectors)])
-        return {"status": "indexed", "filename": path.name, "pages": pages, "chunks": len(chunks),
+        return {"status": "indexed", "document_id": identity, "filename": filename, "pages": pages, "chunks": len(chunks),
                 "empty_pages": empty_pages, "warnings": warnings, "mode": "hybrid" if model else "keyword"}
+
+    def list_documents(self):
+        if not self.index_path.is_file():
+            return MaterialInventory(status="unavailable", warnings=["No analytics material index yet. Upload a PDF to create it."])
+        try:
+            with closing(self._connect()) as db:
+                db.execute("BEGIN")
+                if db.execute("PRAGMA user_version").fetchone()[0] not in (1, SCHEMA_VERSION):
+                    raise ValueError("Unsupported material index version")
+                columns = {r["name"] for r in db.execute("PRAGMA table_info(documents)")}
+                warnings = "d.warnings" if "warnings" in columns else "'[]'"
+                pdf_available = "d.original_pdf IS NOT NULL" if "original_pdf" in columns else "0"
+                rows = db.execute(f"""SELECT d.id, d.course_code, d.kind, d.filename, d.year,
+                    d.pages, d.empty_pages, d.model, {warnings} AS warnings, {pdf_available} AS pdf_available,
+                    count(c.id) AS chunks FROM documents d LEFT JOIN chunks c ON c.document_id=d.id
+                    GROUP BY d.id ORDER BY d.course_code, d.kind, d.filename""").fetchall()
+                items = [MaterialDocument(document_id=r["id"], course_code=r["course_code"], document_type=r["kind"],
+                    filename=r["filename"], year=r["year"], pages=r["pages"], chunks=r["chunks"],
+                    empty_pages=json.loads(r["empty_pages"]), warnings=json.loads(r["warnings"]),
+                    pdf_available=bool(r["pdf_available"]), mode="hybrid" if r["model"] else "keyword") for r in rows]
+            return MaterialInventory(status="ok", items=items)
+        except (sqlite3.Error, OSError, ValueError) as exc:
+            logger.warning("Analytics material inventory unavailable: %s", exc)
+            return MaterialInventory(status="unavailable", warnings=["The analytics material index could not be read. Check the server index configuration."])
+
+    def document_pdf(self, document_id):
+        with closing(self._connect()) as db:
+            columns = {r["name"] for r in db.execute("PRAGMA table_info(documents)")}
+            if "original_pdf" not in columns:
+                return None
+            row = db.execute("SELECT original_pdf FROM documents WHERE id=?", (document_id,)).fetchone()
+            return row[0] if row else None
+
+    def delete_document(self, document_id):
+        if not self.index_path.is_file():
+            return False
+        with closing(self._connect(write=True)) as db, db:
+            return db.execute("DELETE FROM documents WHERE id=?", (document_id,)).rowcount > 0
 
     def search(self, request: SearchRequest) -> SearchResult:
         if not self.index_path.is_file():
@@ -165,7 +231,7 @@ class CourseRag:
             with closing(self._connect()) as db:
                 # Keep scoped rows and FTS hits consistent while an importer commits new chunks.
                 db.execute("BEGIN")
-                if db.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
+                if db.execute("PRAGMA user_version").fetchone()[0] not in (1, SCHEMA_VERSION):
                     raise ValueError("Course material index version is unsupported")
                 return self._search(db, request)
         except (sqlite3.Error, OSError, ValueError) as exc:
