@@ -6,10 +6,17 @@ probing questions for the viva examiner/teacher to ask next.
 from __future__ import annotations
 
 import json
-import os
 import re
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence
+
+from services.llm_common import (
+    COPILOT_API_KEY_ENV_VARS,
+    COPILOT_MODEL_ENV_VARS,
+    extract_json_object as _extract_json_object,
+    post_chat_completion,
+    resolve_api_key,
+    resolve_model_name,
+)
 
 
 BLOOM_LEVELS = frozenset({"Understand", "Apply", "Analyze", "Evaluate", "Remember", "Create"})
@@ -17,49 +24,12 @@ DIFFICULTIES = frozenset({"basic", "intermediate", "advanced"})
 PRIORITIES = frozenset({"high", "medium", "low"})
 PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
-_ENV_LOADED = False
-
-
-def _load_env_files() -> None:
-    """Load local .env files if not already populated."""
-    global _ENV_LOADED
-    if _ENV_LOADED:
-        return
-    _ENV_LOADED = True
-    engine_root = Path(__file__).resolve().parents[1]
-    candidates = [
-        engine_root / ".env",
-        engine_root.parent / "Gradex_AI_Server" / "app" / ".env",
-    ]
-    for path in candidates:
-        if not path.is_file():
-            continue
-        try:
-            for raw in path.read_text(encoding="utf-8").splitlines():
-                line = raw.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, value = line.split("=", 1)
-                key = key.strip()
-                value = value.strip().strip('"').strip("'")
-                if key and key not in os.environ:
-                    os.environ[key] = value
-        except OSError:
-            continue
-
-
 def get_api_key() -> Optional[str]:
-    _load_env_files()
-    for name in ("VIVA_LLM_API_KEY", "VIVA_COPILOT_API_KEY", "GROQ_API_KEY", "AI_API_KEY", "BACKUP_API_KEY"):
-        value = os.getenv(name)
-        if value and value.strip():
-            return value.strip()
-    return None
+    return resolve_api_key(COPILOT_API_KEY_ENV_VARS)
 
 
 def get_model_name() -> str:
-    _load_env_files()
-    return os.getenv("VIVA_COPILOT_LLM_MODEL") or os.getenv("VIVA_LLM_MODEL") or os.getenv("GROQ_MODEL") or "openai/gpt-oss-20b"
+    return resolve_model_name(COPILOT_MODEL_ENV_VARS)
 
 
 SYSTEM_PROMPT = """You are an expert academic viva examiner copilot assistant.
@@ -103,28 +73,6 @@ Return STRICT JSON only matching this schema:
 ChatFn = Callable[[str, Dict[str, Any]], str]
 
 
-def _extract_json_object(raw_text: str) -> Optional[Dict[str, Any]]:
-    if not raw_text:
-        return None
-    text = raw_text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
-        text = re.sub(r"\s*```$", "", text)
-    try:
-        parsed = json.loads(text)
-        return parsed if isinstance(parsed, dict) else None
-    except json.JSONDecodeError:
-        pass
-    match = re.search(r"\{[\s\S]*\}", text)
-    if not match:
-        return None
-    try:
-        parsed = json.loads(match.group(0))
-        return parsed if isinstance(parsed, dict) else None
-    except json.JSONDecodeError:
-        return None
-
-
 def _normalize_text(text: str) -> str:
     cleaned = re.sub(r"[^\w\s]", " ", str(text or "").lower())
     return " ".join(cleaned.split())
@@ -143,26 +91,14 @@ def _is_similar(q1: str, q2: str) -> bool:
     return overlap >= 0.80
 
 
-def get_llm_base_url() -> str:
-    _load_env_files()
-    base = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or os.getenv("VIVA_LLM_BASE_URL") or "https://api.groq.com/openai/v1").rstrip("/")
-    if base.endswith("/chat/completions"):
-        return base
-    return f"{base}/chat/completions"
-
-
 def _default_chat_call(system_prompt: str, payload: Dict[str, Any]) -> str:
-    """Execute standard HTTPS POST to Groq / OpenAI compatible endpoint without extra third-party SDK."""
-    import urllib.error
-    import urllib.request
-
+    """One chat-completion call to the configured OpenAI-compatible (Groq by default) endpoint."""
     key = get_api_key()
     if not key:
         raise RuntimeError("No LLM API key configured (set AI_API_KEY or GROQ_API_KEY)")
 
-    model = get_model_name()
     body = {
-        "model": model,
+        "model": get_model_name(),
         "temperature": 0.2,
         "stream": False,
         "response_format": {"type": "json_object"},
@@ -171,20 +107,7 @@ def _default_chat_call(system_prompt: str, payload: Dict[str, Any]) -> str:
             {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
         ],
     }
-    req = urllib.request.Request(
-        get_llm_base_url(),
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-            "User-Agent": "VivaEvaluationEngine/1.0",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=12) as response:
-        data = json.loads(response.read().decode("utf-8"))
-        return data["choices"][0]["message"]["content"]
-
+    return post_chat_completion(body, key, timeout=12)
 
 
 class LiveQuestionRecommender:
@@ -374,7 +297,3 @@ class LiveQuestionRecommender:
             asked_questions=asked_questions,
         )
 
-
-def get_model_name() -> str:
-    _load_env_files()
-    return os.getenv("VIVA_COPILOT_LLM_MODEL") or os.getenv("VIVA_LLM_MODEL") or os.getenv("GROQ_MODEL") or "openai/gpt-oss-20b"

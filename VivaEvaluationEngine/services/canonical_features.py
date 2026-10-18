@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from config import EMOTION_ENGAGEMENT_MAP, canonical_emotion_label
+from services.normalization import blink_rate_score
+
 
 FEATURE_SCHEMA_VERSION = "v1"
 
@@ -45,6 +48,11 @@ def extract_canonical_features(result: Dict[str, Any]) -> Dict[str, Any]:
     acoustics = audio.get("acoustic_features") or {}
     transcript_features = audio.get("transcript_features") or {}
     audio_emotion = audio.get("audio_emotion") or {}
+    video_features = result.get("video_features") or {}
+    emotion_f = video_features.get("emotion") or {}
+    gaze_f = video_features.get("gaze") or {}
+    head_f = video_features.get("head_pose") or {}
+    blink_f = video_features.get("blink") or {}
     ser_source = str(audio_emotion.get("source") or "").strip().lower()
 
     return {
@@ -94,6 +102,25 @@ def extract_canonical_features(result: Dict[str, Any]) -> Dict[str, Any]:
             "blinks_per_minute": _f(coverage.get("blinks_per_minute"))
             if coverage.get("blinks_measured")
             else None,
+            # Facial behaviour signals (scored inside the engagement family, v1.2+).
+            "emotion_profile_score": (
+                _clamp01(_f(emotion_f.get("score"))) if emotion_f.get("status") == "available" else None
+            ),
+            "gaze_on_camera_ratio": (
+                _clamp01(_f(gaze_f.get("gaze_on_camera_ratio")))
+                if gaze_f.get("status") == "available"
+                else None
+            ),
+            "head_stability": (
+                _clamp01(_f(head_f.get("stability_score") if head_f.get("stability_score") is not None else head_f.get("head_stability")))
+                if head_f.get("status") == "available"
+                else None
+            ),
+            "blink_score": (
+                _clamp01(blink_rate_score(_f(blink_f.get("blink_rate_per_minute"))))
+                if blink_f.get("status") == "available"
+                else None
+            ),
         },
         "audio": {
             "pitch_std_hz": _f(acoustics.get("pitch_std_hz")),
@@ -124,6 +151,15 @@ def extract_canonical_features(result: Dict[str, Any]) -> Dict[str, Any]:
             "confidence": _f(audio_emotion.get("confidence")),
             "backend": audio_emotion.get("backend"),
             "model": audio_emotion.get("model"),
+            # Voice emotion mapped to a 0-1 tone score with the same label map as
+            # facial emotion. Only from the real SER model, never the heuristic fallback.
+            "tone_score": (
+                EMOTION_ENGAGEMENT_MAP.get(
+                    canonical_emotion_label(str(audio_emotion.get("predicted_emotion") or "")), None
+                )
+                if ser_source == "model"
+                else None
+            ),
         },
     }
 

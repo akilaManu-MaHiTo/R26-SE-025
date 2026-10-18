@@ -59,7 +59,10 @@ def _mongo_url() -> str:
 
 def _database_name() -> str:
     _load_env_files()
-    return _strip_env(os.getenv("DATABASE_NAME")) or "Grading"
+    # app/.env wins: GradingEngine is preloaded first and exports its own
+    # DATABASE_NAME (Grading) into os.environ, which load_dotenv won't override.
+    app_value = _strip_env(dotenv_values(_APP_ENV).get("DATABASE_NAME")) if _APP_ENV.is_file() else ""
+    return app_value or _strip_env(os.getenv("DATABASE_NAME")) or "Grading"
 
 
 def _mongo_url_candidates() -> list[tuple[str, str]]:

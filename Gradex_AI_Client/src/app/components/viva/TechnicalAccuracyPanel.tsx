@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Progress } from "../ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
-import { TechnicalAccuracyAI, TechnicalAccuracyConcept } from "./types";
+import { TechnicalAccuracyAI, TechnicalAccuracyConcept, suggestedTechnicalMark } from "./types";
+import { useMarkingScale } from "./useMarkingScale";
 
 interface TechnicalAccuracyPanelProps {
   evaluation?: TechnicalAccuracyAI;
@@ -15,18 +17,29 @@ interface TechnicalAccuracyPanelProps {
  * per-concept evidence, computed against a lecturer-uploaded subject rubric
  * (see /api/subject-content). This never publishes anything itself — it is
  * shown next to the examiner's own "Technical Knowledge" slider in
- * EvaluationPanel.tsx, which pre-fills from overall_score but stays editable.
+ * EvaluationPanel.tsx, which pre-fills from the suggestion but stays editable.
  *
- * A rubric can hold hundreds of concepts, so this deliberately does NOT render
- * one row per concept. What an examiner needs is the coverage summary and the
- * concepts the student actually engaged with; everything untouched is a long
- * tail that is counted, summarised, and collapsed behind a disclosure.
+ * A rubric can hold hundreds of concepts, and a student can cover most of them, so the panel
+ * must stay the same height however many concepts there are:
+ *   - the score and the coverage summary are always visible and fixed in size;
+ *   - the per-concept evidence sits behind one disclosure, closed by default;
+ *   - opened, it scrolls inside a height-limited box and each group pages in `PAGE_SIZE` rows at
+ *     a time, with search for the big rubrics.
+ * Otherwise the examiner's score slider and the Publish button get pushed off the screen.
  */
 
-/** Rows worth showing without being asked: anything the student engaged with. */
-const PREVIEW_LIMIT = 25;
+/** Rows shown per group before "Show more". */
+const PAGE_SIZE = 10;
+/** Search is only worth its space once the list is longer than a screenful. */
+const SEARCH_THRESHOLD = 12;
 
 type Bucket = "incorrect" | "covered" | "missed";
+
+const GROUP_LABELS: Record<Bucket, string> = {
+  incorrect: "Answered incorrectly",
+  covered: "Covered correctly",
+  missed: "Not covered",
+};
 
 function bucketOf(concept: TechnicalAccuracyConcept): Bucket {
   if (!concept.covered) return "missed";
@@ -69,8 +82,43 @@ function ConceptRow({ concept }: { concept: TechnicalAccuracyConcept }) {
   );
 }
 
+/** One group of concepts that reveals `PAGE_SIZE` more rows each time it is asked to. */
+function ConceptGroup({
+  title,
+  concepts,
+}: {
+  title: string;
+  concepts: TechnicalAccuracyConcept[];
+}) {
+  const [shown, setShown] = useState(PAGE_SIZE);
+  if (concepts.length === 0) return null;
+  const remaining = concepts.length - shown;
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-medium text-foreground pt-1">
+        {title} ({concepts.length})
+      </div>
+      {concepts.slice(0, shown).map((concept) => (
+        <ConceptRow key={concept.concept_id} concept={concept} />
+      ))}
+      {remaining > 0 && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 w-full text-xs"
+          onClick={() => setShown((count) => count + PAGE_SIZE)}
+        >
+          Show {Math.min(PAGE_SIZE, remaining)} more ({remaining} left)
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function TechnicalAccuracyPanel({ evaluation }: TechnicalAccuracyPanelProps) {
   const [query, setQuery] = useState("");
+  const { technicalMax } = useMarkingScale();
 
   const concepts = useMemo(() => evaluation?.concepts ?? [], [evaluation]);
 
@@ -136,12 +184,12 @@ export function TechnicalAccuracyPanel({ evaluation }: TechnicalAccuracyPanelPro
         )}
       </div>
 
-      {evaluation.overall_score != null && (
+      {suggestedTechnicalMark(evaluation) != null && (
         <div className="text-sm font-semibold text-foreground">
-          {evaluation.overall_score.toFixed(1)}
+          {suggestedTechnicalMark(evaluation)!.toFixed(1)}
           <span className="text-xs font-normal text-muted-foreground">
             {" "}
-            / 10 — suggestion only, review before publishing
+            / {technicalMax} — suggestion only, review before publishing
           </span>
         </div>
       )}
@@ -149,7 +197,7 @@ export function TechnicalAccuracyPanel({ evaluation }: TechnicalAccuracyPanelPro
         <p className="text-xs text-amber-700 dark:text-amber-400">{evaluation.error}</p>
       )}
 
-      {/* Coverage summary: the part that stays readable at any rubric size. */}
+      {/* Coverage summary: fixed size, readable at any rubric size. */}
       <div className="rounded-lg border border-border p-3 space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">Concept coverage</span>
@@ -173,88 +221,50 @@ export function TechnicalAccuracyPanel({ evaluation }: TechnicalAccuracyPanelPro
         </div>
       </div>
 
-      {/* Search: the only practical way through a very large rubric. */}
-      {total > PREVIEW_LIMIT && (
-        <div className="relative">
-          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={`Search ${total} concepts…`}
-            className="pl-8 h-8 text-xs"
-            aria-label="Search concepts"
-          />
-        </div>
-      )}
-
-      {matches ? (
-        <div className="space-y-2">
-          {matches.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No concept matches "{query}".</p>
-          ) : (
-            matches
-              .slice(0, PREVIEW_LIMIT)
-              .map((concept) => <ConceptRow key={concept.concept_id} concept={concept} />)
-          )}
-          {matches.length > PREVIEW_LIMIT && (
-            <p className="text-xs text-muted-foreground">
-              Showing {PREVIEW_LIMIT} of {matches.length} matches — refine the search to narrow it.
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {groups.incorrect.length > 0 && (
-            <>
-              <div className="text-xs font-medium text-foreground pt-1">
-                Answered incorrectly ({groups.incorrect.length})
+      {/* Per-concept evidence: closed by default, and scrolls inside a fixed-height box. */}
+      {total > 0 && (
+        <Collapsible>
+          <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-left transition-colors hover:bg-muted/50">
+            <span className="text-xs font-medium text-foreground">View concept details ({total})</span>
+            <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 pt-2">
+            {total > SEARCH_THRESHOLD && (
+              <div className="relative">
+                <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={`Search ${total} concepts…`}
+                  className="pl-8 h-8 text-xs"
+                  aria-label="Search concepts"
+                />
               </div>
-              {groups.incorrect.map((concept) => (
-                <ConceptRow key={concept.concept_id} concept={concept} />
-              ))}
-            </>
-          )}
+            )}
 
-          {groups.covered.length > 0 && (
-            <>
-              <div className="text-xs font-medium text-foreground pt-1">
-                Covered correctly ({groups.covered.length})
-              </div>
-              {groups.covered.map((concept) => (
-                <ConceptRow key={concept.concept_id} concept={concept} />
-              ))}
-            </>
-          )}
-
-          {engaged === 0 && (
-            <p className="text-sm text-muted-foreground">
-              The transcript did not touch any concept in this rubric.
-            </p>
-          )}
-
-          {/* The long tail. Counted and weighted, but never worth scrolling. */}
-          {groups.missed.length > 0 && (
-            <Collapsible>
-              <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-left transition-colors hover:bg-muted/50">
-                <span className="text-xs font-medium text-foreground">
-                  Not covered ({groups.missed.length})
-                </span>
-                <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-2 pt-2">
-                {groups.missed.slice(0, PREVIEW_LIMIT).map((concept) => (
-                  <ConceptRow key={concept.concept_id} concept={concept} />
-                ))}
-                {groups.missed.length > PREVIEW_LIMIT && (
-                  <p className="text-xs text-muted-foreground">
-                    Showing the {PREVIEW_LIMIT} heaviest of {groups.missed.length} — search above to
-                    find a specific concept.
-                  </p>
-                )}
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-        </div>
+            <div className="max-h-80 space-y-3 overflow-y-auto pr-1" data-testid="concept-details">
+              {matches ? (
+                matches.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No concept matches "{query}".</p>
+                ) : (
+                  // Remount per query so the paging starts again from the first rows.
+                  <ConceptGroup key={query} title="Matches" concepts={matches} />
+                )
+              ) : (
+                <>
+                  {engaged === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      The transcript did not touch any concept in this rubric.
+                    </p>
+                  )}
+                  <ConceptGroup title={GROUP_LABELS.incorrect} concepts={groups.incorrect} />
+                  <ConceptGroup title={GROUP_LABELS.covered} concepts={groups.covered} />
+                  <ConceptGroup title={GROUP_LABELS.missed} concepts={groups.missed} />
+                </>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </div>
   );

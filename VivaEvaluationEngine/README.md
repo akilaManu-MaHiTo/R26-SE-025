@@ -63,19 +63,19 @@ attach_qa_analysis         Q&A relevance            (does NOT affect the mark)
 attach_assessment          the official Stage-1 mark
 ```
 
-The official mark (`assessment.final_score`, scoring version `v1.1`) is computed in
+The official mark (`assessment.final_score`, scoring version `v1.3`) is computed in
 `services/assessment_scoring.py` from **three equally-weighted families**. A family with no
 usable inputs is dropped and the rest renormalize, so a student is never penalised for a
 signal the recording could not provide.
 
 | Family | Inputs |
 |---|---|
-| `engagement` | CNN `average_engagement_score` + `facial_confidence` (from `confidence_score`) |
-| `audio_acoustics` | pitch stability (from std), HNR clarity, jitter/shimmer articulation |
+| `engagement` | CNN `average_engagement_score`, `facial_confidence`, facial emotion profile, on-camera gaze ratio, head stability, blink-rate score (equal parts; unavailable ones dropped) |
+| `audio_acoustics` | pitch stability (from std), HNR clarity, jitter/shimmer articulation, speech-emotion tone (half weight, real SER model only) |
 | `transcript` | speech-rate band, hedge count, filler count, long pauses, sentence completion |
 
 Deliberately **not** used for the mark: LLM criterion scores, UI sliders, the diagnostic
-`engagement_score` blend, `audio_grade`, and the 180 Hz `pitch_score`. Those remain evidence
+`engagement_score` blend (the signals it blends are scored individually as of v1.2), `audio_grade`, and the 180 Hz `pitch_score`. Those remain evidence
 and UI only — changing the LLM's scores does not move the mark.
 
 **A visible face is required.** `validate_features` returns `INCOMPLETE` when
@@ -84,14 +84,17 @@ and UI only — changing the LLM's scores does not move the mark.
 Modes:
 
 - `WITHOUT_TECHNICAL_ACCURACY` — `final = AI performance`, auto-published.
-- `WITH_TECHNICAL_ACCURACY` — `final = 0.5 x AI + 0.5 x technical(/10 scaled to 100)`, and the
-  mark is **never** auto-published: it stays a draft until an examiner enters the technical
-  score and publishes.
+- `WITH_TECHNICAL_ACCURACY` — `final = (1 - t) x AI + t x technical`, where `t` is the technical
+  share the lecturer chose for that viva (20-90%, default 50%) and the technical score is out of
+  the viva's total marks, scaled to 100 for the blend. The mark is **never** auto-published: it
+  stays a draft until an examiner enters the technical score and publishes.
+
+Every official mark is out of the viva's own total marks (set in the Viva Workspace;
+`VIVA_MARK_MAX`, default 20, only applies to a viva without one). See `services/marking_scale.py`.
 
 A parallel **feature-complete baseline** is attached as `feature_complete` /
 `scoring.feature_complete` and does not affect the official mark. See
-[FEATURE_COMPLETE_BASELINE.md](FEATURE_COMPLETE_BASELINE.md) and
-[FEATURE_INVENTORY.md](FEATURE_INVENTORY.md).
+[FEATURE_INVENTORY.md](FEATURE_INVENTORY.md), which also holds its validation results.
 
 ## Tests
 
@@ -101,15 +104,22 @@ From the repo root:
 python -m unittest discover -s VivaEvaluationEngine/tests -v
 ```
 
-189 tests, all passing as of 2026-08-30.
+All tests should pass; run them after any change to the scoring or the LLM helpers
+(`services/llm_common.py`).
+
+## Import style
+
+The engine's modules import each other as `from services.x import y` and `from config import ...`, as if
+this folder were the Python path root. `VivaEvaluationEngine/__init__.py` adds that folder to
+`sys.path` so the same code also works when the server imports it as
+`VivaEvaluationEngine.services.x`. Keep using the `services.x` form inside the engine; do not mix in
+relative imports. Because of this, a module can be loaded under both names, so avoid relying on
+module-level state being shared between the two.
 
 ## Further reading
 
 | Doc | What it covers |
 |---|---|
-| [CLAUDE.md](CLAUDE.md) | Module-by-module walkthrough of both pipelines |
-| [FEATURE_INVENTORY.md](FEATURE_INVENTORY.md) | Every feature, measured vs derived |
-| [FEATURE_COMPLETE_BASELINE.md](FEATURE_COMPLETE_BASELINE.md) | Baseline validation run |
-| [docs/VIVA_ENGINE_ARCHITECTURE_AUDIT.md](docs/VIVA_ENGINE_ARCHITECTURE_AUDIT.md) | Architecture audit |
-| [docs/plan.md](docs/plan.md) · [docs/implementation-notes.md](docs/implementation-notes.md) | Historical design notes (work now shipped) |
-| `../Gradex_AI_Server/CLAUDE.md` | The HTTP layer that wraps this engine |
+| [FEATURE_INVENTORY.md](FEATURE_INVENTORY.md) | Every feature, measured vs derived, and the baseline validation results |
+| [.env.example](.env.example) | Every setting this engine reads, with defaults |
+| `../Gradex_AI_Server/app/.env.example` | The server settings, including the keys this engine also uses |

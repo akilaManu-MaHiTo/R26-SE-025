@@ -13,10 +13,11 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import threading
 import urllib.error
-import urllib.request
 from typing import Any, Dict, List, Optional
 
+from services.llm_common import is_model_unavailable_error, post_chat_completion
 from services.llm_judge import _api_key, _extract_json_object, _model_candidates, _model_name
+from services.marking_scale import MARKING_SCALE, MarkingScale
 
 
 CONCEPT_BATCH_SIZE = 12
@@ -136,20 +137,7 @@ def _call_groq_batch_once(
             {"role": "user", "content": user},
         ],
     }
-    request = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": "GradexVivaEvaluationEngine/1.0",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=60) as response:
-        raw = json.loads(response.read().decode("utf-8"))
-    return str(raw["choices"][0]["message"]["content"])
+    return post_chat_completion(body, api_key, timeout=60)
 
 
 def _call_groq_batch(
@@ -167,15 +155,7 @@ def _call_groq_batch(
             return content
         except urllib.error.HTTPError as exc:
             last_error = exc
-            try:
-                body = exc.read().decode("utf-8", errors="replace")
-            except Exception:
-                body = str(exc.reason or exc)
-            lowered = body.lower()
-            if exc.code == 404 or (
-                exc.code == 400
-                and ("model" in lowered or "not exist" in lowered or "not found" in lowered)
-            ):
+            if is_model_unavailable_error(exc):
                 continue
             raise
     if last_error:
@@ -248,7 +228,9 @@ def run_technical_accuracy(
     concept_rubric: Optional[Dict[str, Any]],
     debug: bool = False,
     groq_call=_call_groq_batch,
+    scale: Optional[MarkingScale] = None,
 ) -> Dict[str, Any]:
+    scale = scale or MARKING_SCALE
     concepts = list((concept_rubric or {}).get("concepts") or [])
     if not concepts:
         return {
@@ -344,7 +326,10 @@ def run_technical_accuracy(
 
     total_weight = sum(c["weight"] for c in scored) or 1.0
     weighted = sum(c["weight"] * c["score"] for c in scored)
-    overall_score = round((weighted / total_weight) * 10.0, 2)
+    coverage_ratio = weighted / total_weight
+    overall_score = round(coverage_ratio * 10.0, 2)  # legacy 0-10 field
+    # The same result on the scale the examiner enters the technical mark on.
+    overall_mark = round(coverage_ratio * scale.technical_max, scale.decimals)
 
     payload: Dict[str, Any] = {
         "status": "success" if not errors else "partial",
@@ -352,6 +337,7 @@ def run_technical_accuracy(
         # the configured model is retired and the call falls through.
         "model": used_model or model,
         "overall_score": overall_score,
+        "overall_mark": overall_mark,
         "concepts": scored,
     }
     if errors:
@@ -364,10 +350,11 @@ def attach_technical_accuracy(
     concept_rubric: Optional[Dict[str, Any]],
     debug: bool = False,
     groq_call=_call_groq_batch,
+    scale: Optional[MarkingScale] = None,
 ) -> Dict[str, Any]:
     """Mutate+return merged pipeline result with technical_accuracy_ai attached."""
     enriched = dict(result)
     enriched["technical_accuracy_ai"] = run_technical_accuracy(
-        enriched, concept_rubric, debug=debug, groq_call=groq_call
+        enriched, concept_rubric, debug=debug, groq_call=groq_call, scale=scale
     )
     return enriched
