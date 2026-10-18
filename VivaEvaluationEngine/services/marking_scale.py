@@ -15,7 +15,7 @@ full mark, so they follow any scale automatically (90% is 18/20, 22.5/25, 27/30 
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Dict, Mapping, Optional, Tuple
 
 PERCENT_MAX = 100.0
@@ -135,6 +135,20 @@ class MarkingScale:
         }
 
     # ---- configuration -----------------------------------------------------------------------
+    def for_total(self, total: Optional[float]) -> "MarkingScale":
+        """This scale moved to a viva's own total mark (the technical score uses the same total).
+
+        `None`, or anything that is not a positive number, keeps this scale unchanged, so a viva
+        created before totals were stored is still marked on the configured default.
+        """
+        try:
+            value = float(total)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return self
+        if not value > 0 or value == self.mark_max and value == self.technical_max:
+            return self
+        return replace(self, mark_max=value, technical_max=value)
+
     @classmethod
     def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "MarkingScale":
         """Read the scale from the environment. A bad value is an error, never a silent default:

@@ -17,7 +17,7 @@ import urllib.request
 from typing import Any, Dict, List, Optional
 
 from services.llm_judge import _api_key, _extract_json_object, _model_candidates, _model_name
-from services.marking_scale import MARKING_SCALE
+from services.marking_scale import MARKING_SCALE, MarkingScale
 
 
 CONCEPT_BATCH_SIZE = 12
@@ -249,7 +249,9 @@ def run_technical_accuracy(
     concept_rubric: Optional[Dict[str, Any]],
     debug: bool = False,
     groq_call=_call_groq_batch,
+    scale: Optional[MarkingScale] = None,
 ) -> Dict[str, Any]:
+    scale = scale or MARKING_SCALE
     concepts = list((concept_rubric or {}).get("concepts") or [])
     if not concepts:
         return {
@@ -348,7 +350,7 @@ def run_technical_accuracy(
     coverage_ratio = weighted / total_weight
     overall_score = round(coverage_ratio * 10.0, 2)  # legacy 0-10 field
     # The same result on the scale the examiner enters the technical mark on.
-    overall_mark = round(coverage_ratio * MARKING_SCALE.technical_max, MARKING_SCALE.decimals)
+    overall_mark = round(coverage_ratio * scale.technical_max, scale.decimals)
 
     payload: Dict[str, Any] = {
         "status": "success" if not errors else "partial",
@@ -369,10 +371,11 @@ def attach_technical_accuracy(
     concept_rubric: Optional[Dict[str, Any]],
     debug: bool = False,
     groq_call=_call_groq_batch,
+    scale: Optional[MarkingScale] = None,
 ) -> Dict[str, Any]:
     """Mutate+return merged pipeline result with technical_accuracy_ai attached."""
     enriched = dict(result)
     enriched["technical_accuracy_ai"] = run_technical_accuracy(
-        enriched, concept_rubric, debug=debug, groq_call=groq_call
+        enriched, concept_rubric, debug=debug, groq_call=groq_call, scale=scale
     )
     return enriched

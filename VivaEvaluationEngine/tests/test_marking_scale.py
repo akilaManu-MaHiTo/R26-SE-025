@@ -167,5 +167,24 @@ class AssessmentUnderAnotherScaleTests(unittest.TestCase):
         self.assertEqual(assessment["technical_max"], 15.0)
 
 
+    def test_a_viva_total_replaces_the_default_without_a_global_override(self):
+        base = MarkingScale()
+        scale = base.for_total(50)
+        self.assertEqual((scale.mark_max, scale.technical_max), (50.0, 50.0))
+        self.assertEqual(base.mark_max, 20.0)  # the default is untouched
+        self.assertEqual(scale.percent_to_mark(75), 37.5)
+        assessment = build_assessment(_sample_result(), mode=MODE_WITHOUT, scale=scale)
+        self.assertEqual(assessment["final_mark_max"], 50.0)
+        self.assertEqual(assessment["technical_max"], 50.0)
+        fused = fuse_final_score(mode=MODE_WITH, ai_performance=60.0, technical_accuracy=45.0, scale=scale)
+        self.assertEqual(fused["technical_accuracy_100"], 90.0)
+        self.assertEqual(fused["final_mark"], 37.5)  # 75% of 50
+
+    def test_no_or_bad_viva_total_keeps_the_default(self):
+        base = MarkingScale()
+        for total in (None, 0, -3, "x"):
+            self.assertIs(base.for_total(total), base, total)
+
+
 if __name__ == "__main__":
     unittest.main()

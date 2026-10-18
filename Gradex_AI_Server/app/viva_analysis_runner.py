@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from VivaEvaluationEngine.services.assessment_scoring import MODE_WITH, MODE_WITHOUT
+from VivaEvaluationEngine.services.marking_scale import MARKING_SCALE
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 UPLOAD_DIR = PROJECT_ROOT / "Gradex_AI_Server" / "app" / "uploads"
@@ -68,6 +69,7 @@ async def attach_subject_technical_accuracy(
     subject_code: Optional[str],
     db_instance: Any,
     progress_id: Optional[str] = None,
+    total_marks: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Optional advisory technical-accuracy panel. Never auto-published."""
     code = subject_code.strip() if isinstance(subject_code, str) else ""
@@ -81,7 +83,9 @@ async def attach_subject_technical_accuracy(
         from VivaEvaluationEngine.services.technical_accuracy import attach_technical_accuracy
 
         concept_rubric = await get_subject_rubric(db_instance, code)
-        return attach_technical_accuracy(result, concept_rubric)
+        return attach_technical_accuracy(
+            result, concept_rubric, scale=MARKING_SCALE.for_total(total_marks)
+        )
     except Exception as exc:
         print(f"[VIVA] Warning: technical-accuracy scoring failed ({exc})")
         result["technical_accuracy_ai"] = {
@@ -115,16 +119,19 @@ async def persist_and_autopublish(
     publish(progress_id, "saving", "Saving the mark")
     result["assessment_mode"] = mode
 
-    # The engine scores the recording before the subject rubric is checked. In a technical
-    # viva, re-run the assessment now that the concept coverage is known, so a recording
-    # that covered almost none of the subject is held instead of getting a mark.
-    if mode == MODE_WITH and isinstance(result.get("technical_accuracy_ai"), dict):
+    # The engine scores the recording on the default scale, before the viva's own total marks
+    # and the subject rubric are known. Re-run the assessment now: the mark is then given out of
+    # this viva's total, and in a technical viva a recording that covered almost none of the
+    # subject is held instead of getting a mark.
+    scale = MARKING_SCALE.for_total((extra_doc or {}).get("viva_total_marks"))
+    needs_coverage_check = mode == MODE_WITH and isinstance(result.get("technical_accuracy_ai"), dict)
+    if needs_coverage_check or scale != MARKING_SCALE:
         try:
             from VivaEvaluationEngine.services.assessment_scoring import build_assessment
 
-            result["assessment"] = build_assessment(result, mode=mode)
+            result["assessment"] = build_assessment(result, mode=mode, scale=scale)
         except Exception as exc:  # noqa: BLE001 - keep the original assessment on any failure
-            print(f"[VIVA] Warning: could not re-check topic coverage ({type(exc).__name__}: {exc})")
+            print(f"[VIVA] Warning: could not re-score the assessment ({type(exc).__name__}: {exc})")
 
     if not await ensure_marks_collection():
         result["persistence_error"] = (

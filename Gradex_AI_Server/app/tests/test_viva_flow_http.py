@@ -463,6 +463,48 @@ class VivaFlowHttpTests(unittest.TestCase):
         self.assertEqual(row["final_mark_max"], MARKING_SCALE.mark_max)
         self.assertEqual(row["final_grade"], body["final_grade"])
 
+    def test_each_viva_is_marked_out_of_its_own_total(self):
+        from VivaEvaluationEngine.services.assessment_scoring import MARKING_SCALE
+
+        marks = {}
+        for total in (None, 50, 100):
+            extra = {} if total is None else {"total_marks": total}
+            viva = self._viva(name=f"Viva {total}", **extra).json()
+            self.assertEqual(viva["total_marks"], total or MARKING_SCALE.mark_max)
+            with self._real_analysis():
+                body = self._upload(viva["viva_id"]).json()
+            self.assertEqual(body["final_mark_max"], total or MARKING_SCALE.mark_max)
+            self.assertEqual(body["assessment"]["final_mark_max"], total or MARKING_SCALE.mark_max)
+            marks[total] = body
+        # Same recording, so the same percentage; only the scale changes.
+        percent = marks[None]["final_score"]
+        self.assertEqual(marks[50]["final_score"], percent)
+        self.assertEqual(marks[50]["final_mark"], round(percent / 100 * 50, 2))
+        self.assertEqual(marks[100]["final_mark"], round(percent, 2))
+        self.assertLessEqual(marks[50]["final_mark"], 50)
+
+    def test_technical_publish_is_out_of_the_viva_total(self):
+        viva = self._viva(category="technical", subject_code="Cs3021", total_marks=50).json()
+        with self._real_analysis("WITH_TECHNICAL_ACCURACY"):
+            mark_id = self._upload(viva["viva_id"]).json()["mark_id"]
+        url = f"/api/viva-marks/{mark_id}/publish"
+        too_high = self.client.patch(
+            url, json={"assessment_mode": "WITH_TECHNICAL_ACCURACY", "technical_accuracy": 51, "published": True}
+        )
+        self.assertEqual(too_high.status_code, 422)
+        ok = self.client.patch(
+            url, json={"assessment_mode": "WITH_TECHNICAL_ACCURACY", "technical_accuracy": 45, "published": True}
+        )
+        self.assertEqual(ok.status_code, 200, ok.text)
+        body = ok.json()
+        self.assertEqual(body["final_mark_max"], 50)
+        self.assertEqual(body["technical_accuracy"], 45)
+        self.assertLessEqual(body["final_mark"], 50)
+
+    def test_total_marks_must_be_positive(self):
+        for bad in (0, -5, 1001):
+            self.assertEqual(self._viva(name=f"Bad {bad}", total_marks=bad).status_code, 422, bad)
+
     def test_technical_publish_takes_a_score_out_of_the_technical_maximum(self):
         from VivaEvaluationEngine.services.assessment_scoring import MARKING_SCALE, resolve_grade_from_mark
 

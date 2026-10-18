@@ -45,7 +45,7 @@ import { Link } from "react-router";
 import { useSelectedViva } from "./viva/useSelectedViva";
 import { VivaPicker } from "./viva/VivaPicker";
 import { useConfirmDialog } from "./viva/useConfirmDialog";
-import { useMarkingScale } from "./viva/useMarkingScale";
+import { useVivaMarkingScale } from "./viva/useMarkingScale";
 import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "./viva/studentId";
 import {
   AnalysisResult,
@@ -80,7 +80,7 @@ export function VivaPage() {
   // uploaded or recorded here.
   const { vivaId, viva, loading: vivaLoading, error: vivaError } = useSelectedViva();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
-  useMarkingScale(); // load the server's marking scale and re-render the marks when it arrives
+  useVivaMarkingScale(viva?.total_marks); // mark on the selected viva's own total marks
   const [studentId, setStudentId] = useState("");
   const [published, setPublished] = useState(false);
   const [autoPublishedWithoutTech, setAutoPublishedWithoutTech] = useState(false);

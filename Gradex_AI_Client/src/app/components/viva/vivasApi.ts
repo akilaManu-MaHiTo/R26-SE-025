@@ -15,6 +15,8 @@ export interface Viva {
   year: number;
   semester: number;
   notes?: string | null;
+  /** What this viva is marked out of (its official marks and the technical score). */
+  total_marks: number;
   examiner_email: string;
   created_at?: string;
   /** e.g. "SE3040-ER Viva - semester 2 - 2026" */
@@ -31,6 +33,8 @@ export interface CreateVivaInput {
   category: VivaCategory;
   year: number;
   semester: number;
+  /** Left out, the server default applies. */
+  total_marks?: number;
   notes?: string;
 }
 

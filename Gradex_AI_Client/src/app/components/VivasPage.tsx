@@ -27,6 +27,7 @@ function CreateVivaForm({
   const [subjectName, setSubjectName] = useState("");
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [semester, setSemester] = useState("1");
+  const [totalMarks, setTotalMarks] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -58,11 +59,13 @@ function CreateVivaForm({
         category,
         year: Number(year),
         semester: Number(semester),
+        total_marks: totalMarks.trim() ? Number(totalMarks) : undefined,
         notes: notes.trim() || undefined,
       });
       toast.success(`Created ${viva.label}`);
       setName("");
       setNotes("");
+      setTotalMarks("");
       onCreated(viva);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create the viva");
@@ -71,8 +74,14 @@ function CreateVivaForm({
     }
   };
 
+  const totalMarksValid = totalMarks.trim() === "" || (Number(totalMarks) > 0 && Number(totalMarks) <= 1000);
   const ready = Boolean(
-    name.trim() && subjectCode.trim() && subjectName.trim() && Number(year) >= 2000 && Number(semester) >= 1,
+    name.trim() &&
+      subjectCode.trim() &&
+      subjectName.trim() &&
+      Number(year) >= 2000 &&
+      Number(semester) >= 1 &&
+      totalMarksValid,
   );
 
   return (
@@ -193,7 +202,28 @@ function CreateVivaForm({
           </select>
         </div>
 
-        <div className="sm:col-span-2">
+        <div>
+          <label className="text-xs text-muted-foreground" htmlFor="viva-total-marks">
+            Total marks for this viva
+          </label>
+          <Input
+            id="viva-total-marks"
+            className="mt-1"
+            type="number"
+            inputMode="decimal"
+            min={1}
+            max={1000}
+            step="any"
+            value={totalMarks}
+            onChange={(e) => setTotalMarks(e.target.value)}
+            placeholder="e.g. 20, 30, 50, 100"
+            aria-invalid={!totalMarksValid}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Marks are given out of this. Leave empty for the system default.
+          </p>
+        </div>
+        <div>
           <label className="text-xs text-muted-foreground" htmlFor="viva-notes">
             Notes (optional)
           </label>
@@ -260,6 +290,7 @@ function VivaCard({
               {needsContent ? "Subject content needed" : `${rubric?.concept_count ?? 0} concepts`}
             </Badge>
           )}
+          <Badge variant="outline">Out of {viva.total_marks}</Badge>
           <Badge variant="outline">
             {viva.mark_count ?? 0} analysed · {viva.published_count ?? 0} published
           </Badge>
