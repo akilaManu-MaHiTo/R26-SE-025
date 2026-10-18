@@ -10,12 +10,16 @@ if str(ENGINE_ROOT) not in sys.path:
     sys.path.insert(0, str(ENGINE_ROOT))
 
 from services.assessment_scoring import (
+    MARKING_SCALE,
     MODE_WITH,
+    fuse_final_score,
     MODE_WITHOUT,
     STATUS_INCOMPLETE,
     STATUS_VALID,
     build_assessment,
     resolve_grade,
+    resolve_grade_from_mark,
+    percent_to_mark,
     score_ai_performance,
 )
 from services.canonical_features import extract_canonical_features
@@ -137,7 +141,10 @@ class ModeAndFusionTests(unittest.TestCase):
         self.assertIsNone(assessment["technical_accuracy"])
         self.assertEqual(assessment["final_score"], assessment["ai_performance"]["score"])
         self.assertIsNotNone(assessment["grade"])
-        self.assertEqual(assessment["grade"], resolve_grade(assessment["final_score"]))
+        self.assertEqual(assessment["grade"], resolve_grade_from_mark(assessment["final_mark"]))
+        self.assertEqual(assessment["final_mark_max"], MARKING_SCALE.mark_max)
+        self.assertEqual(assessment["final_mark"], percent_to_mark(assessment["final_score"]))
+        self.assertEqual(assessment["ai_performance"]["mark"], percent_to_mark(assessment["ai_performance"]["score"]))
 
     def test_mode_b_requires_technical_for_final(self):
         pending = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=None)
@@ -145,11 +152,14 @@ class ModeAndFusionTests(unittest.TestCase):
         self.assertIsNone(pending["final_score"])
         self.assertIsNone(pending["grade"])
 
-        done = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=3)
-        self.assertEqual(done["technical_accuracy"], 3)
+        # Technical accuracy is entered out of technical_max: 30% of it is 30% of the technical share.
+        entered = round(MARKING_SCALE.technical_max * 0.3, 2)
+        done = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=entered)
+        self.assertEqual(done["technical_accuracy"], entered)
         expected = 0.5 * done["ai_performance"]["score"] + 0.5 * 30.0
         self.assertAlmostEqual(done["final_score"], round(expected, 2))
-        self.assertEqual(done["grade"], resolve_grade(done["final_score"]))
+        self.assertEqual(done["final_mark"], percent_to_mark(done["final_score"]))
+        self.assertEqual(done["grade"], resolve_grade_from_mark(done["final_mark"]))
 
     def test_without_mode_publishes_with_technical_preview_weights(self):
         """Examiner UI previews a fused mark before publishing.
@@ -169,7 +179,9 @@ class ModeAndFusionTests(unittest.TestCase):
 
         # Preview weights must reproduce what a real WITH publish computes.
         ai_score = assessment["ai_performance"]["score"]
-        published = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=8)
+        published = build_assessment(
+            _sample_result(), mode=MODE_WITH, technical_accuracy=round(MARKING_SCALE.technical_max * 0.8, 2)
+        )
         expected = preview["weight_ai"] * ai_score + preview["weight_technical"] * 80.0
         self.assertAlmostEqual(published["final_score"], round(expected, 2))
 
@@ -341,6 +353,193 @@ class ScorerFamilyTests(unittest.TestCase):
         self.assertNotIn("pitch_score", names)
         self.assertIn("average_engagement_score", names)
         self.assertIn("facial_confidence", names)
+
+
+class FacialAndSpeechEmotionScoringTests(unittest.TestCase):
+    """v1.2: emotion/gaze/head/blink score inside Engagement; SER tone inside Audio."""
+
+    def _video(self, emotion=0.9, gaze=0.85, head=0.8, blink_bpm=12.0):
+        return {
+            "emotion": {"status": "available", "score": emotion},
+            "gaze": {"status": "available", "gaze_on_camera_ratio": gaze},
+            "head_pose": {"status": "available", "stability_score": head},
+            "blink": {"status": "available", "blink_rate_per_minute": blink_bpm},
+        }
+
+    def test_facial_signals_enter_engagement_family(self):
+        result = _sample_result()
+        result["video_features"] = self._video()
+        scored = score_ai_performance(extract_canonical_features(result))
+        names = {c["feature"] for c in scored["components"] if c["family"] == "engagement"}
+        self.assertEqual(
+            names,
+            {"average_engagement_score", "facial_confidence", "emotion_profile",
+             "gaze_on_camera_ratio", "head_stability", "blink_score"},
+        )
+
+    def test_worse_gaze_lowers_engagement_and_mark(self):
+        good, bad = _sample_result(), _sample_result()
+        good["video_features"] = self._video(gaze=0.95)
+        bad["video_features"] = self._video(gaze=0.10)
+        g = build_assessment(good)["ai_performance"]
+        b = build_assessment(bad)["ai_performance"]
+        self.assertGreater(g["family_scores"]["engagement"], b["family_scores"]["engagement"])
+        self.assertGreater(g["score"], b["score"])
+
+    def test_missing_facial_signals_are_dropped_not_penalised(self):
+        plain = build_assessment(_sample_result())["ai_performance"]["family_scores"]["engagement"]
+        result = _sample_result()
+        result["video_features"] = {"gaze": {"status": "unavailable"}}
+        self.assertEqual(
+            build_assessment(result)["ai_performance"]["family_scores"]["engagement"], plain
+        )
+
+    def test_speech_emotion_counts_only_from_real_model(self):
+        model, heuristic = _sample_result(), _sample_result()
+        model["audio_analysis"]["audio_emotion"] = {"source": "model", "predicted_emotion": "angry", "confidence": 0.9}
+        heuristic["audio_analysis"]["audio_emotion"] = {"source": "heuristic", "predicted_emotion": "angry", "confidence": 0.9}
+        m = build_assessment(model)["ai_performance"]
+        h = build_assessment(heuristic)["ai_performance"]
+        self.assertIn("speech_emotion_tone", {c["feature"] for c in m["components"]})
+        self.assertNotIn("speech_emotion_tone", {c["feature"] for c in h["components"]})
+        self.assertLess(m["family_scores"]["audio_acoustics"], h["family_scores"]["audio_acoustics"])
+
+
+
+def _technical_result(covered, weights):
+    """A technical_accuracy_ai block: `covered` flags aligned with `weights`."""
+    return {
+        "status": "success",
+        "overall_score": 5.0,
+        "concepts": [
+            {
+                "concept_id": f"c{i}",
+                "name": f"Concept {i}",
+                "covered": bool(flag),
+                "score": 0.9 if flag else 0.0,
+                "weight": float(weight),
+            }
+            for i, (flag, weight) in enumerate(zip(covered, weights))
+        ],
+    }
+
+
+class TopicCoverageGateTests(unittest.TestCase):
+    """Technical vivas: an answer that touches almost none of the rubric is held, not graded."""
+
+    def _assess(self, technical, mode=MODE_WITH, **overrides):
+        result = _sample_result(**overrides)
+        if technical is not None:
+            result["technical_accuracy_ai"] = technical
+        return build_assessment(result, mode=mode, technical_accuracy=7.0)
+
+    def test_off_topic_answer_is_held_with_no_mark(self):
+        weights = [5, 5, 5, 4, 4, 3, 3, 4, 4, 3, 3, 4]
+        out = self._assess(_technical_result([False] * 12, weights))
+        self.assertEqual(out["status"], STATUS_INCOMPLETE)
+        self.assertIn("insufficient_topic_coverage", out["validation"]["reasons"])
+        self.assertIsNone(out["final_score"])
+        self.assertIsNone(out["grade"])
+        self.assertIsNone(out["ai_performance"]["score"])
+        self.assertEqual(out["topic_coverage"]["coverage_ratio"], 0.0)
+        self.assertEqual(out["topic_coverage"]["concepts_covered"], 0)
+        self.assertIn("0.0%", out["validation"]["message"])
+
+    def test_coverage_is_by_weight_not_by_count(self):
+        # one concept covered, but it carries 4 of the 25 weight = 16%
+        out = self._assess(_technical_result([True, False, False, False], [4, 7, 7, 7]))
+        self.assertEqual(out["status"], STATUS_VALID)
+        self.assertAlmostEqual(out["topic_coverage"]["coverage_ratio"], 0.16, places=4)
+        self.assertIsNotNone(out["final_score"])
+
+    def test_just_below_the_minimum_is_held_and_just_above_passes(self):
+        weights = [1] + [24]          # covering only the weight-1 concept = 1 / 25 = 4%
+        below = self._assess(_technical_result([True, False], weights))
+        self.assertEqual(below["status"], STATUS_INCOMPLETE)
+        weights = [2] + [23]          # covering the weight-2 concept = 2 / 25 = 8%
+        above = self._assess(_technical_result([True, False], weights))
+        self.assertEqual(above["status"], STATUS_VALID)
+
+    def test_not_applied_to_non_technical_vivas(self):
+        out = self._assess(_technical_result([False] * 3, [5, 5, 5]), mode=MODE_WITHOUT)
+        self.assertEqual(out["status"], STATUS_VALID)
+        self.assertIsNone(out["topic_coverage"])
+
+    def test_no_rubric_or_failed_scoring_is_not_a_reason_to_hold(self):
+        no_rubric = self._assess(None)
+        self.assertEqual(no_rubric["status"], STATUS_VALID)
+        self.assertIsNone(no_rubric["topic_coverage"])
+        failed = self._assess({"status": "unavailable", "overall_score": None, "concepts": []})
+        self.assertEqual(failed["status"], STATUS_VALID)
+        self.assertIsNone(failed["topic_coverage"])
+
+    def test_other_incomplete_reasons_still_win(self):
+        out = self._assess(
+            _technical_result([False] * 2, [5, 5]),
+            video_status="insufficient_face_coverage",
+        )
+        self.assertEqual(out["status"], STATUS_INCOMPLETE)
+        self.assertNotIn("insufficient_topic_coverage", out["validation"]["reasons"])
+
+
+class MarkOnDefaultScaleTests(unittest.TestCase):
+    """Marks on the default scale (out of 20); other scales are covered in test_marking_scale.py."""
+
+    def setUp(self):
+        from unittest.mock import patch
+
+        from services import assessment_scoring
+        from services.marking_scale import MarkingScale
+
+        patcher = patch.object(assessment_scoring, "MARKING_SCALE", MarkingScale())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_percent_to_mark_scales_and_rounds(self):
+        self.assertEqual(percent_to_mark(100), 20.0)
+        self.assertEqual(percent_to_mark(0), 0.0)
+        self.assertEqual(percent_to_mark(69.44), 13.89)
+        self.assertEqual(percent_to_mark(79.06), 15.81)
+        self.assertIsNone(percent_to_mark(None))
+        self.assertEqual(percent_to_mark(150), 20.0)  # clamped
+
+    def test_grade_bands_out_of_20(self):
+        cases = {
+            20: "A+", 18: "A+", 17.99: "A", 16: "A", 15.99: "B+", 14: "B+",
+            13.99: "B", 12: "B", 11.99: "C+", 10: "C+", 9.99: "C", 8: "C", 7.99: "F", 0: "F",
+        }
+        for mark, grade in cases.items():
+            self.assertEqual(resolve_grade_from_mark(mark), grade, mark)
+        self.assertIsNone(resolve_grade_from_mark(None))
+
+    def test_bands_match_the_percentage_bands(self):
+        for percent in (0, 39.9, 40, 49.9, 50, 59.9, 60, 69.9, 70, 79.9, 80, 89.9, 90, 100):
+            self.assertEqual(
+                resolve_grade_from_mark(percent_to_mark(percent)), resolve_grade(percent), percent
+            )
+
+    def test_grade_follows_the_rounded_displayed_mark(self):
+        """69.98% is 13.996/20, which displays as 14.00, so it grades as B+ (not B)."""
+        mark = percent_to_mark(69.98)
+        self.assertEqual(mark, 14.0)
+        self.assertEqual(resolve_grade_from_mark(mark), "B+")
+        self.assertEqual(resolve_grade(69.98), "B")  # the raw percentage would say B
+
+    def test_technical_fusion_out_of_20(self):
+        fused = fuse_final_score(mode=MODE_WITH, ai_performance=60.0, technical_accuracy=16.0)
+        self.assertEqual(fused["technical_accuracy"], 16.0)
+        self.assertEqual(fused["technical_accuracy_100"], 80.0)
+        self.assertEqual(fused["final_score"], 70.0)  # 0.5*60 + 0.5*80
+        self.assertEqual(fused["final_mark"], 14.0)
+        # The technical score is clamped to its 20-mark scale.
+        over = fuse_final_score(mode=MODE_WITH, ai_performance=60.0, technical_accuracy=25.0)
+        self.assertEqual(over["technical_accuracy"], 20.0)
+        self.assertEqual(over["final_mark"], 16.0)  # 0.5*60 + 0.5*100 = 80% -> 16/20
+
+    def test_pending_without_technical_has_no_mark(self):
+        pending = fuse_final_score(mode=MODE_WITH, ai_performance=60.0, technical_accuracy=None)
+        self.assertIsNone(pending["final_mark"])
+        self.assertIsNone(pending["final_score"])
 
 
 if __name__ == "__main__":

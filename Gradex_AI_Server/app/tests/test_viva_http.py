@@ -11,6 +11,7 @@ import inspect
 import os
 import time
 import unittest
+from types import SimpleNamespace
 from io import BytesIO
 from unittest.mock import patch
 
@@ -64,12 +65,43 @@ def _form_defaults(func) -> dict:
     return defaults
 
 
+def _request():
+    """Stand-in for a request that already passed the session middleware."""
+    return SimpleNamespace(state=SimpleNamespace(user={"email": "lecturer@example.com", "role": "lecturer"}))
+
+
 def _analyze(**overrides):
-    """Call viva_analyze() the way an HTTP request would."""
+    """Call viva_analyze() the way an HTTP request would.
+
+    Every analysis is filed under a viva, so `assessment_mode` / `subject_code`
+    overrides describe the viva that fetch_viva_for_analysis resolves.
+    """
     kwargs = _form_defaults(viva_analyze)
+    mode = overrides.pop("assessment_mode", "WITHOUT_TECHNICAL_ACCURACY")
+    technical = mode == "WITH_TECHNICAL_ACCURACY"
+    viva = {
+        "_id": ObjectId("607f1f77bcf86cd799439099"),
+        "name": "Test Viva",
+        "subject_code": overrides.pop("subject_code", "CS101"),
+        "subject_name": "Test Subject",
+        "category": "technical" if technical else "non_technical",
+        "year": 2026,
+        "semester": 1,
+        "examiner_email": "lecturer@example.com",
+    }
+    kwargs.update(
+        video=_video_upload(),
+        student_id="IT22000001",
+        viva_id=str(viva["_id"]),
+        request=_request(),
+    )
     kwargs.update(overrides)
-    kwargs.setdefault("video", _video_upload())
-    return viva_analyze(**kwargs)
+
+    async def run():
+        with patch("Gradex_AI_Server.app.main.fetch_viva_for_analysis", return_value=viva):
+            return await viva_analyze(**kwargs)
+
+    return run()
 
 
 def _run(coro):
@@ -173,6 +205,17 @@ class AnalyzeHttpTests(unittest.TestCase):
         self._prev_marks_col = db_instance.marks_col
         db_instance.allow_autoconnect = False
         db_instance.client = None
+        # The pre-analysis video gate is tested in test_viva_video_gate; these tests upload tiny
+        # fake clips to exercise the analyze flow itself.
+        for gate_patch in (
+            patch("Gradex_AI_Server.app.main.MIN_VIVA_UPLOAD_BYTES", 0),
+            patch(
+                "Gradex_AI_Server.app.main.validate_viva_video",
+                lambda _path: {"duration_seconds": 30.0, "frame_count": 900},
+            ),
+        ):
+            gate_patch.start()
+            self.addCleanup(gate_patch.stop)
 
     def tearDown(self):
         db_instance.allow_autoconnect = self._prev_autoconnect
@@ -254,6 +297,9 @@ class AnalyzeHttpTests(unittest.TestCase):
         stored: dict = {}
 
         class FakeCol:
+            async def find_one(self, *_args, **_kwargs):
+                return None
+
             async def insert_one(self, doc):
                 inserted.update(doc)
                 oid = ObjectId("507f1f77bcf86cd799439011")
@@ -308,6 +354,9 @@ class AnalyzeHttpTests(unittest.TestCase):
         stored: dict = {}
 
         class FakeCol:
+            async def find_one(self, *_args, **_kwargs):
+                return None
+
             async def insert_one(self, doc):
                 oid = ObjectId("507f1f77bcf86cd799439012")
                 stored[oid] = dict(doc)
@@ -382,13 +431,13 @@ class AnalyzeHttpTests(unittest.TestCase):
                 "VivaEvaluationEngine.services.technical_accuracy._call_groq_batch_once",
                 side_effect=fake_groq,
             ):
-                result = _run(_analyze(subject_code="CS101"))
+                result = _run(_analyze(assessment_mode="WITH_TECHNICAL_ACCURACY", subject_code="CS101"))
         finally:
             db_instance.marks_col = previous
         self.assertEqual(result["technical_accuracy_ai"]["status"], "success")
         self.assertEqual(result["technical_accuracy_ai"]["overall_score"], 10.0)
 
-    def test_no_subject_code_skips_technical_accuracy(self):
+    def test_non_technical_viva_skips_technical_accuracy(self):
         fake = {"video_status": "success", "assessment": {"status": "VALID", "final_score": 70}}
         previous = db_instance.marks_col
         db_instance.marks_col = None
@@ -409,6 +458,7 @@ class PublishHttpTests(unittest.TestCase):
                 publish_viva_mark(
                     "not-an-oid",
                     PublishVivaMarkPayload(assessment_mode="WITHOUT_TECHNICAL_ACCURACY"),
+                    _request(),
                 )
             )
         self.assertEqual(ctx.exception.status_code, 400)
@@ -422,6 +472,7 @@ class PublishHttpTests(unittest.TestCase):
                     publish_viva_mark(
                         "507f1f77bcf86cd799439011",
                         PublishVivaMarkPayload(assessment_mode="WITHOUT_TECHNICAL_ACCURACY"),
+                    _request(),
                     )
                 )
         finally:
@@ -430,6 +481,9 @@ class PublishHttpTests(unittest.TestCase):
 
     def test_unknown_id_when_connected_is_404(self):
         class FakeCol:
+            async def find_one(self, *_args, **_kwargs):
+                return None
+
             async def find_one(self, _query):
                 return None
 
@@ -441,6 +495,7 @@ class PublishHttpTests(unittest.TestCase):
                     publish_viva_mark(
                         "507f1f77bcf86cd799439011",
                         PublishVivaMarkPayload(assessment_mode="WITHOUT_TECHNICAL_ACCURACY"),
+                    _request(),
                     )
                 )
         finally:

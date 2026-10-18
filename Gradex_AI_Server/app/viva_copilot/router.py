@@ -14,6 +14,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Request,
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
@@ -23,6 +24,13 @@ from pydantic import BaseModel, Field
 from Gradex_AI_Server.app.auth import require_lecturer, require_websocket_lecturer
 
 from Gradex_AI_Server.app.core.database import db_instance
+from Gradex_AI_Server.app.viva_sessions import (
+    ensure_no_duplicate_mark,
+    fetch_viva_for_analysis,
+    mode_for_category,
+    viva_extra_doc,
+)
+from Gradex_AI_Server.app.viva_student_id import normalize_student_id
 from Gradex_AI_Server.app.viva_analysis_runner import (
     MAX_VIVA_UPLOAD_BYTES,
     UPLOAD_DIR,
@@ -40,7 +48,6 @@ from Gradex_AI_Server.app.viva_copilot.pipeline import (
     start_presentation,
 )
 from Gradex_AI_Server.app.viva_copilot.session_store import broadcast, session_ttl_seconds, store
-from VivaEvaluationEngine.services.assessment_scoring import MODE_WITHOUT
 
 router = APIRouter(prefix="/api/viva-copilot", tags=["viva-copilot"])
 _AUTH = [Depends(require_lecturer)]
@@ -139,10 +146,11 @@ async def get_transcript(session_id: str) -> Dict[str, Any]:
 @router.post("/sessions/{session_id}/analyze", dependencies=_AUTH)
 async def analyze_session(
     session_id: str,
+    request: Request,
     video: UploadFile = File(...),
-    assessment_mode: str = Form(default=MODE_WITHOUT),
-    subject_code: Optional[str] = Form(default=None),
+    viva_id: Optional[str] = Form(default=None),
     student_id: Optional[str] = Form(default=None),
+    allow_duplicate: bool = Form(default=False),
     progress_id: Optional[str] = Form(default=None),
 ) -> Dict[str, Any]:
     """Score a finished live viva from its full session recording.
@@ -155,6 +163,9 @@ async def analyze_session(
     The session is NOT deleted here; the client still calls DELETE afterwards.
     """
     session = _session_or_404(session_id)
+    viva = await fetch_viva_for_analysis(viva_id, request)
+    sid = normalize_student_id(student_id)
+    await ensure_no_duplicate_mark(str(viva["_id"]), sid, allow_duplicate)
 
     filename = video.filename or ""
     suffix = Path(filename).suffix.lower()
@@ -172,9 +183,8 @@ async def analyze_session(
     file_path = UPLOAD_DIR / f"copilot_{uuid4().hex}{ext}"
     file_path.write_bytes(contents)
 
-    mode = normalize_mode(assessment_mode)
-    code = subject_code.strip() if isinstance(subject_code, str) else None
-    sid = student_id.strip() if isinstance(student_id, str) and student_id.strip() else None
+    mode = normalize_mode(mode_for_category(viva["category"]))
+    code = viva["subject_code"] if viva["category"] == "technical" else None
 
     await broadcast(session, events.phase_changed(session.session_id, "analyzing"))
     try:
@@ -189,6 +199,8 @@ async def analyze_session(
             video_filename=filename or file_path.name,
             subject_code=code,
             student_id=sid,
+            viva_extra=viva_extra_doc(viva),
+            examiner_email=(getattr(request.state, "user", None) or {}).get("email"),
             progress_id=job_id,
         )
         result["sessionId"] = session.session_id

@@ -22,6 +22,8 @@ export interface VivaProgressSnapshot {
   done?: string[];
   version?: number;
   finished?: boolean;
+  /** Set once the finished mark is saved, so a reloaded page can open it. */
+  mark_id?: string | null;
 }
 
 export async function fetchVivaAnalyzeProgress(

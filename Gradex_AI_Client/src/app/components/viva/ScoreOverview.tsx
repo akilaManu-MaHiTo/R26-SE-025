@@ -1,6 +1,7 @@
 import { Award, ScanFace, AudioLines } from "lucide-react";
 import { Card } from "../ui/card";
-import { AnalysisResult, AssessmentMode, VivaAssessment } from "./types";
+import { AnalysisResult, AssessmentMode, VivaAssessment, formatMarkValue } from "./types";
+import { useMarkingScale } from "./useMarkingScale";
 import { resolveOfficialMark } from "./officialMark";
 import { ScoreExplainHover } from "./ScoreExplainHover";
 import type { ScoreExplainTopic } from "./scoreExplainers";
@@ -88,8 +89,9 @@ export function ScoreOverview({
   engagementScore,
   audioGrade,
 }: ScoreOverviewProps) {
+  useMarkingScale(); // re-render when the server's marking scale arrives
   const incomplete = assessment?.status === "INCOMPLETE";
-  const { finalScore: official, grade, isPreview } = resolveOfficialMark({
+  const { finalMark: official, markMax, grade, isPreview } = resolveOfficialMark({
     assessment,
     analysisResult,
     assessmentMode,
@@ -109,8 +111,8 @@ export function ScoreOverview({
         <ScoreCard
           icon={<Award className="size-4" />}
           label="Official mark"
-          value={official != null ? official.toFixed(1) : "—"}
-          unit="/ 100"
+          value={formatMarkValue(official)}
+          unit={`/ ${markMax}`}
           hint={
             incomplete
               ? assessment?.validation?.message || "Incomplete — face required"

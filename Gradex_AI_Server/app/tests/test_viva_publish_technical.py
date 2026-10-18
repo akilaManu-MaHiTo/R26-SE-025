@@ -14,12 +14,15 @@ from __future__ import annotations
 
 import asyncio
 import unittest
+from types import SimpleNamespace
 from typing import Any, Dict, Optional
 
 from bson import ObjectId
 from fastapi import HTTPException
 
 from Gradex_AI_Server.app.main import PublishVivaMarkPayload, publish_viva_mark
+# Stand-in for a request that already passed the session middleware.
+_REQUEST = SimpleNamespace(state=SimpleNamespace(user={"email": "lecturer@example.com", "role": "lecturer"}))
 from Gradex_AI_Server.app.core.database import db_instance
 from Gradex_AI_Server.app.viva_marks import (
     apply_publish_to_mark,
@@ -27,6 +30,8 @@ from Gradex_AI_Server.app.viva_marks import (
     auto_publish_without_technical,
 )
 from VivaEvaluationEngine.services.assessment_scoring import (
+    MARKING_SCALE,
+    resolve_grade_from_mark,
     MODE_WITH,
     MODE_WITHOUT,
     STATUS_INCOMPLETE,
@@ -127,6 +132,14 @@ class FakeMarksCollection:
         return type("R", (), {"matched_count": 1, "modified_count": 1})()
 
 
+# The technical score is out of the configured maximum; tests express scores as a share of it.
+TECHNICAL_MAX = MARKING_SCALE.technical_max
+
+
+def _technical(share: float) -> float:
+    return round(TECHNICAL_MAX * share, 2)
+
+
 def _stored_mark(mode: str = MODE_WITH) -> Dict[str, Any]:
     """A draft mark as persist_and_autopublish would have written it."""
     result = _engine_result()
@@ -165,24 +178,29 @@ class TechnicalPublishTests(unittest.TestCase):
                 col,
                 doc["_id"],
                 mode=MODE_WITH,
-                technical_accuracy=8.0,
-                student_id="IT21001",
+                technical_accuracy=_technical(0.8),
+                student_id="IT22000011",
             )
         )
 
         expected = round(0.5 * ai + 0.5 * 80.0, 2)
         self.assertAlmostEqual(payload["final_score"], expected, places=2)
-        self.assertEqual(payload["final_grade"], resolve_grade(expected))
+        # Official mark is out of 20, and the grade follows that rounded mark.
+        expected_mark = MARKING_SCALE.percent_to_mark(expected)
+        self.assertAlmostEqual(payload["final_mark"], expected_mark, places=2)
+        self.assertEqual(payload["final_mark_max"], MARKING_SCALE.mark_max)
+        self.assertEqual(payload["final_grade"], resolve_grade_from_mark(payload["final_mark"]))
         # The mark actually stored must match what was returned to the client.
         self.assertAlmostEqual(col.doc["final_score"], expected, places=2)
-        self.assertEqual(col.doc["technical_accuracy"], 8.0)
-        self.assertEqual(col.doc["student_id"], "IT21001")
+        self.assertAlmostEqual(col.doc["final_mark"], expected_mark, places=2)
+        self.assertEqual(col.doc["technical_accuracy"], _technical(0.8))
+        self.assertEqual(col.doc["student_id"], "IT22000011")
         self.assertTrue(col.doc["published"])
         self.assertTrue(col.doc["human_published"])
 
-    def test_technical_scale_is_out_of_ten(self):
-        """technical_accuracy is /10 and is scaled x10 onto the /100 mark."""
-        for technical, expected_component in ((0.0, 0.0), (5.0, 50.0), (10.0, 100.0)):
+    def test_technical_scale_is_the_configured_maximum(self):
+        """technical_accuracy is out of technical_max and is scaled onto the 0-100 percentage."""
+        for technical, expected_component in ((0.0, 0.0), (_technical(0.5), 50.0), (TECHNICAL_MAX, 100.0)):
             doc = _stored_mark(MODE_WITH)
             col = FakeMarksCollection(doc)
             ai = doc["assessment"]["ai_performance"]["score"]
@@ -205,7 +223,7 @@ class TechnicalPublishTests(unittest.TestCase):
     def test_higher_technical_never_lowers_the_mark(self):
         """Monotonic in the examiner's score — a sanity property for a grade."""
         finals = []
-        for technical in (2.0, 5.0, 9.0):
+        for technical in (_technical(0.2), _technical(0.5), _technical(0.9)):
             doc = _stored_mark(MODE_WITH)
             col = FakeMarksCollection(doc)
             payload = _run(
@@ -246,7 +264,7 @@ class TechnicalPublishTests(unittest.TestCase):
                 assessment_mode=MODE_WITH, technical_accuracy=None
             )
             with self.assertRaises(HTTPException) as ctx:
-                _run(publish_viva_mark(str(doc["_id"]), payload))
+                _run(publish_viva_mark(str(doc["_id"]), payload, _REQUEST))
             self.assertEqual(ctx.exception.status_code, 400)
         finally:
             db_instance.marks_col = prev
@@ -261,7 +279,7 @@ class TechnicalPublishTests(unittest.TestCase):
                 assessment_mode="SOMETHING_ELSE", technical_accuracy=5.0
             )
             with self.assertRaises(HTTPException) as ctx:
-                _run(publish_viva_mark(str(doc["_id"]), payload))
+                _run(publish_viva_mark(str(doc["_id"]), payload, _REQUEST))
             self.assertEqual(ctx.exception.status_code, 400)
         finally:
             db_instance.marks_col = prev
@@ -275,17 +293,18 @@ class TechnicalPublishTests(unittest.TestCase):
         try:
             payload = PublishVivaMarkPayload(
                 assessment_mode=MODE_WITH,
-                technical_accuracy=7.5,
-                student_id="IT21002",
+                technical_accuracy=_technical(0.75),
+                student_id="IT22000012",
             )
-            response = _run(publish_viva_mark(str(doc["_id"]), payload))
+            response = _run(publish_viva_mark(str(doc["_id"]), payload, _REQUEST))
         finally:
             db_instance.marks_col = prev
 
         expected = round(0.5 * ai + 0.5 * 75.0, 2)
         self.assertAlmostEqual(response["final_score"], expected, places=2)
+        self.assertAlmostEqual(response["final_mark"], MARKING_SCALE.percent_to_mark(expected), places=2)
         self.assertTrue(col.doc["published"])
-        self.assertEqual(col.doc["student_id"], "IT21002")
+        self.assertEqual(col.doc["student_id"], "IT22000012")
 
 
 class NonTechnicalPublishTests(unittest.TestCase):
@@ -375,11 +394,11 @@ class PublishRoundTripTests(unittest.TestCase):
                 col,
                 doc["_id"],
                 mode=MODE_WITH,
-                technical_accuracy=6.0,
+                technical_accuracy=_technical(0.6),
                 student_id=None,
             )
         )
-        recomputed = build_assessment(doc["result"], mode=MODE_WITH, technical_accuracy=6.0)
+        recomputed = build_assessment(doc["result"], mode=MODE_WITH, technical_accuracy=_technical(0.6))
         self.assertAlmostEqual(
             col.doc["assessment"]["final_score"], recomputed["final_score"], places=2
         )
@@ -387,6 +406,49 @@ class PublishRoundTripTests(unittest.TestCase):
         self.assertEqual(
             col.doc["scoring_version"], recomputed["scoring_version"]
         )
+
+
+
+class OffTopicHoldTests(unittest.TestCase):
+    """A technical mark whose answer covered almost none of the subject cannot be published."""
+
+    def _held_mark(self):
+        result = _engine_result()
+        result["technical_accuracy_ai"] = {
+            "status": "success",
+            "overall_score": 0.0,
+            "concepts": [
+                {"concept_id": f"c{i}", "covered": False, "score": 0.0, "weight": 5.0} for i in range(6)
+            ],
+        }
+        result["assessment"] = build_assessment(result, mode=MODE_WITH)
+        return {
+            "_id": ObjectId(),
+            "result": result,
+            "assessment": result["assessment"],
+            "assessment_mode": MODE_WITH,
+            "published": False,
+            "human_published": False,
+            "student_id": None,
+        }
+
+    def test_recording_is_held_incomplete(self):
+        doc = self._held_mark()
+        self.assertEqual(doc["assessment"]["status"], STATUS_INCOMPLETE)
+        self.assertIn("insufficient_topic_coverage", doc["assessment"]["validation"]["reasons"])
+
+    def test_examiner_cannot_publish_it_and_nothing_is_written(self):
+        doc = self._held_mark()
+        col = FakeMarksCollection(doc)
+        with self.assertRaises(ValueError) as ctx:
+            _run(
+                apply_publish_to_mark(
+                    col, doc["_id"], mode=MODE_WITH, technical_accuracy=_technical(0.9), student_id="IT22000011"
+                )
+            )
+        self.assertIn("concepts", str(ctx.exception))
+        self.assertEqual(col.updates, [])
+        self.assertFalse(doc["published"])
 
 
 if __name__ == "__main__":

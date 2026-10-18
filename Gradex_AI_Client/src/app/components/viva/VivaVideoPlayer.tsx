@@ -32,10 +32,16 @@ interface PipPosition {
   top: number;
 }
 
-/** Bottom-right of the viewport — the default resting place for the floating player. */
-function defaultPipPosition(): PipPosition {
+/**
+ * Bottom-left of the content column — the default resting place for the floating player.
+ *
+ * It lines up with the inline player (`anchorLeft`) rather than the right edge of the screen,
+ * because the right-hand column holds the final mark and the publish button, and a player
+ * parked there covers them.
+ */
+function defaultPipPosition(anchorLeft?: number): PipPosition {
   return {
-    left: Math.max(PIP_MARGIN, window.innerWidth - PIP_WIDTH - PIP_MARGIN),
+    left: Math.max(PIP_MARGIN, anchorLeft ?? PIP_MARGIN),
     top: Math.max(PIP_MARGIN, window.innerHeight - PIP_HEIGHT - PIP_MARGIN),
   };
 }
@@ -115,7 +121,7 @@ export const VivaVideoPlayer = forwardRef<VivaVideoPlayerHandle, VivaVideoPlayer
       if (!isOffScreen) setDismissed(false);
     }, [isOffScreen]);
 
-    // Restore the last drag position (or fall back to bottom-right) the first
+    // Restore the last drag position (or fall back to bottom-left) the first
     // time the player floats, before paint so it never flashes at 0,0.
     useLayoutEffect(() => {
       if (!isOffScreen || position) return;
@@ -131,7 +137,8 @@ export const VivaVideoPlayer = forwardRef<VivaVideoPlayerHandle, VivaVideoPlayer
       } catch {
         // Storage can be unavailable or hold stale junk; the default is fine.
       }
-      setPosition(clampToViewport(restored ?? defaultPipPosition()));
+      const anchorLeft = slotRef.current?.getBoundingClientRect().left;
+      setPosition(clampToViewport(restored ?? defaultPipPosition(anchorLeft)));
     }, [isOffScreen, position]);
 
     // Keep the panel on screen when the window is resized.

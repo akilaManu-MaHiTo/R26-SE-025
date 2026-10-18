@@ -20,7 +20,6 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
-from urllib.error import HTTPError
 
 import httpx
 from dotenv import load_dotenv
@@ -144,13 +143,6 @@ def friendly_groq_error(detail: str, *, kind: str = "Groq") -> str:
     return f"{kind} failed: {compact}" if compact else f"{kind} failed."
 
 
-def _read_http_error(exc: HTTPError) -> str:
-    try:
-        return exc.read().decode("utf-8", errors="replace")
-    except Exception:
-        return str(exc.reason or exc)
-
-
 def extract_json_object(text: str) -> Optional[Dict[str, Any]]:
     cleaned = (text or "").strip()
     if cleaned.startswith("```"):
@@ -175,6 +167,30 @@ def extract_json_object(text: str) -> Optional[Dict[str, Any]]:
 # --------------------------------------------------------------------------
 # Multi-provider chat chain: Groq -> Gemini -> OpenRouter (free tier)
 # --------------------------------------------------------------------------
+
+
+# Default endpoints. Each can be pointed elsewhere (a proxy, a self-hosted gateway) from
+# Gradex_AI_Server/app/.env; see .env.example.
+_GROQ_DEFAULT_BASE = "https://api.groq.com/openai/v1"
+_GROQ_BASE_URL_ENV = ("VIVA_COPILOT_LLM_BASE_URL", "OPENAI_BASE_URL", "LLM_BASE_URL", "VIVA_LLM_BASE_URL")
+_OPENROUTER_DEFAULT_BASE = "https://openrouter.ai/api/v1"
+_GEMINI_DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+_OPENROUTER_DEFAULT_REFERER = "https://gradex.local"
+
+
+def _first_env(names: tuple, default: str) -> str:
+    """The first non-empty value among `names`, else `default`, without a trailing slash."""
+    for name in names:
+        value = (os.getenv(name) or "").strip()
+        if value:
+            return value.rstrip("/")
+    return default.rstrip("/")
+
+
+def _chat_completions_url(names: tuple, default_base: str) -> str:
+    """An OpenAI-compatible base URL (from env, else the default) as its /chat/completions endpoint."""
+    base = _first_env(names, default_base)
+    return base if base.endswith("/chat/completions") else f"{base}/chat/completions"
 
 
 @dataclass
@@ -211,22 +227,25 @@ def _providers() -> List["_Provider"]:
             key_env_vars=("VIVA_COPILOT_API_KEY", "VIVA_LLM_API_KEY", "GROQ_API_KEY", "AI_API_KEY", "BACKUP_API_KEY"),
             models=groq_models,
             kind="openai",
-            base_url="https://api.groq.com/openai/v1/chat/completions",
+            base_url=_chat_completions_url(_GROQ_BASE_URL_ENV, _GROQ_DEFAULT_BASE),
         ),
         _Provider(
             name="Gemini",
             key_env_vars=("GEMINI_API_KEY", "GOOGLE_API_KEY"),
             models=gemini_models,
             kind="gemini",
-            base_url="https://generativelanguage.googleapis.com/v1beta/models",
+            base_url=_first_env(("GEMINI_BASE_URL",), _GEMINI_DEFAULT_BASE),
         ),
         _Provider(
             name="OpenRouter",
             key_env_vars=("OPENROUTER_API_KEY",),
             models=openrouter_models,
             kind="openai",
-            base_url="https://openrouter.ai/api/v1/chat/completions",
-            extra_headers={"HTTP-Referer": "https://gradex.local", "X-Title": "Gradex Viva Copilot"},
+            base_url=_chat_completions_url(("OPENROUTER_BASE_URL",), _OPENROUTER_DEFAULT_BASE),
+            extra_headers={
+                "HTTP-Referer": _first_env(("OPENROUTER_REFERER",), _OPENROUTER_DEFAULT_REFERER),
+                "X-Title": "Gradex Viva Copilot",
+            },
         ),
     ]
 
