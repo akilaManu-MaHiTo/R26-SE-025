@@ -152,6 +152,29 @@ def test_csrf_and_login_throttling(system):
     assert login(client).status_code == 429
 
 
+def test_deployed_frontend_origin_is_trusted(system):
+    client, _ = system
+    response = client.post(
+        "/api/auth/login",
+        json={"email": "teacher@example.edu", "password": "UniquePassword123!"},
+        headers={"Origin": "https://gradex-orpin.vercel.app"},
+    )
+    assert response.status_code == 200
+
+
+def test_forwarded_https_scheme_is_used_for_same_host_origin(system):
+    client, _ = system
+    response = client.post(
+        "/api/auth/login",
+        json={"email": "teacher@example.edu", "password": "UniquePassword123!"},
+        headers={
+            "Origin": "https://testserver",
+            "X-Forwarded-Proto": "https",
+        },
+    )
+    assert response.status_code == 200
+
+
 def test_database_failure_does_not_expose_details_or_allow_login(system, monkeypatch):
     from pymongo.errors import ServerSelectionTimeoutError
     client, db = system
