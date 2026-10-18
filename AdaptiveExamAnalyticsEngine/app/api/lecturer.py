@@ -8,7 +8,7 @@ from uuid import uuid4
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from app.analytics.student_document import performance_status
 from app.api.deps import get_db
@@ -18,6 +18,7 @@ from app.db.repository import (
     find_graded_submissions_for_exam,
     find_student_analytics,
     find_diagram_evaluations_for_exam,
+    find_diagram_markings_for_exam,
     list_all_exams,
 )
 from app.schemas.exam_analytics import ExamAnalyticsDocument
@@ -28,8 +29,11 @@ from app.services.exam_analytics import ANALYTICS_VERSION, ExamNotFound, compute
 from app.services.recommendation import recommend_for_weak_areas
 from app.services.student_dashboard import StudentNotFound, ensure_student_analytics, is_current_student_analysis
 from app.services.teaching_actions import get_teaching_actions
-from app.ingestion.student_data import normalize_question_no
+from app.ingestion.student_data import normalize_question_no, saved_total_score, StudentDataError
 from app.ingestion.answer_text import question_excerpt
+from app.analytics.diagram_analysis import compute_diagram_analysis
+from app.services.lecturer_grading import build_lecturer_grading_rows
+from app.services.exam_paper_definition import load_exam_paper_definition
 
 router = APIRouter(prefix="/lecturers", tags=["lecturers"])
 
@@ -53,7 +57,10 @@ async def generate_exam_creator(payload: GenerateRequest):
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if result["status"] != "ok":
-        raise HTTPException(status_code=503, detail=result.get("detail") or result.get("reason", "Generation unavailable"))
+        raise HTTPException(status_code=503, detail={
+            "message": result.get("detail") or result.get("reason", "Generation unavailable"),
+            "retrieval": result.get("retrieval"),
+        })
     return result
 
 
@@ -126,7 +133,34 @@ def _is_complete_snapshot(doc: dict | None) -> bool:
     # Must have statistics
     if not isinstance(doc.get("statistics"), dict):
         return False
+    try:
+        ExamAnalyticsDocument.model_validate(doc)
+    except ValidationError:
+        return False
     return True
+
+
+async def _refresh_diagram_analysis(db, document, course_code, session_name, year, month, semester):
+    # Saved essay analytics may predate diagram grading; refresh without model inference.
+    evaluations = await find_diagram_evaluations_for_exam(db, course_code, session_name, year, month, semester)
+    markings = await find_diagram_markings_for_exam(db, course_code, session_name, year, month, semester) if evaluations else []
+    return {**document, "diagram_analysis": compute_diagram_analysis(evaluations, markings)}
+
+
+async def _find_canonical_exam(db, course_code, session_name, year, month, semester):
+    from calendar import month_name
+    identity = {"subjectCode": course_code, "session": {"$in": ["Final", "Final Examination"]} if session_name in ("Final", "Final Examination") else session_name}
+    for key, value in (("examYear", year), ("examSemester", semester)):
+        if value is not None:
+            identity[key] = {"$in": [value, str(value)]}
+    if month is not None:
+        if not 1 <= month <= 12:
+            raise HTTPException(422, "Invalid exam month")
+        identity["examMonth"] = {"$in": [month, str(month), month_name[month]]}
+    exams = await db["examkeys"].find(identity).to_list(length=2)
+    if len(exams) > 1:
+        raise HTTPException(409, "Select the exact exam year, month and semester; the exam identity is ambiguous")
+    return exams[0] if exams else None
 
 
 @router.get("/llm-health")
@@ -329,12 +363,9 @@ async def lecturer_exam_analytics(
             try:
                 fresh = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
                 document = fresh
-            except ExamNotFound:
-                # No evidence to rebuild; keep cached stale snapshot
-                pass
             except Exception:
-                # Rebuild failed; keep cached
-                pass
+                document = {**document, "snapshot_status": "stale",
+                    "refresh_warning": "Refresh failed. These saved essay analytics may be outdated; review grading issues and reanalyse."}
         elif document is None:
             try:
                 document = await compute_exam_analytics(db, course_code, session_name, year, month, semester)
@@ -342,11 +373,14 @@ async def lecturer_exam_analytics(
                 raise HTTPException(status_code=404, detail=str(exc)) from exc
     except HTTPException:
         raise
+    except StudentDataError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to compute analytics: {exc}") from exc
     # Analytics reads have no account-creation side effect — provisioning moved to dedicated endpoint
     # (student access no longer depends on opening lecturer dashboard)
     try:
+        document = await _refresh_diagram_analysis(db, document, course_code, session_name, year, month, semester)
         return ExamAnalyticsDocument.model_validate(document)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Analytics document validation failed: {exc}") from exc
@@ -370,6 +404,8 @@ async def lecturer_exam_reanalyse(
         )
     except ExamNotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except StudentDataError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to reanalyse: {exc}") from exc
     try:
@@ -395,6 +431,7 @@ async def lecturer_exam_analytics_stream(
         # Fast path: cached (only if complete snapshot)
         cached = await find_exam_analytics(db, course_code, session_name, year, month, semester)
         if cached is not None and _is_complete_snapshot(cached):
+            cached = await _refresh_diagram_analysis(db, cached, course_code, session_name, year, month, semester)
             yield sse("progress", {"phase": "cached", "message": "PULSE·AI — Using cached analytics"})
             yield sse("result", cached)
             return
@@ -483,6 +520,21 @@ async def lecturer_provision_accounts(
         raise HTTPException(status_code=500, detail=f"Failed to provision accounts: {exc}") from exc
 
 
+@router.get("/exams/{course_code}/{session_name}/paper")
+async def lecturer_exam_paper(
+    course_code: str, session_name: str,
+    year: int = Query(...), month: int = Query(..., ge=1, le=12), semester: int = Query(...),
+    db=Depends(get_db),
+):
+    exam = await _find_canonical_exam(db, course_code, session_name, year, month, semester)
+    if exam is None:
+        raise HTTPException(404, "No canonical exam record was found for this question paper")
+    try:
+        return await load_exam_paper_definition(db, exam)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
 @router.get("/exams/{course_code}/{session_name}/students")
 async def lecturer_student_list(
     course_code: str,
@@ -492,6 +544,22 @@ async def lecturer_student_list(
     semester: int | None = Query(None),
     db=Depends(get_db),
 ):
+    from app.db.repository import load_exam_paper_sources
+
+    exam = await _find_canonical_exam(db, course_code, session_name, year, month, semester)
+    if exam:
+        sources = await load_exam_paper_sources(db, exam["examKey"])
+        try:
+            rows = build_lecturer_grading_rows(exam["examKey"], sources)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        for row in rows:
+            cached = await find_student_analytics(db, row["student_id"], course_code, session_name, year, month, semester)
+            if is_current_student_analysis(cached):
+                row["analysis_status"] = "generated"
+        return rows
+
+    # Legacy exams without a canonical record retain their existing read path.
     submissions = await find_graded_submissions_for_exam(
         db, course_code, session_name, year, month, semester
     )
@@ -526,27 +594,15 @@ async def lecturer_student_list(
     for submission in submissions:
         student_id = submission["student_id"]
         evaluation = submission.get("evaluation") or {}
-        obtained = evaluation.get("total_score")
-        if obtained is None:
-            obtained = submission.get("max_marks_paper_total")
-        obtained = float(obtained or 0.0)
-        maximum = evaluation.get("max_score")
-        if maximum is None:
-            maximum = submission.get("max_marks_paper_total")
-        maximum = float(maximum or 0.0)
-        percentage = (obtained / maximum * 100.0) if maximum else 0.0
+        score = saved_total_score(submission)
         cached = await find_student_analytics(
             db, student_id, course_code, session_name, year, month, semester
         )
         rows.append(
             {
                 "student_id": student_id,
-                "score": {
-                    "obtained": obtained,
-                    "maximum": maximum,
-                    "percentage": round(percentage, 2),
-                },
-                "status": performance_status(percentage),
+                "score": score,
+                "status": performance_status(score["percentage"]) if score["percentage"] is not None else "Unavailable",
                 "analysis_status": "generated" if is_current_student_analysis(cached) else "pending",
                 "submitted_at": submission.get("processed_at"),
             }
@@ -615,18 +671,7 @@ async def lecturer_student_detail(
             except Exception:
                 raise HTTPException(status_code=404, detail=str(exc)) from exc
         except Exception as exc:
-            try:
-                from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
-                _d2 = await find_diagram_evaluation_for_student(db, student_id, course_code, session_name, year, month, semester)
-                _m2 = await find_diagram_marking_for_student(db, student_id, course_code, session_name, year, month, semester)
-                if _d2 is not None or _m2 is not None:
-                    doc = _synthesize_diagram_doc(student_id, course_code, session_name, year, month, semester, (_d2 or {}).get("evaluation_result") or {})
-                else:
-                    raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
-            except HTTPException:
-                raise
-            except Exception:
-                raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
+            raise HTTPException(status_code=500, detail=f"Failed to analyze student {student_id}: {exc}") from exc
     # Enrich with diagram data (best-effort)
     try:
         from app.db.repository import find_diagram_evaluation_for_student, find_diagram_marking_for_student
@@ -755,19 +800,24 @@ async def lecturer_student_detail_stream(
             ensure_student_analytics(db, student_id, course_code, session_name, year, month, semester, progress_callback=progress_cb)
         )
 
-        # Emit initial 0%
-        yield sse("progress", {"phase": "analyzing", "message": f"PULSE·AI — Starting analysis for {student_id}…", "progress": 0, "studentId": student_id})
+        def progress_event(msg: str) -> str:
+            nonlocal steps_done
+            if msg == "queued":
+                return sse("progress", {"phase": "queued", "message": "Queued — waiting for the previous student analysis", "progress": 0, "studentId": student_id})
+            if msg == "started":
+                return sse("progress", {"phase": "analyzing", "message": f"Analyzing {student_id}…", "progress": 0, "studentId": student_id})
+            steps_done += 1
+            prog = min(90, max(5, round((steps_done / total_steps) * 90)))
+            if "insight" in msg.lower():
+                prog = max(prog, 85)
+            return sse("progress", {"phase": "analyzing", "message": msg, "progress": prog, "studentId": student_id, "stepsDone": steps_done, "totalSteps": total_steps})
+
+        yield sse("progress", {"phase": "queued", "message": f"Submitting analysis for {student_id}…", "progress": 0, "studentId": student_id})
 
         while not compute_task.done():
             try:
                 msg = await asyncio.wait_for(queue.get(), timeout=0.35)
-                steps_done += 1
-                # progress 5%..90% during classifying/insights; reserve 100 for final
-                prog = min(90, max(5, round((steps_done / total_steps) * 90)))
-                # bump a bit for insight phase
-                if "insights" in msg.lower() or "insight" in msg.lower():
-                    prog = max(prog, 85)
-                yield sse("progress", {"phase": "analyzing", "message": msg, "progress": prog, "studentId": student_id, "stepsDone": steps_done, "totalSteps": total_steps})
+                yield progress_event(msg)
             except asyncio.TimeoutError:
                 yield sse("ping", {"message": "alive", "progress": min(90, round((steps_done / total_steps) * 90)) if total_steps else 0, "studentId": student_id})
             except Exception:
@@ -776,9 +826,7 @@ async def lecturer_student_detail_stream(
         while not queue.empty():
             try:
                 msg = queue.get_nowait()
-                steps_done += 1
-                prog = min(95, round((steps_done / total_steps) * 90)) if total_steps else 90
-                yield sse("progress", {"phase": "analyzing", "message": msg, "progress": prog, "studentId": student_id})
+                yield progress_event(msg)
             except Exception:
                 break
 

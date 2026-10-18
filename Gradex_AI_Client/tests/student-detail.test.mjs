@@ -11,7 +11,7 @@ const page = readFileSync(new URL('../src/app/components/AnalyticsPage.tsx', imp
 // Execute the click handler without mounting unrelated charts and dialogs.
 const handlerSource = page.match(/const handleSelectStudent = useCallback\((async .*?), \[selectedExam, students[^\]]*\]\);/s)[1];
 const handlerCode = transformSync(`(${handlerSource})`, { loader: 'ts' }).code;
-const { fetchLecturerStudentDetail } = await loadApi('../src/app/api/lecturerApi.ts');
+const { fetchLecturerStudentDetail, fetchLecturerStudentDetailStream } = await loadApi('../src/app/api/lecturerApi.ts');
 
 async function openStudent(status, { missing = false, streamFails = false, modelOnline = true } = {}) {
   const requests = [];
@@ -63,6 +63,29 @@ test('opening a student navigates to a performance page with the full exam ident
   assert.equal(destination.get('year'), '2026');
   assert.equal(destination.get('month'), '7');
   assert.equal(destination.get('semester'), '1');
+});
+
+test('student stream forwards queue phases and ignores heartbeat progress', async () => {
+  const originalFetch = globalThis.fetch;
+  const updates = [];
+  const event = (type, data) => `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+  const text = event('progress', { phase: 'queued', message: 'Waiting', progress: 0 })
+    + event('ping', { message: 'alive', progress: 0 })
+    + event('progress', { phase: 'analyzing', message: 'Classifying', progress: 35 })
+    + event('result', { student_id: 'A' });
+  let sent = false;
+  globalThis.fetch = async () => ({ ok: true, body: { getReader: () => ({ read: async () => {
+    if (sent) return { done: true };
+    sent = true;
+    return { done: false, value: new TextEncoder().encode(text) };
+  } }) } });
+  try {
+    const result = await fetchLecturerStudentDetailStream('IT2040', 'Final', 'A', 2026, 7, 1, (...args) => updates.push(args));
+    assert.equal(result.student_id, 'A');
+    assert.deepEqual(updates, [['Waiting', 0, 'queued'], ['Classifying', 35, 'analyzing']]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('student performance replaces the exam page and Back to exam clears the student destination', () => {
@@ -127,13 +150,12 @@ test('missing saved details for a Ready student shows an error without starting 
   assert.equal(result.notifications.length, 0);
 });
 
-test('diagram-only details reopen without model requests or analysis notifications', async () => {
+test('diagram-only details retry full student analysis', async () => {
   const result = await openStudent('diagram_only');
-  assert.equal(result.requests.length, 1);
-  assert.ok(result.requests[0] instanceof URL);
-  assert.equal(result.requests[0].searchParams.get('auto_analyze'), 'false');
+  assert.deepEqual(result.requests, ['health', 'stream']);
   assert.deepEqual(result.loaded, { student_id: 'S1' });
-  assert.equal(result.notifications.length, 0);
+  assert.ok(result.notifications.some((event) => event.active && event.progress === 0));
+  assert.ok(result.notifications.some((event) => event.progress === 100));
 });
 
 test('pending student still checks the model and streams analysis progress', async () => {
@@ -262,24 +284,26 @@ test('obsolete errors and completion cannot clear the current loading state', as
   assert.equal(view.loading, false);
 });
 
-test('obsolete stream progress and failure do not emit notifications or start a fallback', async () => {
+test('background student keeps progress and fallback without overwriting the selected student', async () => {
   const view = racingStudents('pending');
   const first = view.select('A');
   await new Promise(resolve => setImmediate(resolve));
   const second = view.select('B');
   await new Promise(resolve => setImmediate(resolve));
-  const count = view.notifications.length;
-  view.requests[0].progress('Old progress', 75);
+  view.requests[0].progress('Student A progress', 75);
   view.requests[0].reject(new Error('Old stream failure'));
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(view.notifications.length, count);
-  assert.equal(view.requests.length, 2);
+  assert.ok(view.notifications.some(event => event.studentId === 'A' && event.progress === 75));
+  assert.equal(view.requests.length, 3);
+  view.requests[2].resolve({ student_id: 'A' });
   await first;
+  assert.ok(view.notifications.some(event => event.studentId === 'A' && !event.active && event.progress === 100));
+  assert.equal(view.loaded, null);
   view.requests[1].resolve({ student_id: 'B' });
   await second;
 });
 
-test('old delayed completion cannot hide the next student analysis', async () => {
+test('completion closes only its own notification without a delayed timer', async () => {
   const view = racingStudents('pending');
   const first = view.select('A');
   await new Promise(resolve => setImmediate(resolve));
@@ -287,11 +311,29 @@ test('old delayed completion cannot hide the next student analysis', async () =>
   await first;
   const second = view.select('B');
   await new Promise(resolve => setImmediate(resolve));
-  const count = view.notifications.length;
-  view.timers[0]();
-  assert.equal(view.notifications.length, count);
+  assert.equal(view.timers.length, 0);
+  assert.ok(view.notifications.some(event => event.studentId === 'A' && !event.active && event.status === 'complete'));
+  assert.ok(view.notifications.some(event => event.studentId === 'B' && event.active));
   view.requests[1].resolve({ student_id: 'B' });
   await second;
+});
+
+test('switching students during the health check still submits both analyses', async () => {
+  const view = racingStudents('pending');
+  const health = [];
+  view.context.fetchLlmHealth = () => {
+    const request = deferred(); health.push(request); return request.promise;
+  };
+  const first = view.select('A');
+  const second = view.select('B');
+  health[0].resolve({ online: true, model_available: true });
+  health[1].resolve({ online: true, model_available: true });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(view.requests.map(request => request.studentId), ['A', 'B']);
+  view.requests[0].resolve({ student_id: 'A' });
+  view.requests[1].resolve({ student_id: 'B' });
+  await Promise.all([first, second]);
+  assert.equal(view.loaded.student_id, 'B');
 });
 
 test('changing exam invalidates a pending student request with the same student ID', async () => {
@@ -304,7 +346,7 @@ test('changing exam invalidates a pending student request with the same student 
   });
   for (const setter of ['setLoadingAnalytics', 'setLoadingStudents', 'setAnalytics', 'setLiveModelMessage',
     'setStudentSearch', 'setLoadSteps', 'setCurrentLoadStep', 'setLoadingActions', 'setTeachingActions',
-    'setSelectedTopic', 'setSelectedQuestion']) view.context[setter] = () => {};
+    'setSelectedTopic', 'setSelectedQuestion', 'setPaperOpen', 'setStudentListError']) view.context[setter] = () => {};
   view.context.handleSelectExam = vm.runInNewContext(transformSync(`(${examSource})`, { loader: 'ts' }).code, view.context);
   await view.context.handleSelectExam({ ...view.context.selectedExam, year: 2027 });
   const current = view.select('A');

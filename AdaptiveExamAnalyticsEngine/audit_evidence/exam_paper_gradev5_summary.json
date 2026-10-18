@@ -1,0 +1,86 @@
+[
+  {
+    "database": "gradev5",
+    "sourceRead": {
+      "startedAt": "2026-10-16T11:03:31.822449+00:00",
+      "completedAt": "2026-10-16T11:03:31.853199+00:00",
+      "consistentSnapshot": false
+    },
+    "examKey": "EXAM-2025-S1-Apr",
+    "validation": {
+      "examDefinitionStatus": "valid",
+      "questionPaperStatus": "incomplete",
+      "expectedQuestionCount": 6,
+      "actualQuestionCount": 5,
+      "missingQuestionNumbers": [
+        "06"
+      ],
+      "missingQuestionTypes": [
+        "Diagram"
+      ],
+      "status": "incomplete"
+    },
+    "studentCount": 5,
+    "completeStudentCount": 0,
+    "linkedAnswerCount": 10,
+    "unresolvedDiagramQuestionCount": 1,
+    "unresolvedEvaluationCount": 5,
+    "maximumMarks": 55,
+    "gradeStatusCounts": {
+      "needs_review": 1,
+      "complete": 1,
+      "pending": 3
+    },
+    "issueCounts": {
+      "unverified_diagram_question": 1,
+      "question_count_mismatch": 1
+    },
+    "studentIssueCounts": {
+      "criterion_mismatch": 1,
+      "invalid_criterion_marks": 1,
+      "answer_excerpt_truncated": 2,
+      "unverified_diagram_question": 5,
+      "missing_original_diagram_artifact": 5,
+      "missing_evaluation": 23
+    }
+  },
+  {
+    "database": "gradev5",
+    "sourceRead": {
+      "startedAt": "2026-10-16T11:03:31.855199+00:00",
+      "completedAt": "2026-10-16T11:03:31.861197+00:00",
+      "consistentSnapshot": false
+    },
+    "examKey": "EXAM-IT2040-2027-S2-Nov-FINAL",
+    "validation": {
+      "examDefinitionStatus": "valid",
+      "questionPaperStatus": "incomplete",
+      "expectedQuestionCount": 6,
+      "actualQuestionCount": 0,
+      "missingQuestionNumbers": [
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06"
+      ],
+      "missingQuestionTypes": [
+        "Diagram",
+        "Essay"
+      ],
+      "status": "incomplete"
+    },
+    "studentCount": 0,
+    "completeStudentCount": 0,
+    "linkedAnswerCount": 0,
+    "unresolvedDiagramQuestionCount": 0,
+    "unresolvedEvaluationCount": 0,
+    "maximumMarks": null,
+    "gradeStatusCounts": {},
+    "issueCounts": {
+      "question_count_mismatch": 1
+    },
+    "studentIssueCounts": {}
+  }
+]

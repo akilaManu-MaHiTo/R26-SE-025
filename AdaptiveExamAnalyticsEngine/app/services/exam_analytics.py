@@ -1,6 +1,7 @@
 """Generator that computes and persists lecturer-facing exam analytics."""
 
 from datetime import datetime, timezone
+from collections import Counter
 
 from collections.abc import Callable
 
@@ -17,10 +18,10 @@ from app.db.repository import (
     upsert_exam_analytics,
     upsert_exam_analysis_status,
 )
-from app.ingestion.student_data import normalize_student_submission
+from app.ingestion.student_data import StudentDataError, normalize_student_submission
 from app.services import student_pipeline as _student_pipeline
 
-ANALYTICS_VERSION = "1.2"
+ANALYTICS_VERSION = "1.4"
 
 
 class ExamNotFound(Exception):
@@ -44,20 +45,36 @@ async def compute_exam_analytics(
     submissions = await find_graded_submissions_for_exam(db, course_code, session_name, year, month, semester)
     if not submissions:
         raise ExamNotFound(f"no graded submissions for {course_code} {session_name}")
+    from app.services.exam_paper import _identity
+    identities = [_identity(s) for s in submissions]
+    if any(len({identity[i] for identity in identities if identity[i] is not None}) > 1 for i in range(5)) or len({s["examKey"] for s in submissions if s.get("examKey")}) > 1:
+        raise StudentDataError("Select an exact exam year, month and semester; conflicting exam records cannot be combined")
 
     _progress(f"PULSE·AI — Ingesting {len(submissions)} submissions for {course_code} {session_name}...")
-    _progress(f"PULSE·AI — Resolving course/rubric once for {course_code} {session_name}...")
-    # A: reuse course/rubric — N+1 query fan-out → 1 query (same exam identity)
+    _progress(f"PULSE·AI — Resolving course and verifying submission rubrics for {course_code} {session_name}...")
     first_ref = submissions[0] if submissions else {}
     course = await find_course_for_submission(db, first_ref)
-    rubric = await find_rubric_for_submission(db, first_ref)
+    rubric = None
     students: list[dict] = []
+    excluded = []
+    student_counts = Counter(s.get("student_id") or s.get("student_key") for s in submissions)
     classification_cache: dict = {}
-    total_q = 0
     for idx, submission in enumerate(submissions):
         _progress(f"Analyzing student {submission.get('student_id', 'unknown')} ({idx+1}/{len(submissions)}) — normalizing...")
-        normalized = normalize_student_submission(course or {}, rubric or {}, submission)
-        total_q = len(normalized.questions)
+        try:
+            student_id = submission.get("student_id") or submission.get("student_key")
+            if student_counts[student_id] > 1:
+                raise StudentDataError("Duplicate active essay submissions")
+            student_rubric = await find_rubric_for_submission(db, submission)
+            if student_rubric is None:
+                raise StudentDataError("Missing or conflicting essay rubric")
+            normalized = normalize_student_submission(course or {}, student_rubric, submission)
+        except StudentDataError as exc:
+            excluded.append({"student_id": str(submission.get("student_id") or submission.get("student_key") or "Unknown"), "reason": str(exc)})
+            continue
+        if rubric is not None and str(student_rubric.get("_id")) != str(rubric.get("_id")):
+            raise StudentDataError("Multiple essay rubric versions require review before class analytics")
+        rubric = student_rubric
 
         def _q_progress(msg: str):
             # msg is like "classify q01" or "classify q01 (cached)"
@@ -100,6 +117,8 @@ async def compute_exam_analytics(
             }
         )
 
+    if not students:
+        raise StudentDataError("No valid essay grading evidence; review submission and rubric validation issues")
     _progress(f"PULSE·AI — Computing class statistics for {len(students)} students (avg, pass rate, Bloom)...")
     stats = compute_exam_analytics_stats(students, pass_threshold=0.5)
     _progress("PULSE·AI — Canonicalizing topics from same evidence set...")
@@ -317,17 +336,13 @@ async def compute_exam_analytics(
             semester = int((rubric or {}).get("semester") or 0)
     except (TypeError, ValueError) as exc:
         raise ExamNotFound(f"invalid rubric session identity for {course_code} {session_name}") from exc
-    # Merge diagram analysis if diagram_evaluation data exists for this exam
+    # Merge saved diagram grades; invalid data must surface rather than disappear.
     diagram_analysis = None
-    try:
-        diagram_evals = await find_diagram_evaluations_for_exam(db, course_code, session_name, year, month, semester)
+    diagram_evals = await find_diagram_evaluations_for_exam(db, course_code, session_name, year, month, semester)
+    if diagram_evals:
         diagram_marks = await find_diagram_markings_for_exam(db, course_code, session_name, year, month, semester)
-        if diagram_evals:
-            diagram_analysis = compute_diagram_analysis(diagram_evals, diagram_marks)
-            if diagram_analysis:
-                _progress(f"PULSE·AI — Diagram analysis: {diagram_analysis['statistics']['total_students']} students, avg {diagram_analysis['statistics']['average_percentage']:.1f}%")
-    except Exception:
-        pass
+        diagram_analysis = compute_diagram_analysis(diagram_evals, diagram_marks)
+        _progress(f"PULSE·AI — Diagram analysis: {diagram_analysis['statistics']['total_students']} students, avg {diagram_analysis['statistics']['average_percentage']:.1f}%")
 
     document = {
         "subject_code": course_code,
@@ -341,6 +356,7 @@ async def compute_exam_analytics(
         "diagram_analysis": diagram_analysis,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "analytics_version": ANALYTICS_VERSION,
+        "excluded_submissions": excluded,
     }
     _progress("PULSE·AI — Saving analytics to database...")
     await upsert_exam_analytics(db, document)
