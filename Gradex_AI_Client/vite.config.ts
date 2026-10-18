@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -16,11 +16,13 @@ function figmaAssetResolver() {
   }
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const proxyTarget = loadEnv(mode, __dirname, '').VITE_PROXY_TARGET || 'http://127.0.0.1:8000'
+  return {
   server: {
     proxy: {
-      '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true, ws: true },
-      '/courses': { target: 'http://127.0.0.1:8000', changeOrigin: true },
+      '/api': { target: proxyTarget, changeOrigin: true, ws: true },
+      '/courses': { target: proxyTarget, changeOrigin: true },
     },
   },
   plugins: [
@@ -39,4 +41,5 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+  }
 })
