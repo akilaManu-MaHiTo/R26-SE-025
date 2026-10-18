@@ -57,6 +57,7 @@ from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_rout
 from AdaptiveExamAnalyticsEngine.app.api.dashboard import router as v2_student_router
 from AdaptiveExamAnalyticsEngine.app.api.lecturer import router as v2_lecturer_router
 from AdaptiveExamAnalyticsEngine.app.api.taxonomy import router as taxonomy_router
+from AdaptiveExamAnalyticsEngine.app.api.course_rag import router as course_rag_router
 
 
 MAX_VIVA_UPLOAD_BYTES = 1024 * 1024 * 1024
@@ -100,6 +101,7 @@ app.include_router(analytics_router)
 app.include_router(exam_keys_router)
 app.include_router(viva_copilot_router)
 app.include_router(v2_lecturer_router, prefix="/api")
+app.include_router(course_rag_router, prefix="/api")
 app.include_router(v2_student_router, prefix="/api")
 app.include_router(taxonomy_router, dependencies=[Depends(require_lecturer)])
 

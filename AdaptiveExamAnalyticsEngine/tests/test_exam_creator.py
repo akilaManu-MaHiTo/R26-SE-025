@@ -7,6 +7,17 @@ from app.main import app
 from app.services import recommendation
 
 
+@pytest.fixture(autouse=True)
+def lecturer_session_and_isolated_material_index(monkeypatch, tmp_path):
+    from app.config import settings
+    from Gradex_AI_Server.app import session_auth
+    monkeypatch.setattr(settings, "course_rag_index", str(tmp_path / "absent.sqlite3"))
+    async def lecturer(connection):
+        return {"email": "lecturer@example.test", "role": "lecturer"}
+    monkeypatch.setattr(session_auth, "session_user", lecturer)
+    monkeypatch.setattr(session_auth, "trusted_origin", lambda connection: True)
+
+
 def row(id, topic="SQL", bloom="Apply", source="tutorial", year=2025):
     return dict(question_id=id, source_id=id, canonical_topic=topic,
                 bloom_level=bloom, source_type=source, year=year, marks=10,
@@ -114,9 +125,10 @@ async def test_generate_endpoint_reports_ollama_timeout(monkeypatch):
     with pytest.raises(HTTPException) as error:
         await generate_exam_creator(payload)
     assert error.value.status_code == 503
-    assert "240" in error.value.detail
-    assert "timed out" in error.value.detail.lower()
-    assert "OLLAMA_TIMEOUT" in error.value.detail
+    detail = error.value.detail["message"]
+    assert "240" in detail
+    assert "timed out" in detail.lower()
+    assert "OLLAMA_TIMEOUT" in detail
 
 
 async def test_generation_uses_sources_and_validates_rubric(monkeypatch):

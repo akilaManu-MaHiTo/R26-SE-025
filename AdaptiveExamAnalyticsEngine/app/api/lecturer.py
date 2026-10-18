@@ -57,7 +57,10 @@ async def generate_exam_creator(payload: GenerateRequest):
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if result["status"] != "ok":
-        raise HTTPException(status_code=503, detail=result.get("detail") or result.get("reason", "Generation unavailable"))
+        raise HTTPException(status_code=503, detail={
+            "message": result.get("detail") or result.get("reason", "Generation unavailable"),
+            "retrieval": result.get("retrieval"),
+        })
     return result
 
 
