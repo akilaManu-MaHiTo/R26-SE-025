@@ -1,0 +1,247 @@
+[
+  {
+    "_id": {
+      "$oid": "6c1149ab7d0e5c1a3f2b8d40"
+    },
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "filename": "IT2040 - 2022 Final Exam.pdf",
+    "parsed_at": 1654041600.0,
+    "exam_roster": [
+      "IT21230101",
+      "IT21230102",
+      "IT21230103",
+      "IT21230104",
+      "IT21230105",
+      "IT21230106",
+      "IT21230107",
+      "IT21230108",
+      "IT21230109",
+      "IT21230110",
+      "IT21230111",
+      "IT21230112",
+      "IT21230113",
+      "IT21230114",
+      "IT21230115",
+      "IT21230116",
+      "IT21230117",
+      "IT21230118",
+      "IT21230119",
+      "IT21230120",
+      "IT21230121",
+      "IT21230122",
+      "IT21230123",
+      "IT21230124",
+      "IT21230125",
+      "IT21230126",
+      "IT21230127",
+      "IT21230128",
+      "IT21230129",
+      "IT21230130",
+      "IT21230131",
+      "IT21230132",
+      "IT21230133",
+      "IT21230134",
+      "IT21230135",
+      "IT21230136",
+      "IT21230137",
+      "IT21230138",
+      "IT21230139",
+      "IT21230140",
+      "IT21230141",
+      "IT21230142",
+      "IT21230143",
+      "IT21230144",
+      "IT21230145",
+      "IT21230146",
+      "IT21230147",
+      "IT21230148",
+      "IT21230149",
+      "IT21230150"
+    ],
+    "questions": [
+      {
+        "question_no": "01",
+        "bloom_level": "Analyze",
+        "max_marks": 20,
+        "question_text": "Consider relation R(A, B, C, D, E, F) with the set of functional dependencies F = {A -> CD, B -> E, F -> A}. (a) Find all the keys of R using the attribute closure method, showing each step of the closure. (b) Decide whether R is in 3NF and give reasons using the 3NF test. (c) Decide whether R is in BCNF and give reasons. If R is not in BCNF, decompose R into a set of BCNF relations, state the primary key of each new relation, and show that the decomposition is lossless and dependency preserving. (20 marks)",
+        "criteria": [
+          {
+            "point": "Applies attribute closure to find every candidate key of R",
+            "marks": 4
+          },
+          {
+            "point": "Tests 3NF for every non-trivial dependency using prime attributes",
+            "marks": 4
+          },
+          {
+            "point": "Applies the BCNF test and identifies the violating dependencies",
+            "marks": 4
+          },
+          {
+            "point": "Derives a correct BCNF decomposition and states each primary key",
+            "marks": 4
+          },
+          {
+            "point": "Proves the decomposition is lossless and dependency preserving",
+            "marks": 4
+          }
+        ],
+        "model_answer": "Closures: B+ = {B}. BF+ = {B,F}; F -> A adds A; A -> CD adds C and D; B -> E adds E, so BF+ = {A,B,C,D,E,F} = R and {B,F} is a key. It is minimal because no attribute can be removed: B+ = {B} and F+ = {F,A,C,D} are both proper subsets of R. No other combination works, since E is obtainable only from B, F is on no right-hand side so it must appear in every key, and A is obtainable only from F. The only candidate key is (B, F). Prime attributes are therefore B and F. For 3NF: A -> CD is non-trivial, A is not a superkey, and C and D are non-prime, so R is not in 3NF. For BCNF: the same dependency A -> CD has a determinant that is not a superkey, so R is not in BCNF. Decompose on A -> CD: R1(A, C, D) and R2(A, B, E, F). R1 has key A and is in BCNF. In R2 the dependency F -> A still has a non-superkey determinant because F+ in R2 is {F, A, E} and does not contain B, so decompose again: R2a(B, F) and R2b(F, A, E). R2a has key (B, F) with no non-trivial dependency, and R2b has key F with F -> AE. All three relations are in BCNF. Lossless join: for R -> R1, R2 the intersection is {A} and A -> CD determines R1, so the join is lossless; for R2 -> R2a, R2b the intersection is {F} and F -> AE determines R2b, so that join is also lossless; composing the two steps gives a lossless join of the three relations. Dependency preservation: A -> CD is enforced entirely inside R1, and both B -> E and F -> A are enforced entirely inside R2b, so no join is needed to check any dependency of F."
+      },
+      {
+        "question_no": "02",
+        "bloom_level": "Understand",
+        "max_marks": 20,
+        "question_text": "(a) The statement \"In a Type 2 JDBC driver a vendor specific driver must be installed on each client machine\" is given. Accept or refute it and justify your answer. (b) Consider the code segment String query = \"Update Employee SET type = ? WHERE empId = ?\"; PreparedStatement psObject = connObj.prepareStatement(query); ResultSet rsObject = psObject.executeQuery(); State which JDBC statement type is used and explain when this type of statement is used. (c) Briefly explain two types of backup that could be taken in SQL Server. (d) Briefly explain what schedules and jobs are, suggest a situation where using a schedule is useful, and state when the schedule will be executed. (20 marks)",
+        "criteria": [
+          {
+            "point": "Accepts the Type 2 JDBC statement with vendor-specific client-side justification",
+            "marks": 4
+          },
+          {
+            "point": "Identifies PreparedStatement and explains placeholders, binding and reuse",
+            "marks": 4
+          },
+          {
+            "point": "Explains two SQL Server backup types with correct characteristics",
+            "marks": 4
+          },
+          {
+            "point": "Explains SQL Server Agent jobs and schedules with a scenario and execution time",
+            "marks": 4
+          },
+          {
+            "point": "Organises the answer into labelled parts a, b, c and d with correct terminology",
+            "marks": 4
+          }
+        ],
+        "model_answer": "(a) The statement is accepted. A Type 2 driver is vendor specific, is partly written in Java and partly in native code, and therefore the vendor's own client-side driver library, for example the Oracle client or the DB2 CLI, must be installed and configured on every client machine that connects to the database. This is unlike Type 4, which is pure Java and needs nothing installed on the client. (b) The code uses a PreparedStatement. The question marks are parameter placeholders, the values are supplied later through setString or setInt, and the SQL text is compiled once by the driver so it can be executed many times with different values. This type of statement is used when the same query is executed repeatedly inside a loop, when user input has to be passed without concatenating strings, and when the query plan can be reused. It also protects against SQL injection because the input is never parsed as part of the SQL text. A separate small point is that an UPDATE is normally run with executeUpdate rather than executeQuery, since executeQuery expects a result set. (c) Two backup types are a full backup, which copies all data, all objects and the transaction log, and can be restored completely on its own; and a differential or incremental backup, which copies only the data pages that have changed since the last full backup, so it is small and fast and must be restored together with its base full backup. A third useful type is the transaction log backup, which records every transaction since the previous log backup and allows point-in-time recovery. (d) A job in SQL Server Agent is a sequence of one or more steps that the Agent executes, for example an UPDATE statement followed by an EXEC of a maintenance procedure. A schedule is a set of rules that defines when Agent starts that job, for example every day at 02:00 or on the first day of every month. A schedule is useful whenever work must happen unattended at a predictable time, for example reindexing the database every night, deleting audit records older than a year every month, or taking a full backup at the weekend. The schedule is evaluated by the SQL Server Agent service and the job starts automatically at the next matching time when the Agent service and the server are running. The answer is organised as parts a, b, c and d, using PreparedStatement and executeQuery for the JDBC half and full backup, differential backup, transaction log backup and SQL Server Agent for the SQL Server half."
+      },
+      {
+        "question_no": "03",
+        "bloom_level": "Apply",
+        "max_marks": 20,
+        "question_text": "A software company is automating the tasks of a leading private school. The database must maintain records of students, staff, student marks and timetables. Kasuni, a senior DBA, handles all server administration for the database architect. Kasuni creates the database and assigns Saman the responsibility of managing the SchoolDB. Because there are many users, Aruni is given the responsibility of handling logins. Saman assigns Thusitha the responsibility of creating tables and of creating the views, stored procedures and triggers that are required. Lasitha, a data entry operator, is given the responsibility of inserting data into the tables. Lasantha is assigned the responsibility of generating reports from the data, either by querying the tables directly or by calling functions and procedures. Using T-SQL, write the statements required to: (i) create a login for Kasuni; (ii) use a fixed server role to give Kasuni authority over all administrative tasks on the server; (iii) using a user defined server role, give the user named saman.a the responsibility of handling the SchoolDB; (iv) give the login named thusitha.p permission to create tables, functions, procedures and triggers; and (v) give the login named Lasantha.h permission to perform the report generation tasks that are his responsibility. (20 marks)",
+        "criteria": [
+          {
+            "point": "Applies CREATE LOGIN for Kasuni with a valid credential option",
+            "marks": 4
+          },
+          {
+            "point": "Adds Kasuni to the correct fixed server role such as sysadmin",
+            "marks": 4
+          },
+          {
+            "point": "Creates a user defined server role and adds saman.a to it with membership",
+            "marks": 4
+          },
+          {
+            "point": "Maps the database login and grants object creation rights to thusitha.p",
+            "marks": 4
+          },
+          {
+            "point": "Grants the least privilege report rights, including EXECUTE, to Lasantha.h",
+            "marks": 4
+          }
+        ],
+        "model_answer": "(i) CREATE LOGIN Kasuni WITH PASSWORD = 'K@$uni2022'; (ii) ALTER SERVER ROLE [sysadmin] ADD MEMBER [Kasuni]; (iii) CREATE SERVER ROLE [SchoolDBManager] AUTHORIZATION [dbo]; ALTER SERVER ROLE [SchoolDBManager] ADD MEMBER [saman.a]; ALTER SERVER ROLE [SchoolDBManager] ADD MEMBER [Kasuni]; (iv) USE SchoolDB; CREATE USER [thusitha.p] FOR LOGIN [thusitha.p]; GRANT CREATE TABLE, CREATE VIEW, CREATE PROCEDURE, CREATE FUNCTION, CREATE TRIGGER TO [thusitha.p]; (v) CREATE USER [Lasantha.h] FOR LOGIN [Lasantha.h]; GRANT SELECT ON SCHEMA :: dbo TO [Lasantha.h]; GRANT EXECUTE ON SCHEMA :: dbo TO [Lasantha.h]; Kasuni is given the fixed server role sysadmin because she must run administrative tasks such as CREATE DATABASE and CREATE LOGIN, which are server level permissions. Saman is given a user defined server role because he manages only the SchoolDB database, and he is added to that role by ALTER SERVER ROLE ... ADD MEMBER. Thusitha needs database level DDL permission through CREATE TABLE, CREATE VIEW, CREATE PROCEDURE, CREATE FUNCTION and CREATE TRIGGER, and she must first be mapped to the database as a user. Lasantha only reads data and calls stored procedures and functions, so he needs SELECT on the schema and EXECUTE to call them; he is deliberately not given INSERT because insertion is Lasitha's job."
+      },
+      {
+        "question_no": "04",
+        "bloom_level": "Apply",
+        "max_marks": 20,
+        "question_text": "Consider the schema of a database designed for a manufacturing company. Customer(CID int, name varchar(50), gender char(1), address varchar(50), creditLimit int) with primary key CID; Manufacturer(MID char(10), name varchar(50), country varchar(50), contact char(10)) with primary key MID; Product(PID varchar(20), name varchar(50), color varchar(10), weight int, warranty int, unitPrice int, MID char(10), manufacturedDate date) with primary key PID; Order(OID char(10), CID varchar(20), orderDate date) with primary key OID; and OrderItems(OID char(10), PID varchar(20), qty int) with primary key (OID, PID). (a) Write SQL queries to (i) display the order IDs and the name of the female customers from France who placed them; (ii) find the IDs of the customers who had NOT ordered phones manufactured by manufacturers from India; and (iii) find the name and credit limit of the customers who had ordered more than 10 items in a single order. (b) Create a function which calculates and returns the total price to be paid for an order given the order ID. (c) Assuming that the orders are delivered as packages, create a trigger to ensure that the weight of a package does not exceed 2 kg. (20 marks)",
+        "criteria": [
+          {
+            "point": "Applies correct joins and filtering for the female customer query",
+            "marks": 4
+          },
+          {
+            "point": "Applies correct set difference or NOT EXISTS/NOT IN logic for the phones query",
+            "marks": 4
+          },
+          {
+            "point": "Aggregates order quantities with GROUP BY, HAVING and a subquery",
+            "marks": 4
+          },
+          {
+            "point": "Creates a single-value function that returns the total order price",
+            "marks": 4
+          },
+          {
+            "point": "Creates a trigger that validates package weight using the inserted pseudo-table",
+            "marks": 4
+          }
+        ],
+        "model_answer": "(a)(i) SELECT O.OID, C.name FROM \"Order\" O JOIN Customer C ON O.CID = C.CID WHERE C.gender = 'F' AND C.address LIKE '%France%'; (a)(ii) SELECT CID FROM Customer WHERE CID NOT IN (SELECT O.CID FROM \"Order\" O JOIN OrderItems OI ON O.OID = OI.OID JOIN Product P ON OI.PID = P.PID JOIN Manufacturer M ON P.MID = M.MID WHERE P.name = 'phones' AND M.country = 'India'); (a)(iii) SELECT C.name, C.creditLimit FROM Customer C JOIN \"Order\" O ON C.CID = O.CID JOIN (SELECT OID, SUM(qty) AS total FROM OrderItems GROUP BY OID HAVING SUM(qty) > 10) T ON O.OID = T.OID; (b) CREATE FUNCTION dbo.TotalPrice(@OID char(10)) RETURNS int AS BEGIN DECLARE @total int; SELECT @total = SUM(P.unitPrice * OI.qty) FROM OrderItems OI JOIN Product P ON OI.PID = P.PID WHERE OI.OID = @OID; RETURN ISNULL(@total, 0); END; (c) CREATE TRIGGER trgPackageWeight ON OrderItems AFTER INSERT, UPDATE AS BEGIN SET NOCOUNT ON; IF EXISTS (SELECT 1 FROM OrderItems OI JOIN Product P ON OI.PID = P.PID WHERE OI.OID IN (SELECT OID FROM inserted) GROUP BY OI.OID HAVING SUM(P.weight * OI.qty) > 2000) BEGIN RAISERROR('Package weight cannot exceed 2kg', 16, 1); ROLLBACK TRANSACTION; END END; Order is a reserved word so it must be written as \"Order\" in standard SQL. Product weight is already stored in grams, so the 2 kg limit is compared with 2000. The trigger must be an AFTER trigger reading the inserted pseudo-table so that a single statement inserting several order items for one order is checked as a whole rather than line by line, and the grouping is by OID so each package is validated separately."
+      },
+      {
+        "question_no": "05",
+        "bloom_level": "Create",
+        "max_marks": 20,
+        "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+        "criteria": [
+          {
+            "point": "Creates all five core entities with the correct attributes",
+            "marks": 4
+          },
+          {
+            "point": "Marks the primary, foreign and composite primary keys correctly",
+            "marks": 4
+          },
+          {
+            "point": "Shows correct cardinalities, optionality and crow's-foot notation",
+            "marks": 4
+          },
+          {
+            "point": "Includes the derived total order value, the index and the validation module",
+            "marks": 4
+          },
+          {
+            "point": "Produces clear labels and a coherent design justification note",
+            "marks": 4
+          }
+        ],
+        "model_answer": "CUSTOMER(CID PK, name, gender, address, creditLimit), MANUFACTURER(MID PK, name, country, contact), PRODUCT(PID PK, name, color, weight, warranty, unitPrice, MID FK, manufacturedDate), ORDER(OID PK, CID FK, orderDate) and ORDERITEMS(OID FK, PID FK, qty, PK(OID, PID)). MANUFACTURER is one and only PRODUCT is many, so MANUFACTURER manufactures PRODUCT is 1:N with total participation on the manufacturer side. CUSTOMER is one and ORDER is zero-to-many, so CUSTOMER places ORDER is 1:N and a customer is optional on the order side. ORDER is one and ORDERITEMS is one-to-many, and PRODUCT is one and ORDERITEMS is one-to-many, giving a many-to-many ORDER to PRODUCT relationship that is resolved by the associative entity ORDERITEMS. The derived attribute ORDER_TOTAL(OID, totalPrice) is produced by the scalar function fnOrderTotal(OID), which sums unitPrice times qty over OrderItems and Product. The physical element IX_OrderItems_OID is a clustered or non-clustered index on OrderItems(OID) supporting the package weight trigger and the order total function. The module PACKAGE_VALIDATION(OID, totalWeight, maxWeight = 2000) implemented by the trigger trgPackageWeight checks the aggregate weight of each order. The composite key (OID, PID) is used for OrderItems because a product line is identified only by the order it belongs to together with the product, and the same product may legitimately appear in many orders, so neither attribute is a key on its own."
+      }
+    ],
+    "examCode": "IT2040-2022-FINAL",
+    "guideLines": [
+      {
+        "id": 1,
+        "criterion": "Creates all five core entities with the correct attributes",
+        "description": "Shows Customer, Manufacturer, Product, Order and OrderItems with their attributes from the given schema.",
+        "marks": 4
+      },
+      {
+        "id": 2,
+        "criterion": "Marks the primary, foreign and composite primary keys correctly",
+        "description": "Underlines the single primary keys, labels every foreign key and marks OrderItems primary key as (OID, PID).",
+        "marks": 4
+      },
+      {
+        "id": 3,
+        "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+        "description": "Uses 1:N for manufacturer-product and customer-order and resolves order to product through OrderItems.",
+        "marks": 4
+      },
+      {
+        "id": 4,
+        "criterion": "Includes the derived total order value, the index and the validation module",
+        "description": "Adds the derived total price item, an index on OrderItems(OID) and the weight validation trigger or module.",
+        "marks": 4
+      },
+      {
+        "id": 5,
+        "criterion": "Produces clear labels and a coherent design justification note",
+        "description": "Labels boxes and relationships clearly and explains why the chosen keys and relationships are appropriate.",
+        "marks": 4
+      }
+    ]
+  }
+]

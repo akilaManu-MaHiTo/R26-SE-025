@@ -1,3 +1,5 @@
+import { SERVER_BASE_URL } from "../../api/gradingApiBase";
+import { apiFetch } from "../../api/authApi";
 export type CopilotPhase = "idle" | "presentation" | "viva" | "ended";
 
 export type SuggestionPriority = "high" | "medium" | "low";
@@ -58,17 +60,10 @@ export interface CopilotEvent {
   data?: SessionStateData;
 }
 
-const backendBaseUrl =
-  ((import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL) ??
-  "http://localhost:8000";
+const backendBaseUrl = SERVER_BASE_URL;
 
-const apiKey =
-  ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env?.VITE_GRADEX_API_KEY) ??
-  "";
 
-function authHeaders(): Record<string, string> {
-  return apiKey ? { "X-API-Key": apiKey } : {};
-}
+
 
 export function normalizeAnalysis(value: unknown): CopilotAnalysis | null {
   if (!value || typeof value !== "object") return null;
@@ -122,11 +117,9 @@ export function copilotHttpBase(): string {
 }
 
 export function copilotWsUrl(sessionId: string): string {
-  const http = copilotHttpBase();
-  const ws = http.startsWith("https") ? http.replace(/^https/, "wss") : http.replace(/^http/, "ws");
-  const base = `${ws}/api/viva-copilot/ws/${sessionId}`;
-  if (!apiKey) return base;
-  return `${base}?api_key=${encodeURIComponent(apiKey)}`;
+  const url = new URL(`${copilotHttpBase()}/api/viva-copilot/ws/${sessionId}`, window.location.origin);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return url.toString();
 }
 
 async function parseError(response: Response): Promise<string> {
@@ -143,12 +136,11 @@ async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${copilotHttpBase()}${path}`;
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await apiFetch(url, {
       ...init,
       headers: {
         Accept: "application/json",
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
-        ...authHeaders(),
         ...(init?.headers ?? {}),
       },
     });
@@ -231,9 +223,9 @@ export async function analyzeCopilotSession(
   let response: Response;
   try {
     // No Content-Type header: the browser sets the multipart boundary itself.
-    response = await fetch(url, {
+    response = await apiFetch(url, {
       method: "POST",
-      headers: { Accept: "application/json", ...authHeaders() },
+      headers: { Accept: "application/json",  },
       body: form,
     });
   } catch {

@@ -1,7 +1,6 @@
 import React from "react";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
 import { Lightbulb, Clock } from "lucide-react";
 
 import type { TeachingAction } from "../../api/lecturerApi";
@@ -32,7 +31,7 @@ export function TeachingActions({ actions, loading }: Props) {
     return (
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
-          <div className="font-medium">AI Teaching Recommendations</div>
+          <div className="font-medium">Teaching recommendations</div>
         </div>
         <div className="space-y-4">
           {[1, 2].map((i) => (
@@ -48,7 +47,7 @@ export function TeachingActions({ actions, loading }: Props) {
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between mb-4">
-        <div className="font-medium">AI Teaching Recommendations</div>
+        <div className="font-medium">Teaching recommendations</div>
       </div>
       <div className="space-y-4">
         {actions.map((action, i) => {
@@ -85,11 +84,9 @@ export function TeachingActions({ actions, loading }: Props) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
-                  <span>Generated {new Date(action.generated_at).toLocaleDateString()}</span>
+                  <span>{action.provenance === "ai" ? "AI suggestion" : action.provenance === "template" ? "Template suggestion" : "Saved suggestion"} · {new Date(action.generated_at).toLocaleDateString()}</span>
                 </div>
-                <Button variant="outline" size="sm" className="text-xs" disabled title="Coming soon">
-                  Generate Practice Questions
-                </Button>
+
               </div>
             </div>
           );

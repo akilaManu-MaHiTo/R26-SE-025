@@ -42,11 +42,11 @@ const BINS: { label: string; grade: string; key: string }[] = [
 ];
 
 const BIN_COLORS: Record<string, string> = {
-  F: "hsl(var(--destructive))",
+  F: "#ef4444",
   D: "#f97316",
   C: "#eab308",
-  B: "hsl(var(--primary) / 0.7)",
-  A: "hsl(var(--primary))",
+  B: "#3b82f6",
+  A: "#22c55e",
 };
 
 function medianBinLabel(median?: number): string | null {
@@ -106,17 +106,21 @@ export function DistributionHistogram({ statistics }: Props) {
           <Tooltip formatter={(v: number) => [`${v} students`, "Count"]} labelFormatter={(l) => `Bin ${l}`} />
           <Bar dataKey="count" radius={[4, 4, 0, 0]}>
             {data.map((entry, i) => (
-              <Cell key={i} fill={BIN_COLORS[entry.grade] ?? "hsl(var(--primary))"} />
+              <Cell key={i} fill={BIN_COLORS[entry.grade] ?? "#3b82f6"} />
             ))}
           </Bar>
-          {medianLabel && <ReferenceLine x={medianLabel} stroke="hsl(var(--primary))" strokeDasharray="4 4" label={{ value: `median ${median?.toFixed(0)}%`, position: "top", fontSize: 10, fill: "hsl(var(--primary))" }} />}
+          {medianLabel && <ReferenceLine x={medianLabel} stroke="#3b82f6" strokeDasharray="4 4" label={{ value: `median ${median?.toFixed(0)}%`, position: "top", fontSize: 10, fill: "#3b82f6" }} />}
         </BarChart>
       </ResponsiveContainer>
-      <div className="flex gap-2 mt-2 flex-wrap">
+      <div className="flex gap-2 mt-3 flex-wrap">
         {BINS.map((b) => (
-          <span key={b.key} className="text-[10px] text-muted-foreground flex items-center gap-1">
-            <span className="inline-block h-2 w-2 rounded-sm" style={{ background: BIN_COLORS[b.grade] }} />
-            {b.label}={b.grade}
+          <span
+            key={b.key}
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full"
+            style={{ backgroundColor: BIN_COLORS[b.grade], color: "#fff" }}
+          >
+            {b.grade}
+            <span className="opacity-80">{gradeDist[b.key] ?? 0}</span>
           </span>
         ))}
       </div>

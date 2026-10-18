@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+import re
+import unicodedata
 from typing import Any, Callable
 
 import httpx
@@ -18,7 +20,29 @@ logger.setLevel(logging.INFO)
 
 
 def _normalized_text(value: Any) -> str:
-    return " ".join(str(value or "").split())
+    text = unicodedata.normalize("NFKC", str(value or ""))
+    text = text.replace("_", " ")
+    text = re.sub(r"[^\w\s-]", " ", text, flags=re.UNICODE)
+    text = re.sub(r"(?<!\w)-{2,}(?!\w)", " ", text)
+    text = " ".join(text.split())
+    return text
+
+
+_ID_SUFFIX = re.compile(r"^(?P<prefix>[a-z]+?)(?:id|identifier|no|num|number|code)$")
+
+
+def _compact(value: str) -> str:
+    return re.sub(r"[\W_]+", "", value).casefold()
+
+
+def _canonical_identifier(label: str, entity_names: list[str] | None = None) -> str:
+    """Normalize identifier formatting only (e.g. "DID", "d_id", "D ID" -> "D_Id"). The
+    prefix is kept as written so a rubric's "S_ID" still matches, even when
+    OCR garbled the entity name (e.g. a misspelled entity)."""
+    match = _ID_SUFFIX.match(_compact(label))
+    if not match:
+        return label
+    return f"{match.group('prefix').capitalize()}_Id"
 
 
 def _normalized_text_list(values: Any) -> list[str]:
@@ -45,6 +69,24 @@ def _normalize_diagram_structure(structure: Any) -> dict[str, Any]:
             entities[name] = {
                 "attributes": _normalized_text_list(entity.get("attributes", [])),
             }
+            primary_keys = _normalized_text_list(entity.get("primary_keys", []))
+            if primary_keys:
+                entities[name]["primary_keys"] = primary_keys
+
+    entity_names = list(entities)
+    for entity in entities.values():
+        for key in ("attributes", "primary_keys"):
+            if key in entity:
+                entity[key] = sorted(
+                    {_canonical_identifier(a, entity_names) for a in entity[key]},
+                    key=str.casefold,
+                )
+        if "primary_keys" in entity:
+            # Keep primary keys in both lists: they are attributes AND keys.
+            # This ensures the LLM can verify attribute presence and underline notation separately.
+            for pk in entity["primary_keys"]:
+                if pk not in entity["attributes"]:
+                    entity["attributes"] = sorted(entity["attributes"] + [pk], key=str.casefold)
 
     relationships = []
     if isinstance(raw_relationships, list):
@@ -58,7 +100,10 @@ def _normalize_diagram_structure(structure: Any) -> dict[str, Any]:
                 "name": name,
                 "entities": _normalized_text_list(raw_relationship.get("entities", [])),
             }
-            attributes = _normalized_text_list(raw_relationship.get("attributes", []))
+            attributes = sorted(
+                {_canonical_identifier(a, entity_names) for a in _normalized_text_list(raw_relationship.get("attributes", []))},
+                key=str.casefold,
+            )
             if attributes:
                 relationship["attributes"] = attributes
             relationships.append(relationship)
@@ -139,12 +184,52 @@ def _extract_json(text: str) -> dict[str, Any]:
     return parsed
 
 
+def _relationship_label_names(node: Any) -> set[str]:
+    names: set[str] = set()
+    if isinstance(node, dict):
+        if str(node.get("type", "")).casefold() == "relationship" and isinstance(node.get("name"), str):
+            names.add(node["name"].strip())
+        for value in node.values():
+            names |= _relationship_label_names(value)
+    elif isinstance(node, list):
+        for value in node:
+            names |= _relationship_label_names(value)
+    return {name for name in names if name}
+
+
+def _relax_relationship_labels(guideline: dict[str, Any]) -> dict[str, Any]:
+    """Relationship labels are free-form, so strip the rubric's literal label
+    (whatever it is) before grading; only the connected entities are checked."""
+    names = _relationship_label_names(guideline)
+    if not names:
+        return guideline
+    pattern = re.compile(
+        r"(?<!\w)(?:" + "|".join(re.escape(n) for n in sorted(names, key=len, reverse=True)) + r")(?!\w)",
+        re.IGNORECASE,
+    )
+
+    def relax(node: Any) -> Any:
+        if isinstance(node, str):
+            return pattern.sub("<any suitable relationship label>", node)
+        if isinstance(node, list):
+            return [relax(v) for v in node]
+        if isinstance(node, dict):
+            relaxed = {k: relax(v) for k, v in node.items()}
+            if str(node.get("type", "")).casefold() == "relationship":
+                relaxed.pop("name", None)
+                relaxed["label"] = "any suitable relationship label is acceptable"
+            return relaxed
+        return node
+
+    return relax(guideline)
+
+
 def grade_diagram_with_ollama(
     result: dict[str, Any],
     guideline: dict[str, Any],
     progress_callback: Callable[[dict], None] | None = None,
 ) -> dict[str, Any]:
-    guideline_json = json.dumps(guideline, ensure_ascii=True, default=str)
+    guideline_json = json.dumps(_relax_relationship_labels(guideline), ensure_ascii=True, default=str)
     max_marks = _guideline_max_marks(guideline)
     structure = _diagram_structure_data(result)
     structure_json = json.dumps(structure, ensure_ascii=True, default=str)
@@ -168,9 +253,27 @@ def grade_diagram_with_ollama(
 
     prompt = f"""
 You are an ER diagram grading agent running locally with Ollama. Grade the student's extracted diagram against the supplied marking guideline.
-Use only the diagram structure provided. Do not infer objects that are not present.
-Award each criterion's marks only when its requirement is supported by the extracted data.
-For every criterion, check every requirement in its description and expected fields. Award zero marks when any required entity, attribute, relationship, notation, role, or connection is absent or cannot be verified. Do not infer labels, connections, notation, or relationships from the drawing.
+
+=== HARD RULES (apply without exception) ===
+1. Use ONLY the diagram structure provided below. Never infer, assume, or hallucinate any element that is not explicitly present in the structure data.
+2. Before scoring any criterion, check the structure data for each required element. If an element is absent from the data, the criterion requiring it receives ZERO marks — no exceptions, regardless of how close another element looks.
+3. Award marks only when you can point to the exact entry in the structure data (entity name, attribute name, primary_key name, or relationship) that satisfies the requirement.
+
+PRIMARY KEY RULE: Each entity's "primary_keys" list contains its primary key attributes. Primary keys also appear in the "attributes" list (they are attributes AND keys). A primary key criterion is fully satisfied when the attribute name appears in the entity's "primary_keys" list — no additional check is required. Do not deduct marks for underline notation or formatting; presence in "primary_keys" is sufficient. If the attribute name is absent from "primary_keys", the criterion gets ZERO marks.
+
+ATTRIBUTE RULE: An attribute criterion (non-primary-key) is satisfied ONLY when the attribute name (allowing only OCR-level formatting differences: case, spaces, underscores, hyphens between the same tokens) appears in the entity's "attributes" list. A differently-named attribute — even one that sounds similar — is NOT a match. Do NOT accept a substitute.
+
+IDENTIFIER MATCHING (OCR formatting only): For identifier-style attributes (those ending in _ID, _Id, ID, etc.), treat these as the same attribute only when they share the same prefix token: S_ID, S_Id, SID, S ID are all the same; C_ID and S_ID are different identifiers and must never be cross-matched. Entity names may contain OCR typos; match entity names to the rubric by closest meaning, but still require the attribute to be present under that entity.
+
+RELATIONSHIP RULE: Relationships are free-form. Judge a relationship by whether it connects the required entities and whether its label expresses a plausible association (any sensible verb phrase). Accept reasonable synonyms, spelling variants, and inflections. Do not deduct marks for a different-but-sensible verb.
+
+COMPLETENESS RULE: The Overall Completeness criterion checks only structural presence
+
+=== PROCESS ===
+Step 1 — for each criterion, list every required element and check whether it appears in the structure data.
+Step 2 — award marks only for elements confirmed in Step 1.
+Step 3 — if any criterion failed, set Overall Completeness to zero.
+
 Return one criterion_results entry for every rubric criterion, including failed criteria with zero marks. Use the exact criterion IDs from the marking guideline, once each, and do not return any other IDs.
 The total available marks for this guideline are {max_marks:g}. Return max_marks as exactly {max_marks:g}.
 Return compact JSON only with this exact shape. Do not use markdown or add extra keys:

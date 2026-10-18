@@ -52,9 +52,56 @@ def get_diagram_evaluation_guidelines_collection():
         database = client["Grading"]
     return database["diagram_marking"]
 
+
+@lru_cache(maxsize=1)
+def get_exam_keys_collection():
+    database_name = os.getenv("EXAM_KEYS_DATABASE_NAME") or os.getenv("DATABASE_NAME") or "Grading"
+    return get_mongo_client()[database_name]["examkeys"]
+
+
 def insert_diagram_evaluation(record: dict) -> str:
     result = get_diagram_evaluations_collection().insert_one(record)
     return str(result.inserted_id)
+
+
+def _session_lookup_values(session: str) -> list[str]:
+    """Accept both short and long session labels stored in examkeys."""
+    text = " ".join((session or "").strip().split())
+    if not text:
+        return []
+    lowered = text.lower()
+    if lowered in {"final", "final examination"}:
+        return ["Final", "Final Examination"]
+    if lowered in {
+        "mid term",
+        "mid-term",
+        "midterm",
+        "mid term examination",
+        "mid-term examination",
+    }:
+        return ["Mid Term", "Mid Term Examination"]
+    return [text]
+
+
+def get_exam_key(
+    subject_code: str,
+    exam_year: int,
+    exam_month: str,
+    exam_semester: int,
+    session: str,
+):
+    base = {
+        "subjectCode": subject_code,
+        "examYear": exam_year,
+        "examMonth": exam_month,
+        "examSemester": exam_semester,
+    }
+    collection = get_exam_keys_collection()
+    for session_value in _session_lookup_values(session):
+        record = collection.find_one({**base, "session": session_value}, {"_id": 0})
+        if record is not None:
+            return record
+    return None
 
 
 def list_diagram_evaluations(limit: int = 100):

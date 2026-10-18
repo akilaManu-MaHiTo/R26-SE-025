@@ -4,7 +4,7 @@
 
 ## 1. Overview
 
-Lecturer creates a new draft exam from scratch via `ExamCreator.tsx:1`. Left 65% is a full-paper editor seeded from JSON paper structure (`question_number/topic/parts[a,b,c]/max_marks`, total 100). Right 35% shows adaptive recommendations (weak areas + ranked questions) fetched from `V2_QuestionExamPredictionEngine` recommendation engine. Top bar switches exams. Lecturer inserts recommended questions via `Insert as Q2 / Add part to Q3` chooser, edits instantly, sees live total, downloads PDF client-side.
+Lecturer creates a new draft exam from scratch via `ExamCreator.tsx:1`. Left 65% is a full-paper editor seeded from JSON paper structure (`question_number/topic/parts[a,b,c]/max_marks`, total 100). Right 35% shows adaptive recommendations (weak areas + ranked questions) fetched from the `AdaptiveExamAnalyticsEngine` recommendation engine. Top bar switches exams. Lecturer inserts recommended questions via `Insert as Q2 / Add part to Q3` chooser, edits instantly, sees live total, downloads PDF client-side.
 
 ## 2. Layout & Routing
 
@@ -48,7 +48,7 @@ type Paper = {
 ## 6. Data Flow
 
 1. Mount → `fetchExams()` → dropdown.
-2. Select exam → `fetchRecommendations()` → `GET /api/lecturers/exams/{course}/{session}/recommendations?year=&month=&semester=&limit=12` → `Gradex_AI_Server/app/main.py` proxies `V2_QuestionExamPredictionEngine/app/api/lecturer.py:109` which computes `weakness 0.5 SQL` + `question_bank.json:161` + `0.35/0.20/0.15/0.15/0.15` scoring → returns `weakness_scores, ranked_weak_topics, high/medium` cards.
+2. Select exam → `fetchRecommendations()` → `GET /api/lecturers/exams/{course}/{session}/recommendations?year=&month=&semester=&limit=12` → `Gradex_AI_Server/app/main.py` proxies `AdaptiveExamAnalyticsEngine/app/api/lecturer.py:109` which computes `weakness 0.5 SQL` + `question_bank.json:161` + `0.35/0.20/0.15/0.15/0.15` scoring → returns `weakness_scores, ranked_weak_topics, high/medium` cards.
 3. Right panel renders `Weak Areas` badges + `High/Medium/Low` sections. `draft` state seeded from example JSON, updated only client-side.
 4. `Download PDF` → client-side `jspdf` renders A4: header `exam year`, each `Question N (Topic)` + `a) question [max_marks]`, page breaks, footer `Total: 100`. `Preview` opens Blob in new tab. No server call.
 

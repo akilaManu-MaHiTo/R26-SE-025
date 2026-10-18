@@ -1,0 +1,20 @@
+{
+  "status": "unlabeled_candidates_not_an_independent_gold_set",
+  "candidate_rows": 14,
+  "source_overlap_rows": [],
+  "candidate_sha256": "b8b66ca56f794f0a93ef21bae4f042467677ab411894c8f9ea3cfb3fb4fe67e3",
+  "source_sha256": "399916f9715753ab7ccd011e1fb5f8f177dc153cc7f95704257d47a6847b50f0",
+  "pdfs": {
+    "IT2040 - 2019 Final Exam.pdf": "7532693ed04383c18ebda03e396554f1119828a87931e73f8933d83cb9b722af",
+    "IT2040 - 2022 Final Exam.pdf": "c6db8a95b26ef78b66af4f931bf47cb83fdbdfc99ade4e31970ad3fdc1b2d0b2",
+    "IT2040 - 2023 Final Exam.pdf": "1885908172b958a1b50316f9cd1529c9b939076ac60d39622462f1ff554e668c",
+    "IT2040 - 2024 Final Exam.pdf": "a3e2bec6a2dcc1c95881cd9114750bc64fba5ad45b1ae85c0ddce6ae50de31be"
+  },
+  "limitations": [
+    "No lecturer labels or prior-use attestations supplied.",
+    "Exact normalized overlap only; manually check question families and semantic near-duplicates.",
+    "Selected text questions from 2022 and 2023; diagram questions and missing or garbled code excluded.",
+    "2019 and file named 2024 require scan transcription review; the latter cover says 2018.",
+    "Small DBMS-only pilot, no established six-class balance or independent accuracy."
+  ]
+}
