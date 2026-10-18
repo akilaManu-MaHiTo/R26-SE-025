@@ -124,12 +124,19 @@ async def persist_and_autopublish(
     # this viva's total, and in a technical viva a recording that covered almost none of the
     # subject is held instead of getting a mark.
     scale = MARKING_SCALE.for_total((extra_doc or {}).get("viva_total_marks"))
-    needs_coverage_check = mode == MODE_WITH and isinstance(result.get("technical_accuracy_ai"), dict)
-    if needs_coverage_check or scale != MARKING_SCALE:
+    # A technical viva is always re-scored: it also carries the lecturer's technical percentage.
+    if mode == MODE_WITH or scale != MARKING_SCALE:
         try:
             from VivaEvaluationEngine.services.assessment_scoring import build_assessment
 
-            result["assessment"] = build_assessment(result, mode=mode, scale=scale)
+            from Gradex_AI_Server.app.viva_marks import technical_weight_of
+
+            result["assessment"] = build_assessment(
+                result,
+                mode=mode,
+                scale=scale,
+                technical_weight=technical_weight_of(extra_doc or {}),
+            )
         except Exception as exc:  # noqa: BLE001 - keep the original assessment on any failure
             print(f"[VIVA] Warning: could not re-score the assessment ({type(exc).__name__}: {exc})")
 

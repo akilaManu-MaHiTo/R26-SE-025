@@ -17,6 +17,12 @@ from VivaEvaluationEngine.services.assessment_scoring import (
 from VivaEvaluationEngine.services.marking_scale import MARKING_SCALE, MarkingScale
 
 
+def technical_weight_of(mark: dict[str, Any]) -> Optional[float]:
+    """The technical share (0-1) its viva was set to when the recording was analysed, if any."""
+    percent = mark.get("viva_technical_percent")
+    return percent / 100 if isinstance(percent, (int, float)) and percent > 0 else None
+
+
 class TechnicalScoreOutOfRange(ValueError):
     """The examiner's technical score is above what this viva is marked out of."""
 
@@ -39,12 +45,14 @@ def build_publish_update(
     published: bool = True,
     human_published: bool = True,
     scale: Optional[MarkingScale] = None,
+    technical_weight: Optional[float] = None,
 ) -> dict[str, Any]:
     assessment = build_assessment(
         engine_result,
         mode=mode,
         technical_accuracy=technical_accuracy,
         scale=scale,
+        technical_weight=technical_weight,
     )
     published_at = datetime.now(timezone.utc)
     return {
@@ -130,6 +138,7 @@ async def apply_publish_to_mark(
         student_id=student_id,
         human_published=human_published,
         scale=scale,
+        technical_weight=technical_weight_of(existing),
     )
     assessment = update["assessment"]
     validation = assessment.get("validation") or {}

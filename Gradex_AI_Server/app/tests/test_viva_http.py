@@ -205,6 +205,17 @@ class AnalyzeHttpTests(unittest.TestCase):
         self._prev_marks_col = db_instance.marks_col
         db_instance.allow_autoconnect = False
         db_instance.client = None
+        # The pre-analysis video gate is tested in test_viva_video_gate; these tests upload tiny
+        # fake clips to exercise the analyze flow itself.
+        for gate_patch in (
+            patch("Gradex_AI_Server.app.main.MIN_VIVA_UPLOAD_BYTES", 0),
+            patch(
+                "Gradex_AI_Server.app.main.validate_viva_video",
+                lambda _path: {"duration_seconds": 30.0, "frame_count": 900},
+            ),
+        ):
+            gate_patch.start()
+            self.addCleanup(gate_patch.stop)
 
     def tearDown(self):
         db_instance.allow_autoconnect = self._prev_autoconnect

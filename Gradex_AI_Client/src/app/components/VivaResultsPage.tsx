@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, RefreshCw, Save, Search, UserRound } from "lucide-react";
+import { ArrowLeft, BookOpen, Loader2, RefreshCw, Save, Search, UserRound } from "lucide-react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -40,6 +40,8 @@ import {
   percentToMark,
   suggestedTechnicalMark,
 } from "./viva/types";
+import { fusePreviewMark, parseFusionWeights } from "./viva/officialMark";
+import { TechnicalAccuracyPanel } from "./viva/TechnicalAccuracyPanel";
 
 /** Group key for marks saved without a student ID. */
 const UNASSIGNED = "";
@@ -73,6 +75,10 @@ export function VivaResultsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  // The same marks can be read student by student or viva by viva.
+  const [groupBy, setGroupBy] = useState<"student" | "viva">("student");
+  // By viva: the list of vivas first, then one viva's results (key of the opened group).
+  const [openViva, setOpenViva] = useState<string | null>(null);
   // /viva-results?viva=<id> narrows the list to one viva; kept in state because
   // the ?mark= handler below clears the URL params.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -113,23 +119,37 @@ export function VivaResultsPage() {
     const needle = query.trim().toLowerCase();
     const matches = items.filter((item) => {
       if (!needle) return true;
-      return [item.student_id, item.video_filename, item.subject_code]
+      return [item.student_id, item.video_filename, item.subject_code, item.viva_label]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(needle));
     });
-    const byStudent = new Map<string, VivaMarkSummary[]>();
+    const byKey = new Map<string, { title: string; rows: VivaMarkSummary[] }>();
     for (const item of matches) {
-      const key = item.student_id?.trim() || UNASSIGNED;
-      byStudent.set(key, [...(byStudent.get(key) ?? []), item]);
+      const key =
+        groupBy === "viva"
+          ? item.viva_id?.trim() || UNASSIGNED
+          : item.student_id?.trim() || UNASSIGNED;
+      const title =
+        groupBy === "viva" ? item.viva_label?.trim() || "No viva" : key || "Unassigned";
+      const entry = byKey.get(key) ?? { title, rows: [] };
+      entry.rows.push(item);
+      byKey.set(key, entry);
     }
-    return [...byStudent.entries()]
-      .sort(([a], [b]) => {
-        if (a === UNASSIGNED) return 1;
-        if (b === UNASSIGNED) return -1;
-        return a.localeCompare(b);
+    return [...byKey.entries()]
+      .sort(([keyA, a], [keyB, b]) => {
+        if (keyA === UNASSIGNED) return 1;
+        if (keyB === UNASSIGNED) return -1;
+        return a.title.localeCompare(b.title);
       })
-      .map(([student, rows]) => ({ student, rows }));
-  }, [items, query]);
+      .map(([key, { title, rows }]) => ({ key, title, rows }));
+  }, [items, query, groupBy]);
+
+  // By viva with none opened: one summary card per viva. Otherwise the groups shown as before
+  // (opened viva only, or every student).
+  const vivaOverview = groupBy === "viva" && openViva === null;
+  const visibleGroups =
+    groupBy === "viva" && openViva !== null ? groups.filter((group) => group.key === openViva) : groups;
+  const openedTitle = groupBy === "viva" && openViva !== null ? groups.find((g) => g.key === openViva)?.title : null;
 
   async function openMark(markId: string) {
     setOpening(markId);
@@ -218,8 +238,8 @@ export function VivaResultsPage() {
           <div>
             <h2 className="text-foreground">Viva results</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Every analysed viva, grouped by student. Open one to review its scores, transcript and
-              engagement. Recordings are not stored, so a reopened result has no video.
+              Every analysed viva, grouped by {groupBy === "viva" ? "viva" : "student"}. Open one to review
+              its scores, transcript and engagement. Recordings are not stored, so a reopened result has no video.
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
@@ -228,14 +248,40 @@ export function VivaResultsPage() {
           </Button>
         </div>
 
-        <div className="relative mt-4 max-w-sm">
-          <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-          <Input
-            className="pl-9"
-            placeholder="Search student ID, recording or subject"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="relative w-full max-w-sm">
+            <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              className="pl-9"
+              placeholder="Search student ID, recording or subject"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <div
+            className="flex w-fit items-center gap-1 rounded-lg bg-muted p-1"
+            role="group"
+            aria-label="Group results by"
+          >
+            {(["student", "viva"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => {
+                  setGroupBy(mode);
+                  setOpenViva(null);
+                }}
+                aria-pressed={groupBy === mode}
+                className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  groupBy === mode
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {mode === "student" ? "By student" : "By viva"}
+              </button>
+            ))}
+          </div>
         </div>
         {vivaFilter && (
           <div className="mt-3 flex items-center gap-2 text-sm">
@@ -264,18 +310,70 @@ export function VivaResultsPage() {
             ? "No results yet. Analyse a recording on the Viva Assessment page and it will appear here."
             : "No results match your search."}
         </Card>
+      ) : vivaOverview ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {groups.map(({ key, title, rows }) => {
+            const published = rows.filter((row) => row.published).length;
+            const held = rows.filter((row) => row.status === "INCOMPLETE").length;
+            const drafts = rows.length - published - held;
+            const students = new Set(rows.map((row) => row.student_id || "")).size;
+            return (
+              <button
+                key={key || "__none__"}
+                type="button"
+                onClick={() => setOpenViva(key)}
+                className="cursor-pointer rounded-xl border border-border bg-card p-5 text-left transition-colors hover:bg-muted/50"
+              >
+                <div className="flex items-start gap-2">
+                  <BookOpen className="size-4 text-primary mt-0.5 shrink-0" />
+                  <span className="text-sm font-medium text-foreground">{title}</span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    {students} student{students === 1 ? "" : "s"}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {rows.length} result{rows.length === 1 ? "" : "s"}
+                  </Badge>
+                  <Badge className="border-0 text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                    {published} published
+                  </Badge>
+                  {drafts > 0 && (
+                    <Badge className="border-0 text-xs bg-slate-100 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300">
+                      {drafts} draft
+                    </Badge>
+                  )}
+                  {held > 0 && (
+                    <Badge className="border-0 text-xs bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                      {held} incomplete
+                    </Badge>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       ) : (
-        groups.map(({ student, rows }) => (
-          <Card key={student || "__unassigned__"} className="p-6">
+        <>
+          {openedTitle != null && (
+            <Button variant="ghost" size="sm" className="-mb-2 w-fit" onClick={() => setOpenViva(null)}>
+              <ArrowLeft className="size-4" />
+              All vivas
+            </Button>
+          )}
+        {visibleGroups.map(({ key, title, rows }) => (
+          <Card key={key || "__unassigned__"} className="p-6">
             <div className="flex items-center gap-2 mb-3">
-              <UserRound className="size-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">
-                {student || "Unassigned"}
-              </span>
+              {groupBy === "viva" ? (
+                <BookOpen className="size-4 text-primary" />
+              ) : (
+                <UserRound className="size-4 text-primary" />
+              )}
+              <span className="text-sm font-medium text-foreground">{title}</span>
               <Badge variant="outline" className="text-xs">
                 {rows.length} result{rows.length === 1 ? "" : "s"}
               </Badge>
-              {!student && (
+              {groupBy === "student" && !key && (
                 <span className="text-xs text-muted-foreground">
                   Open a result to assign it to a student.
                 </span>
@@ -292,6 +390,11 @@ export function VivaResultsPage() {
                     disabled={opening != null}
                     className="flex w-full cursor-pointer flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 disabled:cursor-wait"
                   >
+                    {groupBy === "viva" && (
+                      <span className="w-28 truncate text-sm font-medium text-foreground">
+                        {row.student_id || "Unassigned"}
+                      </span>
+                    )}
                     <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                       {row.video_filename || "Untitled recording"}
                     </span>
@@ -300,7 +403,7 @@ export function VivaResultsPage() {
                     </span>
                     <Badge variant="outline" className="text-xs">
                       {row.assessment_mode === "WITH_TECHNICAL_ACCURACY" ? "Technical" : "Non-technical"}
-                      {row.viva_label ? ` · ${row.viva_label}` : row.subject_code ? ` · ${row.subject_code}` : ""}
+                      {groupBy === "student" && (row.viva_label ? ` · ${row.viva_label}` : row.subject_code ? ` · ${row.subject_code}` : "")}
                     </Badge>
                     <span className="w-24 text-right text-sm font-medium tabular-nums text-foreground">
                       {formatMark(row)}
@@ -313,7 +416,8 @@ export function VivaResultsPage() {
               })}
             </div>
           </Card>
-        ))
+        ))}
+        </>
       )}
     </div>
   );
@@ -390,9 +494,12 @@ function ResultDetail({
   const technicalValid =
     technicalValue != null && Number.isFinite(technicalValue) && technicalValue >= 0 && technicalValue <= technicalMax;
   const aiScore = analysis?.assessment?.ai_performance?.score ?? null;
+  // The lecturer's split for this viva (default 50/50), as the server applied it.
+  const fusionWeights = parseFusionWeights(analysis?.assessment?.fusion);
+  const technicalPct = Math.round(fusionWeights.weightTechnical * 100);
   const previewFinal =
     technicalValid && aiScore != null
-      ? percentToMark(0.5 * aiScore + 0.5 * ((technicalValue as number) / technicalMax) * 100)
+      ? fusePreviewMark(aiScore, technicalValue as number, fusionWeights)
       : null;
   const dirty = (doc.student_id ?? "") !== normalizeStudentId(studentDraft);
   const draftInvalid = studentDraft.trim() !== "" && !isValidStudentId(studentDraft);
@@ -566,12 +673,19 @@ function ResultDetail({
                     </p>
                   </div>
                 )}
+                {assessmentMode === "WITH_TECHNICAL_ACCURACY" && analysis.technical_accuracy_ai && (
+                  // What the student covered and missed, kept with the saved result so it can be
+                  // reviewed after publishing, not only right after the analysis.
+                  <div className="border-t border-border pt-3">
+                    <TechnicalAccuracyPanel evaluation={analysis.technical_accuracy_ai} />
+                  </div>
+                )}
                 {isTechnicalDraft && (
                   <div className="border-t border-border pt-3 space-y-2">
                     <div className="text-sm font-medium text-foreground">Publish technical mark</div>
                     <p className="text-xs text-muted-foreground">
-                      Enter your technical accuracy score. The final mark is 50% AI performance and 50%
-                      technical accuracy, and is saved when you publish.
+                      Enter your technical accuracy score. The final mark is {100 - technicalPct}% AI
+                      performance and {technicalPct}% technical accuracy, and is saved when you publish.
                     </p>
                     <div className="flex items-center gap-2">
                       <Input

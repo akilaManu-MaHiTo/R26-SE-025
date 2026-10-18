@@ -14,6 +14,24 @@ import { SubjectContentPage } from "./SubjectContentPage";
 const SELECT_CLASS =
   "mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm disabled:opacity-60";
 
+const TOTAL_MARKS_MIN = 1;
+const TOTAL_MARKS_MAX = 100;
+const TECHNICAL_PERCENT_MIN = 20;
+const TECHNICAL_PERCENT_MAX = 90;
+
+/** While typing: keep only digits (and one dot when decimals are allowed) and never go above `max`. */
+function limitMax(raw: string, max: number, decimals: boolean): string {
+  const cleaned = raw.replace(decimals ? /[^\d.]/g : /\D/g, "");
+  const [whole, ...rest] = cleaned.split(".");
+  const text = rest.length ? `${whole}.${rest.join("")}` : whole;
+  return text !== "" && Number(text) > max ? String(max) : text;
+}
+
+/** When leaving the box: a value below `min` is raised to `min`; an empty box stays empty. */
+function raiseToMin(value: string, min: number): string {
+  return value !== "" && Number(value) < min ? String(min) : value;
+}
+
 function CreateVivaForm({
   rubrics,
   onCreated,
@@ -28,7 +46,7 @@ function CreateVivaForm({
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [semester, setSemester] = useState("1");
   const [totalMarks, setTotalMarks] = useState("");
-  const [notes, setNotes] = useState("");
+  const [technicalPercent, setTechnicalPercent] = useState("50");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -60,12 +78,12 @@ function CreateVivaForm({
         year: Number(year),
         semester: Number(semester),
         total_marks: totalMarks.trim() ? Number(totalMarks) : undefined,
-        notes: notes.trim() || undefined,
+        technical_percent: technical ? Number(technicalPercent) : undefined,
       });
       toast.success(`Created ${viva.label}`);
       setName("");
-      setNotes("");
       setTotalMarks("");
+      setTechnicalPercent("50");
       onCreated(viva);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create the viva");
@@ -74,14 +92,20 @@ function CreateVivaForm({
     }
   };
 
-  const totalMarksValid = totalMarks.trim() === "" || (Number(totalMarks) > 0 && Number(totalMarks) <= 1000);
+  const totalMarksValid = totalMarks.trim() === "" || (Number(totalMarks) >= TOTAL_MARKS_MIN && Number(totalMarks) <= TOTAL_MARKS_MAX);
+  const technicalPercentNumber = Number(technicalPercent);
+  const technicalPercentValid =
+    !technical ||
+    (Number.isInteger(technicalPercentNumber) && technicalPercentNumber >= TECHNICAL_PERCENT_MIN &&
+      technicalPercentNumber <= TECHNICAL_PERCENT_MAX);
   const ready = Boolean(
     name.trim() &&
       subjectCode.trim() &&
       subjectName.trim() &&
       Number(year) >= 2000 &&
       Number(semester) >= 1 &&
-      totalMarksValid,
+      totalMarksValid &&
+      technicalPercentValid,
   );
 
   return (
@@ -211,11 +235,12 @@ function CreateVivaForm({
             className="mt-1"
             type="number"
             inputMode="decimal"
-            min={1}
-            max={1000}
+            min={TOTAL_MARKS_MIN}
+            max={TOTAL_MARKS_MAX}
             step="any"
             value={totalMarks}
-            onChange={(e) => setTotalMarks(e.target.value)}
+            onChange={(e) => setTotalMarks(limitMax(e.target.value, TOTAL_MARKS_MAX, true))}
+            onBlur={() => setTotalMarks((v) => raiseToMin(v, TOTAL_MARKS_MIN))}
             placeholder="e.g. 20, 30, 50, 100"
             aria-invalid={!totalMarksValid}
           />
@@ -223,19 +248,32 @@ function CreateVivaForm({
             Marks are given out of this. Leave empty for the system default.
           </p>
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground" htmlFor="viva-notes">
-            Notes (optional)
-          </label>
-          <Input
-            id="viva-notes"
-            className="mt-1"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={500}
-          />
-        </div>
-
+        {technical && (
+          <div>
+            <label className="text-xs text-muted-foreground" htmlFor="viva-technical-percent">
+              Technical accuracy share of the final mark (%)
+            </label>
+            <Input
+              id="viva-technical-percent"
+              className="mt-1"
+              type="number"
+              inputMode="numeric"
+              min={TECHNICAL_PERCENT_MIN}
+              max={TECHNICAL_PERCENT_MAX}
+              step={1}
+              value={technicalPercent}
+              onChange={(e) => setTechnicalPercent(limitMax(e.target.value, TECHNICAL_PERCENT_MAX, false))}
+              onBlur={() => setTechnicalPercent((v) => raiseToMin(v, TECHNICAL_PERCENT_MIN))}
+              aria-invalid={!technicalPercentValid}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              {technicalPercentValid
+                ? `Final mark = ${technicalPercentNumber}% technical accuracy + ${100 - technicalPercentNumber}% AI performance.`
+                : `Enter a whole number from ${TECHNICAL_PERCENT_MIN} to ${TECHNICAL_PERCENT_MAX}.`}{" "}
+              Default 50%.
+            </p>
+          </div>
+        )}
         {error && (
           <div className="sm:col-span-2 flex items-start gap-2 text-sm text-destructive">
             <AlertCircle className="size-4 mt-0.5 shrink-0" />
@@ -291,6 +329,9 @@ function VivaCard({
             </Badge>
           )}
           <Badge variant="outline">Out of {viva.total_marks}</Badge>
+          {viva.technical_percent != null && (
+            <Badge variant="outline">Technical {viva.technical_percent}%</Badge>
+          )}
           <Badge variant="outline">
             {viva.mark_count ?? 0} analysed · {viva.published_count ?? 0} published
           </Badge>

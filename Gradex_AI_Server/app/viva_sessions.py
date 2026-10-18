@@ -37,7 +37,9 @@ MAX_NOTES_LENGTH = 500
 MIN_YEAR, MAX_YEAR = 2000, 2100
 MIN_SEMESTER, MAX_SEMESTER = 1, 4
 # What the official mark of a viva can be out of (the lecturer chooses it per viva).
-MAX_VIVA_TOTAL_MARKS = 1000
+MIN_VIVA_TOTAL_MARKS, MAX_VIVA_TOTAL_MARKS = 1, 100
+# A technical viva: the share of the mark that comes from technical accuracy (the rest is AI).
+MIN_TECHNICAL_PERCENT, MAX_TECHNICAL_PERCENT, DEFAULT_TECHNICAL_PERCENT = 20, 90, 50
 
 # Page size for the viva list.
 MAX_LIST_LIMIT = 200
@@ -83,7 +85,11 @@ class CreateVivaPayload(BaseModel):
     year: int = Field(ge=MIN_YEAR, le=MAX_YEAR)
     semester: int = Field(ge=MIN_SEMESTER, le=MAX_SEMESTER)
     # What this viva is marked out of. Left out, the server default (VIVA_MARK_MAX) applies.
-    total_marks: Optional[float] = Field(default=None, gt=0, le=MAX_VIVA_TOTAL_MARKS)
+    total_marks: Optional[float] = Field(default=None, ge=MIN_VIVA_TOTAL_MARKS, le=MAX_VIVA_TOTAL_MARKS)
+    # Technical vivas only: percent of the final mark from technical accuracy; AI gets the rest.
+    technical_percent: Optional[int] = Field(
+        default=None, ge=MIN_TECHNICAL_PERCENT, le=MAX_TECHNICAL_PERCENT
+    )
     notes: Optional[str] = Field(default=None, max_length=MAX_NOTES_LENGTH)
 
 
@@ -94,6 +100,13 @@ def scale_for_total(total: Optional[float]) -> MarkingScale:
 
 def viva_scale(viva: Dict[str, Any]) -> MarkingScale:
     return scale_for_total(viva.get("total_marks"))
+
+
+def technical_percent_of(viva: Dict[str, Any]) -> Optional[int]:
+    """The technical share of a viva's mark: None for non-technical vivas, else its own or the default."""
+    if viva.get("category") != CATEGORY_TECHNICAL:
+        return None
+    return int(viva.get("technical_percent") or DEFAULT_TECHNICAL_PERCENT)
 
 
 def mode_for_category(category: str) -> str:
@@ -129,6 +142,7 @@ def _public(doc: Dict[str, Any]) -> Dict[str, Any]:
     out["assessment_mode"] = mode_for_category(doc.get("category", ""))
     # Always present, so the client shows the scale the viva is really marked on.
     out["total_marks"] = viva_scale(doc).mark_max
+    out["technical_percent"] = technical_percent_of(doc)
     created = out.get("created_at")
     if isinstance(created, datetime):
         out["created_at"] = created.isoformat()
@@ -184,6 +198,7 @@ def viva_extra_doc(viva: Dict[str, Any]) -> Dict[str, Any]:
         "semester": viva["semester"],
         # The scale this mark is given on, kept with the mark so it never changes meaning later.
         "viva_total_marks": viva_scale(viva).mark_max,
+        "viva_technical_percent": technical_percent_of(viva),
     }
 
 
@@ -196,6 +211,8 @@ async def create_viva(payload: CreateVivaPayload, request: Request):
     subject_name = payload.subject_name.strip()
     if not (code and name and subject_name):
         raise HTTPException(status_code=400, detail="Name, subject code and subject name are required.")
+    if payload.technical_percent is not None and payload.category != CATEGORY_TECHNICAL:
+        raise HTTPException(status_code=422, detail="Technical percentage only applies to technical vivas.")
 
     col = await _vivas_col()
     await _ensure_indexes(col)
@@ -221,6 +238,7 @@ async def create_viva(payload: CreateVivaPayload, request: Request):
         "year": payload.year,
         "semester": payload.semester,
         "total_marks": payload.total_marks,
+        "technical_percent": payload.technical_percent,
         "notes": (payload.notes or "").strip() or None,
         "examiner_email": examiner,
         "created_at": datetime.now(timezone.utc),

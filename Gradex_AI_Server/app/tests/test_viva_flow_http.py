@@ -122,6 +122,13 @@ class VivaFlowHttpTests(unittest.TestCase):
             patch("Gradex_AI_Server.app.core.database.ensure_marks_collection", fake_ensure),
             patch("Gradex_AI_Server.app.subject_rubric_service.get_subject_rubric", fake_get_rubric),
             patch("Gradex_AI_Server.app.viva_service.analyze_video_file", lambda *_a, **_k: dict(FAKE_RESULT)),
+            # The pre-analysis video gate (2 MB minimum, readable/long/clear video) is tested in
+            # test_viva_video_gate; these tests upload tiny fake clips to exercise the flow itself.
+            patch("Gradex_AI_Server.app.main.MIN_VIVA_UPLOAD_BYTES", 0),
+            patch(
+                "Gradex_AI_Server.app.main.validate_viva_video",
+                lambda _path: {"duration_seconds": 30.0, "frame_count": 900},
+            ),
         ):
             p.start()
             self.addCleanup(p.stop)
@@ -501,8 +508,49 @@ class VivaFlowHttpTests(unittest.TestCase):
         self.assertEqual(body["technical_accuracy"], 45)
         self.assertLessEqual(body["final_mark"], 50)
 
+    def test_technical_viva_uses_the_lecturers_technical_percentage(self):
+        created = self._viva(category="technical", subject_code="Cs3021", technical_percent=70).json()
+        self.assertEqual(created["technical_percent"], 70)
+        with self._real_analysis("WITH_TECHNICAL_ACCURACY"):
+            mark_id = self._upload(created["viva_id"]).json()["mark_id"]
+        # Full technical score, so the final mark leans toward it by exactly the chosen share.
+        from VivaEvaluationEngine.services.assessment_scoring import MARKING_SCALE
+
+        ok = self.client.patch(
+            f"/api/viva-marks/{mark_id}/publish",
+            json={
+                "assessment_mode": "WITH_TECHNICAL_ACCURACY",
+                "technical_accuracy": MARKING_SCALE.technical_max,
+                "published": True,
+            },
+        )
+        self.assertEqual(ok.status_code, 200, ok.text)
+        doc = self.client.get(f"/api/viva-marks/{mark_id}").json()
+        fusion = doc["assessment"]["fusion"]
+        self.assertEqual(fusion["weight_technical"], 0.7)
+        self.assertAlmostEqual(fusion["weight_ai"], 0.3)
+        ai = doc["assessment"]["ai_performance"]["score"]
+        self.assertAlmostEqual(doc["final_score"], round(0.3 * ai + 0.7 * 100, 2), places=2)
+        self.assertEqual(doc["viva_technical_percent"], 70)
+
+    def test_technical_percentage_defaults_to_50_and_is_technical_only(self):
+        technical = self._viva(name="T", category="technical", subject_code="Cs3021").json()
+        self.assertEqual(technical["technical_percent"], 50)
+        plain = self._viva(name="N").json()
+        self.assertIsNone(plain["technical_percent"])
+        rejected = self._viva(name="N2", technical_percent=60)
+        self.assertEqual(rejected.status_code, 422)
+
+    def test_technical_percentage_must_be_between_20_and_90(self):
+        for bad in (10, 19, 91, 100):
+            response = self._viva(name=f"P{bad}", category="technical", subject_code="Cs3021", technical_percent=bad)
+            self.assertEqual(response.status_code, 422, bad)
+        for good in (20, 90):
+            response = self._viva(name=f"P{good}", category="technical", subject_code="Cs3021", technical_percent=good)
+            self.assertEqual(response.status_code, 200, good)
+
     def test_total_marks_must_be_positive(self):
-        for bad in (0, -5, 1001):
+        for bad in (0, -5, 0.5, 101, 1001):
             self.assertEqual(self._viva(name=f"Bad {bad}", total_marks=bad).status_code, 422, bad)
 
     def test_technical_publish_takes_a_score_out_of_the_technical_maximum(self):

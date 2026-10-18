@@ -85,6 +85,21 @@ FAMILY_WEIGHTS: Dict[str, float] = {
 # Mode-B fusion. Documented v1 choice: equal contribution. Change only by bumping SCORING_VERSION.
 FUSION_WEIGHT_AI = 0.5
 FUSION_WEIGHT_TECHNICAL = 0.5
+# A technical viva's lecturer may choose the technical share (the AI share is the rest).
+MIN_TECHNICAL_WEIGHT = 0.2
+MAX_TECHNICAL_WEIGHT = 0.9
+
+
+def resolve_technical_weight(technical_weight: Optional[float] = None) -> float:
+    """The technical share of a technical viva's mark; the documented default when none is given."""
+    if technical_weight is None:
+        return FUSION_WEIGHT_TECHNICAL
+    value = float(technical_weight)
+    if not MIN_TECHNICAL_WEIGHT - 1e-9 <= value <= MAX_TECHNICAL_WEIGHT + 1e-9:
+        raise ValueError(
+            f"technical_weight must be between {MIN_TECHNICAL_WEIGHT:g} and {MAX_TECHNICAL_WEIGHT:g}, got {value}"
+        )
+    return round(value, 4)
 
 # Same numeric anchors as viva_analysis._score_audio_grade (Praat local jitter/shimmer).
 _JITTER_GOOD = 0.005
@@ -497,6 +512,7 @@ def fuse_final_score(
     ai_performance: Optional[float],
     technical_accuracy: Optional[float],
     scale: Optional[MarkingScale] = None,
+    technical_weight: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Fuse the AI performance percentage with the examiner's technical score.
 
@@ -504,6 +520,8 @@ def fuse_final_score(
     percentage; `final_mark` is the official mark on the configured scale.
     """
     scale = scale or MARKING_SCALE
+    weight_technical = resolve_technical_weight(technical_weight)
+    weight_ai = round(1.0 - weight_technical, 4)
     if ai_performance is None:
         return {
             "final_score": None,
@@ -528,8 +546,8 @@ def fuse_final_score(
                 # the examiner UI can preview a fused mark without duplicating
                 # scorer constants on the client.
                 "with_technical": {
-                    "weight_ai": FUSION_WEIGHT_AI,
-                    "weight_technical": FUSION_WEIGHT_TECHNICAL,
+                    "weight_ai": weight_ai,
+                    "weight_technical": weight_technical,
                 },
             },
         }
@@ -542,14 +560,14 @@ def fuse_final_score(
             "technical_accuracy_100": None,
             "fusion": {
                 "mode": mode,
-                "weight_ai": FUSION_WEIGHT_AI,
-                "weight_technical": FUSION_WEIGHT_TECHNICAL,
+                "weight_ai": weight_ai,
+                "weight_technical": weight_technical,
                 "pending": "technical_accuracy_required",
             },
         }
 
     technical_100 = scale.technical_to_percent(technical_accuracy)
-    final = FUSION_WEIGHT_AI * float(ai_performance) + FUSION_WEIGHT_TECHNICAL * technical_100
+    final = weight_ai * float(ai_performance) + weight_technical * technical_100
     final_percent = round(_clamp(final / PERCENT_MAX) * PERCENT_MAX, 2)
     return {
         "final_score": final_percent,
@@ -558,8 +576,8 @@ def fuse_final_score(
         "technical_accuracy_100": round(technical_100, 2),
         "fusion": {
             "mode": mode,
-            "weight_ai": FUSION_WEIGHT_AI,
-            "weight_technical": FUSION_WEIGHT_TECHNICAL,
+            "weight_ai": weight_ai,
+            "weight_technical": weight_technical,
         },
     }
 
@@ -605,6 +623,7 @@ def build_assessment(
     mode: str = MODE_WITHOUT,
     technical_accuracy: Optional[float] = None,
     scale: Optional[MarkingScale] = None,
+    technical_weight: Optional[float] = None,
 ) -> Dict[str, Any]:
     if mode not in {MODE_WITHOUT, MODE_WITH}:
         mode = MODE_WITHOUT
@@ -660,6 +679,7 @@ def build_assessment(
         ai_performance=performance.get("score"),
         technical_accuracy=tech_input,
         scale=scale,
+        technical_weight=technical_weight,
     )
     final_score = fused["final_score"] if validation["status"] == STATUS_VALID else None
     final_mark = fused.get("final_mark") if validation["status"] == STATUS_VALID else None
@@ -706,6 +726,7 @@ def attach_assessment(
     mode: str = MODE_WITHOUT,
     technical_accuracy: Optional[float] = None,
     scale: Optional[MarkingScale] = None,
+    technical_weight: Optional[float] = None,
 ) -> Dict[str, Any]:
     enriched = dict(result)
     assessment = build_assessment(
@@ -713,6 +734,7 @@ def attach_assessment(
         mode=mode,
         technical_accuracy=technical_accuracy,
         scale=scale,
+        technical_weight=technical_weight,
     )
     enriched["assessment"] = assessment
     if isinstance(assessment.get("lip_motion"), dict):
