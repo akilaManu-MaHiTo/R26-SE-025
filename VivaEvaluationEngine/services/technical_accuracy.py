@@ -13,9 +13,9 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import threading
 import urllib.error
-import urllib.request
 from typing import Any, Dict, List, Optional
 
+from services.llm_common import is_model_unavailable_error, post_chat_completion
 from services.llm_judge import _api_key, _extract_json_object, _model_candidates, _model_name
 from services.marking_scale import MARKING_SCALE, MarkingScale
 
@@ -137,20 +137,7 @@ def _call_groq_batch_once(
             {"role": "user", "content": user},
         ],
     }
-    request = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": "GradexVivaEvaluationEngine/1.0",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=60) as response:
-        raw = json.loads(response.read().decode("utf-8"))
-    return str(raw["choices"][0]["message"]["content"])
+    return post_chat_completion(body, api_key, timeout=60)
 
 
 def _call_groq_batch(
@@ -168,15 +155,7 @@ def _call_groq_batch(
             return content
         except urllib.error.HTTPError as exc:
             last_error = exc
-            try:
-                body = exc.read().decode("utf-8", errors="replace")
-            except Exception:
-                body = str(exc.reason or exc)
-            lowered = body.lower()
-            if exc.code == 404 or (
-                exc.code == 400
-                and ("model" in lowered or "not exist" in lowered or "not found" in lowered)
-            ):
+            if is_model_unavailable_error(exc):
                 continue
             raise
     if last_error:
