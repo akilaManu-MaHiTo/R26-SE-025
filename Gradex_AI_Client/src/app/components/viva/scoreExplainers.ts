@@ -1,4 +1,11 @@
-import type { AssessmentMode, VivaAssessment } from "./types";
+import { getMarkingScale } from "./markingScale";
+import {
+  formatMarkValue,
+  percentToMark,
+  resolveGradeFromMark,
+  type AssessmentMode,
+  type VivaAssessment,
+} from "./types";
 import { parseFusionWeights } from "./officialMark";
 
 export type ScoreExplainTopic =
@@ -21,15 +28,19 @@ export interface ScoreExplainContent {
   workedExample?: string[];
 }
 
-const GRADE_BANDS = [
-  "A+ ≥ 90",
-  "A ≥ 80",
-  "B+ ≥ 70",
-  "B ≥ 60",
-  "C+ ≥ 50",
-  "C ≥ 40",
-  "F < 40",
-];
+/** The grade bands on the current mark scale, e.g. "A+ ≥ 18 (90%)" ... "F < 8 (below 40%)". */
+function gradeBandLines(): string[] {
+  const { gradeBands } = getMarkingScale();
+  return gradeBands.map((band, index) => {
+    if (index === gradeBands.length - 1) {
+      const above = gradeBands[index - 1];
+      return above
+        ? `${band.grade} < ${above.minMark} (below ${above.minPercent}%)`
+        : `${band.grade} (any mark)`;
+    }
+    return `${band.grade} ≥ ${band.minMark} (${band.minPercent}%)`;
+  });
+}
 
 const FAMILY_LABELS: Record<string, string> = {
   engagement: "Engagement",
@@ -40,6 +51,11 @@ const FAMILY_LABELS: Record<string, string> = {
 const COMPONENT_LABELS: Record<string, string> = {
   average_engagement_score: "Face CNN engagement",
   facial_confidence: "Facial confidence / positivity",
+  emotion_profile: "Facial emotion profile",
+  gaze_on_camera_ratio: "Eye gaze on camera",
+  head_stability: "Head stability",
+  blink_score: "Blink rate",
+  speech_emotion_tone: "Speech emotion tone (half weight)",
   pitch_stability_from_std: "Pitch stability",
   clarity_from_hnr: "Voice clarity (HNR)",
   articulation_from_jitter_shimmer: "Articulation (jitter/shimmer)",
@@ -61,7 +77,7 @@ function familyScoreLine(
 ): string | null {
   const score = assessment?.ai_performance?.family_scores?.[family];
   if (score == null) return null;
-  return `This recording: ${Math.round(score * 100)} / 100`;
+  return `This recording: ${Math.round(score * 100)}%`;
 }
 
 function componentLines(
@@ -77,7 +93,7 @@ function componentLines(
     const label = COMPONENT_LABELS[key] || key.replace(/_/g, " ");
     const value =
       typeof c.normalized === "number"
-        ? `${Math.round(Number(c.normalized) * 100)}/100`
+        ? `${Math.round(Number(c.normalized) * 100)}%`
         : "—";
     const w =
       typeof c.weight_within_family === "number"
@@ -127,10 +143,14 @@ function officialMarkWorking(
     ).padStart(5)} = ${(score * 100 * weight).toFixed(1).padStart(5)}`;
   });
 
-  rows.push(`${"AI performance".padEnd(16)} ${" ".repeat(16)}= ${ai.toFixed(1).padStart(5)}`);
+  const aiMark = percentToMark(ai) ?? 0;
+  const { markMax } = getMarkingScale();
+  rows.push(
+    `${"AI performance".padEnd(16)} ${" ".repeat(16)}= ${ai.toFixed(1).padStart(5)}%  →  ${formatMarkValue(aiMark)} / ${markMax}`,
+  );
 
   if (!withTech) {
-    rows.push(`${"Official mark".padEnd(16)} ${" ".repeat(16)}= ${ai.toFixed(1).padStart(5)}`);
+    rows.push(`${"Official mark".padEnd(16)} ${" ".repeat(16)}= ${formatMarkValue(aiMark).padStart(5)} / ${markMax}`);
     return rows;
   }
 
@@ -139,19 +159,20 @@ function officialMarkWorking(
     rows.push("Technical accuracy not entered yet — final mark is pending.");
     return rows;
   }
-  const tech100 = Number(tech) * 10;
-  const final = fusion.weightAi * ai + fusion.weightTechnical * tech100;
+  // Both parts are put on the mark scale: the AI score scaled from its percentage, and the
+  // examiner's technical score scaled from the technical maximum.
+  const technicalMark = (Number(tech) / getMarkingScale().technicalMax) * markMax;
+  const blended = fusion.weightAi * aiMark + fusion.weightTechnical * technicalMark;
+  const finalMark = percentToMark((blended / markMax) * 100) ?? blended;
   rows.push(
-    `${"AI".padEnd(16)} ${ai.toFixed(1).padStart(5)} x ${pct(fusion.weightAi, "").padStart(5)} = ${(
-      fusion.weightAi * ai
-    )
-      .toFixed(1)
-      .padStart(5)}`,
-    `${"Technical".padEnd(16)} ${tech100.toFixed(1).padStart(5)} x ${pct(
+    `${"AI".padEnd(16)} ${formatMarkValue(aiMark).padStart(5)} x ${pct(fusion.weightAi, "").padStart(5)} = ${formatMarkValue(
+      fusion.weightAi * aiMark,
+    ).padStart(5)}`,
+    `${"Technical".padEnd(16)} ${formatMarkValue(technicalMark).padStart(5)} x ${pct(
       fusion.weightTechnical,
       "",
-    ).padStart(5)} = ${(fusion.weightTechnical * tech100).toFixed(1).padStart(5)}`,
-    `${"Official mark".padEnd(16)} ${" ".repeat(16)}= ${final.toFixed(1).padStart(5)}`,
+    ).padStart(5)} = ${formatMarkValue(fusion.weightTechnical * technicalMark).padStart(5)}`,
+    `${"Official mark".padEnd(16)} ${" ".repeat(16)}= ${formatMarkValue(finalMark).padStart(5)} / ${markMax}`,
   );
   return rows;
 }
@@ -171,10 +192,14 @@ function familyWorking(
     const key = String(c.feature || "");
     const label = COMPONENT_LABELS[key] || key.replace(/_/g, " ");
     const value = typeof c.normalized === "number" ? Number(c.normalized) * 100 : 0;
-    return `${label.slice(0, 24).padEnd(26)} ${value.toFixed(1).padStart(5)}`;
+    const weight =
+      typeof c.weight_within_family === "number"
+        ? `  x ${pct(Number(c.weight_within_family), "").padStart(5)}`
+        : "";
+    return `${label.slice(0, 24).padEnd(26)} ${value.toFixed(1).padStart(5)}${weight}`;
   });
   rows.push(
-    `${`average of ${comps.length}`.padEnd(26)} ${(Number(score) * 100).toFixed(1).padStart(5)}`,
+    `${`weighted average of ${comps.length}`.padEnd(26)} ${(Number(score) * 100).toFixed(1).padStart(5)}`,
   );
   return rows;
 }
@@ -187,7 +212,7 @@ export function buildScoreExplain(
   } = {},
 ): ScoreExplainContent {
   const { assessment, assessmentMode } = options;
-  const version = assessment?.scoring_version || "v1.1";
+  const version = assessment?.scoring_version || "v1.3";
   const weights = assessment?.ai_performance?.family_weights_applied;
   const withTech =
     (assessmentMode || assessment?.assessment_mode) === "WITH_TECHNICAL_ACCURACY";
@@ -221,28 +246,34 @@ export function buildScoreExplain(
               applied === 1 ? "family carries" : "families carry"
             } the whole mark at the percentages above.`
           : "Equal average of available families (missing families are dropped and weights re-balance).",
-        "Emotion: not a separate % of the mark. It enters inside Engagement as facial confidence/positivity (emotion-weighted face tone), mixed 50/50 with Face CNN engagement.",
-        "Still not included: LLM clarity/confidence, audio quality /10, engagement blend %, Positive/Neutral/Negative emotion bars as their own family.",
+        "Face signals count inside Engagement: CNN engagement, facial confidence, facial emotion, eye gaze, head stability and blink rate (equal parts). Voice emotion counts inside Audio at half weight.",
+        "Not included: LLM clarity/confidence, audio quality /10, and the engagement blend %.",
       ];
       if (withTech) {
         lines.push(
-          `Technical mode: final = ${Math.round(fusion.weightAi * 100)}% AI performance + ${Math.round(fusion.weightTechnical * 100)}% technical accuracy.`,
+          `Technical mode: final = ${Math.round(fusion.weightAi * 100)}% AI performance + ${Math.round(fusion.weightTechnical * 100)}% technical accuracy (the examiner enters technical accuracy out of ${getMarkingScale().technicalMax}).`,
         );
       } else {
         lines.push("Non-technical mode: official mark = AI performance score (100%).");
       }
+      const { markMax: scaleMax, decimals } = getMarkingScale();
+      lines.push(
+        `Every viva is marked out of ${scaleMax}: the mark is the 0–100 percentage ÷ 100 × ${scaleMax}, rounded to ${decimals} decimals.`,
+      );
       const score = assessment?.ai_performance?.score;
       if (score != null) {
-        lines.unshift(`This recording: ${score.toFixed(1)} / 100`);
+        lines.unshift(
+          `This recording: AI performance ${score.toFixed(1)}% = ${formatMarkValue(percentToMark(score))} / ${scaleMax}`,
+        );
       }
       return {
         title: topic === "official_mark" ? "How the official mark is calculated" : "How AI performance is calculated",
         summary: withTech
           ? "Blend of AI performance and technical accuracy."
-          : "Equal mix of engagement, audio acoustics, and transcript. Emotion feeds Engagement via facial confidence.",
+          : "Equal mix of engagement, audio acoustics, and transcript. Facial and voice emotion, gaze, head and blink all feed these families.",
         lines,
         formula: withTech
-          ? `Final = ${fusion.weightAi}×AI + ${fusion.weightTechnical}×Technical`
+          ? `Final = ${fusion.weightAi}×AI + ${fusion.weightTechnical}×Technical (each on the ${getMarkingScale().markMax}-mark scale)`
           : weights && Object.keys(weights).length > 0
             ? `AI = (${Object.keys(weights)
                 .map((name) => FAMILY_LABELS[name] || name)
@@ -257,20 +288,24 @@ export function buildScoreExplain(
         familyScoreLine(assessment, "engagement") ||
           `Part of the official mark (${familyWeightLabel(assessment, "engagement")}).`,
         ...(comps.length > 0
-          ? ["Inside this family (equal parts when both measured):", ...comps]
+          ? ["Inside this family (equal parts, only the ones measured):", ...comps]
           : [
-              "Equal mix inside this family (when both are available):",
+              "Equal mix inside this family (only the signals measured):",
               "• Face CNN engagement average",
               "• Facial confidence / positivity",
+              "• Facial emotion profile",
+              "• Eye gaze on camera",
+              "• Head stability",
+              "• Blink rate",
             ]),
-        "Not the hero “engagement blend %” — that stays a supporting signal only.",
-        "Emotion bars (Positive/Neutral/Negative %) are not scored alone; facial confidence is the emotion input here.",
+        "A signal that could not be measured (for example blink rate on a very short clip) is left out, not scored as zero.",
+        "Not the “engagement blend %” — that stays a supporting signal only.",
       ];
       return {
         title: `Engagement (${familyWeightLabel(assessment, "engagement")} of mark)`,
-        summary: "Face CNN engagement + facial confidence (emotion-weighted).",
+        summary: "Face CNN engagement, facial confidence, emotion, eye gaze, head stability and blink rate.",
         lines,
-        formula: "Engagement = (CNN + facial confidence) / 2",
+        formula: "Engagement = average of the available face signals",
         workedExample: familyWorking(assessment, "engagement"),
       };
     }
@@ -282,16 +317,17 @@ export function buildScoreExplain(
         ...(comps.length > 0
           ? ["Acoustic parts used for this recording:", ...comps]
           : [
-              "Equal average of measured acoustic parts:",
+              "Average of measured acoustic parts:",
               "• Pitch stability",
               "• Voice clarity (HNR)",
               "• Articulation (jitter / shimmer)",
+              "• Speech emotion tone (counts half, only when the voice-emotion model ran)",
             ]),
         "Not the supporting “audio quality /10” grade.",
       ];
       return {
         title: `Audio acoustics (${familyWeightLabel(assessment, "audio_acoustics")} of mark)`,
-        summary: "Pitch stability, clarity, and articulation.",
+        summary: "Pitch stability, clarity, articulation, and voice emotion tone.",
         lines,
         formula: "Audio = average of available acoustic parts",
         workedExample: familyWorking(assessment, "audio_acoustics"),
@@ -321,14 +357,17 @@ export function buildScoreExplain(
       };
     }
     case "grade":
+      const { markMax: gradeMax } = getMarkingScale();
+      const exampleMark = percentToMark(66.7);
       return {
         title: "How the letter grade is assigned",
-        summary: "Letter band from the official mark /100.",
+        summary: `Letter band from the official mark out of ${gradeMax}.`,
         lines: [
-          ...GRADE_BANDS,
-          "Example: 66.7 → Grade B (60–69).",
+          ...gradeBandLines(),
+          "The grade follows the rounded mark you see, so a mark that rounds up to a band's minimum gets that band.",
+          `Example: 66.7% → ${formatMarkValue(exampleMark)} / ${gradeMax} → Grade ${resolveGradeFromMark(exampleMark) ?? "—"}.`,
         ],
-        formula: "Grade = band for official mark",
+        formula: `Grade = band for official mark (out of ${gradeMax})`,
       };
     case "face_coverage":
       return {
@@ -343,9 +382,10 @@ export function buildScoreExplain(
     case "supporting_signals":
       return {
         title: "Supporting signals",
-        summary: "Most of these are display-only. Facial positivity also feeds Engagement in scorer v1.1+.",
+        summary: "In scorer v1.2, facial emotion, gaze, head stability and blink feed Engagement, and speech emotion feeds Audio.",
         lines: [
-          "Facial positivity — shown here, and (in v1.1+) half of the Engagement family.",
+          "Facial positivity, facial emotion profile, on-camera gaze, head stability and blink rate — each an equal part of the Engagement family (v1.2).",
+          "Speech emotion — scored in the Audio family at half weight, only when the real voice-emotion model ran (v1.2).",
           "Engagement blend % — diagnostic UI blend only (0% of official mark).",
           "Audio quality /10 — display audio_grade; official mark uses the acoustic family instead.",
           "LLM clarity / confidence / engagement — interpretation only (0% of official mark).",

@@ -18,13 +18,6 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
 import { AIPageBanner, AIBadgePill } from "./AIBrand";
 import { VivaVideoPlayer, VivaVideoPlayerHandle } from "./viva/VivaVideoPlayer";
 import { ScoreOverview } from "./viva/ScoreOverview";
@@ -45,22 +38,25 @@ import {
 } from "./viva/VivaAnalyzeProgress";
 import { EvaluationPanel } from "./viva/EvaluationPanel";
 import { ReportPrintView } from "./viva/ReportPrintView";
-import { publishVivaMark } from "./viva/vivaMarksApi";
-import {
-  SubjectRubricSummary,
-  listSubjectContent,
-} from "./viva/subjectContentApi";
+import { listVivaMarks, publishVivaMark } from "./viva/vivaMarksApi";
+import { VivaResumeBanner } from "./viva/VivaResumeBanner";
+import { clearInflightJob, saveInflightJob } from "./viva/inflightJob";
+import { Link } from "react-router";
+import { useSelectedViva } from "./viva/useSelectedViva";
+import { VivaPicker } from "./viva/VivaPicker";
+import { useConfirmDialog } from "./viva/useConfirmDialog";
+import { useVivaMarkingScale } from "./viva/useMarkingScale";
+import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "./viva/studentId";
 import {
   AnalysisResult,
   AssessmentMode,
   buildAIInterpretation,
   buildKeyMoments,
+  formatOfficialMark,
   formatTime,
+  percentToMark,
+  suggestedTechnicalMark,
 } from "./viva/types";
-
-/** Radix Select rejects an empty string as an item value, so "no subject" needs
- *  a sentinel that is mapped back to "" before the code reaches the server. */
-const NO_SUBJECT = "__none__";
 
 export function VivaPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -80,15 +76,11 @@ export function VivaPage() {
 
   const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>("WITHOUT_TECHNICAL_ACCURACY");
   const [technicalAccuracy, setTechnicalAccuracy] = useState<number | null>(null);
-  // Optional link to a subject's concept rubric (see /api/subject-content) so
-  // the server can attach an AI-suggested technical_accuracy_ai score. Only
-  // meaningful in WITH_TECHNICAL_ACCURACY mode; never auto-published either way.
-  const [subjectCode, setSubjectCode] = useState("");
-  // Picked from a list rather than typed: the server matches subject_code
-  // exactly, so a typo silently yields no rubric instead of an error.
-  const [subjectOptions, setSubjectOptions] = useState<SubjectRubricSummary[]>([]);
-  const [subjectsLoading, setSubjectsLoading] = useState(false);
-  const [subjectsFailed, setSubjectsFailed] = useState(false);
+  // The viva (chosen in the Viva Workspace) fixes the category and subject for everything
+  // uploaded or recorded here.
+  const { vivaId, viva, loading: vivaLoading, error: vivaError } = useSelectedViva();
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
+  useVivaMarkingScale(viva?.total_marks); // mark on the selected viva's own total marks
   const [studentId, setStudentId] = useState("");
   const [published, setPublished] = useState(false);
   const [autoPublishedWithoutTech, setAutoPublishedWithoutTech] = useState(false);
@@ -112,40 +104,21 @@ export function VivaPage() {
     setPublishing(false);
   };
 
+  // Set while the page is being torn down, so an upload aborted by leaving the page does
+  // not forget the running job (the server keeps analysing and the page can reattach).
+  const unmountedRef = useRef(false);
+
   useEffect(() => {
+    unmountedRef.current = false;
     return () => {
+      unmountedRef.current = true;
       xhrRef.current?.abort();
     };
   }, []);
 
-  // Fetched only in technical mode — a presentation viva never uses a rubric.
   useEffect(() => {
-    if (assessmentMode !== "WITH_TECHNICAL_ACCURACY") return;
-    let cancelled = false;
-    setSubjectsLoading(true);
-    listSubjectContent()
-      .then((rows) => {
-        if (cancelled) return;
-        setSubjectOptions(rows);
-        setSubjectsFailed(false);
-        // A code held from an earlier session may no longer exist; leaving it
-        // set would show an empty trigger and silently send a dead code.
-        setSubjectCode((current) =>
-          current && !rows.some((row) => row.subject_code === current) ? "" : current,
-        );
-      })
-      .catch(() => {
-        // Non-fatal: the subject link is optional, so a failed lookup must not
-        // block the viva. The field falls back to free text below.
-        if (!cancelled) setSubjectsFailed(true);
-      })
-      .finally(() => {
-        if (!cancelled) setSubjectsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [assessmentMode]);
+    if (viva) setAssessmentMode(viva.assessment_mode);
+  }, [viva]);
 
   const handlePublish = async () => {
     const markId = analysisResult?.mark_id;
@@ -177,6 +150,8 @@ export function VivaPage() {
         const merged: AnalysisResult = {
           ...previous,
           final_score: saved.final_score ?? previous.final_score,
+          final_mark: saved.final_mark ?? previous.final_mark,
+          final_mark_max: saved.final_mark_max ?? previous.final_mark_max,
           final_grade: saved.final_grade ?? previous.final_grade,
           assessment_mode: assessmentMode,
         };
@@ -184,6 +159,8 @@ export function VivaPage() {
           merged.assessment = {
             ...previous.assessment,
             final_score: saved.final_score ?? previous.assessment.final_score,
+            final_mark: saved.final_mark ?? previous.assessment.final_mark,
+            final_mark_max: saved.final_mark_max ?? previous.assessment.final_mark_max,
             grade: saved.final_grade ?? previous.assessment.grade,
             technical_accuracy: technicalAccuracy,
             assessment_mode: assessmentMode,
@@ -194,8 +171,8 @@ export function VivaPage() {
       setPublished(true);
       toast.success("Assessment published", {
         description: `Final mark ${
-          saved.final_score != null ? saved.final_score.toFixed(1) : "—"
-        }/100 (grade ${saved.final_grade ?? "—"}) saved.`,
+          saved.final_mark != null ? saved.final_mark.toFixed(2) : "—"
+        } / 20 (grade ${saved.final_grade ?? "—"}) saved.`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to publish";
@@ -311,6 +288,15 @@ export function VivaPage() {
   };
 
   const handleFileSelect = (file: File, options?: { autoAnalyze?: boolean }) => {
+    // Student ID comes first: no upload, drop or recording is accepted without it.
+    if (!viva) {
+      setError("Open this page from a viva in the Viva Workspace before uploading or recording.");
+      return;
+    }
+    if (!isValidStudentId(studentId)) {
+      setError(studentId.trim() ? STUDENT_ID_HINT : "Enter a student ID before uploading or recording a viva.");
+      return;
+    }
     const isVideo = file.type.startsWith("video/") || /\.(mp4|webm|mov|avi|mkv)$/i.test(file.name);
     if (!isVideo) {
       setError("Please upload a valid video file (MP4, WEBM, AVI, MOV, etc.)");
@@ -327,7 +313,10 @@ export function VivaPage() {
     setUploadedFile(file);
     setAnalysisResult(null);
     setVideoDuration(null);
+    // The Student ID is typed before the file is chosen, so keep it across the reset.
+    const keepStudentId = studentId;
     resetAssessmentState();
+    setStudentId(keepStudentId);
 
     setVideoPreview((previous) => {
       if (previous) URL.revokeObjectURL(previous);
@@ -340,6 +329,44 @@ export function VivaPage() {
 
   const analyzeVideo = async (file: File) => {
     if (!file) return;
+
+    if (!viva) {
+      setError("Open this page from a viva in the Viva Workspace before analyzing a recording.");
+      return;
+    }
+    const normalizedStudentId = normalizeStudentId(studentId);
+    if (!normalizedStudentId) {
+      setError("Enter a student ID before analyzing the recording.");
+      return;
+    }
+    if (!isValidStudentId(normalizedStudentId)) {
+      setError(STUDENT_ID_HINT);
+      return;
+    }
+
+    // Ask before adding a second mark for the same student under this viva. A failed
+    // lookup is not fatal: the server enforces the same rule and answers 409.
+    let allowDuplicate = false;
+    try {
+      const existing = await listVivaMarks(1, normalizedStudentId, viva.viva_id);
+      if (existing.length > 0) {
+        const proceed = await confirm({
+          title: "This student already has a mark",
+          description: (
+            <>
+              <span className="font-medium text-foreground">{normalizedStudentId}</span> already has a mark
+              under <span className="font-medium text-foreground">{viva.label}</span>. Analyzing this recording will add another mark for the same student.
+            </>
+          ),
+          confirmLabel: "Analyze anyway",
+          cancelLabel: "Cancel",
+        });
+        if (!proceed) return;
+        allowDuplicate = true;
+      }
+    } catch {
+      // fall through to the server-side check
+    }
 
     setIsAnalyzing(true);
     setError("");
@@ -354,16 +381,16 @@ export function VivaPage() {
         ? crypto.randomUUID()
         : `prog_${Date.now()}`;
     progressIdRef.current = progressId;
+    saveInflightJob(progressId, file.name);
     const formData = new FormData();
     formData.append("video", file);
     formData.append("progress_id", progressId);
-    // Chosen upfront via the selector below, before this file was ever picked —
-    // the server uses this to decide whether the mark may auto-publish (see
-    // main.py::viva_analyze). Technical vivas never auto-publish.
-    formData.append("assessment_mode", assessmentMode);
-    if (assessmentMode === "WITH_TECHNICAL_ACCURACY" && subjectCode.trim()) {
-      formData.append("subject_code", subjectCode.trim());
-    }
+    // The viva decides the assessment mode and subject server-side; the
+    // recording is only ever filed under a viva that already exists.
+    formData.append("viva_id", viva.viva_id);
+    if (allowDuplicate) formData.append("allow_duplicate", "true");
+    // Saved with the mark so the result can be found later under Viva Results.
+    formData.append("student_id", normalizedStudentId);
 
     try {
       const apiUrl = `${backendBaseUrl}/api/viva-analyze`;
@@ -423,8 +450,9 @@ export function VivaPage() {
       setAnalysisPhase("complete");
       // Pre-fill from the AI suggestion when available; the examiner can still
       // adjust it before publishing — see EvaluationPanel's Technical accuracy slider.
-      const suggested = data.technical_accuracy_ai?.overall_score;
-      setTechnicalAccuracy(suggested != null ? Math.round(suggested) : null);
+      // The AI suggestion is out of 20; round it to the nearest half mark for the slider.
+      const suggested = suggestedTechnicalMark(data.technical_accuracy_ai);
+      setTechnicalAccuracy(suggested != null ? Math.round(suggested * 2) / 2 : null);
       const wasAutoPublished = Boolean(data.auto_published && data.published);
       setAutoPublishedWithoutTech(wasAutoPublished);
       setPublished(wasAutoPublished);
@@ -435,7 +463,9 @@ export function VivaPage() {
         });
       } else if (wasAutoPublished) {
         toast.success("Analysis complete — score saved", {
-          description: `Final mark ${data.final_score?.toFixed(1) ?? data.assessment?.final_score ?? "—"}/100 (grade ${data.final_grade ?? data.assessment?.grade ?? "—"}) saved.`,
+          description: `Final mark ${formatOfficialMark(
+            data.final_mark ?? data.assessment?.final_mark ?? percentToMark(data.final_score ?? data.assessment?.final_score),
+          )} (grade ${data.final_grade ?? data.assessment?.grade ?? "—"}) saved.`,
         });
       } else if (data.mark_id) {
         toast.success("Analysis complete", {
@@ -451,7 +481,9 @@ export function VivaPage() {
           description:
             data.assessment.status === "INCOMPLETE"
               ? "Recording is incomplete — no official grade."
-              : `AI performance ${data.assessment.ai_performance?.score ?? "—"} / 100.`,
+              : `AI performance ${formatOfficialMark(
+                  data.assessment.ai_performance?.mark ?? percentToMark(data.assessment.ai_performance?.score),
+                )}.`,
         });
       }
     } catch (err) {
@@ -460,6 +492,8 @@ export function VivaPage() {
       setAnalysisPhase("idle");
     } finally {
       setIsAnalyzing(false);
+      // Keep the job on record if the page is just going away mid-analysis.
+      if (!unmountedRef.current) clearInflightJob();
     }
   };
 
@@ -483,6 +517,7 @@ export function VivaPage() {
 
   return (
     <>
+    {confirmDialog}
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 print:hidden">
       <AIPageBanner model="voca" />
 
@@ -520,80 +555,59 @@ export function VivaPage() {
         </Card>
       )}
 
+      {!isAnalyzing && !analysisResult && !videoPreview && <VivaResumeBanner />}
+
       {!videoPreview && (
         <Card className="p-6">
           <div className="mb-5">
-            <div className="text-sm font-medium text-foreground mb-2">Assessment type</div>
-            <Tabs
-              value={assessmentMode}
-              onValueChange={(value) => setAssessmentMode(value as AssessmentMode)}
-            >
-              <TabsList>
-                <TabsTrigger value="WITHOUT_TECHNICAL_ACCURACY">Non-technical</TabsTrigger>
-                <TabsTrigger value="WITH_TECHNICAL_ACCURACY">Technical</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <p className="text-xs text-muted-foreground mt-2">
-              {assessmentMode === "WITH_TECHNICAL_ACCURACY"
-                ? "Technical modules — the mark stays a draft until an examiner enters a technical accuracy score and publishes. Chosen once, before uploading or recording."
-                : "Communication / presentation vivas — the AI performance score saves automatically once analysis completes. Chosen once, before uploading or recording."}
-            </p>
-            {assessmentMode === "WITH_TECHNICAL_ACCURACY" && (
-              <div className="mt-3">
-                <label className="text-xs text-muted-foreground" htmlFor="viva-subject-code">
-                  Subject (optional — links to an uploaded concept rubric for an AI-suggested score)
-                </label>
-                {subjectsFailed ? (
-                  <>
-                    <Input
-                      id="viva-subject-code"
-                      className="mt-1 max-w-xs"
-                      value={subjectCode}
-                      onChange={(e) => setSubjectCode(e.target.value)}
-                      placeholder="e.g. CS3021"
-                    />
-                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                      Could not load the subject list — type the code exactly as saved.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <Select
-                      value={subjectCode || NO_SUBJECT}
-                      onValueChange={(value) =>
-                        setSubjectCode(value === NO_SUBJECT ? "" : value)
-                      }
-                      disabled={subjectsLoading && subjectOptions.length === 0}
-                    >
-                      <SelectTrigger id="viva-subject-code" className="mt-1 max-w-xs">
-                        <SelectValue
-                          placeholder={
-                            subjectsLoading
-                              ? "Loading subjects…"
-                              : subjectOptions.length
-                                ? "No subject linked"
-                                : "No subjects uploaded yet"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NO_SUBJECT}>No subject linked</SelectItem>
-                        {subjectOptions.map((subject) => (
-                          <SelectItem key={subject.subject_code} value={subject.subject_code}>
-                            {subject.subject_code} · {subject.subject_name} (
-                            {subject.concept_count} concepts)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!subjectsLoading && subjectOptions.length === 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Upload lecture material under Subject Content to enable AI-suggested
-                        technical accuracy.
-                      </p>
-                    )}
-                  </>
-                )}
+            <label className="text-xs text-muted-foreground" htmlFor="viva-select">
+              Viva — what is this recording for?
+            </label>
+            <VivaPicker id="viva-select" className="mt-1 mb-4 max-w-xl" currentId={vivaId} disabled={isAnalyzing} />
+            {vivaLoading ? (
+              <Skeleton className="h-16 w-full" />
+            ) : viva ? (
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="text-sm font-medium text-foreground">{viva.label}</div>
+                  <Badge variant={viva.category === "technical" ? "default" : "secondary"}>
+                    {viva.category === "technical" ? "Technical" : "Non-technical"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {viva.subject_name} ·{" "}
+                  {viva.category === "technical"
+                    ? "the mark stays a draft until you enter a technical accuracy score and publish."
+                    : "the AI performance score saves automatically once analysis completes."}
+                </p>
+                <div className="mt-3">
+                  <label className="text-xs text-muted-foreground" htmlFor="viva-student-id">
+                    Student ID (required)
+                  </label>
+                  <Input
+                    id="viva-student-id"
+                    className="mt-1 max-w-xs"
+                    value={studentId}
+                    onChange={(e) => setStudentId(e.target.value.toUpperCase())}
+                    placeholder="e.g. IT22557056"
+                    maxLength={10}
+                    pattern="IT[0-9]{8}"
+                    title={STUDENT_ID_HINT}
+                    aria-invalid={studentId.trim() !== "" && !isValidStudentId(studentId)}
+                    required
+                  />
+                  {studentId.trim() !== "" && !isValidStudentId(studentId) && (
+                    <p className="text-xs text-destructive mt-1">{STUDENT_ID_HINT}</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                {vivaError || (vivaId ? "Viva not found." : "No viva selected.")} Pick one above, or{" "}
+                <Link to="/viva-evaluation/vivas" className="underline text-foreground">
+                  create one in the Viva Workspace
+                </Link>
+                , before uploading or recording.
               </div>
             )}
           </div>
@@ -614,11 +628,21 @@ export function VivaPage() {
                 onDragLeave={handleDragLeave}
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (!viva) {
+                    setError("Open this page from a viva in the Viva Workspace before uploading or recording.");
+                    return;
+                  }
+                  if (!isValidStudentId(studentId)) {
+                    setError(studentId.trim() ? STUDENT_ID_HINT : "Enter a student ID before uploading or recording a viva.");
+                    return;
+                  }
+                  fileInputRef.current?.click();
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+                  if (e.key === "Enter" || e.key === " ") e.currentTarget.click();
                 }}
                 aria-label="Upload a viva recording"
               >
@@ -639,7 +663,7 @@ export function VivaPage() {
             <TabsContent value="live" className="mt-4">
               {sourceTab === "live" ? (
                 <LiveVivaRecorder
-                  disabled={isAnalyzing}
+                  disabled={isAnalyzing || !viva || !isValidStudentId(studentId)}
                   onRecorded={(file) => handleFileSelect(file, { autoAnalyze: true })}
                 />
               ) : null}
@@ -667,7 +691,7 @@ export function VivaPage() {
             />
 
             <div className="mt-3 flex items-center gap-3">
-              <Button onClick={() => uploadedFile && analyzeVideo(uploadedFile)} disabled={isAnalyzing}>
+              <Button onClick={() => uploadedFile && analyzeVideo(uploadedFile)} disabled={isAnalyzing || !viva || !isValidStudentId(studentId)}>
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
@@ -865,7 +889,7 @@ export function VivaPage() {
               </Card>
             </div>
 
-            <div className="lg:sticky lg:top-6 self-start">
+            <div className="lg:sticky lg:top-6 self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
               <Card className="p-5">
                 <EvaluationPanel
                   assessment={analysisResult.assessment}
@@ -874,7 +898,7 @@ export function VivaPage() {
                   onChangeTechnicalAccuracy={setTechnicalAccuracy}
                   technicalAccuracyAI={analysisResult.technical_accuracy_ai}
                   studentId={studentId}
-                  onChangeStudentId={setStudentId}
+                  onChangeStudentId={(value) => setStudentId(value.toUpperCase())}
                   aiRecommendation={aiRecommendation}
                   markId={analysisResult.mark_id}
                   persistenceError={analysisResult.persistence_error}
@@ -884,6 +908,7 @@ export function VivaPage() {
                   onPublish={handlePublish}
                   analysisResult={{
                     final_score: analysisResult.final_score,
+                    final_mark: analysisResult.final_mark,
                     final_grade: analysisResult.final_grade,
                     auto_published: analysisResult.auto_published,
                   }}

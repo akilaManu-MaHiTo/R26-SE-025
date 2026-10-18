@@ -9,7 +9,8 @@ import { DiagramGuidelinePage } from "./components/DiagramGuidelinePage";
 import AnalyticsPage from "./components/AnalyticsPage";
 import { ExamCreator } from "./components/ExamCreator";
 import { VivaPage } from "./components/VivaPage";
-import { SubjectContentPage } from "./components/SubjectContentPage";
+import { VivasPage } from "./components/VivasPage";
+import { VivaResultsPage } from "./components/VivaResultsPage";
 import { TopicTaxonomyPage } from "./components/TopicTaxonomyPage";
 import { CourseMaterialsPage } from "./components/CourseMaterialsPage";
 import { LiveCopilotPage } from "./components/viva-copilot/LiveCopilotPage";
@@ -130,11 +131,11 @@ export const AGENT_CONFIG: AgentConfig[] = [
     model: "voca",
     features: [
       {
-        path: "/viva-evaluation/subject-content",
-        label: "Subject Content",
-        title: "Subject Content",
-        subtitle: "Turn lecture material into a concept rubric for technical vivas",
-        element: <SubjectContentPage />,
+        path: "/viva-evaluation/vivas",
+        label: "Viva Workspace",
+        title: "Viva Workspace",
+        subtitle: "Create a viva, add its subject content, then upload or record students",
+        element: <VivasPage />,
       },
       {
         path: "/viva-evaluation/viva-assessment",
@@ -149,6 +150,13 @@ export const AGENT_CONFIG: AgentConfig[] = [
         title: "Live Viva",
         subtitle: "Follow-up questions from the live student presentation and viva",
         element: <LiveCopilotPage />,
+      },
+      {
+        path: "/viva-evaluation/viva-results",
+        label: "Viva Results",
+        title: "Viva Results",
+        subtitle: "Saved viva results, grouped by student",
+        element: <VivaResultsPage />,
       },
     ],
   },

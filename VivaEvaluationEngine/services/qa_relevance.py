@@ -7,11 +7,11 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 import json
 import urllib.error
-import urllib.request
 from typing import Any, Dict, List, Optional
 
 from services.conversation import MAX_PAIRS, pair_question_answers
 from services.conversation_understanding import apply_conversation_understanding
+from services.llm_common import is_model_unavailable_error, post_chat_completion
 from services.llm_judge import _api_key, _extract_json_object, _model_candidates, _model_name
 
 
@@ -114,14 +114,6 @@ def _unavailable(reason: str) -> Dict[str, Any]:
     }
 
 
-def _chat_url() -> str:
-    _load_env_files()
-    base = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or os.getenv("VIVA_LLM_BASE_URL") or "https://api.groq.com/openai/v1").rstrip("/")
-    if base.endswith("/chat/completions"):
-        return base
-    return f"{base}/chat/completions"
-
-
 def _call_groq_pair_once(question: str, answer: str, api_key: str, model: str) -> str:
     user = (
         "Question:\n"
@@ -139,21 +131,7 @@ def _call_groq_pair_once(question: str, answer: str, api_key: str, model: str) -
             {"role": "user", "content": user},
         ],
     }
-    request = urllib.request.Request(
-        _chat_url(),
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": "GradexVivaEvaluationEngine/1.0",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=45) as response:
-        raw = json.loads(response.read().decode("utf-8"))
-    return str(raw["choices"][0]["message"]["content"])
-
+    return post_chat_completion(body, api_key, timeout=45)
 
 
 def _call_groq_pair(question: str, answer: str, api_key: str, model: str) -> str:
@@ -163,14 +141,7 @@ def _call_groq_pair(question: str, answer: str, api_key: str, model: str) -> str
             return _call_groq_pair_once(question, answer, api_key, candidate)
         except urllib.error.HTTPError as exc:
             last_error = exc
-            try:
-                body = exc.read().decode("utf-8", errors="replace")
-            except Exception:
-                body = str(exc.reason or exc)
-            lowered = body.lower()
-            if exc.code == 404 or (
-                exc.code == 400 and ("model" in lowered or "not exist" in lowered or "not found" in lowered)
-            ):
+            if is_model_unavailable_error(exc):
                 continue
             raise
     if last_error:

@@ -33,7 +33,13 @@ import {
   buildKeyMoments,
 } from "../viva/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { SubjectRubricSummary, listSubjectContent } from "../viva/subjectContentApi";
+import { Link } from "react-router";
+import { useSelectedViva } from "../viva/useSelectedViva";
+import { VivaPicker } from "../viva/VivaPicker";
+import { useConfirmDialog } from "../viva/useConfirmDialog";
+import { useVivaMarkingScale } from "../viva/useMarkingScale";
+import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "../viva/studentId";
+import { listVivaMarks } from "../viva/vivaMarksApi";
 import { EmotionDistribution } from "../viva/EmotionDistribution";
 import { EngagementTimeline } from "../viva/EngagementTimeline";
 import { KeyMoments } from "../viva/KeyMoments";
@@ -72,18 +78,12 @@ function LiveCopilotScreen() {
   const [partial, setPartial] = useState("");
   const [wsReady, setWsReady] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
-  // Chosen before the session starts and locked for its duration — same rule
-  // as an uploaded viva (see VivaPage.tsx): the examiner cannot switch mode
-  // after the fact and re-roll the grade.
-  const [assessmentMode, setAssessmentMode] = useState<CopilotAssessmentMode>(
-    "WITHOUT_TECHNICAL_ACCURACY",
-  );
-  // Same rubric link as an uploaded viva: chosen before the session starts,
-  // sent with the recording at finalize so the end-of-session analysis can
-  // attach an AI-suggested technical accuracy score.
-  const [subjectCode, setSubjectCode] = useState("");
-  const [subjectOptions, setSubjectOptions] = useState<SubjectRubricSummary[]>([]);
-  const [subjectsLoading, setSubjectsLoading] = useState(false);
+  // The viva (chosen in the Viva Workspace) fixes the category and subject for the whole
+  // session, so the examiner cannot switch mode after the fact and re-roll the grade.
+  const { vivaId, viva, loading: vivaLoading, error: vivaError } = useSelectedViva();
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
+  useVivaMarkingScale(viva?.total_marks); // mark on the selected viva's own total marks
+  const assessmentMode: CopilotAssessmentMode = viva?.assessment_mode ?? "WITHOUT_TECHNICAL_ACCURACY";
   const [studentId, setStudentId] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState<VivaProgressSnapshot | null>(null);
@@ -93,6 +93,8 @@ function LiveCopilotScreen() {
   const cameraRef = useRef<CopilotCameraHandle>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+  // Set when the examiner confirms adding a second mark for a student who already has one.
+  const allowDuplicateRef = useRef(false);
   const lastErrorToastRef = useRef("");
   const idleTimerRef = useRef<number | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -102,30 +104,6 @@ function LiveCopilotScreen() {
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns, partial]);
-
-  // Only in technical mode — a presentation viva never uses a rubric. A failed
-  // lookup is non-fatal: the subject link is optional, so the select just stays
-  // empty rather than blocking the session.
-  useEffect(() => {
-    if (assessmentMode !== "WITH_TECHNICAL_ACCURACY") return;
-    let cancelled = false;
-    setSubjectsLoading(true);
-    listSubjectContent()
-      .then((rows) => {
-        if (cancelled) return;
-        setSubjectOptions(rows);
-        setSubjectCode((current) =>
-          current && !rows.some((row) => row.subject_code === current) ? "" : current,
-        );
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setSubjectsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [assessmentMode]);
 
   const clearIdleTimer = useCallback(() => {
     if (idleTimerRef.current !== null) {
@@ -313,6 +291,42 @@ function LiveCopilotScreen() {
 
 
   const startLiveViva = async () => {
+    if (!viva) {
+      setError("Open the live viva from a viva in the Viva Workspace.");
+      return;
+    }
+    if (!studentId.trim()) {
+      setError("Enter a student ID before starting a live viva.");
+      return;
+    }
+    if (!isValidStudentId(studentId)) {
+      setError(STUDENT_ID_HINT);
+      return;
+    }
+    const normalizedStudentId = normalizeStudentId(studentId);
+    // Ask up front, before the camera starts. A failed lookup is not fatal:
+    // the server enforces the same rule when the recording is analyzed.
+    allowDuplicateRef.current = false;
+    try {
+      const existing = await listVivaMarks(1, normalizedStudentId, viva.viva_id);
+      if (existing.length > 0) {
+        const proceed = await confirm({
+          title: "This student already has a mark",
+          description: (
+            <>
+              <span className="font-medium text-foreground">{normalizedStudentId}</span> already has a mark
+              under <span className="font-medium text-foreground">{viva.label}</span>. Starting this live viva will add another mark for the same student.
+            </>
+          ),
+          confirmLabel: "Start live viva",
+          cancelLabel: "Cancel",
+        });
+        if (!proceed) return;
+        allowDuplicateRef.current = true;
+      }
+    } catch {
+      // fall through to the server-side check
+    }
     setError("");
     setResult(null);
     setBusy(true);
@@ -376,12 +390,9 @@ function LiveCopilotScreen() {
       }, 400);
       try {
         const analysis = await analyzeCopilotSession(id, recording, {
-          assessmentMode,
-          studentId: studentId.trim() || undefined,
-          subjectCode:
-            assessmentMode === "WITH_TECHNICAL_ACCURACY" && subjectCode
-              ? subjectCode
-              : undefined,
+          vivaId: viva!.viva_id,
+          studentId: normalizeStudentId(studentId),
+          allowDuplicate: allowDuplicateRef.current,
           progressId,
         });
         setResult(analysis as unknown as AnalysisResult);
@@ -434,11 +445,12 @@ function LiveCopilotScreen() {
     <div
       className={
         result
-          ? "flex flex-col min-h-[calc(100vh-4rem)] p-4 gap-4 overflow-y-auto"
-          : "flex flex-col h-[calc(100vh-4rem)] p-4 gap-4"
+          ? "flex flex-col min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8 gap-4 overflow-y-auto"
+          : "flex flex-col h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8 gap-4"
       }
     >
-      <div className="flex items-center justify-between gap-3 shrink-0">
+      {confirmDialog}
+      <div className="flex flex-wrap items-start justify-between gap-3 shrink-0">
         <div>
           <h1 className="text-lg font-semibold tracking-tight text-foreground">Live Viva</h1>
           <p className="text-xs text-muted-foreground">
@@ -447,73 +459,58 @@ function LiveCopilotScreen() {
         </div>
 
         {!sessionId ? (
-          <div className="flex items-end gap-2">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="copilot-mode" className="text-[11px] text-muted-foreground">
-                Assessment type (locked once the session starts)
-              </label>
-              <select
-                id="copilot-mode"
-                value={assessmentMode}
-                onChange={(event) =>
-                  setAssessmentMode(event.target.value as CopilotAssessmentMode)
-                }
-                disabled={busy}
-                className="h-9 rounded-md border border-input bg-background px-2 text-xs"
-              >
-                <option value="WITHOUT_TECHNICAL_ACCURACY">
-                  Non-technical — auto-publishes
-                </option>
-                <option value="WITH_TECHNICAL_ACCURACY">
-                  Technical — saved as draft for review
-                </option>
-              </select>
-            </div>
-            {assessmentMode === "WITH_TECHNICAL_ACCURACY" && (
-              <div className="flex flex-col gap-1">
-                <label htmlFor="copilot-subject" className="text-[11px] text-muted-foreground">
-                  Subject (optional)
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex w-80 flex-col gap-1">
+                <label htmlFor="copilot-viva" className="text-[11px] text-muted-foreground">
+                  Viva — what is this live viva for?
                 </label>
-                <select
-                  id="copilot-subject"
-                  value={subjectCode}
-                  onChange={(event) => setSubjectCode(event.target.value)}
-                  disabled={busy || subjectsLoading}
-                  className="h-9 rounded-md border border-input bg-background px-2 text-xs"
-                >
-                  <option value="">
-                    {subjectsLoading
-                      ? "Loading subjects…"
-                      : subjectOptions.length
-                        ? "No subject linked"
-                        : "No subjects uploaded yet"}
-                  </option>
-                  {subjectOptions.map((subject) => (
-                    <option key={subject.subject_code} value={subject.subject_code}>
-                      {subject.subject_code} · {subject.subject_name} ({subject.concept_count}{" "}
-                      concepts)
-                    </option>
-                  ))}
-                </select>
+                <VivaPicker id="copilot-viva" currentId={vivaId} disabled={busy} />
               </div>
-            )}
-            <div className="flex flex-col gap-1">
-              <label htmlFor="copilot-student" className="text-[11px] text-muted-foreground">
-                Student ID (optional)
-              </label>
-              <input
-                id="copilot-student"
-                value={studentId}
-                onChange={(event) => setStudentId(event.target.value)}
-                placeholder="e.g. STU-001"
-                disabled={busy}
-                className="h-9 w-32 rounded-md border border-input bg-background px-2 text-xs"
-              />
+              <div className="flex flex-col gap-1">
+                <label htmlFor="copilot-student" className="text-[11px] text-muted-foreground">
+                  Student ID (required)
+                </label>
+                <input
+                  id="copilot-student"
+                  value={studentId}
+                  onChange={(event) => setStudentId(event.target.value.toUpperCase())}
+                  placeholder="e.g. IT22557056"
+                  maxLength={10}
+                  title={STUDENT_ID_HINT}
+                  aria-invalid={studentId.trim() !== "" && !isValidStudentId(studentId)}
+                  disabled={busy}
+                  className="h-9 w-44 rounded-md border border-input bg-background px-3 text-sm aria-[invalid=true]:border-destructive"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={startLiveViva}
+                disabled={busy || !viva || !isValidStudentId(studentId)}
+                className="h-9 gap-2"
+              >
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
+                Start Session
+              </Button>
             </div>
-            <Button type="button" onClick={startLiveViva} disabled={busy} className="gap-2">
-              {busy ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
-              Start Session
-            </Button>
+            {vivaLoading ? (
+              <span className="text-[11px] text-muted-foreground">Loading…</span>
+            ) : viva ? (
+              <span className="text-[11px] text-muted-foreground">
+                {viva.subject_code} · {viva.subject_name} ·{" "}
+                {viva.category === "technical" ? "Technical — saved as draft" : "Non-technical — auto-publishes"}
+              </span>
+            ) : vivaId ? (
+              <span className="text-[11px] text-destructive">
+                {vivaError || "Viva not found."}{" "}
+                <Link to="/viva-evaluation/vivas" className="underline">
+                  Open the Viva Workspace
+                </Link>
+              </span>
+            ) : null}
+            {studentId.trim() !== "" && !isValidStudentId(studentId) && (
+              <span className="text-[11px] text-destructive">{STUDENT_ID_HINT}</span>
+            )}
           </div>
         ) : (
           <Button

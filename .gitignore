@@ -99,3 +99,9 @@ docker-compose.yml
 docker-compose.*.yml
 .dockerignore
 .docker/
+
+# Playwright MCP (browser logs, snapshots, screenshots, downloads)
+.playwright-mcp/
+.playwright/
+playwright-report/
+test-results/

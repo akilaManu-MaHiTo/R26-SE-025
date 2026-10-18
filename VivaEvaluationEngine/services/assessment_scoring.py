@@ -1,32 +1,44 @@
-"""Stage-1 viva assessment scoring (scoring_version v1).
+"""Stage-1 viva assessment scoring (scoring_version v1.3).
 
 Authoritative pipeline:
   analysis JSON → canonical features → quality gates → AI performance /100
-  → optional technical fusion → final_score /100 → grade resolver
+  → optional technical fusion → final_score /100 → official mark → grade resolver
+
+Marks: the official mark is out of `MARKING_SCALE.mark_max` (20 by default; see
+services/marking_scale.py, set with VIVA_MARK_MAX). The pipeline computes on a 0-100 percentage
+(the families, the fusion and `final_score` are percentages), and the official mark is that
+percentage scaled to the mark scale and rounded:  final_mark = final_score / 100 * mark_max.
+The grade follows the rounded mark, i.e. the number the examiner sees.
 
 Does NOT use: LLM criterion scores, UI sliders, engagement_score (diagnostic blend),
 audio_grade, pitch_score (180 Hz), transcript_score, segment_score.
 
 Families (equal weight, missing families dropped and renormalized):
-  engagement       — equal mix of CNN average_engagement_score + facial_confidence
-                     (facial_confidence = confidence_score/100; emotion-weighted face tone)
-  audio_acoustics  — pitch stability from std, HNR clarity, jitter/shimmer
+  engagement       — equal mix of CNN average_engagement_score, facial_confidence
+                     (confidence_score/100), facial emotion profile, on-camera gaze ratio,
+                     head stability and blink-rate score (v1.2; unavailable parts dropped)
+  audio_acoustics  — pitch stability from std, HNR clarity, jitter/shimmer, plus
+                     speech-emotion tone at SER_TONE_WEIGHT (v1.2; real SER model only)
                      (not audio_grade; not 180 Hz pitch_score; rms excluded as recording-level)
   transcript       — WPM band, hedges, fillers, long pauses, sentence completion
                      (not word_count/80)
 
-SER / raw emotion ratio bars remain evidence/UI; facial_confidence is the scored face-tone input.
+Raw emotion ratio bars remain UI evidence; the scored face-tone inputs are listed above.
 
 Mode WITHOUT_TECHNICAL_ACCURACY: final = AI performance; technical_accuracy = null
 Mode WITH_TECHNICAL_ACCURACY: final = w_ai * AI + w_tech * technical_0_100
+  where the examiner enters technical accuracy out of `MARKING_SCALE.technical_max` and
+  technical_0_100 = technical / technical_max * 100.
   Fusion weights are explicit below (v1: equal 0.5 / 0.5).
 
-Grade bands match Gradex_AI_Client viva/types.ts GRADE_BANDS (unchanged).
+Grade bands are defined once, as percentages, in services/marking_scale.py; the web client reads
+the scale and bands from the server (GET /api/viva-config) instead of keeping its own copy.
 """
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from services.marking_scale import MARKING_SCALE, PERCENT_MAX, MarkingScale
 from services.canonical_features import (
     FEATURE_SCHEMA_VERSION,
     extract_canonical_features,
@@ -34,7 +46,29 @@ from services.canonical_features import (
 )
 
 
-SCORING_VERSION = "v1.1"
+SCORING_VERSION = "v1.3"
+
+
+# Technical vivas only: the smallest share of the subject's concept weight that the answer
+# must touch. Below this the student almost certainly answered a different topic (or the
+# wrong subject), so no official mark is given and the recording is held for review.
+# Override with VIVA_MIN_TOPIC_COVERAGE (a fraction, e.g. 0.05 for 5%).
+def _min_topic_coverage() -> float:
+    import os
+
+    try:
+        value = float(os.getenv("VIVA_MIN_TOPIC_COVERAGE", "0.05"))
+    except ValueError:
+        return 0.05
+    return value if 0.0 <= value <= 1.0 else 0.05
+
+
+MIN_TOPIC_COVERAGE = _min_topic_coverage()
+
+# Speech-emotion tone is scored inside audio_acoustics at reduced weight: the SER model
+# is trained on acted speech (IEMOCAP) and over-predicts "angry" on real presentations.
+# A weight of 1.0 would equal the other audio parts; change only by bumping SCORING_VERSION.
+SER_TONE_WEIGHT = 0.5
 
 MODE_WITHOUT = "WITHOUT_TECHNICAL_ACCURACY"
 MODE_WITH = "WITH_TECHNICAL_ACCURACY"
@@ -51,6 +85,21 @@ FAMILY_WEIGHTS: Dict[str, float] = {
 # Mode-B fusion. Documented v1 choice: equal contribution. Change only by bumping SCORING_VERSION.
 FUSION_WEIGHT_AI = 0.5
 FUSION_WEIGHT_TECHNICAL = 0.5
+# A technical viva's lecturer may choose the technical share (the AI share is the rest).
+MIN_TECHNICAL_WEIGHT = 0.2
+MAX_TECHNICAL_WEIGHT = 0.9
+
+
+def resolve_technical_weight(technical_weight: Optional[float] = None) -> float:
+    """The technical share of a technical viva's mark; the documented default when none is given."""
+    if technical_weight is None:
+        return FUSION_WEIGHT_TECHNICAL
+    value = float(technical_weight)
+    if not MIN_TECHNICAL_WEIGHT - 1e-9 <= value <= MAX_TECHNICAL_WEIGHT + 1e-9:
+        raise ValueError(
+            f"technical_weight must be between {MIN_TECHNICAL_WEIGHT:g} and {MAX_TECHNICAL_WEIGHT:g}, got {value}"
+        )
+    return round(value, 4)
 
 # Same numeric anchors as viva_analysis._score_audio_grade (Praat local jitter/shimmer).
 _JITTER_GOOD = 0.005
@@ -97,21 +146,19 @@ REASON_MESSAGES = {
     "audio_insufficient": "Recorded audio is too short or empty to score.",
     "no_scorable_families": "No scorable evidence families were available.",
     "duration_below_engine_minimum": "Audio duration is below the engine minimum.",
+    "insufficient_topic_coverage": (
+        "The answer covered almost none of the subject's concepts. The student may have answered "
+        "a different topic or the wrong subject. No official mark is given — review the recording "
+        "or run the viva again."
+    ),
     "multiple_faces_detected": (
         "More than one person was clearly visible on camera. "
         "Re-record with only the student in frame."
     ),
 }
 
-GRADE_BANDS: List[Tuple[str, float]] = [
-    ("A+", 90.0),
-    ("A", 80.0),
-    ("B+", 70.0),
-    ("B", 60.0),
-    ("C+", 50.0),
-    ("C", 40.0),
-    ("F", 0.0),
-]
+# Grade bands as percentages, derived from the marking scale (the single definition).
+GRADE_BANDS: List[Tuple[str, float]] = list(MARKING_SCALE.grade_bands_percent)
 
 
 def _clamp(value: float, minimum: float = 0.0, maximum: float = 1.0) -> float:
@@ -127,13 +174,18 @@ def _quality_score(raw: Optional[float], good: float, poor: float) -> Optional[f
 
 
 def resolve_grade(score: Optional[float]) -> Optional[str]:
-    if score is None:
-        return None
-    percent = max(0.0, min(100.0, float(score)))
-    for grade, minimum in GRADE_BANDS:
-        if percent >= minimum:
-            return grade
-    return "F"
+    """Grade for a 0-100 percentage."""
+    return MARKING_SCALE.resolve_grade_from_percent(score)
+
+
+def percent_to_mark(percent: Optional[float], scale: Optional[MarkingScale] = None) -> Optional[float]:
+    """Scale a 0-100 percentage to the official mark (on `scale`, default the configured one)."""
+    return (scale or MARKING_SCALE).percent_to_mark(percent)
+
+
+def resolve_grade_from_mark(mark: Optional[float], scale: Optional[MarkingScale] = None) -> Optional[str]:
+    """Grade for an official mark. Pass the ROUNDED mark so the grade matches what is shown."""
+    return (scale or MARKING_SCALE).resolve_grade(mark)
 
 
 def _whisper_available(quality: Dict[str, Any]) -> bool:
@@ -288,8 +340,13 @@ def _engagement_family(features: Dict[str, Any]) -> Tuple[Optional[float], List[
             if video.get("facial_confidence") is not None
             else None
         ),
+        # v1.2: facial behaviour signals count toward the mark.
+        "emotion_profile": video.get("emotion_profile_score"),
+        "gaze_on_camera_ratio": video.get("gaze_on_camera_ratio"),
+        "head_stability": video.get("head_stability"),
+        "blink_score": video.get("blink_score"),
     }
-    available = {k: v for k, v in parts.items() if v is not None}
+    available = {k: _clamp(float(v)) for k, v in parts.items() if v is not None}
     if not available:
         return None, []
     weight = 1.0 / len(available)
@@ -337,11 +394,16 @@ def _audio_family(features: Dict[str, Any]) -> Tuple[Optional[float], List[Dict[
         "clarity_from_hnr": clarity,
         "articulation_from_jitter_shimmer": articulation,
     }
+    tone = (features.get("ser") or {}).get("tone_score")
     available = {k: v for k, v in parts.items() if v is not None}
+    weights = {k: 1.0 for k in available}
+    if tone is not None:
+        available["speech_emotion_tone"] = _clamp(float(tone))
+        weights["speech_emotion_tone"] = SER_TONE_WEIGHT
     if not available:
         return None, []
-    weight = 1.0 / len(available)
-    family = sum(available.values()) / len(available)
+    total_w = sum(weights.values())
+    family = sum(weights[k] * v for k, v in available.items()) / total_w
     components = [
         {
             "feature": name,
@@ -349,7 +411,7 @@ def _audio_family(features: Dict[str, Any]) -> Tuple[Optional[float], List[Dict[
             "direction": "higher_better",
             "missing": False,
             "family": "audio_acoustics",
-            "weight_within_family": round(weight, 4),
+            "weight_within_family": round(weights[name] / total_w, 4),
         }
         for name, value in available.items()
     ]
@@ -448,11 +510,22 @@ def fuse_final_score(
     *,
     mode: str,
     ai_performance: Optional[float],
-    technical_accuracy_0_10: Optional[float],
+    technical_accuracy: Optional[float],
+    scale: Optional[MarkingScale] = None,
+    technical_weight: Optional[float] = None,
 ) -> Dict[str, Any]:
+    """Fuse the AI performance percentage with the examiner's technical score.
+
+    The technical score is out of `scale.technical_max` (default: `MARKING_SCALE`). `final_score` stays a 0-100
+    percentage; `final_mark` is the official mark on the configured scale.
+    """
+    scale = scale or MARKING_SCALE
+    weight_technical = resolve_technical_weight(technical_weight)
+    weight_ai = round(1.0 - weight_technical, 4)
     if ai_performance is None:
         return {
             "final_score": None,
+            "final_mark": None,
             "technical_accuracy": None,
             "technical_accuracy_100": None,
             "fusion": None,
@@ -461,6 +534,7 @@ def fuse_final_score(
     if mode == MODE_WITHOUT:
         return {
             "final_score": round(float(ai_performance), 2),
+            "final_mark": percent_to_mark(ai_performance, scale),
             "technical_accuracy": None,
             "technical_accuracy_100": None,
             "fusion": {
@@ -472,36 +546,74 @@ def fuse_final_score(
                 # the examiner UI can preview a fused mark without duplicating
                 # scorer constants on the client.
                 "with_technical": {
-                    "weight_ai": FUSION_WEIGHT_AI,
-                    "weight_technical": FUSION_WEIGHT_TECHNICAL,
+                    "weight_ai": weight_ai,
+                    "weight_technical": weight_technical,
                 },
             },
         }
 
-    if technical_accuracy_0_10 is None:
+    if technical_accuracy is None:
         return {
             "final_score": None,
+            "final_mark": None,
             "technical_accuracy": None,
             "technical_accuracy_100": None,
             "fusion": {
                 "mode": mode,
-                "weight_ai": FUSION_WEIGHT_AI,
-                "weight_technical": FUSION_WEIGHT_TECHNICAL,
+                "weight_ai": weight_ai,
+                "weight_technical": weight_technical,
                 "pending": "technical_accuracy_required",
             },
         }
 
-    technical_100 = _clamp(float(technical_accuracy_0_10) / 10.0) * 100.0
-    final = FUSION_WEIGHT_AI * float(ai_performance) + FUSION_WEIGHT_TECHNICAL * technical_100
+    technical_100 = scale.technical_to_percent(technical_accuracy)
+    final = weight_ai * float(ai_performance) + weight_technical * technical_100
+    final_percent = round(_clamp(final / PERCENT_MAX) * PERCENT_MAX, 2)
     return {
-        "final_score": round(_clamp(final / 100.0) * 100.0, 2),
-        "technical_accuracy": round(float(technical_accuracy_0_10), 2),
+        "final_score": final_percent,
+        "final_mark": percent_to_mark(final_percent, scale),
+        "technical_accuracy": scale.clamp_technical(technical_accuracy),
         "technical_accuracy_100": round(technical_100, 2),
         "fusion": {
             "mode": mode,
-            "weight_ai": FUSION_WEIGHT_AI,
-            "weight_technical": FUSION_WEIGHT_TECHNICAL,
+            "weight_ai": weight_ai,
+            "weight_technical": weight_technical,
         },
+    }
+
+
+def summarize_topic_coverage(result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Share of the subject rubric's concept weight the answer touched.
+
+    Read from the AI technical-accuracy result. Returns None when that result is missing or
+    unusable (no subject linked, scoring failed), because coverage cannot be judged then and
+    the recording must not be penalised for it.
+    """
+    tech = result.get("technical_accuracy_ai")
+    if not isinstance(tech, dict) or tech.get("status") not in {"success", "partial"}:
+        return None
+    concepts = [c for c in (tech.get("concepts") or []) if isinstance(c, dict)]
+    if not concepts:
+        return None
+
+    def _weight(concept: Dict[str, Any]) -> float:
+        try:
+            weight = float(concept.get("weight"))
+        except (TypeError, ValueError):
+            return 1.0
+        return weight if weight > 0 else 0.0
+
+    total = sum(_weight(c) for c in concepts)
+    if total <= 0:
+        return None
+    covered = [c for c in concepts if c.get("covered") is True]
+    covered_weight = sum(_weight(c) for c in covered)
+    return {
+        "measured": True,
+        "coverage_ratio": round(covered_weight / total, 4),
+        "minimum": MIN_TOPIC_COVERAGE,
+        "concepts_covered": len(covered),
+        "concepts_total": len(concepts),
     }
 
 
@@ -510,9 +622,12 @@ def build_assessment(
     *,
     mode: str = MODE_WITHOUT,
     technical_accuracy: Optional[float] = None,
+    scale: Optional[MarkingScale] = None,
+    technical_weight: Optional[float] = None,
 ) -> Dict[str, Any]:
     if mode not in {MODE_WITHOUT, MODE_WITH}:
         mode = MODE_WITHOUT
+    scale = scale or MARKING_SCALE
 
     from services.pipeline_progress import emit
     from services.lip_motion_validation import classify_lip_motion_evidence, summarize_lip_motion
@@ -530,6 +645,22 @@ def build_assessment(
         lip_reason=lip_reason,
         multi_face_reason=multi_face_reason,
     )
+    topic_coverage = summarize_topic_coverage(result) if mode == MODE_WITH else None
+    if (
+        topic_coverage is not None
+        and validation["status"] == STATUS_VALID
+        and topic_coverage["coverage_ratio"] < MIN_TOPIC_COVERAGE
+    ):
+        validation = {
+            "status": STATUS_INCOMPLETE,
+            "reasons": list(validation.get("reasons") or []) + ["insufficient_topic_coverage"],
+            "message": (
+                f"Only {topic_coverage['coverage_ratio'] * 100:.1f}% of the subject's concepts "
+                f"({topic_coverage['concepts_covered']} of {topic_coverage['concepts_total']}) were "
+                f"covered, below the {MIN_TOPIC_COVERAGE * 100:.0f}% minimum. "
+                + REASON_MESSAGES["insufficient_topic_coverage"]
+            ),
+        }
     performance = score_ai_performance(features)
 
     if validation["status"] == STATUS_INCOMPLETE:
@@ -546,13 +677,17 @@ def build_assessment(
     fused = fuse_final_score(
         mode=mode,
         ai_performance=performance.get("score"),
-        technical_accuracy_0_10=tech_input,
+        technical_accuracy=tech_input,
+        scale=scale,
+        technical_weight=technical_weight,
     )
     final_score = fused["final_score"] if validation["status"] == STATUS_VALID else None
+    final_mark = fused.get("final_mark") if validation["status"] == STATUS_VALID else None
     if validation["status"] == STATUS_INCOMPLETE:
         fused = {
             **fused,
             "final_score": None,
+            "final_mark": None,
             "technical_accuracy": None if mode == MODE_WITHOUT else fused.get("technical_accuracy"),
         }
 
@@ -564,10 +699,12 @@ def build_assessment(
         "quality": features["quality"],
         "features": features,
         "validation": validation,
+        "topic_coverage": topic_coverage,
         "lip_motion": lip_motion,
         "multi_face": multi_face,
         "ai_performance": {
             "score": performance.get("score"),
+            "mark": percent_to_mark(performance.get("score"), scale),
             "family_scores": performance.get("family_scores"),
             "family_weights_applied": performance.get("family_weights_applied"),
             "components": performance.get("components"),
@@ -575,7 +712,10 @@ def build_assessment(
         "technical_accuracy": fused.get("technical_accuracy"),
         "fusion": fused.get("fusion"),
         "final_score": final_score,
-        "grade": resolve_grade(final_score),
+        "final_mark": final_mark,
+        "final_mark_max": scale.mark_max,
+        "technical_max": scale.technical_max,
+        "grade": resolve_grade_from_mark(final_mark, scale),
         "training_features": flatten_canonical_features(features),
     }
 
@@ -585,12 +725,16 @@ def attach_assessment(
     *,
     mode: str = MODE_WITHOUT,
     technical_accuracy: Optional[float] = None,
+    scale: Optional[MarkingScale] = None,
+    technical_weight: Optional[float] = None,
 ) -> Dict[str, Any]:
     enriched = dict(result)
     assessment = build_assessment(
         enriched,
         mode=mode,
         technical_accuracy=technical_accuracy,
+        scale=scale,
+        technical_weight=technical_weight,
     )
     enriched["assessment"] = assessment
     if isinstance(assessment.get("lip_motion"), dict):
