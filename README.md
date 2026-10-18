@@ -37,7 +37,8 @@ For local HTTP development, set `AUTH_COOKIE_SECURE=false` in the backend proces
 environment or `Gradex_AI_Server/app/.env`. For a standalone engine, set it in that
 engine's process environment. Cookies default to Secure for HTTPS deployments.
 `CORS_ORIGINS` is a comma-separated list of exact frontend origins; defaults cover
-localhost/127.0.0.1 on ports 5173 and 3000. Set it explicitly for other ports or
+localhost/127.0.0.1 on ports 5173 and 3000 plus the deployed Vercel frontend
+`https://r26-se-025-brown.vercel.app`. Set it explicitly for other ports or
 deployed frontends. Deploy the frontend and API under the same HTTPS origin and proxy `/api` and
 `/courses` to the main server. The Vercel configuration in
 `Gradex_AI_Client/vercel.json` does this before the SPA fallback; keep these
