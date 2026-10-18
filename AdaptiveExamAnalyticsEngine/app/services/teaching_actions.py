@@ -137,7 +137,7 @@ def _validate_llm_output(parsed: list[dict], priority_topics: list[dict], lowest
             if not isinstance(actions, list) or not actions:
                 continue
             # sanitize actions: ensure strings
-            clean_actions = [str(a).strip() for a in actions if str(a).strip()]
+            clean_actions = [a.strip() for a in actions if isinstance(a, str) and a.strip()]
             if not clean_actions:
                 continue
             validated.append({
@@ -152,7 +152,7 @@ def _validate_llm_output(parsed: list[dict], priority_topics: list[dict], lowest
             actions = item.get("actions")
             if not isinstance(actions, list) or not actions:
                 continue
-            clean_actions = [str(a).strip() for a in actions if str(a).strip()]
+            clean_actions = [a.strip() for a in actions if isinstance(a, str) and a.strip()]
             if not clean_actions:
                 continue
             validated.append({

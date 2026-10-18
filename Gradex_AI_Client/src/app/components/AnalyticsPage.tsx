@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router";
+import { ThinkingOrb } from "thinking-orbs";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Download, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight, UserSearch, Eye, AlertCircle, Loader2, GraduationCap, BookOpen, Brain, Award, User } from "lucide-react";
+import { ArrowLeft, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight, UserSearch, Eye, AlertCircle, Loader2, GraduationCap, BookOpen, Brain, Award, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -39,9 +40,13 @@ import { BloomChart } from "./analytics/BloomChart";
 import { QuestionPerformanceTable } from "./analytics/QuestionPerformanceTable";
 import { InsightsPanel } from "./analytics/InsightsPanel";
 import { TeachingActions } from "./analytics/TeachingActions";
+import { ERDiagramViewer } from "./analytics/ERDiagramViewer";
 import { DiagramAnalysisPanel } from "./analytics/DiagramAnalysisPanel";
+import { GradingOverview, StudentGradingCells, canViewStudent, ExamInventoryScore } from "./analytics/GradingStatus";
 import { TopicDetailModal } from "./analytics/TopicDetailModal";
 import { QuestionDetailModal } from "./analytics/QuestionDetailModal";
+import { ExamPaperModal } from "./analytics/ExamPaperModal";
+import { StudentQuestionRow } from "./analytics/StudentQuestionRow";
 
 function PremiumLoader({
   steps,
@@ -54,12 +59,8 @@ function PremiumLoader({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 space-y-6">
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-        className="size-10 rounded-full border-2 border-primary/20 border-t-primary"
-      />
-      <div className="space-y-2 text-center max-w-xl">
+      <ThinkingOrb state="searching" size={64} aria-label="Loading exam analytics" />
+      <div className="space-y-2 text-center max-w-xl" role="status">
         <motion.p
           key={currentStep}
           initial={{ opacity: 0, y: 6 }}
@@ -98,9 +99,12 @@ export default function AnalyticsPage() {
   const requestedStudentId = searchParams.get("student");
   const [exams, setExams] = useState<ExamListItem[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamListItem | null>(null);
+  const [paperOpen, setPaperOpen] = useState(false);
   const [analytics, setAnalytics] = useState<ExamAnalytics | null>(null);
   const [teachingActions, setTeachingActions] = useState<TeachingAction[]>([]);
   const [loadingExams, setLoadingExams] = useState(true);
+  const [examListError, setExamListError] = useState(false);
+  const [examReload, setExamReload] = useState(0);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [loadingActions, setLoadingActions] = useState(false);
   const [loadSteps, setLoadSteps] = useState<LoadStep[]>([]);
@@ -116,6 +120,7 @@ export default function AnalyticsPage() {
   // lecturer student finder (inside analyzed exam)
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [studentListError, setStudentListError] = useState<string | null>(null);
   const [studentSearch, setStudentSearch] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [studentDetail, setStudentDetail] = useState<LecturerStudentDetail | null>(null);
@@ -131,10 +136,19 @@ export default function AnalyticsPage() {
   useEffect(() => {
     setLoadSteps([{ label: "Fetching exams..." }]);
     setCurrentLoadStep(0);
-    fetchExams().then(setExams).catch(console.error).finally(() => setLoadingExams(false));
-  }, []);
+    setLoadingExams(true);
+    setExamListError(false);
+    let ignore = false;
+    fetchExams().then(value => { if (!ignore) setExams(value); })
+      .catch(() => { if (!ignore) setExamListError(true); })
+      .finally(() => { if (!ignore) setLoadingExams(false); });
+    return () => { ignore = true; };
+  }, [examReload]);
 
   const handleSelectExam = useCallback(async (exam: ExamListItem, opts?: { forceReanalyse?: boolean }) => {
+    setPaperOpen(false);
+    setTeachingActions([]);
+    setLoadingActions(false);
     studentRequest.current = null;
     window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
     setLoadingStudentDetail(false);
@@ -149,6 +163,7 @@ export default function AnalyticsPage() {
     setSelectedExam(exam);
     setLoadingAnalytics(true);
     setLoadingStudents(true);
+    setStudentListError(null);
     setAnalytics(null);
     setLiveModelMessage("PULSE·AI — Starting analysis...");
     // reset student finder
@@ -165,6 +180,22 @@ export default function AnalyticsPage() {
     ];
     setLoadSteps(steps);
     setCurrentLoadStep(0);
+
+    // Status does not require model analysis; load it even when analytics fails.
+    const studentsPromise = fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
+      .then(rows => {
+        if ((handleSelectExam as any)._lastRequestId === requestId) setStudents(rows);
+      })
+      .catch(() => {
+        if ((handleSelectExam as any)._lastRequestId === requestId) {
+          setStudents([]);
+          setStudentListError("Could not load grading status. Reopen the exam to retry.");
+        }
+      })
+      .finally(() => {
+        if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingStudents(false);
+      });
+    void studentsPromise;
 
     try {
       setCurrentLoadStep(0);
@@ -186,6 +217,7 @@ export default function AnalyticsPage() {
             exam.month,
             exam.semester,
             (msg) => {
+              if ((handleSelectExam as any)._lastRequestId !== requestId) return;
               setLiveModelMessage(msg);
               // Advance loader step based on message content
               if (msg.includes("Ingesting") || msg.includes("Analyzing student")) setCurrentLoadStep(0);
@@ -194,6 +226,7 @@ export default function AnalyticsPage() {
             },
           );
         } catch {
+          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
           setLiveModelMessage("PULSE·AI — Streaming unavailable, loading...");
           data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
         }
@@ -204,9 +237,8 @@ export default function AnalyticsPage() {
       setLiveModelMessage("PULSE·AI — Analysis complete");
       setCurrentLoadStep(2);
 
-      // C: parallelize optional fetches (students + teaching) — not waterfall
+      // Grading status is already loading independently; only teaching remains.
       setLoadingActions(true);
-      setLoadingStudents(true);
       const teachingPromise = fetchTeachingActions(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
         .then((actions) => {
           if ((handleSelectExam as any)._lastRequestId !== requestId) return;
@@ -220,24 +252,9 @@ export default function AnalyticsPage() {
           if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingActions(false);
         });
 
-      const studentsPromise = fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
-        .then((rows) => {
-          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
-          setStudents(rows);
-        })
-        .catch(() => {
-          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
-          setStudents([]);
-        })
-        .finally(() => {
-          if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingStudents(false);
-        });
-
-      // Fire both in parallel, optional — never block KPI render
-      void Promise.allSettled([teachingPromise, studentsPromise]);
+      void teachingPromise;
     } catch (err) {
       if ((handleSelectExam as any)._lastRequestId !== requestId) return;
-      setLoadingStudents(false);
       console.error(err);
       const msg = err instanceof Error ? err.message : String(err);
       setLiveModelMessage("PULSE·AI — Analysis failed");
@@ -261,14 +278,11 @@ export default function AnalyticsPage() {
 
   const handleSelectStudent = useCallback(async (studentId: string) => {
     if (!selectedExam) return;
-    if (studentRequest.current !== null) {
-      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
-    }
     const request = {};
     studentRequest.current = request;
     const isCurrent = () => studentRequest.current === request;
     const targetRow = students.find((r) => r.student_id === studentId);
-    const needsAnalysis = !targetRow || !["generated", "diagram_only"].includes(targetRow.analysis_status);
+    const needsAnalysis = !targetRow || targetRow.analysis_status !== "generated";
     setSelectedStudentId(studentId);
     setLoadingStudentDetail(true);
     setStudentDetail(null);
@@ -286,7 +300,6 @@ export default function AnalyticsPage() {
     if (needsAnalysis) {
       try {
         const health = await fetchLlmHealth();
-        if (!isCurrent()) return;
         if (!health.online || !health.model_available) throw new Error("Model unavailable");
       } catch {
         if (!isCurrent()) return;
@@ -297,11 +310,13 @@ export default function AnalyticsPage() {
         return;
       }
     }
-    const dispatchTopbar = (active: boolean, message?: string, progress?: number) => {
-      if (!needsAnalysis || !isCurrent()) return;
-      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active, studentId, message: message || "", progress } }));
+    const dispatchTopbar = (active: boolean, message?: string, progress?: number, status = "analyzing") => {
+      if (!needsAnalysis) return;
+      const jobId = JSON.stringify([studentId, selectedExam.course_code, selectedExam.session_name, selectedExam.year, selectedExam.month, selectedExam.semester]);
+      const examLabel = `${selectedExam.course_code} · ${selectedExam.session_name} · ${selectedExam.year}/${selectedExam.month} · Semester ${selectedExam.semester}`;
+      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active, studentId, jobId, examLabel, message: message || "", progress, status } }));
     };
-    dispatchTopbar(true, `PULSE·AI — Starting analysis for ${studentId}…`, 0);
+    dispatchTopbar(true, `Submitting analysis for ${studentId}…`, 0, "queued");
     try {
       if (!needsAnalysis) {
         const detail = await fetchLecturerStudentDetail(
@@ -329,14 +344,13 @@ export default function AnalyticsPage() {
           selectedExam.year,
           selectedExam.month,
           selectedExam.semester,
-          (msg, prog) => {
-            dispatchTopbar(true, msg, prog);
+          (msg, prog, phase) => {
+            dispatchTopbar(true, msg, prog, phase === "queued" ? "queued" : "analyzing");
           },
           false
         );
       } catch {
-        if (!isCurrent()) return;
-        dispatchTopbar(true, `PULSE·AI — Analyzing ${studentId}…`, 45);
+        dispatchTopbar(true, `Reconnecting to analysis for ${studentId}…`, 0, "queued");
         detail = await fetchLecturerStudentDetail(
           selectedExam.course_code,
           selectedExam.session_name,
@@ -347,18 +361,16 @@ export default function AnalyticsPage() {
           false
         );
       }
+      dispatchTopbar(false, `Analysis complete for ${studentId}`, 100, "complete");
       if (!isCurrent()) return;
       setStudentDetail(detail);
-      dispatchTopbar(true, `PULSE·AI — ${studentId} analysis complete`, 100);
       // Update row status optimistically
       setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: detail.analysis_status ?? "generated" } : r));
-      setTimeout(() => dispatchTopbar(false), 2500);
     } catch (e) {
-      if (!isCurrent()) return;
       const msg = e instanceof Error ? e.message : "Failed to load student detail";
+      dispatchTopbar(false, `Analysis failed for ${studentId}: ${msg}`, 0, "failed");
+      if (!isCurrent()) return;
       setStudentDetailError(msg);
-      dispatchTopbar(true, `Analysis failed for ${studentId}`, 0);
-      setTimeout(() => dispatchTopbar(false), 3000);
       // Fallback: if pending student failed due to model down, toast
       if (needsAnalysis) {
         const lower = msg.toLowerCase();
@@ -442,7 +454,7 @@ export default function AnalyticsPage() {
 
           {!selectionMatches || loadingStudentDetail || (!studentDetail && !studentDetailError) ? (
             <div className="py-10 flex flex-col items-center gap-3">
-              <Loader2 className="size-6 animate-spin text-primary" />
+              <ThinkingOrb state="searching" size={64} aria-label="Loading student performance" />
               <p className="text-sm text-muted-foreground">Loading performance…</p>
             </div>
           ) : studentDetailError ? (
@@ -473,6 +485,7 @@ export default function AnalyticsPage() {
               {/* Question performance */}
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold flex items-center gap-2"><FileText className="size-4 text-primary" /> Question Breakdown</h4>
+                <p className="text-xs text-muted-foreground">Select a question number to review the written answer, marking criteria and grading feedback.</p>
                 <div className="rounded-lg border overflow-hidden">
                   <Table>
                     <TableHeader>
@@ -486,13 +499,10 @@ export default function AnalyticsPage() {
                     </TableHeader>
                     <TableBody>
                       {studentDetail.question_performance.map((q) => (
-                        <TableRow key={q.question_id} className="h-10">
-                          <TableCell className="font-medium text-xs">{q.question_no}</TableCell>
-                          <TableCell className="text-xs max-w-[160px] truncate" title={q.topic}>{q.topic}<span className="text-muted-foreground"> · {q.subtopic}</span></TableCell>
-                          <TableCell className="text-xs"><Badge variant="outline" className="text-xs">{q.bloom_analysis.level}</Badge></TableCell>
-                          <TableCell className="text-xs text-right tabular-nums">{q.performance.score.toFixed(1)} / {q.performance.max_score.toFixed(1)}</TableCell>
-                          <TableCell className="text-xs text-right tabular-nums">{q.performance.percentage.toFixed(1)}%</TableCell>
-                        </TableRow>
+                        <StudentQuestionRow key={`${studentDetail.student_id}-${studentDetail.subject_code}-${studentDetail.session_name}-${studentDetail.year}-${studentDetail.month}-${studentDetail.semester}-${q.question_id}`}
+                          question={q} studentId={studentDetail.student_id}
+                          exam={{ course_code: studentDetail.subject_code, session_name: studentDetail.session_name,
+                            year: studentDetail.year, month: studentDetail.month, semester: studentDetail.semester }} />
                       ))}
                     </TableBody>
                   </Table>
@@ -556,12 +566,10 @@ export default function AnalyticsPage() {
                 const total = ev.total_score ?? diagMark?.diagram_marks ?? 0;
                 const max = ev.max_score ?? 20;
                 const pct = max ? (total / max) * 100 : 0;
-                const detections: any[] = diagMark?.diagram_details?.detections || [];
-                const entities: any[] = diagMark?.diagram_details?.entities || diagMark?.diagram_entity_relations || [];
-                const rels: any[] = diagMark?.diagram_details?.relationships || diagMark?.diagram_relations || [];
-                // SVG bounds - normalize bbox to viewBox 0 0 600 600
-                const vbW = 600, vbH = 600;
-                const colorByLabel: Record<string, string> = { Entities: "#8b5cf6", Attributes: "#06b6d4", Subclass: "#f59e0b", Relationships: "#10b981", default: "#6366f1" };
+                const diagramDetails = diagEval?.diagram_details || diagMark?.diagram_details;
+                const detections: any[] = diagramDetails?.detections || [];
+                const entities: any[] = diagramDetails?.entities || diagEval?.diagram_entity_relations || diagMark?.diagram_entity_relations || [];
+                const rels: any[] = diagramDetails?.relationships || diagEval?.diagram_relations || diagMark?.diagram_relations || [];
                 return (
                   <Card className="p-4 space-y-3 border-violet-200 bg-violet-50/30 dark:bg-violet-950/10">
                     <div className="flex items-center gap-2 text-sm font-medium">
@@ -570,140 +578,21 @@ export default function AnalyticsPage() {
                       <Badge variant="outline" className="ml-auto text-xs tabular-nums">{total} / {max} · {pct.toFixed(1)}%</Badge>
                     </div>
 
-                    {/* ER Diagram — rendered from entities/attributes (primary) + bbox toggle */}
-                    {(() => {
-                      const hasEntities = entities.length > 0;
-                      // Build ER layout: ISA case vs generic
-                      const isISACase = entities.some((e:any)=> e.entity_name==="Person") && entities.some((e:any)=> ["Instructor","Researcher"].includes(e.entity_name));
-                      // SVG helpers
-                      const erW = 700, erH = 460;
-                      const EntityBox = ({x,y,w=140,h=48,label}:{x:number;y:number;w?:number;h?:number;label:string})=>(
-                        <g>
-                          <rect x={x-w/2} y={y-h/2} width={w} height={h} rx={6} fill="#eef2ff" stroke="#6366f1" strokeWidth={1.8}/>
-                          <text x={x} y={y+4} textAnchor="middle" fontSize={13} fontWeight={700} fill="#312e81">{label}</text>
-                        </g>
-                      );
-                      const AttributeOval = ({x,y,label, isKey}:{x:number;y:number;label:string;isKey?:boolean})=>(
-                        <g>
-                          <ellipse cx={x} cy={y} rx={52} ry={16} fill="#ecfeff" stroke="#06b6d4" strokeWidth={1.4}/>
-                          <text x={x} y={y+4} textAnchor="middle" fontSize={10} fill="#0e7490" fontWeight={isKey?700:500} textDecoration={isKey?"underline":"none"}>{label}</text>
-                        </g>
-                      );
-                      const Line = ({x1,y1,x2,y2}:{x1:number;y1:number;x2:number;y2:number})=> <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#94a3b8" strokeWidth={1.2}/>;
-                      let erSvg: any = null;
-                      if (hasEntities) {
-                        if (isISACase) {
-                          const person = entities.find((e:any)=>e.entity_name==="Person");
-                          const instr = entities.find((e:any)=>e.entity_name==="Instructor");
-                          const resch = entities.find((e:any)=>e.entity_name==="Researcher");
-                          const pAttrs: string[] = person?.attributes || [];
-                          const iAttrs: string[] = instr?.attributes || [];
-                          const rAttrs: string[] = resch?.attributes || [];
-                          erSvg = (
-                            <svg viewBox={`0 0 ${erW} ${erH}`} className="w-full h-[360px] bg-white dark:bg-zinc-900">
-                              <rect x={0} y={0} width={erW} height={erH} fill="white" className="dark:fill-zinc-900"/>
-                              {/* ISA triangle */}
-                              <polygon points="300,150 285,180 315,180" fill="#f59e0b" stroke="#d97706" strokeWidth={1.5}/>
-                              <text x={300} y={175} textAnchor="middle" fontSize={8} fontWeight={700} fill="white">ISA</text>
-                              {/* Person */}
-                              <EntityBox x={300} y={90} label="Person"/>
-                              {/* Person attributes */}
-                              {pAttrs[0] && <><AttributeOval x={170} y={55} label={pAttrs[0]} isKey/><Line x1={230} y1={80} x2={190} y2={62}/></>}
-                              {pAttrs[1] && <><AttributeOval x={300} y={28} label={pAttrs[1]}/><Line x1={300} y1={66} x2={300} y2={44}/></>}
-                              {pAttrs[2] && <><AttributeOval x={430} y={55} label={pAttrs[2]}/><Line x1={370} y1={80} x2={410} y2={62}/></>}
-                              {/* lines Person -> ISA */}
-                              <Line x1={300} y1={114} x2={300} y2={150}/>
-                              {/* Instructor */}
-                              <EntityBox x={160} y={280} label="Instructor"/>
-                              <Line x1={200} y1={180} x2={160} y2={256}/>
-                              {iAttrs[0] && <><AttributeOval x={60} y={350} label={iAttrs[0]}/><Line x1={120} y1={300} x2={80} y2={340}/></>}
-                              {iAttrs[1] && <><AttributeOval x={260} y={350} label={iAttrs[1]}/><Line x1={200} y1={304} x2={240} y2={340}/></>}
-                              {/* Researcher */}
-                              <EntityBox x={540} y={280} label="Researcher"/>
-                              <Line x1={400} y1={180} x2={540} y2={256}/>
-                              {rAttrs[0] && <><AttributeOval x={440} y={350} label={rAttrs[0]}/><Line x1={500} y1={304} x2={460} y2={340}/></>}
-                              {rAttrs[1] && <><AttributeOval x={630} y={350} label={rAttrs[1]}/><Line x1={580} y1={300} x2={610} y2={340}/></>}
-                              {/* legend */}
-                              <text x={10} y={440} fontSize={9} fill="#64748b">EER ISA: Person superclass → Instructor / Researcher subclasses</text>
-                            </svg>
-                          );
-                        } else {
-                          // Generic: entities in a row
-                          const gap = erW / (entities.length + 1);
-                          erSvg = (
-                            <svg viewBox={`0 0 ${erW} ${erH}`} className="w-full h-[300px] bg-white dark:bg-zinc-900">
-                              <rect x={0} y={0} width={erW} height={erH} fill="white" className="dark:fill-zinc-900"/>
-                              {entities.map((e:any, idx:number)=>{
-                                const cx = gap * (idx+1);
-                                const cy = 140;
-                                const attrs: string[] = e.attributes || [];
-                                return (
-                                  <g key={idx}>
-                                    <EntityBox x={cx} y={cy} label={e.entity_name} w={130}/>
-                                    {attrs.map((a:string, ai:number)=>{
-                                      const ang = (ai / Math.max(1, attrs.length)) * Math.PI - Math.PI/2;
-                                      const r = 78;
-                                      const ax = cx + Math.cos(ang) * r;
-                                      const ay = cy + Math.sin(ang) * r;
-                                      // adjust for top/bottom
-                                      const ay2 = ai%2===0 ? ay-12 : ay+12;
-                                      return <g key={ai}><AttributeOval x={ax} y={ay2} label={a}/><Line x1={cx} y1={cy - (ai%2? -10:10)} x2={ax} y2={ay2}/></g>;
-                                    })}
-                                    {rels.filter((rel:any)=> (rel.entities||[]).includes(e.entity_name)).map((rel:any, ri:number)=>{
-                                      const other = (rel.entities||[]).find((en:string)=> en!==e.entity_name);
-                                      const oi = entities.findIndex((en:any)=> en.entity_name===other);
-                                      if (oi<=idx) return null;
-                                      const ox = gap * (oi+1);
-                                      const mx = (cx+ox)/2;
-                                      return <g key={ri}><polygon points={`${mx},190 ${mx-18},210 ${mx+18},210`} fill="#10b981" stroke="#059669" strokeWidth={1.2}/><text x={mx} y={206} textAnchor="middle" fontSize={8} fill="white" fontWeight={700}>{rel.relation_name||"R"}</text><Line x1={cx+50} y1={150} x2={mx} y2={200}/><Line x1={ox-50} y1={150} x2={mx} y2={200}/></g>;
-                                    })}
-                                  </g>
-                                );
-                              })}
-                            </svg>
-                          );
-                        }
-                      }
-                      return (
-                        <div className="rounded-lg border bg-white dark:bg-zinc-900 overflow-hidden">
-                          <div className="px-3 py-1.5 bg-violet-50 dark:bg-violet-950/20 border-b flex items-center justify-between">
-                            <span className="text-xs font-medium text-violet-700 dark:text-violet-300">ER Diagram · {hasEntities? `${entities.length} entities` : "no entities" } {rels.length? `· ${rels.length} rel`:""}</span>
-                            <span className="text-[10px] text-muted-foreground">rendered from diagram_evaluation · {detections.length} detections</span>
-                          </div>
-                          {hasEntities ? erSvg : (
-                            detections.length > 0 ? (
-                              <svg viewBox={`0 0 ${vbW} ${vbH}`} className="w-full h-[280px] bg-slate-50 dark:bg-zinc-950">
-                                <rect x={0} y={0} width={vbW} height={vbH} fill="white" className="dark:fill-zinc-900" />
-                                {detections.map((d: any, i: number) => {
-                                  const [x, y, x2, y2] = d.bbox || [0, 0, 0, 0];
-                                  const w = Math.max(4, (x2 - x) * 0.6);
-                                  const h = Math.max(4, (y2 - y) * 0.6);
-                                  const cx = x * 0.6;
-                                  const cy = y * 0.6;
-                                  const col = colorByLabel[d.label] || colorByLabel.default;
-                                  const isEntity = d.label === "Entities" || d.label === "Subclass";
-                                  const rx = isEntity ? 6 : 999;
-                                  return (
-                                    <g key={d.id || i}>
-                                      <rect x={cx} y={cy} width={w} height={h} rx={rx} fill={col} fillOpacity={0.12} stroke={col} strokeWidth={1.5} />
-                                      <text x={cx + 4} y={cy + 12} fontSize={9} fill={col} fontWeight={600} className="select-none">{d.text || d.label}</text>
-                                    </g>
-                                  );
-                                })}
-                              </svg>
-                            ) : <div className="p-6 text-center text-xs text-muted-foreground">No diagram data stored</div>
-                          )}
-                          <div className="px-3 py-1.5 flex gap-2 text-[10px] flex-wrap bg-muted/30">
-                            <span className="inline-flex items-center gap-1"><span className="size-3 rounded-sm bg-indigo-100 border border-indigo-500"/> Entity</span>
-                            <span className="inline-flex items-center gap-1"><span className="size-3 rounded-full bg-cyan-100 border border-cyan-500"/> Attribute</span>
-                            <span className="inline-flex items-center gap-1"><span className="size-2.5 bg-amber-500 rotate-45"/> ISA</span>
-                            {detections.length>0 && Object.entries(colorByLabel).filter(([k]) => k !== "default").map(([k, c]) => (
-                              <span key={k} className="inline-flex items-center gap-1 ml-2"><span className="size-2 rounded-full" style={{ background: c }} />{k}</span>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    <ERDiagramViewer
+                      key={studentDetail.student_id}
+                      entities={entities.map((entity: any) => ({
+                        ...entity,
+                        primary_keys: entity.primary_keys
+                          ?? diagramDetails?.structure?.entities?.[entity.entity_name]?.primary_keys
+                          ?? (diagEval?.diagram_entity_relations || diagMark?.diagram_entity_relations || []).find((item: any) => item.entity_name === entity.entity_name)?.primary_keys,
+                      }))}
+                      relationships={rels}
+                      image={ev.annotated_image}
+                    />
+                    <p className="text-xs text-muted-foreground">{detections.length} detected elements</p>
+                    {entities.length === 0 && detections.length > 0 && <ul className="text-xs space-y-1">
+                      {detections.map((detection: any, index: number) => <li key={detection.id ?? index}>{detection.label}: {detection.text || "No readable label"}</li>)}
+                    </ul>}
 
                     {/* Entities / Relationships summary */}
                     {(entities.length > 0 || rels.length > 0) && (
@@ -847,12 +736,17 @@ export default function AnalyticsPage() {
 
         {loadingExams ? (
           <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} />
+        ) : examListError ? (
+          <Card className="p-8 space-y-3" role="alert">
+            <p>Could not load exams. Check the analytics service and retry.</p>
+            <Button variant="outline" onClick={() => setExamReload(value => value + 1)}>Retry</Button>
+          </Card>
         ) : exams.length === 0 ? (
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
             <Card className="p-12 text-center border-border bg-gradient-to-b from-card to-muted/20">
               <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40" />
               <p className="text-muted-foreground">No exams found</p>
-              <p className="text-xs text-muted-foreground mt-1">Exams appear once a rubric is created and submissions are graded.</p>
+              <p className="text-xs text-muted-foreground mt-1">Exams appear once an essay rubric is saved. Grades are shown when available.</p>
             </Card>
           </motion.div>
         ) : (
@@ -968,12 +862,7 @@ export default function AnalyticsPage() {
                             </span>
                           </TableCell>
                           <TableCell className="py-3 text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <span className={`text-sm font-semibold tabular-nums ${exam.average_percentage >= 50 ? "text-emerald-700" : "text-amber-700"}`}>{exam.average_percentage.toFixed(1)}%</span>
-                              <div className="hidden sm:block h-1 w-12 bg-muted rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full ${exam.average_percentage >= 50 ? "bg-emerald-500" : "bg-amber-500"}`} style={{ width: `${Math.min(exam.average_percentage, 100)}%` }} />
-                              </div>
-                            </div>
+                            <ExamInventoryScore exam={exam} />
                           </TableCell>
                           <TableCell className="py-3">
                             {exam.analyzed ? (
@@ -1040,32 +929,40 @@ export default function AnalyticsPage() {
             <h2 className="tracking-tight text-foreground bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text">{selectedExam.subject_name}</h2>
             <p className="text-sm text-muted-foreground mt-1">{selectedExam.session_name} · {selectedExam.year} {analytics ? `· Generated ${new Date(analytics.generated_at).toLocaleString()}` : ""}</p>
             {analytics && (analytics as any).unclassified_coverage && (
-              <p className="text-xs text-amber-700 mt-1">Unclassified: {(analytics as any).unclassified_coverage.attempt_count} attempts at {(analytics as any).unclassified_coverage.average_percentage}% — review topic assignment</p>
+              <p className="text-xs text-amber-700 mt-1">Topic assignment pending: {analytics.unclassified_coverage.attempt_count} attempts at {analytics.unclassified_coverage.average_percentage}% — open a question below to review its topic</p>
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPaperOpen(true)}>
+              <FileText className="h-4 w-4 mr-1" /> View question paper
+            </Button>
             <Button variant="outline" size="sm" onClick={() => selectedExam && handleSelectExam(selectedExam, { forceReanalyse: true })} disabled={loadingAnalytics} title="Recompute analytics for this exam (ignores cache)">
-              <Loader2 className={`h-4 w-4 mr-1 ${loadingAnalytics ? "animate-spin" : ""}`} /> Reanalyse
+              {loadingAnalytics ? <ThinkingOrb state="solving" size={20} aria-label="Reanalysing exam" /> : <Loader2 className="h-4 w-4 mr-1" />} Reanalyse
             </Button>
-            <Button variant="outline" size="sm" disabled title="Coming soon" className="backdrop-blur">
-              <Download className="h-4 w-4 mr-1" /> Export
-            </Button>
-            <Button variant="outline" size="sm" disabled title="Coming soon" className="backdrop-blur">
-              <FileText className="h-4 w-4 mr-1" /> Report
-            </Button>
+
           </div>
         </div>
       </motion.div>
+
+      {studentListError ? <p role="alert" className="text-sm text-destructive">{studentListError}</p>
+        : !loadingStudents && <GradingOverview students={students} />}
+      {!!analytics?.excluded_submissions?.length && <div role="alert" className="rounded-md border border-amber-300 p-3 text-sm">
+        <p className="font-medium">Some essay results were excluded from analytics because their grading evidence needs review.</p>
+        <ul className="list-disc pl-5">{analytics.excluded_submissions.map((item, i) => <li key={i}>{item.student_id}: {item.reason}</li>)}</ul>
+      </div>}
+      {analytics?.snapshot_status === "stale" && <p role="alert" className="rounded-md border border-amber-300 p-3 text-sm">{analytics.refresh_warning}</p>}
 
       {loadingAnalytics ? (
         <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} liveMessage={liveModelMessage} />
       ) : analytics ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <h3 className="mb-2 text-sm font-semibold">Essay analytics · {analytics.statistics.total_students} graded submissions</h3>
             <KpiCards statistics={analytics.statistics} />
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+            <h3 className="mb-2 text-sm font-semibold">Essay score distribution</h3>
             <div className="rounded-xl border bg-card/50 backdrop-blur p-1"><DistributionHistogram statistics={analytics.statistics} /></div>
           </motion.div>
 
@@ -1137,15 +1034,17 @@ export default function AnalyticsPage() {
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
                 className="pl-9 h-9 bg-background"
-                disabled={loadingStudents || !analytics}
+                disabled={loadingStudents}
               />
             </div>
           </div>
 
           {loadingStudents ? (
             <div className="p-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Loading students…
+              <ThinkingOrb state="searching" size={20} aria-label="Loading students" /> Loading students…
             </div>
+          ) : studentListError ? (
+            <p role="alert" className="p-4 text-sm text-destructive">{studentListError}</p>
           ) : students.length === 0 ? (
             <div className="p-8 text-center">
               <GraduationCap className="size-8 mx-auto text-muted-foreground/30" />
@@ -1158,9 +1057,10 @@ export default function AnalyticsPage() {
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
                     <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Student</TableHead>
-                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Score</TableHead>
-                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">%</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Essay</TableHead>
+                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Diagram</TableHead>
+                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Overall</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Grading status</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Analyzed</TableHead>
                     <TableHead className="w-[88px] text-right pr-4 text-xs uppercase tracking-wider font-semibold text-muted-foreground">View</TableHead>
                   </TableRow>
@@ -1168,8 +1068,13 @@ export default function AnalyticsPage() {
                 <TableBody>
                   {students
                     .filter((s) => !studentSearch.trim() || s.student_id.toLowerCase().includes(studentSearch.trim().toLowerCase()))
-                    .map((s) => (
-                      <TableRow key={s.student_id} onClick={() => handleSelectStudent(s.student_id)} className="group cursor-pointer h-12 hover:bg-muted/50">
+                    .map((s) => {
+                      const canView = canViewStudent(s);
+                      return (
+                      <TableRow key={s.student_id} aria-disabled={!canView} tabIndex={canView ? 0 : undefined}
+                        onClick={canView ? () => handleSelectStudent(s.student_id) : undefined}
+                        onKeyDown={canView ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void handleSelectStudent(s.student_id); } } : undefined}
+                        className={`group h-12 ${canView ? "cursor-pointer hover:bg-muted/50" : "text-muted-foreground"}`}>
                         <TableCell className="py-2">
                           <div className="flex items-center gap-2">
                             <div className="size-7 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -1178,17 +1083,7 @@ export default function AnalyticsPage() {
                             <span className="text-sm font-medium font-mono">{s.student_id}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="py-2 text-center text-sm tabular-nums">
-                          {s.score.obtained.toFixed(1)} / {s.score.maximum.toFixed(1)}
-                        </TableCell>
-                        <TableCell className="py-2 text-center">
-                          <Badge variant="outline" className={`text-xs tabular-nums ${s.score.percentage >= 50 ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-amber-500/10 text-amber-700 border-amber-500/20"}`}>
-                            {s.score.percentage.toFixed(1)}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <Badge variant="outline" className="text-xs">{s.status}</Badge>
-                        </TableCell>
+                        <StudentGradingCells student={s} />
                         <TableCell className="py-2">
                           {s.analysis_status === "generated" ? (
                             <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><CheckCircle2 className="size-3" /> Ready</span>
@@ -1199,10 +1094,10 @@ export default function AnalyticsPage() {
                           )}
                         </TableCell>
                         <TableCell className="py-2 text-right pr-4">
-                          {loadingStudentDetail && selectedStudentId === s.student_id ? (
+                          {!canView ? <span className="text-xs text-muted-foreground">Awaiting grades</span> : loadingStudentDetail && selectedStudentId === s.student_id ? (
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
-                              <Loader2 className="size-3 animate-spin" />
-                              <span className="animate-pulse">{["generated", "diagram_only"].includes(s.analysis_status) ? "Loading…" : "Analyzing…"}</span>
+                              <ThinkingOrb state="solving" size={20} aria-label="Analysing student" />
+                              <span>{s.analysis_status === "generated" ? "Loading…" : "Analyzing…"}</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">
@@ -1211,7 +1106,7 @@ export default function AnalyticsPage() {
                           )}
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ); })}
                 </TableBody>
               </Table>
               {students.filter((s) => !studentSearch.trim() || s.student_id.toLowerCase().includes(studentSearch.trim().toLowerCase())).length === 0 && (
@@ -1229,12 +1124,14 @@ export default function AnalyticsPage() {
       </motion.div>
 
       <TopicDetailModal topic={selectedTopic} open={!!selectedTopic} onClose={() => setSelectedTopic(null)} />
+      <ExamPaperModal exam={selectedExam} open={paperOpen} onClose={() => setPaperOpen(false)} />
       <QuestionDetailModal
         key={`${selectedExam?.course_code}-${selectedExam?.session_name}-${selectedExam?.year}-${selectedExam?.month}-${selectedExam?.semester}-${selectedQuestion?.question_no}`}
         question={selectedQuestion}
         exam={selectedExam}
         open={!!selectedQuestion}
         onClose={() => setSelectedQuestion(null)}
+        onTopicSaved={() => { if (selectedExam) void handleSelectExam(selectedExam, { forceReanalyse: true }); }}
       />
     </div>
   );

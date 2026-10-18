@@ -12,11 +12,22 @@ export const defaultBlueprint = (): Blueprint => ({
   total_marks: 100, duration_minutes: 180, purpose: "final", learning_outcomes: "", lecture_notes: "",
   topic_marks: {}, bloom_percentages: { Remember: 10, Understand: 20, Apply: 40, Analyze: 25, Evaluate: 5, Create: 0 },
 });
+export type MaterialSource = {
+  source_id: string; kind: string; text: string;
+  course_code?: string | null; filename?: string | null; page_number?: number | null;
+  year?: number | null; rank_score?: number | null;
+};
+export type MaterialSearch = {
+  status: "ok" | "unavailable"; mode: "hybrid" | "keyword" | "unavailable";
+  warnings: string[]; sources: MaterialSource[];
+};
+export type GenerationRetrieval = { lectures: MaterialSearch; assessment_examples: MaterialSearch };
+export type CreatorApiError = Error & { retrieval?: GenerationRetrieval };
 export type Part = {
   part: string; question: string; max_marks: number; question_id?: string; bloom_level?: string;
   model_answer?: string; marking_scheme?: { criterion: string; marks: number }[];
   estimated_minutes?: number; review_status?: "needs_review" | "approved";
-  sources?: { source_id: string; kind: string; text: string }[];
+  sources?: MaterialSource[];
 };
 export type PaperQuestion = { question_number: number; topic: string; parts: Part[] };
 export type Paper = {
@@ -42,6 +53,7 @@ export type GeneratedCandidate = {
 export type Generation = {
   candidates: GeneratedCandidate[]; similarity_available: boolean; model: string;
   similarity_checks: { candidate_text: string; max_similarity: number; flagged: boolean }[];
+  retrieval?: GenerationRetrieval;
 };
 const API_BASE = SERVER_BASE_URL;
 async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
@@ -51,8 +63,9 @@ async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promi
   const data = await response.json();
   if (!response.ok) {
     const detail = typeof data.detail === "string" ? data.detail :
+      typeof data.detail?.message === "string" ? data.detail.message :
       Array.isArray(data.detail) ? data.detail.map((item: { msg: string }) => item.msg).join("; ") : "Request failed";
-    throw new Error(detail);
+    throw Object.assign(new Error(detail), { retrieval: data.detail?.retrieval });
   }
   return data;
 }

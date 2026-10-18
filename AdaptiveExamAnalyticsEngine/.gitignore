@@ -23,5 +23,6 @@ models/*
 models/bloom_modernbert/*.safetensors
 models/bloom_modernbert/*.bin
 .cache/
+storage/course_rag/
 
 cleanup

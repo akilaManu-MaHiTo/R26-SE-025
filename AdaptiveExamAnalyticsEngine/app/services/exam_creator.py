@@ -3,11 +3,14 @@ from collections import Counter
 from difflib import SequenceMatcher
 from math import isclose
 from uuid import uuid4
+from starlette.concurrency import run_in_threadpool
 
 from app.analytics.recommendation_score import priority_from_score
 from app.analytics.taxonomy import BLOOM_LEVELS
 from app.schemas.exam_creator import CreatorRequest, GenerateRequest, GroundedCandidate
 from app.services import llm_service, recommendation
+from app.schemas.course_rag import SearchRequest
+from app.services.course_rag import get_course_rag
 
 
 def course_bank(course_code: str, bank: list[dict] | None = None) -> list[dict]:
@@ -131,14 +134,18 @@ def review_paper(request: CreatorRequest, analytics: dict, bank: list[dict]) -> 
             "ranked_weak_topics": recommendation.weakness_for_document(analytics)["ranked_weak_topics"]}
 
 
+def retrieve_for_creator(request: GenerateRequest) -> dict:
+    rag = get_course_rag()
+    return {
+        "lectures": rag.search(SearchRequest(course_code=request.course_code, query=request.topic,
+            document_types=["lecture"], limit=4)).model_dump(),
+        "assessment_examples": rag.search(SearchRequest(course_code=request.course_code, query=request.topic,
+            document_types=["tutorial", "exam"], limit=3)).model_dump(),
+    }
+
+
 async def generate_for_paper(request: GenerateRequest, bank: list[dict]) -> dict:
     blueprint = request.paper.blueprint
-    sources = [{"source_id": r["question_id"], "kind": "lecture_objective", "text": r["text"][:3000]}
-               for r in bank if r.get("source_type") == "lecture" and r.get("canonical_topic") == request.topic][:8]
-    if blueprint.lecture_notes.strip():
-        sources.insert(0, {"source_id": "lecturer-notes", "kind": "lecture_notes", "text": blueprint.lecture_notes})
-    if not sources:
-        raise ValueError("Add lecture notes or select a topic with course lecture sources before generating.")
     current_parts = [p for q in request.paper.questions for p in q.get("parts", [])]
     remaining = blueprint.total_marks - sum(p.get("max_marks", 0) for p in current_parts)
     if request.marks > remaining:
@@ -148,18 +155,39 @@ async def generate_for_paper(request: GenerateRequest, bank: list[dict]) -> dict
         raise ValueError("Question marks exceed the remaining topic allocation.")
     if request.topic not in blueprint.topic_marks and isclose(sum(blueprint.topic_marks.values()), blueprint.total_marks, abs_tol=0.01):
         raise ValueError("Topic is outside the fully allocated blueprint.")
-    historical = [{"question_id": r["question_id"], "question_text": r["text"]}
-                  for r in bank if r.get("canonical_topic") == request.topic and r.get("source_type") != "lecture"]
+    retrieval = await run_in_threadpool(retrieve_for_creator, request)
+    sources = retrieval["lectures"]["sources"] or [
+        {"source_id": r["question_id"], "kind": "lecture_objective", "text": r["text"][:3000]}
+        for r in bank if r.get("source_type") == "lecture" and r.get("canonical_topic") == request.topic][:8]
+    if blueprint.lecture_notes.strip():
+        sources = [{"source_id": "lecturer-notes", "kind": "lecture_notes", "text": blueprint.lecture_notes}, *sources]
+    bounded_sources, remaining_chars = [], 24000
+    for source in sources[:10]:
+        if remaining_chars <= 0:
+            break
+        text = source["text"][:remaining_chars]
+        bounded_sources.append({**source, "text": text})
+        remaining_chars -= len(text)
+    sources = bounded_sources
+    if not sources:
+        raise ValueError("No lecture evidence found. Index the course materials, add lecture notes, or select a topic with course lecture sources before generating.")
+    examples = retrieval["assessment_examples"]["sources"]
+    historical = [{"question_id": s["source_id"], "question_text": s["text"]} for s in examples]
     historical.extend({"question_id": p.get("question_id", "draft"), "question_text": p.get("question", "")} for p in current_parts)
+    historical.extend({"question_id": r["question_id"], "question_text": r["text"]}
+                      for r in bank if r.get("canonical_topic") == request.topic and r.get("source_type") != "lecture")
     result = await llm_service.generate_candidates({
         "course_code": request.course_code, "topic": request.topic, "bloom_level": request.bloom_level,
         "mark_range": [request.marks, request.marks], "sources": sources,
         "learning_outcomes": blueprint.learning_outcomes,
+        "assessment_examples": examples,
         "historical_questions": [{**h, "question_text": h["question_text"][:1500]} for h in historical[:20]],
     }, count=request.count)
+    if result.get("context_truncated"):
+        retrieval["lectures"]["warnings"].append("A shortened selection of evidence and learning outcomes was sent to keep generation responsive. Upload long notes as PDFs for topic-based retrieval.")
     if result["status"] != "ok":
         return {"status": "degraded", "reason": result.get("reason", "generation_failed"),
-                "detail": result.get("detail"), "candidates": []}
+                "detail": result.get("detail"), "candidates": [], "retrieval": retrieval}
     allowed = {s["source_id"]: s for s in sources}
     candidates = []
     for raw in result["candidates"]:
@@ -177,7 +205,7 @@ async def generate_for_paper(request: GenerateRequest, bank: list[dict]) -> dict
                            "sources": [allowed[s] for s in c.source_ids], "review_status": "needs_review"})
     checks = result.get("similarity_checks", [])
     if len(candidates) != request.count:
-        return {"status": "degraded", "reason": "Generated output did not meet the topic, marks, source or originality requirements. Try again.", "candidates": []}
+        return {"status": "degraded", "reason": "Generated output did not meet the topic, marks, source or originality requirements. Try again.", "candidates": [], "retrieval": retrieval}
     return {"status": "ok", "candidates": candidates, "similarity_checks": checks,
             "similarity_available": len(checks) == request.count,
-            "model": llm_service.settings.llm_model}
+            "model": llm_service.settings.llm_model, "retrieval": retrieval}

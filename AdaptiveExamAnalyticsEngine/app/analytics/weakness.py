@@ -179,4 +179,4 @@ def rank_weak_topics(
         reverse=True,
     )
     pairs = [(topic, info["weakness"]) for topic, info in ranked]
-    return pairs[:limit] if limit else pairs
+    return pairs[:limit] if limit is not None else pairs

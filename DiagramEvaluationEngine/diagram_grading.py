@@ -82,7 +82,11 @@ def _normalize_diagram_structure(structure: Any) -> dict[str, Any]:
                     key=str.casefold,
                 )
         if "primary_keys" in entity:
-            entity["attributes"] = [a for a in entity["attributes"] if a not in entity["primary_keys"]]
+            # Keep primary keys in both lists: they are attributes AND keys.
+            # This ensures the LLM can verify attribute presence and underline notation separately.
+            for pk in entity["primary_keys"]:
+                if pk not in entity["attributes"]:
+                    entity["attributes"] = sorted(entity["attributes"] + [pk], key=str.casefold)
 
     relationships = []
     if isinstance(raw_relationships, list):
@@ -249,13 +253,27 @@ def grade_diagram_with_ollama(
 
     prompt = f"""
 You are an ER diagram grading agent running locally with Ollama. Grade the student's extracted diagram against the supplied marking guideline.
-Use only the diagram structure provided. Do not infer objects that are not present.
-Award each criterion's marks only when its requirement is supported by the extracted data.
-For every criterion, check every requirement in its description and expected fields. Award zero marks when any required entity, attribute, relationship, notation, role, or connection is absent or cannot be verified. Do not infer labels, connections, notation, or relationships from the drawing.
-Compare labels by meaning, not by OCR formatting. For identifier-like attributes, ignore case, whitespace, underscores, hyphens, and ordinary naming conventions, and recognize common abbreviations when the meaning is unambiguous. An identifier written as an abbreviation or the full entity name (for example X_Id, XId, X_ID, or Entity_id, where X is the entity's initial or short form) refers to the same ID attribute of that entity; these are formatting/name variants, not separate attributes. This applies to any entity, including ones not seen before. Do not use this rule to invent an attribute that is not present.
-Entity names may contain OCR typos (e.g. a misspelled or truncated entity name); match them to the rubric by meaning. An entity's "primary_keys" list holds its underlined key attributes and counts as attributes of that entity, so an identifier listed under an entity's primary_keys satisfies a required ID attribute of that entity, whichever naming variant is used. Only report a relationship or attribute as missing if it truly appears nowhere in the structure.
-Relationship labels are free-form and vary per diagram. Never require an exact word or spelling from the rubric. Judge a relationship by (1) whether it connects the required entities, and (2) whether its label expresses a plausible, sensible association between those entities (e.g. any natural verb phrase such as joins, enrolls in, has, belongs to, registers for, works in, manages, is part of, in the correct or reversed direction). Accept any label that is a reasonable synonym or paraphrase of the rubric's wording, including OCR/spelling errors, case, plurality and inflection. Only withhold marks for the relationship label when it is absent, connects the wrong entities, or its meaning clearly contradicts the entities (e.g. an unrelated action). A different but sensible verb is NOT a reason to deduct marks or to call the diagram logically inconsistent. If the structure has no relationships at all, say that none were detected rather than describing one.
-Before assigning marks, make a requirement-by-requirement checklist for each criterion: required entities, each required attribute (including key attributes), relationship names, and connections. A criterion with a missing required attribute or a relationship that is missing, connects the wrong entities, or has a clearly contradictory label must not receive full marks, even when the rest of the diagram is correct.
+
+=== HARD RULES (apply without exception) ===
+1. Use ONLY the diagram structure provided below. Never infer, assume, or hallucinate any element that is not explicitly present in the structure data.
+2. Before scoring any criterion, check the structure data for each required element. If an element is absent from the data, the criterion requiring it receives ZERO marks — no exceptions, regardless of how close another element looks.
+3. Award marks only when you can point to the exact entry in the structure data (entity name, attribute name, primary_key name, or relationship) that satisfies the requirement.
+
+PRIMARY KEY RULE: Each entity's "primary_keys" list contains its primary key attributes. Primary keys also appear in the "attributes" list (they are attributes AND keys). A primary key criterion is fully satisfied when the attribute name appears in the entity's "primary_keys" list — no additional check is required. Do not deduct marks for underline notation or formatting; presence in "primary_keys" is sufficient. If the attribute name is absent from "primary_keys", the criterion gets ZERO marks.
+
+ATTRIBUTE RULE: An attribute criterion (non-primary-key) is satisfied ONLY when the attribute name (allowing only OCR-level formatting differences: case, spaces, underscores, hyphens between the same tokens) appears in the entity's "attributes" list. A differently-named attribute — even one that sounds similar — is NOT a match. Do NOT accept a substitute.
+
+IDENTIFIER MATCHING (OCR formatting only): For identifier-style attributes (those ending in _ID, _Id, ID, etc.), treat these as the same attribute only when they share the same prefix token: S_ID, S_Id, SID, S ID are all the same; C_ID and S_ID are different identifiers and must never be cross-matched. Entity names may contain OCR typos; match entity names to the rubric by closest meaning, but still require the attribute to be present under that entity.
+
+RELATIONSHIP RULE: Relationships are free-form. Judge a relationship by whether it connects the required entities and whether its label expresses a plausible association (any sensible verb phrase). Accept reasonable synonyms, spelling variants, and inflections. Do not deduct marks for a different-but-sensible verb.
+
+COMPLETENESS RULE: The Overall Completeness criterion checks only structural presence
+
+=== PROCESS ===
+Step 1 — for each criterion, list every required element and check whether it appears in the structure data.
+Step 2 — award marks only for elements confirmed in Step 1.
+Step 3 — if any criterion failed, set Overall Completeness to zero.
+
 Return one criterion_results entry for every rubric criterion, including failed criteria with zero marks. Use the exact criterion IDs from the marking guideline, once each, and do not return any other IDs.
 The total available marks for this guideline are {max_marks:g}. Return max_marks as exactly {max_marks:g}.
 Return compact JSON only with this exact shape. Do not use markdown or add extra keys:

@@ -14,11 +14,13 @@ export interface ExamListItem {
   total_marks: number;
   question_count: number;
   student_count: number;
-  average_score: number;
-  average_percentage: number;
-  highest_score: number;
-  lowest_score: number;
-  pass_rate: number;
+  average_score: number | null;
+  average_percentage: number | null;
+  highest_score: number | null;
+  lowest_score: number | null;
+  pass_rate: number | null;
+  graded_student_count?: number;
+  score_basis?: "Essay" | "Diagram";
   analyzed: boolean;
   analyzed_at: string | null;
 }
@@ -37,6 +39,27 @@ export interface ExamStatistics {
   std_percentage?: number;
   iqr_percentage?: number;
   grade_distribution?: Record<string, number>;
+}
+
+export interface ExamPaperDefinition {
+  exam_key: string;
+  expected_structure: string[];
+  maximum_marks: number | null;
+  essay_questions: { question_no: string | null; question_text: unknown; max_marks: number | null; criteria: { point: unknown; marks: number | null }[] }[];
+  diagram_rubrics: { rubric_id: string; exam_code: string | null; total_marks: number | null; criteria: { id: unknown; criterion: unknown; description: unknown; marks: number | null; expected: unknown }[] }[];
+  validation: { status: string; messages: string[] };
+}
+
+export async function fetchExamPaperDefinition(
+  exam: Pick<ExamListItem, "course_code" | "session_name" | "year" | "month" | "semester">,
+): Promise<ExamPaperDefinition> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${encodeURIComponent(exam.course_code)}/${encodeURIComponent(exam.session_name)}/paper?${params}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : `Failed to load question paper (${res.status})`);
+  }
+  return res.json();
 }
 
 export interface TopicPerformance {
@@ -79,6 +102,9 @@ export interface QuestionPerformance {
   p_value?: number;
   discrimination?: number;
   missed_criterion_rate?: number | null;
+  bloom_confidence?: number | null;
+  needs_review?: boolean;
+  coverage_warning?: string | null;
 }
 
 export interface AttentionArea {
@@ -150,6 +176,9 @@ export interface DiagramAnalysis {
 }
 
 export interface ExamAnalytics {
+  snapshot_status?: "stale";
+  refresh_warning?: string;
+  excluded_submissions?: { student_id: string; reason: string }[];
   subject_code: string;
   subject_name: string;
   year: number;
@@ -182,10 +211,13 @@ export interface ExamAnalytics {
 export interface StudentRow {
   student_id: string;
   score: {
-    obtained: number;
-    maximum: number;
-    percentage: number;
+    obtained: number | null;
+    maximum: number | null;
+    percentage: number | null;
   };
+  components?: Record<"essay" | "diagram", { status: string; obtained: number | null; maximum: number | null }>;
+  grading_status?: "complete" | "pending" | "needs_review";
+  review_reasons?: string[];
   status: string;
   analysis_status: string;
   submitted_at: string | null;
@@ -204,6 +236,22 @@ export interface QuestionDetail {
     feedback: string | null;
   }>;
   excluded_count: number;
+  approved_topic: string | null;
+  topic_options: string[];
+}
+
+export async function saveQuestionTopic(
+  exam: Pick<ExamListItem, "course_code" | "session_name" | "year" | "month" | "semester">,
+  questionNo: string,
+  topic: string | null,
+): Promise<{ question_no: string; approved_topic: string | null }> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${encodeURIComponent(exam.course_code)}/${encodeURIComponent(exam.session_name)}/questions/${encodeURIComponent(questionNo)}/topic?${params}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Could not save question topic");
+  return data;
 }
 
 export async function fetchQuestionDetail(
@@ -462,6 +510,32 @@ export interface LecturerStudentDetail {
   diagram_marking?: DiagramMarking | null;
 }
 
+export interface StudentAnswerEvidence {
+  question_no: string;
+  answer_excerpt: string | null;
+  slice_source: string | null;
+  feedback: string | null;
+  justification: string | null;
+  criteria_breakdown: Array<{ point: string; awarded_marks: number | null; reason: string | null }>;
+  grading_source: string | null;
+  grading_error: string | null;
+}
+
+export async function fetchStudentAnswerEvidence(
+  exam: { course_code: string; session_name: string; year: number; month: number; semester: number },
+  studentId: string,
+  questionNo: string,
+): Promise<StudentAnswerEvidence> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const path = [exam.course_code, exam.session_name].map(encodeURIComponent).join("/");
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${path}/student/${encodeURIComponent(studentId)}/questions/${encodeURIComponent(questionNo)}?${params}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Could not load saved answer evidence");
+  }
+  return res.json();
+}
+
 export async function fetchLecturerStudentDetail(
   courseCode: string,
   sessionName: string,
@@ -497,7 +571,7 @@ export async function fetchLecturerStudentDetailStream(
   year: number | undefined,
   month: number | undefined,
   semester: number | undefined,
-  onProgress: (msg: string, progress?: number) => void,
+  onProgress: (msg: string, progress?: number, phase?: string) => void,
   includeAiTips = false,
 ): Promise<LecturerStudentDetail> {
   const encodedCourse = encodeURIComponent(courseCode);
@@ -533,8 +607,8 @@ export async function fetchLecturerStudentDetailStream(
       if (!dataStr) continue;
       try {
         const data = JSON.parse(dataStr);
-        if (event === "progress" || event === "ping") {
-          if (data.message) onProgress(data.message, typeof data.progress === "number" ? data.progress : undefined);
+        if (event === "progress") {
+          if (data.message) onProgress(data.message, typeof data.progress === "number" ? data.progress : undefined, data.phase);
         } else if (event === "result") {
           result = data as LecturerStudentDetail;
         } else if (event === "error") {
