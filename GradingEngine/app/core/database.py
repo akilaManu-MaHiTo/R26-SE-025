@@ -16,13 +16,23 @@ class Database:
 
 db_instance = Database()
 
+
+def _database_name() -> str:
+    """Return a valid database name when DATABASE_NAME is omitted in deployment."""
+    return (os.getenv("DATABASE_NAME") or "Grading").strip() or "Grading"
+
+
 async def connect_to_mongo():
     # We add a 10-second timeout to allow for slow DNS resolution
+    mongo_url = (os.getenv("MONGODB_URL") or "").strip()
+    if not mongo_url:
+        raise RuntimeError("MONGODB_URL is not set")
+
     db_instance.client = AsyncIOMotorClient(
-        os.getenv("MONGODB_URL"),
+        mongo_url,
         serverSelectionTimeoutMS=10000 
     )
-    db_instance.db = db_instance.client[os.getenv("DATABASE_NAME")] 
+    db_instance.db = db_instance.client[_database_name()]
     db_instance.rubric_col = db_instance.db["rubricCollection"]
     db_instance.submissions_col = db_instance.db["submissions"]
     db_instance.courses_col = db_instance.db["courses"]
