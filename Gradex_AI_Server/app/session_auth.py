@@ -24,6 +24,14 @@ _hasher = PasswordHasher()
 _dummy_hash = _hasher.hash(secrets.token_urlsafe(32))
 _client = None
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+DEFAULT_CORS_ORIGINS = (
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://r26-se-025-brown.vercel.app",
+    "https://gradex-orpin.vercel.app",
+)
 
 
 def get_auth_db():
@@ -77,16 +85,18 @@ def verify_password(password: str, stored: str) -> bool:
 
 
 def allowed_origins() -> list[str]:
-    return [origin.strip().rstrip("/") for origin in os.getenv(
-        "CORS_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,"
-        "http://127.0.0.1:3000,https://r26-se-025-brown.vercel.app",
-    ).split(",") if origin.strip() and origin.strip() != "*"]
+    configured = os.getenv("CORS_ORIGINS", "")
+    origins = [*DEFAULT_CORS_ORIGINS, *configured.split(",")]
+    return list(dict.fromkeys(
+        origin.strip().rstrip("/") for origin in origins if origin.strip() and origin.strip() != "*"
+    ))
 
 
 def trusted_origin(connection: HTTPConnection) -> bool:
     origin = connection.headers.get("origin")
-    own_origin = f"{connection.url.scheme.replace('ws', 'http')}://{connection.url.netloc}"
+    forwarded_proto = connection.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip()
+    scheme = forwarded_proto or connection.url.scheme.replace("ws", "http")
+    own_origin = f"{scheme}://{connection.url.netloc}"
     return origin in [own_origin, *allowed_origins()]
 
 
