@@ -2,10 +2,10 @@
 
 This is the ONE place that knows the marking scale. Everything else (the scorer, the server
 and, through the server, the web client) asks a `MarkingScale` instead of hard-coding "20".
-Moving a viva to another scale, for example out of 25, 30 or 100, is a configuration change:
+Each viva normally sets its own total in the Viva Workspace (see `for_total`), and the examiner's
+technical score is always out of that same total. The environment only supplies the defaults:
 
-    VIVA_MARK_MAX=30          official mark is out of 30
-    VIVA_TECHNICAL_MAX=30     the examiner's technical score is out of 30 (defaults to the mark scale)
+    VIVA_MARK_MAX=30          the official mark of a viva that has no total of its own (default 20)
     VIVA_MARK_DECIMALS=2      the official mark is rounded to this many decimals
 
 The scoring pipeline itself works on a 0-100 percentage; the official mark is that percentage
@@ -35,7 +35,6 @@ DEFAULT_GRADE_BANDS_PERCENT: Tuple[Tuple[str, float], ...] = (
 )
 
 ENV_MARK_MAX = "VIVA_MARK_MAX"
-ENV_TECHNICAL_MAX = "VIVA_TECHNICAL_MAX"
 ENV_MARK_DECIMALS = "VIVA_MARK_DECIMALS"
 
 GradeBandsPercent = Tuple[Tuple[str, float], ...]
@@ -155,9 +154,9 @@ class MarkingScale:
         marking on the wrong scale is worse than refusing to start."""
         source = os.environ if env is None else env
         mark_max = _read_number(source, ENV_MARK_MAX, DEFAULT_MARK_MAX)
-        technical_max = _read_number(source, ENV_TECHNICAL_MAX, mark_max)
         decimals = int(_read_number(source, ENV_MARK_DECIMALS, DEFAULT_MARK_DECIMALS))
-        return cls(mark_max=mark_max, technical_max=technical_max, decimals=decimals)
+        # The technical score is always out of the same total as the official mark.
+        return cls(mark_max=mark_max, technical_max=mark_max, decimals=decimals)
 
 
 def _read_number(source: Mapping[str, str], name: str, default: float) -> float:

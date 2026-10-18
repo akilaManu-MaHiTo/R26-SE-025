@@ -48,7 +48,6 @@ from Gradex_AI_Server.app.viva_copilot.pipeline import (
     start_presentation,
 )
 from Gradex_AI_Server.app.viva_copilot.session_store import broadcast, session_ttl_seconds, store
-from VivaEvaluationEngine.services.assessment_scoring import MODE_WITHOUT
 
 router = APIRouter(prefix="/api/viva-copilot", tags=["viva-copilot"])
 _AUTH = [Depends(require_lecturer)]

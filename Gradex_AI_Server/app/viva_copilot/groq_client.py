@@ -20,7 +20,6 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
-from urllib.error import HTTPError
 
 import httpx
 from dotenv import load_dotenv
@@ -142,13 +141,6 @@ def friendly_groq_error(detail: str, *, kind: str = "Groq") -> str:
     if len(compact) > 180:
         compact = compact[:177] + "..."
     return f"{kind} failed: {compact}" if compact else f"{kind} failed."
-
-
-def _read_http_error(exc: HTTPError) -> str:
-    try:
-        return exc.read().decode("utf-8", errors="replace")
-    except Exception:
-        return str(exc.reason or exc)
 
 
 def extract_json_object(text: str) -> Optional[Dict[str, Any]]:

@@ -16,7 +16,6 @@ from services.marking_scale import (
     DEFAULT_GRADE_BANDS_PERCENT,
     ENV_MARK_DECIMALS,
     ENV_MARK_MAX,
-    ENV_TECHNICAL_MAX,
     MarkingScale,
 )
 from tests.test_assessment_scoring import _sample_result
@@ -107,9 +106,10 @@ class EnvironmentTests(unittest.TestCase):
         self.assertEqual(scale.technical_max, 30.0)  # follows the mark scale by default
         self.assertEqual(scale.decimals, 1)
 
-    def test_technical_max_can_differ(self):
-        scale = MarkingScale.from_env({ENV_MARK_MAX: "100", ENV_TECHNICAL_MAX: "40"})
-        self.assertEqual((scale.mark_max, scale.technical_max), (100.0, 40.0))
+    def test_the_technical_score_always_follows_the_mark_scale(self):
+        # VIVA_TECHNICAL_MAX used to set a separate maximum; it is no longer read.
+        scale = MarkingScale.from_env({ENV_MARK_MAX: "100", "VIVA_TECHNICAL_MAX": "40"})
+        self.assertEqual((scale.mark_max, scale.technical_max), (100.0, 100.0))
 
     def test_empty_environment_gives_the_default(self):
         self.assertEqual(MarkingScale.from_env({}), MarkingScale())

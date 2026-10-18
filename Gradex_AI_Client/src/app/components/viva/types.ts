@@ -461,35 +461,6 @@ export function resolveGradeFromMark(mark: number | null | undefined): string | 
   return band?.grade ?? gradeBands[gradeBands.length - 1].grade;
 }
 
-export function resolveGradeFromPercent(percent: number | null | undefined): string | null {
-  if (percent == null || Number.isNaN(percent)) return null;
-  const { gradeBands } = getMarkingScale();
-  const band = gradeBands.find((b) => percent >= b.minPercent);
-  return band?.grade ?? gradeBands[gradeBands.length - 1].grade;
-}
-
-/* ─── Evaluator rubric (local, evaluator-entered — not returned by the API) ─── */
-
-export interface RubricCriterion {
-  id: string;
-  name: string;
-  description: string;
-  score: number;
-  max: number;
-}
-
-export const DEFAULT_RUBRIC: RubricCriterion[] = [
-  { id: "communication", name: "Communication Skills", description: "Clarity, articulation and pacing of the response", score: 0, max: 10 },
-  { id: "presentation", name: "Presentation Quality", description: "Confidence, composure and delivery on camera", score: 0, max: 10 },
-  { id: "engagement", name: "Engagement", description: "Attentiveness and sustained engagement during the viva", score: 0, max: 10 },
-  { id: "technical", name: "Technical Knowledge", description: "Depth and accuracy of the subject-matter content — examiner only", score: 0, max: 10 },
-];
-
-export function suggestGrade(totalScore: number, maxScore: number): string {
-  if (maxScore <= 0) return "—";
-  return resolveGradeFromPercent((totalScore / maxScore) * 100) ?? "—";
-}
-
 /* ─── Formatting helpers ─── */
 
 export function formatTime(seconds: number): string {

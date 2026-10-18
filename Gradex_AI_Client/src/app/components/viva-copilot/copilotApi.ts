@@ -65,20 +65,6 @@ const backendBaseUrl = SERVER_BASE_URL;
 
 
 
-export function normalizeAnalysis(value: unknown): CopilotAnalysis | null {
-  if (!value || typeof value !== "object") return null;
-  const raw = value as Record<string, unknown>;
-  const asList = (item: unknown): string[] =>
-    Array.isArray(item) ? item.map((entry) => String(entry)).filter(Boolean) : [];
-  return {
-    topics: asList(raw.topics),
-    concepts: asList(raw.concepts),
-    technologies: asList(raw.technologies),
-    claims: asList(raw.claims),
-    gaps: asList(raw.gaps),
-  };
-}
-
 export function normalizeSuggestion(value: unknown): CopilotSuggestion | null {
   const [first] = normalizeSuggestions([value]);
   return first ?? null;
@@ -187,13 +173,6 @@ export function finalizeCopilotUtterance(sessionId: string) {
   });
 }
 
-export function updateCopilotContext(sessionId: string, projectContext: ProjectContext) {
-  return jsonFetch(`/api/viva-copilot/sessions/${sessionId}/context`, {
-    method: "POST",
-    body: JSON.stringify({ projectContext }),
-  });
-}
-
 export type CopilotAssessmentMode = "WITH_TECHNICAL_ACCURACY" | "WITHOUT_TECHNICAL_ACCURACY";
 
 export interface AnalyzeSessionOptions {
@@ -237,12 +216,6 @@ export async function analyzeCopilotSession(
   }
   if (!response.ok) throw new Error(await parseError(response));
   return response.json() as Promise<Record<string, unknown>>;
-}
-
-export function getCopilotTranscript(sessionId: string) {
-  return jsonFetch<Record<string, unknown>>(
-    `/api/viva-copilot/sessions/${sessionId}/transcript`,
-  );
 }
 
 export function endCopilotSession(sessionId: string) {
