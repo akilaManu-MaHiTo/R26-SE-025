@@ -14,7 +14,6 @@ from app.services.rag_service import build_grading_query, retrieve_relevant_cont
 router = APIRouter()
 
 COLAB_URL = os.getenv("COLAB_EVALUATE_URL", "").strip()
-# Per-question Colab via ngrok often needs well over 25s (cold start + LLM).
 COLAB_TIMEOUT_SECONDS = int(os.getenv("COLAB_TIMEOUT_SECONDS", "120"))
 COLAB_CONNECT_TIMEOUT_SECONDS = int(os.getenv("COLAB_CONNECT_TIMEOUT_SECONDS", "20"))
 COLAB_RETRIES = max(1, int(os.getenv("COLAB_RETRIES", "3")))
@@ -27,8 +26,12 @@ _colab_availability_cache: dict = {
     "reason": "",
     "checked_at": 0.0,
 }
-# Appended to Colab snippet so fine-tuned models get a stricter marking policy.
 COLAB_STRICT_GRADING = os.getenv("COLAB_STRICT_GRADING", "1").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+}
+GROQ_ONLY = os.getenv("GROQ_ONLY", "0").strip().lower() in {
     "1",
     "true",
     "yes",
@@ -37,11 +40,18 @@ GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_API_KEY = os.getenv("BACKUP_API_KEY") or os.getenv("AI_API_KEY")
 
 _COLAB_STRICT_POLICY = (
-    "\n\nGRADING POLICY (mandatory): Be a strict university examiner. "
-    "Award marks only for evidence that clearly meets each rubric criterion. "
-    "Use partial credit for partial answers. Do not award full marks for vague, "
-    "incomplete, generic, or barely-related answers. When uncertain, under-mark "
-    "rather than over-mark. Never inflate scores for effort alone."
+    "\n\nGRADING POLICY (mandatory): Fair, strict university examiner. "
+    "Score ONLY from the rubric criteria. "
+    "For EACH criterion: award 0 if absent/wrong, full criterion marks if clearly met, "
+    "or a fraction if only partly met. "
+    "total_score = sum of those criterion marks (use mid values when earned). "
+    "Preserve discrimination: strong answers must score clearly higher than weak ones; "
+    "do not push every paper toward the middle. "
+    "Empty/irrelevant => near 0. One solid point among several => low partial. "
+    "Most points correct with gaps => high partial. All required points clear => full. "
+    "Never give full marks when required content is missing. "
+    "Never give 0 when a required criterion is clearly correct. "
+    "Never reward length or effort alone."
 )
 
 
@@ -88,7 +98,6 @@ def _strip_markdown_json_fence(text: str) -> str:
 
 
 def _extract_balanced_json_object(text: str, start_idx: int) -> str | None:
-    """Return the JSON object substring starting at text[start_idx] ('{')."""
     if start_idx < 0 or start_idx >= len(text) or text[start_idx] != "{":
         return None
     depth = 0
@@ -116,16 +125,10 @@ def _extract_balanced_json_object(text: str, start_idx: int) -> str | None:
 
 
 def _grade_dict_from_model_markdown(text: str) -> dict | None:
-    """
-    Extract a grading object from model markdown like:
-      ### Grade & Feedback: { "total_score": 10, "justification": "..." }
-    or a fenced/raw JSON blob containing total_score/score.
-    """
     raw = _strip_markdown_json_fence(text or "")
     if not raw.strip():
         return None
 
-    # Prefer the explicit "Grade & Feedback" block from the fine-tuned Colab model.
     marker = re.search(
         r"(?:###\s*)?Grade\s*&\s*Feedback\s*:\s*",
         raw,
@@ -142,7 +145,6 @@ def _grade_dict_from_model_markdown(text: str) -> dict | None:
             except json.JSONDecodeError:
                 pass
 
-    # Whole-string JSON
     try:
         parsed = json.loads(raw)
         if isinstance(parsed, dict) and (
@@ -157,7 +159,6 @@ def _grade_dict_from_model_markdown(text: str) -> dict | None:
     except json.JSONDecodeError:
         pass
 
-    # First JSON object in the text that looks like a grade payload.
     for match in re.finditer(r"\{", raw):
         blob = _extract_balanced_json_object(raw, match.start())
         if not blob:
@@ -174,30 +175,78 @@ def _grade_dict_from_model_markdown(text: str) -> dict | None:
         ):
             return parsed
 
-    # Last resort: pull numeric total_score / score from text.
     total_score_match = re.search(r'"total_score"\s*:\s*([0-9.]+)', raw)
     score_match = re.search(r'"(?:score|marks)"\s*:\s*([0-9.]+)', raw)
     max_score_match = re.search(r'"max_score"\s*:\s*([0-9.]+)', raw)
     if total_score_match or score_match:
-        return {
+        recovered = {
             "max_score": float(max_score_match.group(1)) if max_score_match else 0.0,
             "total_score": float((total_score_match or score_match).group(1)),
-            "justification": _extract_json_string_field(raw, "justification") or "",
-            "feedback": _extract_json_string_field(raw, "feedback") or "",
+            "justification": _recover_prose_field(raw, "justification"),
+            "feedback": _recover_prose_field(raw, "feedback"),
             "parse_warning": "Recovered score fields from model markdown text.",
         }
+        return _fill_missing_prose(recovered, raw)
     return None
 
 
-def _unwrap_colab_wrapper(data: dict) -> dict:
-    """
-    Live Colab often returns:
-      {"status":"success","evaluation_output":"### Grade & Feedback: {...}"}
-    Unwrap that into a real grading dict before sanitize/normalize.
+def _markdown_explanation(text: str) -> str:
+    if not (text or "").strip():
+        return ""
+    expl = re.search(
+        r"###\s*Explanation\s*:\s*(.+?)(?:\n###|\Z)",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return expl.group(1).strip() if expl else ""
 
-    Also unwrap when the wrapper includes a placeholder total_score=0 alongside
-    evaluation_output that contains the real mark.
-    """
+
+def _recover_prose_field(text: str, field: str) -> str:
+    value = _extract_json_string_field(text, field)
+    if value and value.strip():
+        return value.strip()
+    match = re.search(
+        rf'"{re.escape(field)}"\s*:\s*"(.*)$',
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if match:
+        frag = match.group(1)
+        frag = re.split(r'"\s*,\s*"|\'\s*,\s*"|\n###', frag, maxsplit=1)[0]
+        frag = frag.replace("\\n", "\n").replace('\\"', '"').strip()
+        if frag:
+            return frag
+    return ""
+
+
+def _fill_missing_prose(target: dict, markdown: str | None = None) -> dict:
+    if not isinstance(target, dict):
+        return target
+    md = markdown or ""
+    justification = str(target.get("justification") or "").strip()
+    feedback = str(target.get("feedback") or "").strip()
+
+    if not justification and md:
+        justification = _recover_prose_field(md, "justification")
+    if not feedback and md:
+        feedback = _recover_prose_field(md, "feedback")
+
+    explanation = _markdown_explanation(md) if md else ""
+    if not feedback and explanation:
+        feedback = explanation
+    if not justification and explanation:
+        justification = explanation
+    if justification and not feedback:
+        feedback = justification
+    if feedback and not justification:
+        justification = feedback
+
+    target["justification"] = justification
+    target["feedback"] = feedback
+    return target
+
+
+def _unwrap_colab_wrapper(data: dict) -> dict:
     if not isinstance(data, dict):
         return data
 
@@ -220,53 +269,38 @@ def _unwrap_colab_wrapper(data: dict) -> dict:
             isinstance(r, dict) and _row_score_from_item(r) > 0 for r in results
         )
 
-    # Already a real grading payload.
     if (direct > 0 or has_positive_results) and nested_val is None:
-        return data
+        return _fill_missing_prose(data)
     if (direct > 0 or has_positive_results) and nested_val is not None:
-        # Keep direct scores unless nested text clearly has a better grade object.
         extracted = _grade_dict_from_model_markdown(nested_val)
         if extracted and _top_level_score(extracted) > direct:
             extracted.setdefault(
                 "parse_warning",
                 f"Unwrapped Colab grade from '{nested_key}' (higher than wrapper score).",
             )
-            if not extracted.get("feedback"):
-                expl = re.search(
-                    r"###\s*Explanation\s*:\s*(.+?)(?:\n###|\Z)",
-                    nested_val,
-                    flags=re.IGNORECASE | re.DOTALL,
-                )
-                if expl:
-                    extracted["feedback"] = expl.group(1).strip()
-            return extracted
-        return data
+            return _fill_missing_prose(extracted, nested_val)
+        merged = dict(data)
+        if extracted:
+            if not str(merged.get("justification") or "").strip():
+                merged["justification"] = str(extracted.get("justification") or "").strip()
+            if not str(merged.get("feedback") or "").strip():
+                merged["feedback"] = str(extracted.get("feedback") or "").strip()
+        return _fill_missing_prose(merged, nested_val)
 
-    # Placeholder/zero wrapper — pull Grade & Feedback from markdown.
     if nested_val:
         extracted = _grade_dict_from_model_markdown(nested_val)
         if extracted:
-            if not extracted.get("feedback"):
-                expl = re.search(
-                    r"###\s*Explanation\s*:\s*(.+?)(?:\n###|\Z)",
-                    nested_val,
-                    flags=re.IGNORECASE | re.DOTALL,
-                )
-                if expl:
-                    extracted["feedback"] = expl.group(1).strip()
             extracted.setdefault(
                 "parse_warning",
                 f"Unwrapped Colab grade from '{nested_key}' markdown/wrapper.",
             )
-            return extracted
+            return _fill_missing_prose(extracted, nested_val)
 
-    return data
+    return _fill_missing_prose(data, nested_val)
 
 
 def _sanitize_colab_grading_payload(data: dict) -> dict:
-    """Normalize a parsed Colab dict so feedback/justification stay plain strings."""
     clean = dict(_unwrap_colab_wrapper(data))
-    # Drop wrapper-only keys that are not part of the grading schema.
     for noise in ("status", "evaluation_output", "ok", "success"):
         clean.pop(noise, None)
 
@@ -305,14 +339,12 @@ def parse_colab_response_body(text: str) -> dict:
             if parsed.get("error"):
                 raise ValueError(str(parsed["error"]))
             clean = _sanitize_colab_grading_payload(parsed)
-            # Normalize aliases so downstream always sees total_score.
             if clean.get("total_score") in (None, 0, 0.0) and (
                 clean.get("score") is not None or clean.get("marks") is not None
             ):
                 clean["total_score"] = _coerce_float(
                     clean.get("score", clean.get("marks"))
                 )
-            # If wrapper still had no score, try treating the whole body as model markdown.
             if clean.get("total_score") in (None, 0, 0.0) and not (
                 isinstance(clean.get("results"), list) and clean.get("results")
             ):
@@ -369,7 +401,6 @@ def _coerce_float(value, default: float = 0.0) -> float:
         return float(text)
     except ValueError:
         pass
-    # Common LLM forms: "7/10", "score: 4.5", "awarded 3 marks"
     match = re.search(r"-?\d+(?:\.\d+)?", text)
     if match:
         try:
@@ -380,13 +411,11 @@ def _coerce_float(value, default: float = 0.0) -> float:
 
 
 def _top_level_score(raw: dict) -> float:
-    """Colab models often return score/marks instead of total_score."""
     if not isinstance(raw, dict):
         return 0.0
     for key in ("total_score", "score", "marks", "awarded_marks", "total"):
         if key in raw and raw.get(key) is not None:
             val = _coerce_float(raw.get(key))
-            # Ignore max_score-sized placeholders only when explicitly zero-ish elsewhere
             if key != "max_score":
                 return val
     return 0.0
@@ -488,13 +517,11 @@ def _pick_result_for_question(
     results_raw: list,
     rubric_q: dict | None,
 ) -> dict:
-    """Match Colab/Groq result rows even when q_no formatting differs."""
     if q_no in by_qno:
         row = dict(by_qno[q_no])
         row["q_no"] = q_no
         return row
 
-    # Strip-leading-zero / alternate keys
     alt_keys = {q_no.lstrip("0") or "0", q_no.zfill(2), str(int(q_no)) if q_no.isdigit() else q_no}
     for key in alt_keys:
         if key in by_qno:
@@ -502,7 +529,6 @@ def _pick_result_for_question(
             row["q_no"] = q_no
             return row
 
-    # Single-question Colab calls often return one result with a mismatched q_no.
     if len(by_qno) == 1:
         row = dict(next(iter(by_qno.values())))
         row["q_no"] = q_no
@@ -516,7 +542,6 @@ def _pick_result_for_question(
 
 
 def normalize_evaluation(raw: dict, questions_list: list[dict] | None = None) -> dict:
-    """Unify Colab flat JSON and Groq structured JSON into one stored/API shape."""
     questions_list = questions_list or []
     max_score = _paper_max_score(
         questions_list, _coerce_float(raw.get("max_score"), _top_level_score(raw))
@@ -530,7 +555,6 @@ def normalize_evaluation(raw: dict, questions_list: list[dict] | None = None) ->
             if isinstance(item, dict):
                 row = _normalize_result_row(item, idx)
                 by_qno[row["q_no"]] = row
-                # Also index bare / zero-padded variants for lookup.
                 bare = row["q_no"].lstrip("0") or "0"
                 by_qno.setdefault(bare, row)
                 by_qno.setdefault(row["q_no"].zfill(2), row)
@@ -560,6 +584,7 @@ def normalize_evaluation(raw: dict, questions_list: list[dict] | None = None) ->
         total = top_total
         justification = str(raw.get("justification") or "").strip()
         feedback = str(raw.get("feedback") or "").strip()
+        top_breakdown = _normalize_criteria_breakdown(raw.get("criteria_breakdown"))
         if questions_list:
             results = []
             for idx, q in enumerate(questions_list, start=1):
@@ -571,25 +596,28 @@ def normalize_evaluation(raw: dict, questions_list: list[dict] | None = None) ->
                     {
                         "q_no": q_no,
                         "score": row_score,
-                        "criteria_breakdown": [],
+                        "criteria_breakdown": list(top_breakdown)
+                        if len(questions_list) == 1
+                        else [],
                         "justification": justification,
                         "feedback": feedback,
                     }
                 )
             if len(questions_list) > 1 and total > 0 and all(r["score"] == 0 for r in results):
                 results[0]["score"] = total
+                if top_breakdown:
+                    results[0]["criteria_breakdown"] = list(top_breakdown)
         else:
             results = [
                 {
                     "q_no": "01",
                     "score": total,
-                    "criteria_breakdown": [],
+                    "criteria_breakdown": list(top_breakdown),
                     "justification": justification,
                     "feedback": feedback,
                 }
             ]
 
-    # If results parsed as zeros but Colab returned a positive top-level score, recover it.
     if top_total > 0 and results and all(_coerce_float(r.get("score")) == 0 for r in results):
         if len(results) == 1:
             results[0]["score"] = top_total
@@ -633,7 +661,6 @@ def _emergency_fallback_response() -> dict:
 
 
 def _colab_health_url() -> str:
-    """Derive GET /health URL from COLAB_EVALUATE_URL (typically .../evaluate)."""
     if not COLAB_URL:
         return ""
     url = COLAB_URL.rstrip("/")
@@ -649,7 +676,6 @@ def _colab_probe_headers() -> dict[str, str]:
 
 
 def reset_colab_availability_cache() -> None:
-    """Clear cached Colab availability (tests / manual recovery)."""
     _colab_availability_cache["available"] = None
     _colab_availability_cache["reason"] = ""
     _colab_availability_cache["checked_at"] = 0.0
@@ -709,11 +735,7 @@ def _probe_colab_endpoint(url: str) -> tuple[bool, str]:
 
 
 def probe_colab_availability(*, force: bool = False) -> bool:
-    """
-    Probe Colab once; cache the result for COLAB_HEALTH_CACHE_SECONDS.
-    Returns True when Colab should be used for grading in this window.
-    """
-    if not COLAB_URL:
+    if GROQ_ONLY or not COLAB_URL:
         return False
 
     if not force:
@@ -744,6 +766,9 @@ def probe_colab_availability(*, force: bool = False) -> bool:
 
 
 def try_forward_to_colab(payload: dict) -> dict | None:
+    if GROQ_ONLY:
+        print("GROQ_ONLY enabled — skipping Colab.")
+        return None
     if not COLAB_URL:
         print("COLAB_EVALUATE_URL not set — skipping Colab, using fallback.")
         return None
@@ -770,6 +795,9 @@ def try_forward_to_colab(payload: dict) -> dict | None:
         snippet = str(colab_body.get("snippet") or "")
         if "GRADING POLICY (mandatory)" not in snippet:
             colab_body["snippet"] = (snippet + _COLAB_STRICT_POLICY).strip()
+        topic = str(colab_body.get("topic") or "")
+        if "GRADING POLICY (mandatory)" not in topic:
+            colab_body["topic"] = (topic + _COLAB_STRICT_POLICY).strip()
     timeout = (COLAB_CONNECT_TIMEOUT_SECONDS, COLAB_TIMEOUT_SECONDS)
     last_err: Exception | None = None
 
@@ -789,19 +817,16 @@ def try_forward_to_colab(payload: dict) -> dict | None:
             if response.status_code != 200:
                 print(f"Colab returned HTTP {response.status_code} on attempt {attempt}.")
                 last_err = RuntimeError(f"HTTP {response.status_code}")
-                # Tunnel gone / auth — don't retry or hammer remaining questions.
                 if response.status_code in (404, 403, 410):
                     _mark_colab_unavailable(
                         f"HTTP {response.status_code} on evaluate (attempt {attempt})"
                     )
                     return None
-                # Retry transient 5xx / 429; fail fast on other 4xx.
                 if response.status_code < 500 and response.status_code != 429:
                     return None
             else:
                 result = parse_colab_response_body(response.text)
                 result["grading_source"] = "colab"
-                # Raw Colab bodies often omit top-level score until normalize — keep this line light.
                 print(
                     "Primary engine HTTP 200 "
                     f"(parsed total_score={result.get('total_score')}, "
@@ -819,7 +844,6 @@ def try_forward_to_colab(payload: dict) -> dict | None:
         except (ValueError, requests.exceptions.RequestException) as err:
             last_err = err
             print(f"Primary engine failed on attempt {attempt}/{COLAB_RETRIES} ({type(err).__name__}): {err}")
-            # Malformed JSON / non-retryable request errors — don't hammer Colab.
             if isinstance(err, ValueError):
                 return None
 
@@ -912,11 +936,9 @@ def _enrich_payload_with_rag(payload: dict) -> dict:
     rag_snippet = str(rag.get("snippet") or "").strip()
 
     if rag_used:
-        # Real lecture chunks for the model.
         enriched["snippet"] = rag_snippet
     else:
-        # Empty RAG is fine — Colab/Groq must still grade from rubric + answer.
-        # Do NOT send "No lecture materials found…" prose; it can bias models toward 0.
+        # Avoid "not found" prose in snippet; it can bias scores toward 0.
         enriched["snippet"] = (
             "No lecture context available. Grade using only the rubric and the student's answer."
         )
@@ -927,7 +949,6 @@ def _enrich_payload_with_rag(payload: dict) -> dict:
         "rag_chunks": rag_chunks if rag_used else 0,
         "rag_context_used": rag_used,
         "course_name": rag.get("course_name") or course_name or None,
-        # Store real lecture text only when used; empty when RAG missed.
         "rag_snippet": rag_snippet if rag_used else "",
     }
     return enriched
@@ -946,20 +967,161 @@ def _attach_rag_meta(result: dict, enriched: dict) -> dict:
     return result
 
 
+def _is_stub_prose(text: str) -> bool:
+    t = " ".join((text or "").strip().lower().split())
+    if not t:
+        return False
+    if t in {
+        "<short>",
+        "<long>",
+        "<ok>",
+        "<todo>",
+        "<n/a>",
+        "todo",
+        "tbd",
+        "...",
+        "…",
+        ".",
+        "-",
+    }:
+        return True
+    if len(t) <= 24 and t.startswith("<") and t.endswith(">") and " " not in t:
+        return True
+    copied_examples = (
+        "give concrete advice for this student",
+        "explain which criteria were met or missed",
+        "explain which rubric criteria were met or missed",
+        "give brief advice based on this answer",
+        "add the missing definition and one clear example",
+        "criterion a is met; criterion b is only partly covered",
+        "model returned placeholder feedback; score kept from colab",
+    )
+    if t in copied_examples:
+        return True
+    if any(t == ex or t.startswith(ex + ".") for ex in copied_examples):
+        return True
+    return False
+
+
+def _evaluation_has_stub_feedback(normalized: dict) -> bool:
+    if not isinstance(normalized, dict):
+        return False
+    if _is_stub_prose(str(normalized.get("feedback") or "")):
+        return True
+    if _is_stub_prose(str(normalized.get("justification") or "")):
+        return True
+    for row in normalized.get("results") or []:
+        if not isinstance(row, dict):
+            continue
+        if _is_stub_prose(str(row.get("feedback") or "")):
+            return True
+        if _is_stub_prose(str(row.get("justification") or "")):
+            return True
+    return False
+
+
+def _evaluation_has_usable_score(normalized: dict) -> bool:
+    if not isinstance(normalized, dict):
+        return False
+    if _coerce_float(normalized.get("total_score")) > 0:
+        return True
+    for row in normalized.get("results") or []:
+        if isinstance(row, dict) and _coerce_float(row.get("score")) > 0:
+            return True
+    return False
+
+
+def _scrub_stub_prose(normalized: dict) -> dict:
+    out = dict(normalized)
+    note = "Model returned placeholder feedback; score kept from Colab."
+    if _is_stub_prose(str(out.get("feedback") or "")):
+        out["feedback"] = note
+    if _is_stub_prose(str(out.get("justification") or "")):
+        out["justification"] = note
+    results = out.get("results")
+    if isinstance(results, list):
+        cleaned = []
+        for row in results:
+            if not isinstance(row, dict):
+                cleaned.append(row)
+                continue
+            item = dict(row)
+            if _is_stub_prose(str(item.get("feedback") or "")):
+                item["feedback"] = note
+            if _is_stub_prose(str(item.get("justification") or "")):
+                item["justification"] = note
+            cleaned.append(item)
+        out["results"] = cleaned
+    return out
+
+
+def _apply_colab_or_recover(enriched: dict, questions_list: list[dict], colab_result: dict) -> dict:
+    normalized = normalize_evaluation(colab_result, questions_list)
+    if not _evaluation_has_stub_feedback(normalized):
+        return normalized
+
+    print("Colab returned stub feedback (<short>/placeholder); retrying once...")
+    time.sleep(COLAB_RETRY_DELAY_SECONDS)
+    retry_raw = try_forward_to_colab(enriched)
+    if retry_raw is not None:
+        retry_norm = normalize_evaluation(retry_raw, questions_list)
+        if not _evaluation_has_stub_feedback(retry_norm):
+            print("Colab retry produced usable feedback.")
+            return retry_norm
+        if _evaluation_has_usable_score(retry_norm):
+            print("Colab retry still stubbed prose; keeping Colab scores (not switching to Groq).")
+            return _scrub_stub_prose(retry_norm)
+        print("Colab retry stubbed with no usable score; switching to Groq.")
+    else:
+        if _evaluation_has_usable_score(normalized):
+            print("Colab retry unavailable; keeping original Colab scores.")
+            return _scrub_stub_prose(normalized)
+        print("Colab retry unavailable and no usable score; switching to Groq.")
+
+    return grade_with_groq(enriched)
+
+
 def evaluate_grading(payload: dict) -> dict:
     questions_list = _parse_rubric_questions(payload.get("rubric", ""))
     enriched = _enrich_payload_with_rag(payload)
+    if GROQ_ONLY:
+        print("GROQ_ONLY enabled — grading with Groq only.")
+        try:
+            return _attach_rag_meta(grade_with_groq(enriched), enriched)
+        except Exception as err:
+            print(f"Groq failed: {err}")
+            if GROQ_API_KEY:
+                raise
+            return _attach_rag_meta(
+                normalize_evaluation(_emergency_fallback_response(), questions_list),
+                enriched,
+            )
+
     colab_result = try_forward_to_colab(enriched)
     if colab_result is not None:
-        normalized = normalize_evaluation(colab_result, questions_list)
+        try:
+            normalized = _apply_colab_or_recover(enriched, questions_list, colab_result)
+        except Exception as err:
+            print(f"Colab stub recovery failed ({type(err).__name__}): {err}")
+            print("Switching to fallback system...")
+            try:
+                normalized = grade_with_groq(enriched)
+            except Exception as groq_err:
+                print(f"Fallback model failed: {groq_err}")
+                if GROQ_API_KEY:
+                    raise
+                normalized = normalize_evaluation(
+                    _emergency_fallback_response(), questions_list
+                )
         per_q = [
             f"Q{r.get('q_no')}={r.get('score')}"
             for r in (normalized.get("results") or [])
             if isinstance(r, dict)
         ]
         print(
-            "Colab grade applied "
-            f"(total_score={normalized.get('total_score')}, "
+            "Grade applied "
+            f"(source={normalized.get('grading_source')}, "
+            f"total_score={normalized.get('total_score')}, "
             f"max_score={normalized.get('max_score')}, "
             f"{', '.join(per_q) or 'no per-question rows'})."
         )
@@ -979,7 +1141,6 @@ def evaluate_grading(payload: dict) -> dict:
 
 
 async def evaluate_grading_async(payload: dict) -> dict:
-    """Run Colab/Groq/RAG HTTP off the event loop so dashboard polls stay live."""
     return await asyncio.to_thread(evaluate_grading, payload)
 
 
