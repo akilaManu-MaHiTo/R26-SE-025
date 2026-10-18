@@ -49,7 +49,6 @@ def _row_from_evaluation(evaluation: dict, q_no: str) -> dict:
             if item_no == q_no or len(results) == 1:
                 score = _coerce_float(item.get("score", item.get("marks")))
                 if score == 0:
-                    # Colab often puts the mark on the parent object as score/total_score.
                     score = _coerce_float(
                         evaluation.get(
                             "total_score",
@@ -65,12 +64,13 @@ def _row_from_evaluation(evaluation: dict, q_no: str) -> dict:
                         ),
                         4,
                     )
+                breakdown = item.get("criteria_breakdown")
+                if not isinstance(breakdown, list) or not breakdown:
+                    breakdown = evaluation.get("criteria_breakdown")
                 return {
                     "q_no": q_no,
                     "score": score,
-                    "criteria_breakdown": item.get("criteria_breakdown")
-                    if isinstance(item.get("criteria_breakdown"), list)
-                    else [],
+                    "criteria_breakdown": breakdown if isinstance(breakdown, list) else [],
                     "justification": str(
                         item.get("justification") or evaluation.get("justification") or ""
                     ).strip(),
@@ -79,6 +79,7 @@ def _row_from_evaluation(evaluation: dict, q_no: str) -> dict:
                     ).strip(),
                 }
 
+    parent_breakdown = (evaluation or {}).get("criteria_breakdown")
     return {
         "q_no": q_no,
         "score": _coerce_float(
@@ -87,7 +88,9 @@ def _row_from_evaluation(evaluation: dict, q_no: str) -> dict:
                 (evaluation or {}).get("score", (evaluation or {}).get("marks")),
             )
         ),
-        "criteria_breakdown": [],
+        "criteria_breakdown": parent_breakdown
+        if isinstance(parent_breakdown, list)
+        else [],
         "justification": str((evaluation or {}).get("justification") or "").strip(),
         "feedback": str((evaluation or {}).get("feedback") or "").strip(),
     }
@@ -467,7 +470,6 @@ async def regrade_single_question(
     old_results = [
         r for r in (existing.get("results") or []) if isinstance(r, dict)
     ]
-    # Preserve order of rubric questions
     by_no = {
         normalize_question_no(r.get("q_no") or r.get("question_no"), i): r
         for i, r in enumerate(old_results, start=1)
