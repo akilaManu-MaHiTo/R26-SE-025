@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_FILE = str(Path(__file__).resolve().parents[1] / ".env")
@@ -26,6 +27,8 @@ class Settings(BaseSettings):
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_available: bool = True
     candidate_similarity_threshold: float = 0.85
+    course_rag_index: str = str(Path(__file__).resolve().parents[1] / "storage" / "course_rag" / "index.sqlite3")
+    course_rag_min_similarity: float = Field(default=0.45, ge=0, le=1)
 
     # Bloom ModernBERT; threshold flags low-confidence analytics for review.
     bloom_enabled: bool = True
@@ -51,7 +54,7 @@ class Settings(BaseSettings):
     @property
     def llm_base_url(self) -> str:
         """Ollama endpoint actually used, resolved from ``env``."""
-        return self.ollama_base_url
+        return self.ollama_base_url if self.env == "colab" else "http://localhost:11434"
 
 
 settings = Settings()

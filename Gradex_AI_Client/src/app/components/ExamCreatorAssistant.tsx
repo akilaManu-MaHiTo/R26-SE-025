@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { ThinkingOrb } from "thinking-orbs";
 import { toast } from "sonner";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { BLOOM_LEVELS, defaultBlueprint, generateExamQuestions, reviewExamPaper,
-  type Blueprint, type CreatorReview, type Generation, type Paper, type Part } from "../api/examCreatorApi";
+  type Blueprint, type CreatorReview, type Generation, type Paper, type Part,
+  type MaterialSource, type GenerationRetrieval, type CreatorApiError } from "../api/examCreatorApi";
 
 type Props = { courseCode: string; paper: Paper; setPaper: Dispatch<SetStateAction<Paper>> };
 const selectClass = "w-full rounded border bg-background p-2 text-sm";
+const sourceLabel = (source: MaterialSource) => {
+  const kind = ({ lecture: "Lecture notes", tutorial: "Tutorial", exam: "Past exam", lecture_objective: "Lecture objective" } as Record<string, string>)[source.kind] ?? "Lecturer notes";
+  return `${kind}: ${source.filename ?? source.source_id}${source.page_number ? ` · page ${source.page_number}` : ""}`;
+};
 
 export function ExamCreatorAssistant({ courseCode, paper, setPaper }: Props) {
   const blueprint = paper.blueprint ?? defaultBlueprint();
@@ -18,6 +24,7 @@ export function ExamCreatorAssistant({ courseCode, paper, setPaper }: Props) {
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generationError, setGenerationError] = useState("");
+  const [retrieval, setRetrieval] = useState<GenerationRetrieval | undefined>();
   const [topic, setTopic] = useState("");
   const [bloom, setBloom] = useState("Apply");
   const [marks, setMarks] = useState(10);
@@ -32,6 +39,7 @@ export function ExamCreatorAssistant({ courseCode, paper, setPaper }: Props) {
     setGeneration(null);
     setGenerating(false);
     setGenerationError("");
+    setRetrieval(undefined);
   };
 
   useEffect(() => {
@@ -40,6 +48,8 @@ export function ExamCreatorAssistant({ courseCode, paper, setPaper }: Props) {
     version.current += 1;
     generationAbort.current?.abort();
     setGeneration(null);
+    setRetrieval(undefined);
+    setGenerationError("");
     setGenerating(false);
     setLoading(true);
     setError("");
@@ -71,12 +81,18 @@ export function ExamCreatorAssistant({ courseCode, paper, setPaper }: Props) {
     generationAbort.current?.abort();
     generationAbort.current = controller;
     const currentVersion = version.current;
-    setGenerating(true); setGenerationError(""); setGeneration(null);
+    setGenerating(true); setGenerationError(""); setGeneration(null); setRetrieval(undefined);
     try {
       const data = await generateExamQuestions(courseCode, paper, topic, bloom, marks, controller.signal);
-      if (version.current === currentVersion && !controller.signal.aborted) setGeneration(data);
+      if (version.current === currentVersion && !controller.signal.aborted) {
+        setGeneration(data);
+        setRetrieval(data.retrieval);
+      }
     } catch (err) {
-      if (!controller.signal.aborted) setGenerationError(err instanceof Error ? err.message : "Generation failed");
+      if (!controller.signal.aborted && version.current === currentVersion) {
+        setGenerationError(err instanceof Error ? err.message : "Generation failed");
+        setRetrieval((err as CreatorApiError)?.retrieval);
+      }
     } finally {
       if (version.current === currentVersion && !controller.signal.aborted) setGenerating(false);
     }
@@ -106,14 +122,14 @@ export function ExamCreatorAssistant({ courseCode, paper, setPaper }: Props) {
       </div><p className="text-xs mt-2">Total: {Object.values(blueprint.bloom_percentages).reduce((s, n) => s + n, 0)}% (must equal 100%)</p></details>
       <details><summary className="cursor-pointer text-sm">Lecture notes for generation</summary>
         <label className="block text-xs mt-2">Relevant course material<Textarea maxLength={20000} rows={6} value={blueprint.lecture_notes} placeholder="Paste relevant lecture passages, definitions, examples and schemas." onChange={e => updateBlueprint({ lecture_notes: e.target.value })} /></label>
-        <p className="text-xs text-muted-foreground">Saved with this draft. Without notes, generation can use only the bank's lecture objectives.</p>
+        <p className="text-xs text-muted-foreground">Saved with this draft. Generation also searches indexed course lectures. Lecture objectives are used when no matching passages are available.</p>
       </details>
       <datalist id="creator-topics">{Array.from(new Set([...(review?.topics ?? []), ...Object.keys(blueprint.topic_marks)])).map(t => <option key={t} value={t} />)}</datalist>
     </Card>
 
     <Card className="p-4 space-y-2" aria-live="polite">
       <h3 className="font-semibold">Paper checks</h3>
-      {loading && <p className="text-sm">Checking draft…</p>}
+      {loading && <p className="flex items-center gap-2 text-sm"><ThinkingOrb state="solving" size={20} aria-hidden="true" />Checking draft…</p>}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {review && <>
         <p className="text-sm">{review.review.total_marks}/{blueprint.total_marks} marks · {review.review.remaining_marks} remaining</p>
@@ -129,9 +145,22 @@ export function ExamCreatorAssistant({ courseCode, paper, setPaper }: Props) {
       <label className="block text-xs">Topic<Input list="creator-topics" value={topic} onChange={e => { setTopic(e.target.value); clearGeneration(); }} placeholder="Select or enter a course topic" /></label>
       <div className="grid grid-cols-2 gap-2"><label className="text-xs">Bloom level<select className={selectClass} value={bloom} onChange={e => { setBloom(e.target.value); clearGeneration(); }}>{BLOOM_LEVELS.map(l => <option key={l}>{l}</option>)}</select></label>
         <label className="text-xs">Marks per alternative<Input type="number" min={1} value={marks} onChange={e => { setMarks(Number(e.target.value)); clearGeneration(); }} /></label></div>
-      <Button className="w-full" disabled={generating || loading || !!error || !topic.trim() || marks <= 0} onClick={generate}>{generating ? "Generating questions…" : "Generate 2 alternatives"}</Button>
+      <Button className="w-full" disabled={generating || loading || !!error || !topic.trim() || marks <= 0} onClick={generate}>{generating ? <><ThinkingOrb state="composing" size={20} aria-hidden="true" />Generating questions…</> : "Generate 2 alternatives"}</Button>
       <p className="text-xs text-muted-foreground">Review the answer, rubric, sources and Bloom level before approving a question.</p>
       {generationError && <p role="alert" className="text-sm text-red-600">{generationError}</p>}
+      {retrieval && <div className="space-y-2 text-xs" aria-live="polite">
+        <p>Retrieved {retrieval.lectures.sources.length} lecture passages and {retrieval.assessment_examples.sources.length} assessment examples.
+          {retrieval.lectures.status === "ok" && ` Search: ${retrieval.lectures.mode === "hybrid" ? "semantic + keywords" : "keywords"}.`}</p>
+        {Array.from(new Set([...retrieval.lectures.warnings, ...retrieval.assessment_examples.warnings])).map(warning =>
+          <p key={warning} className="text-amber-700">{warning}</p>)}
+        {!!retrieval.assessment_examples.sources.length && <details>
+          <summary className="cursor-pointer">Assessment examples</summary>
+          <p className="mt-2 text-muted-foreground">Used for question style and originality review.</p>
+          {retrieval.assessment_examples.sources.map(source => <div key={source.source_id} className="mt-2">
+            <strong>{sourceLabel(source)}</strong><p className="whitespace-pre-wrap">{source.text}</p>
+          </div>)}
+        </details>}
+      </div>}
       {generation && <>
         {!generation.similarity_available && <p className="text-xs text-amber-700">Semantic similarity check unavailable. Text similarity was checked; inspect for reused ideas.</p>}
         {generation.similarity_checks.some(c => c.flagged) && <p className="text-xs text-amber-700">One or more alternatives closely resemble existing questions. Review originality.</p>}
@@ -141,7 +170,7 @@ export function ExamCreatorAssistant({ courseCode, paper, setPaper }: Props) {
           <details><summary className="text-xs cursor-pointer">Answer, rubric and source evidence</summary>
             <p className="text-xs whitespace-pre-wrap my-2">{candidate.model_answer}</p>
             <ul className="text-xs list-disc pl-4">{candidate.marking_scheme.map((c, i) => <li key={i}>{c.criterion} ({c.marks} marks)</li>)}</ul>
-            {candidate.sources.map(s => <p key={s.source_id} className="text-xs whitespace-pre-wrap mt-2"><strong>{s.kind === "lecture_objective" ? "Lecture objective" : "Lecturer notes"}: {s.source_id}</strong><br />{s.text}</p>)}
+            {candidate.sources.map(s => <p key={s.source_id} className="text-xs whitespace-pre-wrap mt-2"><strong>{sourceLabel(s)}</strong><br />{s.text}</p>)}
           </details>
           <div className="flex gap-2"><Button size="sm" onClick={() => addPart(candidate.topic, { ...candidate, part: "a", question: candidate.text, max_marks: candidate.marks })}>Add for review</Button>
           <Button size="sm" variant="ghost" onClick={() => setPaper(prev => ({ ...prev, rejected_questions: [...(prev.rejected_questions ?? []), { question_id: candidate.question_id, reason: "Generated alternative rejected" }] }))}>Reject</Button></div>
@@ -183,7 +212,7 @@ export function PartReviewEditor({ part, onChange }: { part: Part; onChange: (ch
         <Button variant="ghost" size="sm" aria-label={`Remove criterion ${index + 1}`} onClick={() => edit({ marking_scheme: scheme.filter((_, i) => i !== index) })}>Remove</Button></div>)}
       <Button variant="outline" size="sm" onClick={() => edit({ marking_scheme: [...scheme, { criterion: "", marks: 1 }] })}>Add criterion</Button>
       <p>Rubric: {scheme.reduce((sum, c) => sum + c.marks, 0)}/{part.max_marks} marks</p>
-      {part.sources?.map(s => <details key={s.source_id}><summary className="cursor-pointer">{s.kind === "lecture_objective" ? "Lecture objective" : "Lecturer notes"}: {s.source_id}</summary><p className="whitespace-pre-wrap">{s.text}</p></details>)}
+      {part.sources?.map(s => <details key={s.source_id}><summary className="cursor-pointer">{sourceLabel(s)}</summary><p className="whitespace-pre-wrap">{s.text}</p></details>)}
       <Button size="sm" disabled={!ready || part.review_status === "approved"} onClick={() => onChange({ review_status: "approved" })}>Approve question and answer</Button>
     </div>
   </details>;

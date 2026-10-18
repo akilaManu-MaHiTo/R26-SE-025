@@ -49,21 +49,31 @@ def minimal_submission(q_no: str, score: float, max_score: float) -> dict:
 
 
 def test_normalize_submission_joins_questions_and_criteria():
-    rubric = _load("rubricCollection/rubricCollection.json")
-    submission = _load("submissions/submission.json")[0]
+    rubric = minimal_rubric()
+    rubric["questions"][0]["criteria"] = [{"point": "Correct answer", "marks": 3}, {"point": "Explanation", "marks": 2}]
+    submission = minimal_submission("01", 3, 5)
+    submission["evaluation"]["results"][0]["criteria_breakdown"] = [
+        {"point": "Explanation", "awarded_marks": 1}, {"point": "Correct answer", "awarded_marks": 2}]
     normalized = normalize_student_submission(
         {"course_code": "IT2040", "course_name": "Database Management Systems"},
         rubric,
         submission,
     )
-    assert normalized.student_id == "IT22145976"
+    assert normalized.student_id == "IT21001234"
     assert normalized.course_code == "IT2040"
     assert normalized.course_name == "Database Management Systems"
-    assert len(normalized.questions) == 4
+    assert len(normalized.questions) == 1
     assert normalized.questions[0].question_no == "01"
-    assert normalized.questions[0].score == 11.0
-    assert normalized.questions[0].max_score == 20.0
+    assert normalized.questions[0].score == 3.0
+    assert normalized.questions[0].max_score == 5.0
     assert normalized.questions[0].criteria[0].awarded_marks == 2.0
+
+
+def test_old_sample_with_different_criterion_labels_requires_review():
+    rubric = _load("rubricCollection/rubricCollection.json")[0]
+    submission = _load("submissions/submission.json")[0]
+    with pytest.raises(StudentDataError, match="criterion"):
+        normalize_student_submission(minimal_course(), rubric, submission)
 
 
 def test_normalize_submission_rejects_result_without_rubric_question():

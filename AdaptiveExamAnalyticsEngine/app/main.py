@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.dashboard import router as dashboard_router
 from app.api.lecturer import router as lecturer_router
 from app.api.taxonomy import router as taxonomy_router
+from app.api.course_rag import router as course_rag_router
 
 from Gradex_AI_Server.app.session_auth import setup_auth, initialize_auth, close_auth, allowed_origins
 
@@ -34,4 +35,5 @@ app.add_middleware(
 
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(lecturer_router, prefix="/api")
+app.include_router(course_rag_router, prefix="/api")
 app.include_router(taxonomy_router)
