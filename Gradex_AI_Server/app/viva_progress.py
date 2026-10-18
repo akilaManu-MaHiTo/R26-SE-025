@@ -100,10 +100,13 @@ def _as_payload(row: Dict[str, Any]) -> Dict[str, Any]:
         "stages": STAGE_ORDER,
         "version": int(row.get("version") or 0),
         "finished": bool(row.get("finished")),
+        # Set once the mark is saved, so a client that reloaded mid-analysis can
+        # still open the finished result.
+        "mark_id": row.get("mark_id"),
     }
 
 
-def finish(job_id: Optional[str]) -> None:
+def finish(job_id: Optional[str], mark_id: Optional[str] = None) -> None:
     """Mark a job done so its SSE stream can close instead of idling to timeout."""
     global _VERSION
     if not job_id:
@@ -114,6 +117,8 @@ def finish(job_id: Optional[str]) -> None:
             return
         _VERSION += 1
         row["finished"] = True
+        if mark_id:
+            row["mark_id"] = mark_id
         row["version"] = _VERSION
         row["updated_at"] = time.time()
         _CHANGED.notify_all()

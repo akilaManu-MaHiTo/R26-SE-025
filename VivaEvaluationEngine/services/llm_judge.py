@@ -11,63 +11,27 @@ Design rules:
 from __future__ import annotations
 
 import json
-import os
-import re
 import urllib.error
-import urllib.request
-from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+# Shared LLM config + HTTP helpers. The leading-underscore names are kept as module attributes
+# because the other engine modules import them from here and the tests patch them by name.
+from services.llm_common import (
+    DEFAULT_MODEL,
+    extract_json_object as _extract_json_object,
+    is_model_unavailable_error,
+    post_chat_completion,
+    resolve_api_key as _api_key,
+    resolve_model_name as _model_name,
+)
 
 
 CRITERIA = ("communication_clarity", "confidence", "engagement")
-_ENV_LOADED = False
-
-
-def _load_env_files() -> None:
-    """Load local .env files without requiring python-dotenv."""
-    global _ENV_LOADED
-    if _ENV_LOADED:
-        return
-    _ENV_LOADED = True
-    engine_root = Path(__file__).resolve().parents[1]
-    candidates = [
-        engine_root / ".env",
-        engine_root.parent / "Gradex_AI_Server" / "app" / ".env",
-    ]
-    for path in candidates:
-        if not path.is_file():
-            continue
-        try:
-            for raw in path.read_text(encoding="utf-8").splitlines():
-                line = raw.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, value = line.split("=", 1)
-                key = key.strip()
-                value = value.strip().strip('"').strip("'")
-                if key and key not in os.environ:
-                    os.environ[key] = value
-        except OSError:
-            continue
-
-
-def _api_key() -> Optional[str]:
-    _load_env_files()
-    for name in ("VIVA_LLM_API_KEY", "GROQ_API_KEY", "AI_API_KEY", "BACKUP_API_KEY"):
-        value = os.getenv(name)
-        if value and value.strip():
-            return value.strip()
-    return None
-
-
-def _model_name() -> str:
-    _load_env_files()
-    return os.getenv("VIVA_LLM_MODEL") or os.getenv("GROQ_MODEL") or "openai/gpt-oss-20b"
 
 
 # Groq retired llama-3.3-70b-versatile / llama-3.1-8b-instant on 16 Aug 2026.
 LIVE_CHAT_MODELS = (
-    "openai/gpt-oss-20b",
+    DEFAULT_MODEL,
     "openai/gpt-oss-120b",
     "qwen/qwen3.6-27b",
 )
@@ -218,35 +182,6 @@ def _validate_judge_payload(payload: Any) -> Optional[Dict[str, Any]]:
     return validated
 
 
-def _extract_json_object(text: str) -> Optional[Dict[str, Any]]:
-    cleaned = text.strip()
-    if cleaned.startswith("```"):
-        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
-        cleaned = re.sub(r"\s*```$", "", cleaned)
-    try:
-        parsed = json.loads(cleaned)
-        if isinstance(parsed, dict):
-            return parsed
-    except json.JSONDecodeError:
-        pass
-    match = re.search(r"\{[\s\S]*\}", cleaned)
-    if not match:
-        return None
-    try:
-        parsed = json.loads(match.group(0))
-    except json.JSONDecodeError:
-        return None
-    return parsed if isinstance(parsed, dict) else None
-
-
-def _chat_url() -> str:
-    _load_env_files()
-    base = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or os.getenv("VIVA_LLM_BASE_URL") or "https://api.groq.com/openai/v1").rstrip("/")
-    if base.endswith("/chat/completions"):
-        return base
-    return f"{base}/chat/completions"
-
-
 def _call_groq_chat_once(payload: Dict[str, Any], api_key: str, model: str) -> str:
     body = {
         "model": model,
@@ -264,21 +199,7 @@ def _call_groq_chat_once(payload: Dict[str, Any], api_key: str, model: str) -> s
             },
         ],
     }
-    request = urllib.request.Request(
-        _chat_url(),
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": "GradexVivaEvaluationEngine/1.0",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=45) as response:
-        raw = json.loads(response.read().decode("utf-8"))
-    return str(raw["choices"][0]["message"]["content"])
-
+    return post_chat_completion(body, api_key, timeout=45)
 
 
 def _call_groq_chat(payload: Dict[str, Any], api_key: str, model: str) -> str:
@@ -292,15 +213,7 @@ def _call_groq_chat(payload: Dict[str, Any], api_key: str, model: str) -> str:
             return content
         except urllib.error.HTTPError as exc:
             last_error = exc
-            body = ""
-            try:
-                body = exc.read().decode("utf-8", errors="replace")
-            except Exception:
-                body = str(exc.reason or exc)
-            lowered = body.lower()
-            if exc.code == 404 or (
-                exc.code == 400 and ("model" in lowered or "not exist" in lowered or "not found" in lowered)
-            ):
+            if is_model_unavailable_error(exc):
                 continue
             raise
     _call_groq_chat.last_model = used_model  # type: ignore[attr-defined]

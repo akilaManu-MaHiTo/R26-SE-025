@@ -18,7 +18,13 @@ import {
   AssessmentMode,
   TechnicalAccuracyAI,
   VivaAssessment,
+  formatMarkValue,
+  formatOfficialMark,
+  percentToMark,
+  suggestedTechnicalMark,
 } from "./types";
+import { useMarkingScale } from "./useMarkingScale";
+import { STUDENT_ID_HINT } from "./studentId";
 import {
   formatFusionLabel,
   parseFusionWeights,
@@ -47,6 +53,7 @@ interface EvaluationPanelProps {
   onPublish: () => void;
   analysisResult?: {
     final_score?: number | null;
+    final_mark?: number | null;
     final_grade?: string | null;
     auto_published?: boolean;
   } | null;
@@ -70,9 +77,12 @@ export function EvaluationPanel({
   analysisResult,
 }: EvaluationPanelProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const { technicalMax } = useMarkingScale();
 
   const incomplete = assessment?.status === "INCOMPLETE";
   const aiScore = assessment?.ai_performance?.score ?? null;
+  // AI performance as a mark on the mark scale (the score itself is a 0-100 percentage).
+  const aiMark = assessment?.ai_performance?.mark ?? percentToMark(aiScore);
   const withTech = assessmentMode === "WITH_TECHNICAL_ACCURACY";
   const fusionWeights = parseFusionWeights(assessment?.fusion);
 
@@ -135,8 +145,8 @@ export function EvaluationPanel({
           AI performance score
         </ScoreExplainHover>
         <div className="tracking-tight text-foreground mt-0.5">
-          <span className="text-3xl font-semibold">{aiScore != null ? aiScore.toFixed(1) : "—"}</span>
-          <span className="text-muted-foreground"> / 100</span>
+          <span className="text-3xl font-semibold">{formatMarkValue(aiMark)}</span>
+          <span className="text-muted-foreground"> / {preview.markMax}</span>
         </div>
       </div>
 
@@ -153,7 +163,7 @@ export function EvaluationPanel({
               {family.replace("_", " ")}
             </ScoreExplainHover>
             <span>
-              {familyScores[family] != null ? `${(familyScores[family]! * 100).toFixed(0)} / 100` : "—"}
+              {familyScores[family] != null ? `${(familyScores[family]! * 100).toFixed(0)}%` : "—"}
             </span>
           </div>
         ))}
@@ -207,21 +217,21 @@ export function EvaluationPanel({
             <div>
               <div className="text-foreground">Technical accuracy</div>
               <div className="text-xs text-muted-foreground">
-                {technicalAccuracyAI?.overall_score != null
+                {suggestedTechnicalMark(technicalAccuracyAI) != null
                   ? "Pre-filled from the AI suggestion above — examiner decides the final score"
                   : "Examiner only — not inferred from video"}
               </div>
             </div>
             <span className="font-medium shrink-0">
-              {technicalAccuracy != null ? `${technicalAccuracy} / 10` : "— / 10"}
+              {technicalAccuracy != null ? `${technicalAccuracy} / ${technicalMax}` : `— / ${technicalMax}`}
             </span>
           </div>
           <Slider
             className="mt-2"
             value={[technicalAccuracy ?? 0]}
             min={0}
-            max={10}
-            step={1}
+            max={technicalMax}
+            step={0.5}
             disabled={lockedAfterTechPublish}
             onValueChange={([v]) => onChangeTechnicalAccuracy(v)}
             aria-label="Technical accuracy"
@@ -231,15 +241,17 @@ export function EvaluationPanel({
 
       <div className="mt-4">
         <label className="text-xs text-muted-foreground" htmlFor="viva-student-id">
-          Student ID (optional, for training rows)
+          Student ID
         </label>
         <Input
           id="viva-student-id"
           className="mt-1"
           value={studentId}
           disabled={lockedAfterTechPublish}
-          onChange={(e) => onChangeStudentId(e.target.value)}
-          placeholder="e.g. STU-001"
+          onChange={(e) => onChangeStudentId(e.target.value.toUpperCase())}
+          placeholder="e.g. IT22557056"
+          maxLength={10}
+          title={STUDENT_ID_HINT}
         />
       </div>
 
@@ -252,13 +264,11 @@ export function EvaluationPanel({
               assessmentMode={assessmentMode}
               className="text-xs text-muted-foreground uppercase tracking-wide"
             >
-              Final score
+              Final mark
             </ScoreExplainHover>
             <div className="tracking-tight text-foreground mt-0.5">
-              <span className="text-3xl font-semibold">
-                {preview.finalScore != null ? preview.finalScore.toFixed(1) : "—"}
-              </span>
-              <span className="text-muted-foreground"> / 100</span>
+              <span className="text-3xl font-semibold">{formatMarkValue(preview.finalMark)}</span>
+              <span className="text-muted-foreground"> / {preview.markMax}</span>
             </div>
           </div>
           <ScoreExplainHover
@@ -305,8 +315,8 @@ export function EvaluationPanel({
             <AlertDialogHeader>
               <AlertDialogTitle>Publish this assessment?</AlertDialogTitle>
               <AlertDialogDescription>
-                Publishes final score {preview.finalScore != null ? preview.finalScore.toFixed(1) : "—"}/100
-                (grade {preview.grade ?? "—"}) with your technical accuracy input.
+                Publishes final mark {formatOfficialMark(preview.finalMark, preview.markMax)} (grade {preview.grade ?? "—"}) with
+                your technical accuracy input of {technicalAccuracy ?? "—"} / {technicalMax}.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

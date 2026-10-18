@@ -41,9 +41,9 @@ export function LecturerDashboard() {
       icon: BarChart3,
     },
     {
-      path: "/viva-evaluation/viva-assessment",
+      path: "/viva-evaluation/vivas",
       title: "Viva assessment",
-      desc: "Upload viva recordings — get transcripts, key moments and rubric scoring.",
+      desc: "Create a viva per subject, then upload recordings — get transcripts, key moments and rubric scoring.",
       icon: Video,
     },
   ];

@@ -1,9 +1,11 @@
+import { getMarkingScale } from "./markingScale";
 import {
   AnalysisResult,
   AssessmentMode,
   VivaAssessment,
   VivaFusion,
-  resolveGradeFromPercent,
+  percentToMark,
+  resolveGradeFromMark,
 } from "./types";
 
 /** Fallback only when the server did not attach fusion metadata (should be rare). */
@@ -36,43 +38,54 @@ export function parseFusionWeights(fusion?: VivaFusion | null): FusionWeights {
   return { weightAi: rawAi, weightTechnical: rawTechnical };
 }
 
-export function fusePreviewScore(
-  aiScore: number,
-  technicalAccuracy0to10: number,
+/**
+ * Preview of the fused official mark before publish. Mirrors the server: the AI score is a
+ * 0-100 percentage, the technical score is out of the scale's technical maximum, and the blend
+ * is scaled to the mark scale and rounded to its decimals.
+ */
+export function fusePreviewMark(
+  aiPercent: number,
+  technicalAccuracy: number,
   weights: FusionWeights = FALLBACK_FUSION,
 ): number {
-  const technical100 = (technicalAccuracy0to10 / 10) * 100;
-  const final = weights.weightAi * aiScore + weights.weightTechnical * technical100;
-  return Math.round(final * 100) / 100;
+  const technicalPercent = (technicalAccuracy / getMarkingScale().technicalMax) * 100;
+  // The server rounds the blended percentage to 2 decimals before turning it into a mark, so the
+  // preview does too; otherwise it can differ from the published mark by 0.01.
+  const finalPercent = Number((weights.weightAi * aiPercent + weights.weightTechnical * technicalPercent).toFixed(2));
+  return percentToMark(finalPercent) ?? 0;
 }
 
 export function formatFusionLabel(weights: FusionWeights): string {
   const aiPct = Math.round(weights.weightAi * 100);
   const techPct = Math.round(weights.weightTechnical * 100);
-  return `Fusion: ${aiPct}% AI performance + ${techPct}% technical accuracy (0–10 scaled to 100).`;
+  return `Fusion: ${aiPct}% AI performance + ${techPct}% technical accuracy (out of ${getMarkingScale().technicalMax}).`;
 }
 
 export interface ResolveOfficialMarkInput {
   assessment?: VivaAssessment | null;
-  analysisResult?: Pick<AnalysisResult, "final_score" | "final_grade"> | null;
+  analysisResult?: Pick<AnalysisResult, "final_score" | "final_mark" | "final_grade"> | null;
   assessmentMode: AssessmentMode;
   technicalAccuracy: number | null;
   published: boolean;
 }
 
 export interface ResolvedOfficialMark {
-  finalScore: number | null;
+  /** Official mark, out of `markMax`. */
+  finalMark: number | null;
+  /** What the mark is out of: the scale it was given on, or the current scale for a new estimate. */
+  markMax: number;
   grade: string | null;
   /** True when the UI is estimating before publish (with-tech draft only). */
   isPreview: boolean;
 }
 
 /**
- * Single client rule for official marks:
+ * Single client rule for official marks (all on the configured mark scale):
  * 1. INCOMPLETE → no mark
- * 2. Server final_score / final_grade when saved or published
+ * 2. Server final_mark / final_grade when saved or published
  * 3. With-tech draft → live preview using server fusion weights
- * 4. Without-tech → AI performance score
+ * 4. Without-tech → AI performance mark
+ * The grade always follows the rounded mark, i.e. the number the examiner sees.
  */
 export function resolveOfficialMark({
   assessment,
@@ -81,49 +94,61 @@ export function resolveOfficialMark({
   technicalAccuracy,
   published,
 }: ResolveOfficialMarkInput): ResolvedOfficialMark {
+  const currentMax = getMarkingScale().markMax;
+  // A saved mark keeps the scale it was given on, even if the scale has changed since.
+  const savedMax = analysisResult?.final_mark_max ?? assessment?.final_mark_max ?? null;
+
   if (assessment?.status === "INCOMPLETE") {
-    return { finalScore: null, grade: null, isPreview: false };
+    return { finalMark: null, markMax: savedMax ?? currentMax, grade: null, isPreview: false };
   }
 
-  const serverFinal = analysisResult?.final_score ?? assessment?.final_score ?? null;
+  const serverMark =
+    analysisResult?.final_mark ??
+    assessment?.final_mark ??
+    percentToMark(analysisResult?.final_score ?? assessment?.final_score ?? null);
   const serverGrade = analysisResult?.final_grade ?? assessment?.grade ?? null;
   const withTech = assessmentMode === "WITH_TECHNICAL_ACCURACY";
   const techPublished = withTech && published;
 
   // Deliberately does NOT consider auto_published here. Every valid analysis
   // auto-publishes without technical accuracy, so treating that as "saved"
-  // would return the without-tech score in with-tech mode and make the live
+  // would return the without-tech mark in with-tech mode and make the live
   // preview below unreachable.
-  if (serverFinal != null && (!withTech || techPublished)) {
+  if (serverMark != null && (!withTech || techPublished)) {
+    const markedOnSavedScale = (analysisResult?.final_mark ?? assessment?.final_mark) != null && savedMax != null;
     return {
-      finalScore: serverFinal,
-      grade: serverGrade ?? resolveGradeFromPercent(serverFinal),
+      finalMark: serverMark,
+      markMax: markedOnSavedScale ? (savedMax as number) : currentMax,
+      grade: serverGrade ?? resolveGradeFromMark(serverMark),
       isPreview: false,
     };
   }
 
   const aiScore = assessment?.ai_performance?.score ?? null;
   if (aiScore == null) {
-    return { finalScore: null, grade: null, isPreview: false };
+    return { finalMark: null, markMax: currentMax, grade: null, isPreview: false };
   }
 
   if (!withTech) {
+    const mark = serverMark ?? assessment?.ai_performance?.mark ?? percentToMark(aiScore);
     return {
-      finalScore: serverFinal ?? aiScore,
-      grade: serverGrade ?? resolveGradeFromPercent(serverFinal ?? aiScore),
+      finalMark: mark,
+      markMax: currentMax,
+      grade: serverGrade ?? resolveGradeFromMark(mark),
       isPreview: false,
     };
   }
 
   if (technicalAccuracy == null) {
-    return { finalScore: null, grade: null, isPreview: false };
+    return { finalMark: null, markMax: currentMax, grade: null, isPreview: false };
   }
 
   const weights = parseFusionWeights(assessment?.fusion as VivaFusion | undefined);
-  const previewFinal = fusePreviewScore(aiScore, technicalAccuracy, weights);
+  const previewMark = fusePreviewMark(aiScore, technicalAccuracy, weights);
   return {
-    finalScore: previewFinal,
-    grade: resolveGradeFromPercent(previewFinal),
+    finalMark: previewMark,
+    markMax: currentMax,
+    grade: resolveGradeFromMark(previewMark),
     isPreview: true,
   };
 }

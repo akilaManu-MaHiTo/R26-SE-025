@@ -23,6 +23,7 @@ from services.assessment_scoring import (
     FUSION_WEIGHT_AI,
     FUSION_WEIGHT_TECHNICAL,
     GRADE_BANDS,
+    MARKING_SCALE,
     MODE_WITH,
     MODE_WITHOUT,
     STATUS_INCOMPLETE,
@@ -427,7 +428,7 @@ class IntegrationAndRegressionTests(unittest.TestCase):
         attached = attach_assessment(result)
         fc = attached["feature_complete"]
         self.assertEqual(attached["assessment"]["final_score"], baseline["final_score"])
-        self.assertEqual(baseline["final_score"], 72.09)
+        self.assertEqual(baseline["final_score"], 74.59)  # v1.2: emotion/gaze/head/blink now scored
         self.assertEqual(baseline["grade"], "B+")
         self.assertIn("derived_features", fc)
         self.assertIn("raw_measurements", fc["layers"])
@@ -559,7 +560,9 @@ class IntegrationAndRegressionTests(unittest.TestCase):
         mode_a = build_assessment(_sample_result(), mode=MODE_WITHOUT, technical_accuracy=9)
         self.assertEqual(mode_a["final_score"], mode_a["ai_performance"]["score"])
         self.assertIsNone(mode_a["technical_accuracy"])
-        mode_b = build_assessment(_sample_result(), mode=MODE_WITH, technical_accuracy=3)
+        mode_b = build_assessment(
+            _sample_result(), mode=MODE_WITH, technical_accuracy=round(MARKING_SCALE.technical_max * 0.3, 2)
+        )
         expected = 0.5 * mode_b["ai_performance"]["score"] + 0.5 * 30.0
         self.assertAlmostEqual(mode_b["final_score"], round(expected, 2))
 

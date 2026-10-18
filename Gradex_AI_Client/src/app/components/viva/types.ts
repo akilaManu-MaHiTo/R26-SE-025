@@ -3,6 +3,8 @@
 // Gradex_AI_Server/CLAUDE.md for the authoritative shape. Do not fabricate
 // fields that aren't actually returned by the backend.
 
+import { getMarkingScale } from "./markingScale";
+
 export interface TimelineItem {
   time: number;
   emotion: string;
@@ -114,7 +116,10 @@ export interface TechnicalAccuracyConcept {
 export interface TechnicalAccuracyAI {
   status?: "success" | "partial" | "skipped" | "unavailable" | string;
   model?: string | null;
+  /** Legacy 0-10 scale; prefer `overall_mark`. */
   overall_score?: number | null;
+  /** The same suggestion on the technical scale — what the examiner enters the technical mark on. */
+  overall_mark?: number | null;
   concepts?: TechnicalAccuracyConcept[];
   error?: string;
 }
@@ -339,7 +344,11 @@ export interface AnalysisResult {
   published?: boolean;
   auto_published?: boolean;
   assessment_mode?: AssessmentMode;
+  /** 0-100 percentage the mark is derived from. */
   final_score?: number | null;
+  /** The official mark, out of `final_mark_max` (the scale it was given on). */
+  final_mark?: number | null;
+  final_mark_max?: number | null;
   final_grade?: string | null;
   persistence_error?: string;
   video_features?: Record<string, unknown>;
@@ -370,14 +379,23 @@ export interface VivaAssessment {
   features?: Record<string, unknown>;
   validation?: { status?: string; reasons?: string[]; message?: string | null };
   ai_performance?: {
+    /** 0-100 percentage. */
     score?: number | null;
+    /** The same score on the mark scale. */
+    mark?: number | null;
     family_scores?: Record<string, number | null>;
     family_weights_applied?: Record<string, number>;
     components?: Array<Record<string, unknown>>;
   };
+  /** Examiner's technical score, out of `technical_max`. */
   technical_accuracy?: number | null;
   fusion?: VivaFusion | null;
+  /** 0-100 percentage the mark is derived from. */
   final_score?: number | null;
+  /** The official mark, out of `final_mark_max` (the scale it was given on). */
+  final_mark?: number | null;
+  final_mark_max?: number | null;
+  technical_max?: number | null;
   grade?: string | null;
 }
 
@@ -394,44 +412,56 @@ export interface VivaFusion {
   pending?: string;
 }
 
-export function resolveGradeFromPercent(percent: number | null | undefined): string | null {
+/**
+ * Round to the scale's decimals, like the server does for an official mark.
+ * `toFixed` rounds the exact decimal value, the way Python's `round` does, so a value that sits on
+ * a half (23.305) rounds the same on both sides instead of the client rounding it up.
+ */
+function roundToDecimals(value: number): number {
+  return Number(value.toFixed(getMarkingScale().decimals));
+}
+
+/** Scale a 0-100 percentage to the official mark on the current mark scale. */
+export function percentToMark(percent: number | null | undefined): number | null {
   if (percent == null || Number.isNaN(percent)) return null;
-  const band = GRADE_BANDS.find((b) => percent >= b.minPercent);
-  return band?.grade ?? "F";
+  const clamped = Math.max(0, Math.min(100, percent));
+  return roundToDecimals((clamped / 100) * getMarkingScale().markMax);
 }
 
-/* ─── Evaluator rubric (local, evaluator-entered — not returned by the API) ─── */
-
-export interface RubricCriterion {
-  id: string;
-  name: string;
-  description: string;
-  score: number;
-  max: number;
+/**
+ * The AI-suggested technical score on the technical scale. Results analysed before the scale
+ * was configurable only carry the legacy 0-10 `overall_score`, so scale that when `overall_mark`
+ * is missing.
+ */
+export function suggestedTechnicalMark(
+  ai: { overall_mark?: number | null; overall_score?: number | null } | null | undefined,
+): number | null {
+  if (ai?.overall_mark != null) return ai.overall_mark;
+  if (ai?.overall_score != null) return roundToDecimals((ai.overall_score / 10) * getMarkingScale().technicalMax);
+  return null;
 }
 
-export const DEFAULT_RUBRIC: RubricCriterion[] = [
-  { id: "communication", name: "Communication Skills", description: "Clarity, articulation and pacing of the response", score: 0, max: 10 },
-  { id: "presentation", name: "Presentation Quality", description: "Confidence, composure and delivery on camera", score: 0, max: 10 },
-  { id: "engagement", name: "Engagement", description: "Attentiveness and sustained engagement during the viva", score: 0, max: 10 },
-  { id: "technical", name: "Technical Knowledge", description: "Depth and accuracy of the subject-matter content — examiner only", score: 0, max: 10 },
-];
+/** A mark without its scale, rounded to the scale's decimals: "15.81". */
+export function formatMarkValue(mark: number | null | undefined): string {
+  return mark == null || Number.isNaN(mark) ? "—" : mark.toFixed(getMarkingScale().decimals);
+}
 
-export const GRADE_BANDS: Array<{ grade: string; minPercent: number }> = [
-  { grade: "A+", minPercent: 90 },
-  { grade: "A", minPercent: 80 },
-  { grade: "B+", minPercent: 70 },
-  { grade: "B", minPercent: 60 },
-  { grade: "C+", minPercent: 50 },
-  { grade: "C", minPercent: 40 },
-  { grade: "F", minPercent: 0 },
-];
+/**
+ * The one way an official mark is shown: "15.81 / 20" (or / 25, / 30 ... whatever is configured).
+ * A mark saved on an earlier scale passes its own `markMax`, so changing the scale later never
+ * relabels marks that were already given.
+ */
+export function formatOfficialMark(mark: number | null | undefined, markMax?: number | null): string {
+  if (mark == null || Number.isNaN(mark)) return "—";
+  return `${formatMarkValue(mark)} / ${markMax ?? getMarkingScale().markMax}`;
+}
 
-export function suggestGrade(totalScore: number, maxScore: number): string {
-  if (maxScore <= 0) return "—";
-  const percent = (totalScore / maxScore) * 100;
-  const band = GRADE_BANDS.find((b) => percent >= b.minPercent);
-  return band?.grade ?? "F";
+/** Grade for an official mark. Pass the ROUNDED mark so the grade matches what is shown. */
+export function resolveGradeFromMark(mark: number | null | undefined): string | null {
+  if (mark == null || Number.isNaN(mark)) return null;
+  const { gradeBands } = getMarkingScale();
+  const band = gradeBands.find((b) => mark >= b.minMark);
+  return band?.grade ?? gradeBands[gradeBands.length - 1].grade;
 }
 
 /* ─── Formatting helpers ─── */
