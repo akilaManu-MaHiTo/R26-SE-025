@@ -1,14 +1,11 @@
+import { SERVER_BASE_URL } from "../../api/gradingApiBase";
+import { apiFetch } from "../../api/authApi";
 /** Viva mark publish API — isolated from other client backends. */
 
 import type { AssessmentMode } from "./types";
 
-const backendBaseUrl =
-  ((import.meta as ImportMeta & { env?: { VITE_BACKEND_URL?: string } }).env?.VITE_BACKEND_URL) ??
-  "http://localhost:8000";
+const backendBaseUrl = SERVER_BASE_URL;
 
-const apiKey =
-  ((import.meta as ImportMeta & { env?: { VITE_GRADEX_API_KEY?: string } }).env?.VITE_GRADEX_API_KEY) ??
-  "";
 
 export interface VivaPublishPayload {
   assessment_mode: AssessmentMode;
@@ -25,20 +22,15 @@ export interface VivaPublishResponse {
   assessment_mode?: string;
 }
 
-function authHeaders(): Record<string, string> {
-  return {
-    "Content-Type": "application/json",
-    ...(apiKey ? { "X-API-Key": apiKey } : {}),
-  };
-}
+
 
 export async function publishVivaMark(
   markId: string,
   payload: VivaPublishPayload,
 ): Promise<VivaPublishResponse> {
-  const response = await fetch(`${backendBaseUrl}/api/viva-marks/${markId}/publish`, {
+  const response = await apiFetch(`${backendBaseUrl}/api/viva-marks/${markId}/publish`, {
     method: "PATCH",
-    headers: authHeaders(),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 

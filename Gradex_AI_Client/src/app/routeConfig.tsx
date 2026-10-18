@@ -147,6 +147,7 @@ export const AGENT_CONFIG: AgentConfig[] = [
 ];
 
 const PATH_TITLES: Record<string, { title: string; subtitle?: string }> = {
+  "/exam-keys": { title: "Exam Keys", subtitle: "Register exam identities before grading" },
   "/dashboard": { title: "Dashboard", subtitle: "Your AI-powered command center" },
   "/student-dashboard": { title: "My Dashboard", subtitle: "Track your progress and upcoming work" },
 };

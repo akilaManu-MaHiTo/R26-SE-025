@@ -1,3 +1,5 @@
+import { SERVER_BASE_URL } from "./gradingApiBase";
+import { apiFetch } from "./authApi";
 import type { Recommendation } from "./lecturerApi";
 
 export const BLOOM_LEVELS = ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"] as const;
@@ -41,9 +43,9 @@ export type Generation = {
   candidates: GeneratedCandidate[]; similarity_available: boolean; model: string;
   similarity_checks: { candidate_text: string; max_similarity: number; flagged: boolean }[];
 };
-const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+const API_BASE = SERVER_BASE_URL;
 async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${API_BASE}/api/lecturers/exam-creator/${path}`, {
+  const response = await apiFetch(`${API_BASE}/api/lecturers/exam-creator/${path}`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal,
   });
   const data = await response.json();

@@ -20,7 +20,7 @@ from app.db.repository import (
 from app.ingestion.student_data import normalize_student_submission
 from app.services import student_pipeline as _student_pipeline
 
-ANALYTICS_VERSION = "1.1"
+ANALYTICS_VERSION = "1.2"
 
 
 class ExamNotFound(Exception):
@@ -234,7 +234,7 @@ async def compute_exam_analytics(
     if unclassified_count > 0:
         pct_un = round(unclassified_score / unclassified_max * 100.0, 2) if unclassified_max > 0 else 0.0
         canonical_insights.append(
-            f"Unclassified questions cover {unclassified_count} attempts at {pct_un}% — review topic assignment for these questions."
+            f"Topic assignment pending: {unclassified_count} attempts at {pct_un}% — review these questions."
         )
     # Inject canonical fields into stats so they are persisted together
     stats["canonical_topic_performance"] = canonical_topic_perf

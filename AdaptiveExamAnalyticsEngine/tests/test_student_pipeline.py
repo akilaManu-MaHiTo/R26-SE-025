@@ -182,7 +182,6 @@ async def test_pipeline_uses_deterministic_fallback_when_qwen_is_down(monkeypatc
     ]
     assert {g["topic"] for g in saved["learning_analysis"]["learning_gaps"]} == {
         "Structured Query Language (SQL)",
-        "Unclassified",
     }
     assert saved["recommendations"][0]["priority"] == "Medium"
     assert saved["next_question_strategy"]["number_of_questions"] == 5
@@ -274,15 +273,13 @@ async def test_qwen_action_text_preserves_backend_gaps_priority_and_target(monke
         "status": "Developing",
     }
     assert saved["learning_analysis"]["overall_performance"] == "Developing"
-    # Topics now canonical via rules/BloomModernBERT topic mapping (Unclassified for no-keyword)
+    # Unresolved questions retain their marks without becoming named learning claims.
     assert set(saved["learning_analysis"]["developing_topics"]) == {
         "Structured Query Language (SQL)",
-        "Unclassified",
     }
     assert saved["learning_analysis"]["weak_topics"] == []
     assert saved["learning_analysis"]["learning_gaps"] == [
         {"topic": "Structured Query Language (SQL)", "subtopic": "Uses the correct query", "priority": "Medium"},
-        {"topic": "Unclassified", "subtopic": "Explains the concept", "priority": "Medium"},
     ]
     assert saved["recommendations"][0]["action"].startswith("Compare inner and outer joins. Evidence:")
     assert saved["recommendations"][0]["priority"] == "Medium"
@@ -358,11 +355,6 @@ async def test_blank_qwen_recommendation_degrades_to_deterministic_fallback(
     saved = db.saved[0]
     assert saved["learning_analysis"]["learning_gaps"] == [
         {"topic": "Structured Query Language (SQL)", "subtopic": "Uses the correct query", "priority": "Medium"},
-        {
-            "topic": "Unclassified",
-            "subtopic": "Explains the concept",
-            "priority": "Medium",
-        },
     ]
     assert saved["recommendations"][0]["topic"] == "Structured Query Language (SQL)"
     assert saved["recommendations"][0]["action"]

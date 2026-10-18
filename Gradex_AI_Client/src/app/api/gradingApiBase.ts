@@ -8,7 +8,7 @@ const env = (import.meta as { env?: Record<string, string> }).env ?? {};
 export const SERVER_BASE_URL = (
   env.VITE_BACKEND_URL?.trim() ||
   env.VITE_API_BASE_URL?.trim() ||
-  "http://127.0.0.1:8000"
+  ""
 ).replace(/\/$/, "");
 
 /** Handwritten grading (GradingEngine mounted at /api/grading). */

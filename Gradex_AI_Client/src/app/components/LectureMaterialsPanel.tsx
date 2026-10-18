@@ -1,3 +1,4 @@
+import { apiFetch } from "../api/authApi";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
@@ -77,7 +78,7 @@ async function readJsonResponse(response: Response): Promise<unknown> {
 }
 
 export async function fetchCourses(apiBaseUrl: string): Promise<CourseItem[]> {
-  const response = await fetch(`${apiBaseUrl}/courses`);
+  const response = await apiFetch(`${apiBaseUrl}/courses`);
   const data = (await readJsonResponse(response)) as { items?: CourseItem[] };
   if (!response.ok) {
     throw new Error(parseApiError(data, "Failed to load courses."));
@@ -171,7 +172,7 @@ export function LectureMaterialsPanel({
         params.set("course_name", selectedCourse.trim());
       }
       const query = params.toString();
-      const response = await fetch(
+      const response = await apiFetch(
         `${apiBaseUrl}/lecture-notes${query ? `?${query}` : ""}`
       );
       const data = (await readJsonResponse(response)) as {
@@ -207,7 +208,7 @@ export function LectureMaterialsPanel({
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch(`${apiBaseUrl}/courses`, {
+      const response = await apiFetch(`${apiBaseUrl}/courses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -237,7 +238,7 @@ export function LectureMaterialsPanel({
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${apiBaseUrl}/courses/${encodeURIComponent(pendingCourseDelete.code)}?purge_materials=true`,
         { method: "DELETE" }
       );
@@ -277,7 +278,7 @@ export function LectureMaterialsPanel({
       formData.append("file", file);
       formData.append("course_name", trimmedCourse);
 
-      const response = await fetch(`${apiBaseUrl}/upload-lecture-notes`, {
+      const response = await apiFetch(`${apiBaseUrl}/upload-lecture-notes`, {
         method: "POST",
         body: formData,
       });
@@ -326,7 +327,7 @@ export function LectureMaterialsPanel({
         course_name: pendingDelete.course_name,
         filename: pendingDelete.filename,
       });
-      const response = await fetch(`${apiBaseUrl}/lecture-notes?${params.toString()}`, {
+      const response = await apiFetch(`${apiBaseUrl}/lecture-notes?${params.toString()}`, {
         method: "DELETE",
       });
       const data = await readJsonResponse(response);
