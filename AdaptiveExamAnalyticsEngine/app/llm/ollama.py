@@ -139,17 +139,19 @@ async def check_llm_detailed_health(timeout: float = 10.0) -> dict:
         }
 
 
-async def generate(prompt: str, *, temperature: float | None = None, timeout: float | None = None) -> dict:
+async def generate(prompt: str, *, temperature: float | None = None, timeout: float | None = None,
+                   response_schema: dict | None = None, generation_options: dict | None = None) -> dict:
     url = f"{settings.llm_base_url}/api/generate"
     body = {
         "model": settings.llm_model,
         "prompt": prompt,
         "stream": False,
-        "format": "json",
+        "format": response_schema if response_schema is not None else "json",
         "think": False,
         "options": {
             "temperature": settings.ollama_classify_temperature if temperature is None else temperature,
             "num_predict": 2048,
+            **(generation_options or {}),
         },
     }
     headers = {}
@@ -182,11 +184,18 @@ async def validate_with_retry(
     temperature: float,
     max_attempts: int = 2,
     timeout: float | None = None,
+    response_schema: dict | None = None,
+    generation_options: dict | None = None,
 ) -> tuple[T | None, dict | None, bool]:
     raw: dict | None = None
     for attempt in range(max_attempts):
         try:
-            raw = await generate(prompt, temperature=temperature, timeout=timeout)
+            options = {}
+            if response_schema is not None:
+                options["response_schema"] = response_schema
+            if generation_options is not None:
+                options["generation_options"] = generation_options
+            raw = await generate(prompt, temperature=temperature, timeout=timeout, **options)
             return schema.model_validate(raw), raw, False
         except ValidationError as exc:
             logger.error(

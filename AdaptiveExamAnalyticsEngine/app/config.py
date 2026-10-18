@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_available: bool = True
     candidate_similarity_threshold: float = 0.85
-    course_rag_index: str = str(Path(__file__).resolve().parents[1] / ".cache" / "course_rag" / "index.sqlite3")
+    course_rag_index: str = str(Path(__file__).resolve().parents[1] / "storage" / "course_rag" / "index.sqlite3")
     course_rag_min_similarity: float = Field(default=0.45, ge=0, le=1)
 
     # Bloom ModernBERT; threshold flags low-confidence analytics for review.
