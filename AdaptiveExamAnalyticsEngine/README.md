@@ -4,6 +4,9 @@ DBMS learning analytics pipeline: materializes per-student analytics from graded
 submissions, classifies question semantics (Bloom levels, topics), and serves a
 FastAPI dashboard.
 
+Exam Creator can retrieve course evidence from an independent analytics-owned
+index. See [course RAG setup, import, and search](COURSE_RAG.md).
+
 ## Reconstruct an exam paper (read only)
 
 ```bash

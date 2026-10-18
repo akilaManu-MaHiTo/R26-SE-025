@@ -54,6 +54,11 @@ class DraftSource(BaseModel):
     source_id: str = Field(min_length=1, max_length=300)
     kind: str = Field(max_length=100)
     text: str = Field(max_length=20000)
+    course_code: str | None = Field(default=None, max_length=50)
+    filename: str | None = Field(default=None, max_length=255)
+    page_number: int | None = Field(default=None, ge=1)
+    year: int | None = Field(default=None, ge=1900, le=2200)
+    rank_score: float | None = Field(default=None, ge=0, allow_inf_nan=False)
 
 
 class DraftPart(BaseModel):
