@@ -1,0 +1,22 @@
+fastapi==0.141.1
+python-multipart>=0.0.27
+argon2-cffi>=25.1.0
+pydantic==2.13.4
+pydantic-settings==2.14.2
+pymongo==4.17.0
+motor==3.7.1
+python-dotenv==1.2.2
+uvicorn
+pytest==9.1.1
+pytest-asyncio==1.4.0
+httpx==0.28.1
+tqdm==4.70.0
+pymupdf==1.28.2
+cachetools==7.1.8
+# Bloom ModernBERT
+torch
+transformers==4.55.4
+safetensors
+numpy
+# Semantic retrieval is part of the analytics engine, including when launched from the repo environment.
+-r requirements-embeddings.txt

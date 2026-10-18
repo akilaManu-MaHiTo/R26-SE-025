@@ -59,7 +59,7 @@ def _mongo_url() -> str:
 
 def _database_name() -> str:
     _load_env_files()
-    return _strip_env(os.getenv("DATABASE_NAME")) or "vivamark"
+    return _strip_env(os.getenv("DATABASE_NAME")) or "Grading"
 
 
 def _mongo_url_candidates() -> list[tuple[str, str]]:
@@ -91,7 +91,7 @@ async def _try_connect(source: str, url: str, db_name: str) -> None:
     await client.admin.command("ping")
     db_instance.client = client
     db_instance.db = client[db_name]
-    db_instance.marks_col = db_instance.db["marks"]
+    db_instance.marks_col = db_instance.db["viva_analysis_results"]
     db_instance.mongo_source = source
     db_instance.last_error = None
     await _ensure_marks_indexes()

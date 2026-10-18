@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router";
+import { ThinkingOrb } from "thinking-orbs";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Download, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight, UserSearch, Eye, AlertCircle, Loader2, GraduationCap, BookOpen, Brain, Award, User } from "lucide-react";
+import { ArrowLeft, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight, UserSearch, Eye, AlertCircle, Loader2, GraduationCap, BookOpen, Brain, Award, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { ProgressLoader, type LoadStep } from "./ProgressLoader";
 import { AIPageBanner } from "./AIBrand";
+import { toast } from "sonner";
 import {
   fetchExams,
   fetchExamAnalytics,
@@ -18,12 +20,16 @@ import {
   fetchExamStudents,
   fetchLecturerStudentDetail,
   fetchLecturerStudentDetailStream,
+  fetchLlmHealth,
+  fetchBloomHealth,
+  reanalyseExam,
   type ExamListItem,
   type ExamAnalytics,
   type CanonicalTopic,
   type TeachingAction,
   type StudentRow,
   type LecturerStudentDetail,
+  type QuestionPerformance,
 } from "../api/lecturerApi";
 import { KpiCards } from "./analytics/KpiCards";
 import { DistributionHistogram } from "./analytics/DistributionHistogram";
@@ -34,8 +40,13 @@ import { BloomChart } from "./analytics/BloomChart";
 import { QuestionPerformanceTable } from "./analytics/QuestionPerformanceTable";
 import { InsightsPanel } from "./analytics/InsightsPanel";
 import { TeachingActions } from "./analytics/TeachingActions";
+import { ERDiagramViewer } from "./analytics/ERDiagramViewer";
+import { DiagramAnalysisPanel } from "./analytics/DiagramAnalysisPanel";
+import { GradingOverview, StudentGradingCells, canViewStudent, ExamInventoryScore } from "./analytics/GradingStatus";
 import { TopicDetailModal } from "./analytics/TopicDetailModal";
 import { QuestionDetailModal } from "./analytics/QuestionDetailModal";
+import { ExamPaperModal } from "./analytics/ExamPaperModal";
+import { StudentQuestionRow } from "./analytics/StudentQuestionRow";
 
 function PremiumLoader({
   steps,
@@ -48,12 +59,8 @@ function PremiumLoader({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 space-y-6">
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-        className="size-10 rounded-full border-2 border-primary/20 border-t-primary"
-      />
-      <div className="space-y-2 text-center max-w-xl">
+      <ThinkingOrb state="searching" size={64} aria-label="Loading exam analytics" />
+      <div className="space-y-2 text-center max-w-xl" role="status">
         <motion.p
           key={currentStep}
           initial={{ opacity: 0, y: 6 }}
@@ -88,18 +95,23 @@ function PremiumLoader({
 }
 
 export default function AnalyticsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedStudentId = searchParams.get("student");
   const [exams, setExams] = useState<ExamListItem[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamListItem | null>(null);
+  const [paperOpen, setPaperOpen] = useState(false);
   const [analytics, setAnalytics] = useState<ExamAnalytics | null>(null);
   const [teachingActions, setTeachingActions] = useState<TeachingAction[]>([]);
   const [loadingExams, setLoadingExams] = useState(true);
+  const [examListError, setExamListError] = useState(false);
+  const [examReload, setExamReload] = useState(0);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [loadingActions, setLoadingActions] = useState(false);
   const [loadSteps, setLoadSteps] = useState<LoadStep[]>([]);
   const [currentLoadStep, setCurrentLoadStep] = useState(0);
   const [liveModelMessage, setLiveModelMessage] = useState<string>("PULSE·AI — Initializing...");
   const [selectedTopic, setSelectedTopic] = useState<CanonicalTopic | null>(null);
-  const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<QuestionPerformance | null>(null);
   // dense table filters
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "analyzed" | "pending">("all");
@@ -108,21 +120,50 @@ export default function AnalyticsPage() {
   // lecturer student finder (inside analyzed exam)
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [studentListError, setStudentListError] = useState<string | null>(null);
   const [studentSearch, setStudentSearch] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [studentDetail, setStudentDetail] = useState<LecturerStudentDetail | null>(null);
   const [loadingStudentDetail, setLoadingStudentDetail] = useState(false);
   const [studentDetailError, setStudentDetailError] = useState<string | null>(null);
+  const studentRequest = useRef<object | null>(null);
+
+  useEffect(() => () => {
+    studentRequest.current = null;
+    window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
+  }, []);
 
   useEffect(() => {
     setLoadSteps([{ label: "Fetching exams..." }]);
     setCurrentLoadStep(0);
-    fetchExams().then((data) => { setExams(data); setLoadingExams(false); }).catch(console.error);
-  }, []);
+    setLoadingExams(true);
+    setExamListError(false);
+    let ignore = false;
+    fetchExams().then(value => { if (!ignore) setExams(value); })
+      .catch(() => { if (!ignore) setExamListError(true); })
+      .finally(() => { if (!ignore) setLoadingExams(false); });
+    return () => { ignore = true; };
+  }, [examReload]);
 
-  const handleSelectExam = useCallback(async (exam: ExamListItem) => {
+  const handleSelectExam = useCallback(async (exam: ExamListItem, opts?: { forceReanalyse?: boolean }) => {
+    setPaperOpen(false);
+    setTeachingActions([]);
+    setLoadingActions(false);
+    studentRequest.current = null;
+    window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
+    setLoadingStudentDetail(false);
+    setSelectedTopic(null);
+    setSelectedQuestion(null);
+    // Core analytics does NOT require Ollama — only ModernBERT for new classification.
+    // Cached snapshot loads even if both models offline. We let backend decide freshness.
+    const requestId = `${exam.course_code}-${exam.session_name}-${exam.year}-${exam.month}-${exam.semester}-${Date.now()}`;
+    // store current request id for stale-response guard
+    (handleSelectExam as any)._lastRequestId = requestId;
+
     setSelectedExam(exam);
     setLoadingAnalytics(true);
+    setLoadingStudents(true);
+    setStudentListError(null);
     setAnalytics(null);
     setLiveModelMessage("PULSE·AI — Starting analysis...");
     // reset student finder
@@ -140,65 +181,159 @@ export default function AnalyticsPage() {
     setLoadSteps(steps);
     setCurrentLoadStep(0);
 
+    // Status does not require model analysis; load it even when analytics fails.
+    const studentsPromise = fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
+      .then(rows => {
+        if ((handleSelectExam as any)._lastRequestId === requestId) setStudents(rows);
+      })
+      .catch(() => {
+        if ((handleSelectExam as any)._lastRequestId === requestId) {
+          setStudents([]);
+          setStudentListError("Could not load grading status. Reopen the exam to retry.");
+        }
+      })
+      .finally(() => {
+        if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingStudents(false);
+      });
+    void studentsPromise;
+
     try {
       setCurrentLoadStep(0);
-      setLiveModelMessage("PULSE·AI — Connecting to model...");
-      // Try streaming for real-time Bloom/topic messages, fallback to plain fetch
-      let data: ExamAnalytics;
-      try {
-        data = await fetchExamAnalyticsStream(
-          exam.course_code,
-          exam.session_name,
-          exam.year,
-          exam.month,
-          exam.semester,
-          (msg) => {
-            setLiveModelMessage(msg);
-            // Advance loader step based on message content
-            if (msg.includes("Ingesting") || msg.includes("Analyzing student")) setCurrentLoadStep(0);
-            else if (msg.includes("Bloom") || msg.includes("Topic") || msg.includes("Q")) setCurrentLoadStep(1);
-            else if (msg.includes("Computing") || msg.includes("weak") || msg.includes("Finalizing") || msg.includes("Saving")) setCurrentLoadStep(2);
-          },
-        );
-      } catch {
-        setLiveModelMessage("PULSE·AI — Streaming unavailable, loading...");
-        data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
+      if (opts?.forceReanalyse) {
+        setLiveModelMessage("PULSE·AI — Re-analysing (forced)...");
+      } else {
+        setLiveModelMessage("PULSE·AI — Connecting to analytics...");
       }
+      // Reanalysis failures must surface; a cached read would conceal the failure.
+      let data: ExamAnalytics;
+      if (opts?.forceReanalyse) {
+        data = await reanalyseExam(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
+      } else {
+        try {
+          data = await fetchExamAnalyticsStream(
+            exam.course_code,
+            exam.session_name,
+            exam.year,
+            exam.month,
+            exam.semester,
+            (msg) => {
+              if ((handleSelectExam as any)._lastRequestId !== requestId) return;
+              setLiveModelMessage(msg);
+              // Advance loader step based on message content
+              if (msg.includes("Ingesting") || msg.includes("Analyzing student")) setCurrentLoadStep(0);
+              else if (msg.includes("Bloom") || msg.includes("Topic") || msg.includes("Q")) setCurrentLoadStep(1);
+              else if (msg.includes("Computing") || msg.includes("weak") || msg.includes("Finalizing") || msg.includes("Saving")) setCurrentLoadStep(2);
+            },
+          );
+        } catch {
+          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
+          setLiveModelMessage("PULSE·AI — Streaming unavailable, loading...");
+          data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
+        }
+      }
+      // Stale-response guard: only apply if still the latest requested exam
+      if ((handleSelectExam as any)._lastRequestId !== requestId) return;
       setAnalytics(data);
       setLiveModelMessage("PULSE·AI — Analysis complete");
       setCurrentLoadStep(2);
 
+      // Grading status is already loading independently; only teaching remains.
       setLoadingActions(true);
-      fetchTeachingActions(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
-        .then(setTeachingActions)
-        .catch(() => setTeachingActions([]))
-        .finally(() => setLoadingActions(false));
+      const teachingPromise = fetchTeachingActions(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
+        .then((actions) => {
+          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
+          setTeachingActions(actions);
+        })
+        .catch(() => {
+          if ((handleSelectExam as any)._lastRequestId !== requestId) return;
+          setTeachingActions([]);
+        })
+        .finally(() => {
+          if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingActions(false);
+        });
 
-      // Also fetch students for this exam (for lecturer student finder)
-      setLoadingStudents(true);
-      fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
-        .then(setStudents)
-        .catch(() => setStudents([]))
-        .finally(() => setLoadingStudents(false));
+      void teachingPromise;
     } catch (err) {
+      if ((handleSelectExam as any)._lastRequestId !== requestId) return;
       console.error(err);
+      const msg = err instanceof Error ? err.message : String(err);
       setLiveModelMessage("PULSE·AI — Analysis failed");
+      // Separate ModernBERT (core) vs Ollama (optional) health
+      if (msg.toLowerCase().includes("bloom") || msg.toLowerCase().includes("modernbert")) {
+        try {
+          const bh = await fetchBloomHealth();
+          if (!bh.available) toast.error(`Bloom model unavailable: ${bh.detail} — core analytics cannot be computed.`);
+          else toast.error(msg);
+        } catch { toast.error(msg); }
+      } else if (msg.toLowerCase().includes("ollama") || msg.toLowerCase().includes("model unavailable")) {
+        // Teaching actions are optional; core analytics may still have succeeded but actions failed — show core error only
+        toast.error("Model unavailable, please retry when model comes online.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
-      setLoadingAnalytics(false);
+      if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingAnalytics(false);
     }
   }, []);
 
   const handleSelectStudent = useCallback(async (studentId: string) => {
     if (!selectedExam) return;
+    const request = {};
+    studentRequest.current = request;
+    const isCurrent = () => studentRequest.current === request;
+    const targetRow = students.find((r) => r.student_id === studentId);
+    const needsAnalysis = !targetRow || targetRow.analysis_status !== "generated";
     setSelectedStudentId(studentId);
     setLoadingStudentDetail(true);
     setStudentDetail(null);
     setStudentDetailError(null);
-    const dispatchTopbar = (active: boolean, message?: string, progress?: number) => {
-      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active, studentId, message: message || "", progress } }));
+    if (searchParams.get("student") !== studentId) {
+      setSearchParams({
+        student: studentId,
+        course: selectedExam.course_code,
+        session: selectedExam.session_name,
+        year: String(selectedExam.year),
+        month: String(selectedExam.month),
+        semester: String(selectedExam.semester),
+      });
+    }
+    if (needsAnalysis) {
+      try {
+        const health = await fetchLlmHealth();
+        if (!health.online || !health.model_available) throw new Error("Model unavailable");
+      } catch {
+        if (!isCurrent()) return;
+        const message = "Model unavailable, please retry when model comes online.";
+        setStudentDetailError(message);
+        setLoadingStudentDetail(false);
+        toast.error(message);
+        return;
+      }
+    }
+    const dispatchTopbar = (active: boolean, message?: string, progress?: number, status = "analyzing") => {
+      if (!needsAnalysis) return;
+      const jobId = JSON.stringify([studentId, selectedExam.course_code, selectedExam.session_name, selectedExam.year, selectedExam.month, selectedExam.semester]);
+      const examLabel = `${selectedExam.course_code} · ${selectedExam.session_name} · ${selectedExam.year}/${selectedExam.month} · Semester ${selectedExam.semester}`;
+      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active, studentId, jobId, examLabel, message: message || "", progress, status } }));
     };
-    dispatchTopbar(true, `PULSE·AI — Starting analysis for ${studentId}…`, 0);
+    dispatchTopbar(true, `Submitting analysis for ${studentId}…`, 0, "queued");
     try {
+      if (!needsAnalysis) {
+        const detail = await fetchLecturerStudentDetail(
+          selectedExam.course_code,
+          selectedExam.session_name,
+          studentId,
+          selectedExam.year,
+          selectedExam.month,
+          selectedExam.semester,
+          false,
+          false,
+        );
+        if (!isCurrent()) return;
+        setStudentDetail(detail);
+        setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: detail.analysis_status ?? "generated" } : r));
+        return;
+      }
       // Try streaming for live progress (topbar + row spinner), fallback to plain fetch
       let detail: LecturerStudentDetail;
       try {
@@ -209,13 +344,13 @@ export default function AnalyticsPage() {
           selectedExam.year,
           selectedExam.month,
           selectedExam.semester,
-          (msg, prog) => {
-            dispatchTopbar(true, msg, prog);
+          (msg, prog, phase) => {
+            dispatchTopbar(true, msg, prog, phase === "queued" ? "queued" : "analyzing");
           },
           false
         );
       } catch {
-        dispatchTopbar(true, `PULSE·AI — Analyzing ${studentId}…`, 45);
+        dispatchTopbar(true, `Reconnecting to analysis for ${studentId}…`, 0, "queued");
         detail = await fetchLecturerStudentDetail(
           selectedExam.course_code,
           selectedExam.session_name,
@@ -226,19 +361,311 @@ export default function AnalyticsPage() {
           false
         );
       }
+      dispatchTopbar(false, `Analysis complete for ${studentId}`, 100, "complete");
+      if (!isCurrent()) return;
       setStudentDetail(detail);
-      dispatchTopbar(true, `PULSE·AI — ${studentId} analysis complete`, 100);
       // Update row status optimistically
-      setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: "generated" } : r));
-      setTimeout(() => dispatchTopbar(false), 2500);
+      setStudents((prev) => prev.map((r) => r.student_id === studentId ? { ...r, analysis_status: detail.analysis_status ?? "generated" } : r));
     } catch (e) {
-      setStudentDetailError(e instanceof Error ? e.message : "Failed to load student detail");
-      dispatchTopbar(true, `Analysis failed for ${studentId}`, 0);
-      setTimeout(() => dispatchTopbar(false), 3000);
+      const msg = e instanceof Error ? e.message : "Failed to load student detail";
+      dispatchTopbar(false, `Analysis failed for ${studentId}: ${msg}`, 0, "failed");
+      if (!isCurrent()) return;
+      setStudentDetailError(msg);
+      // Fallback: if pending student failed due to model down, toast
+      if (needsAnalysis) {
+        const lower = msg.toLowerCase();
+        if (lower.includes("model") || lower.includes("ollama") || lower.includes("unavailable")) {
+          toast.error("Model unavailable, please retry when model comes online.");
+        } else {
+          try {
+            const h = await fetchLlmHealth();
+            if (!isCurrent()) return;
+            if (!h.online || !h.model_available) toast.error("Model unavailable, please retry when model comes online.");
+          } catch {
+            // ignore — already showed detail error
+          }
+        }
+      }
     } finally {
+      if (isCurrent()) setLoadingStudentDetail(false);
+    }
+  }, [selectedExam, students, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!requestedStudentId) {
+      studentRequest.current = null;
+      window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
+      setSelectedStudentId(null);
+      setStudentDetail(null);
+      setStudentDetailError(null);
       setLoadingStudentDetail(false);
     }
-  }, [selectedExam]);
+    if (searchParams.has("course")) {
+      const exam = exams.find((item) =>
+        item.course_code === searchParams.get("course") &&
+        item.session_name === searchParams.get("session") &&
+        String(item.year) === searchParams.get("year") &&
+        String(item.month) === searchParams.get("month") &&
+        String(item.semester) === searchParams.get("semester")
+      );
+      if (exam && exam !== selectedExam) {
+        void handleSelectExam(exam);
+        return;
+      }
+    }
+    if (requestedStudentId && selectedExam && !loadingAnalytics && !loadingStudents && selectedStudentId !== requestedStudentId) {
+      void handleSelectStudent(requestedStudentId);
+    }
+  }, [requestedStudentId, searchParams, selectedExam, exams, loadingAnalytics, loadingStudents, selectedStudentId, handleSelectExam, handleSelectStudent]);
+
+  if (requestedStudentId) {
+    const selectionMatches = selectedStudentId === requestedStudentId && selectedExam && (
+      !searchParams.has("course") || (
+        selectedExam.course_code === searchParams.get("course") &&
+        selectedExam.session_name === searchParams.get("session") &&
+        String(selectedExam.year) === searchParams.get("year") &&
+        String(selectedExam.month) === searchParams.get("month") &&
+        String(selectedExam.semester) === searchParams.get("semester")
+      )
+    );
+    return (
+      <div className="p-6 md:p-8 space-y-6">
+        <Button variant="ghost" size="sm" onClick={() => {
+          const params = new URLSearchParams(searchParams);
+          params.delete("student");
+          setSearchParams(params);
+        }}>
+          <ArrowLeft className="size-4 mr-2" /> Back to exam
+        </Button>
+        {!selectedExam && !loadingExams ? (
+          <p className="text-sm text-muted-foreground">The exam for this student could not be found.</p>
+        ) : (
+        <div className="space-y-6">
+          <header className="space-y-2">
+            <h2 className="flex flex-wrap items-center gap-2 text-xl font-semibold">
+              <GraduationCap className="size-5 text-primary" />
+              {requestedStudentId} — Performance
+              <Badge variant="outline" className="ml-1 text-xs font-normal">Lecturer view · no AI tips</Badge>
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {selectedExam?.course_code} · {selectedExam?.session_name} · {selectedExam?.year} — raw scores, topics and Bloom levels only.
+            </p>
+          </header>
+
+          {!selectionMatches || loadingStudentDetail || (!studentDetail && !studentDetailError) ? (
+            <div className="py-10 flex flex-col items-center gap-3">
+              <ThinkingOrb state="searching" size={64} aria-label="Loading student performance" />
+              <p className="text-sm text-muted-foreground">Loading performance…</p>
+            </div>
+          ) : studentDetailError ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4 flex gap-3">
+              <AlertCircle className="size-5 text-amber-600 shrink-0" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{studentDetailError.includes("423") || studentDetailError.toLowerCase().includes("not yet generated") ? "Not yet analyzed" : "Could not load"}</p>
+                <p className="text-sm text-amber-700 dark:text-amber-400">{studentDetailError}</p>
+              </div>
+            </div>
+          ) : studentDetail ? (
+            <div className="space-y-5">
+              {/* Overall */}
+              <Card className="p-4 bg-muted/30">
+                <div className="flex items-center gap-2 text-sm font-medium"><Award className="size-4 text-primary" /> Overall Performance</div>
+                <div className="mt-3 flex flex-wrap items-end gap-4">
+                  <div>
+                    <div className="text-2xl font-semibold tabular-nums">{studentDetail.overall_performance.score.toFixed(1)} <span className="text-base text-muted-foreground">/ {studentDetail.overall_performance.maximum.toFixed(1)}</span></div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{studentDetail.overall_performance.status} · {studentDetail.overall_performance.percentage.toFixed(1)}%</div>
+                  </div>
+                  <Badge className="ml-auto border text-xs">{studentDetail.overall_performance.status}</Badge>
+                </div>
+                <div className="h-2 bg-background rounded-full overflow-hidden mt-3">
+                  <div className="h-full bg-primary rounded-full" style={{ width: `${studentDetail.overall_performance.percentage}%` }} />
+                </div>
+              </Card>
+
+              {/* Question performance */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2"><FileText className="size-4 text-primary" /> Question Breakdown</h4>
+                <p className="text-xs text-muted-foreground">Select a question number to review the written answer, marking criteria and grading feedback.</p>
+                <div className="rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40">
+                        <TableHead className="text-xs">Q</TableHead>
+                        <TableHead className="text-xs">Topic</TableHead>
+                        <TableHead className="text-xs">Bloom</TableHead>
+                        <TableHead className="text-xs text-right">Score</TableHead>
+                        <TableHead className="text-xs text-right">%</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {studentDetail.question_performance.map((q) => (
+                        <StudentQuestionRow key={`${studentDetail.student_id}-${studentDetail.subject_code}-${studentDetail.session_name}-${studentDetail.year}-${studentDetail.month}-${studentDetail.semester}-${q.question_id}`}
+                          question={q} studentId={studentDetail.student_id}
+                          exam={{ course_code: studentDetail.subject_code, session_name: studentDetail.session_name,
+                            year: studentDetail.year, month: studentDetail.month, semester: studentDetail.semester }} />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Topic performance */}
+              <div className="grid md:grid-cols-2 gap-4">
+                <Card className="p-4">
+                  <div className="text-sm font-medium flex items-center gap-2"><BookOpen className="size-4 text-primary" /> Topic Performance</div>
+                  <div className="mt-3 space-y-2.5">
+                    {studentDetail.topic_performance.length === 0 ? <p className="text-xs text-muted-foreground">No topic data</p> : studentDetail.topic_performance.map((t) => (
+                      <div key={t.topic} className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs truncate">{t.topic}</div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1"><div className="h-full bg-primary rounded-full" style={{ width: `${t.percentage}%` }} /></div>
+                        </div>
+                        <div className="text-xs tabular-nums font-medium shrink-0">{t.percentage.toFixed(1)}%</div>
+                        <Badge variant="outline" className="text-[10px] shrink-0">{t.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+                <Card className="p-4">
+                  <div className="text-sm font-medium flex items-center gap-2"><Brain className="size-4 text-primary" /> Bloom Performance</div>
+                  <div className="mt-3 space-y-2.5">
+                    {studentDetail.bloom_performance.length === 0 ? <p className="text-xs text-muted-foreground">No Bloom data</p> : studentDetail.bloom_performance.map((b) => (
+                      <div key={b.level} className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs">{b.level}</div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1"><div className="h-full bg-primary rounded-full" style={{ width: `${b.average_score}%` }} /></div>
+                        </div>
+                        <div className="text-xs tabular-nums font-medium shrink-0">{b.average_score.toFixed(1)}%</div>
+                        <Badge variant="outline" className="text-[10px] shrink-0">{b.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Learning analysis (no AI gaps/tips) */}
+              <Card className="p-4">
+                <div className="text-sm font-medium flex items-center gap-2"><GraduationCap className="size-4 text-primary" /> Learning Summary</div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                  <div><span className="text-muted-foreground">Overall:</span> <span className="font-medium">{studentDetail.learning_analysis.overall_performance}</span></div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Strong:</span> {studentDetail.learning_analysis.strong_topics.join(", ") || "—"}</div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Developing:</span> {studentDetail.learning_analysis.developing_topics.join(", ") || "—"}</div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Weak:</span> {studentDetail.learning_analysis.weak_topics.join(", ") || "—"}</div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Critical:</span> {studentDetail.learning_analysis.critical_topics.join(", ") || "—"}</div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 border-t pt-2">AI improvement tips (recommendations, next-question strategy) are intentionally hidden in lecturer view.</p>
+              </Card>
+
+              {/* ——— Student Diagram ——— from diagram_evaluation / diagram_marking */}
+              {(() => {
+                const diagEval: any = (studentDetail as any).diagram_evaluation || (studentDetail as any).diagram?.evaluation;
+                const diagMark: any = (studentDetail as any).diagram_marking || (studentDetail as any).diagram?.marking;
+                if (!diagEval && !diagMark) return null;
+                const ev = diagEval?.evaluation_result || {};
+                const criteria: any[] = ev.criteria_results || [];
+                const total = ev.total_score ?? diagMark?.diagram_marks ?? 0;
+                const max = ev.max_score ?? 20;
+                const pct = max ? (total / max) * 100 : 0;
+                const diagramDetails = diagEval?.diagram_details || diagMark?.diagram_details;
+                const detections: any[] = diagramDetails?.detections || [];
+                const entities: any[] = diagramDetails?.entities || diagEval?.diagram_entity_relations || diagMark?.diagram_entity_relations || [];
+                const rels: any[] = diagramDetails?.relationships || diagEval?.diagram_relations || diagMark?.diagram_relations || [];
+                return (
+                  <Card className="p-4 space-y-3 border-violet-200 bg-violet-50/30 dark:bg-violet-950/10">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <div className="size-7 rounded-md bg-violet-500/10 text-violet-600 flex items-center justify-center"><FileText className="size-4" /></div>
+                      Diagram — EER / ER Scores
+                      <Badge variant="outline" className="ml-auto text-xs tabular-nums">{total} / {max} · {pct.toFixed(1)}%</Badge>
+                    </div>
+
+                    <ERDiagramViewer
+                      key={studentDetail.student_id}
+                      entities={entities.map((entity: any) => ({
+                        ...entity,
+                        primary_keys: entity.primary_keys
+                          ?? diagramDetails?.structure?.entities?.[entity.entity_name]?.primary_keys
+                          ?? (diagEval?.diagram_entity_relations || diagMark?.diagram_entity_relations || []).find((item: any) => item.entity_name === entity.entity_name)?.primary_keys,
+                      }))}
+                      relationships={rels}
+                      image={ev.annotated_image}
+                    />
+                    <p className="text-xs text-muted-foreground">{detections.length} detected elements</p>
+                    {entities.length === 0 && detections.length > 0 && <ul className="text-xs space-y-1">
+                      {detections.map((detection: any, index: number) => <li key={detection.id ?? index}>{detection.label}: {detection.text || "No readable label"}</li>)}
+                    </ul>}
+
+                    {/* Entities / Relationships summary */}
+                    {(entities.length > 0 || rels.length > 0) && (
+                      <div className="grid md:grid-cols-2 gap-3 text-xs">
+                        {entities.length > 0 && (
+                          <div className="rounded-lg border bg-card p-3">
+                            <div className="font-medium mb-1.5">Entities & Attributes</div>
+                            <div className="space-y-1.5">
+                              {entities.map((e: any, i: number) => (
+                                <div key={i} className="flex gap-2">
+                                  <span className="font-medium shrink-0">{e.entity_name}:</span>
+                                  <span className="text-muted-foreground">{(e.attributes || []).join(", ") || "—"}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {rels.length > 0 && (
+                          <div className="rounded-lg border bg-card p-3">
+                            <div className="font-medium mb-1.5">Relationships</div>
+                            <div className="space-y-1">
+                              {rels.map((r: any, i: number) => (
+                                <div key={i} className="flex gap-2">
+                                  <span className="font-medium">{r.relation_name || r.name || `R${i+1}`}:</span>
+                                  <span className="text-muted-foreground">{(r.entities || []).join(" — ") || "—"}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Criteria */}
+                    {criteria.length > 0 && (
+                      <div className="rounded-lg border overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/40">
+                              <TableHead className="text-xs">Criterion</TableHead>
+                              <TableHead className="text-xs text-center">Awarded</TableHead>
+                              <TableHead className="text-xs text-center">Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {criteria.map((c: any) => (
+                              <TableRow key={c.criterion_id} className="h-9">
+                                <TableCell className="text-xs max-w-[220px]"><div className="truncate" title={c.criterion}>{c.criterion}</div><div className="text-[10px] text-muted-foreground truncate">{c.remarks}</div></TableCell>
+                                <TableCell className="text-xs text-center tabular-nums">{c.awarded_marks} / {c.max_marks}</TableCell>
+                                <TableCell className="text-xs text-center"><Badge variant="outline" className={`text-[10px] ${c.status === "pass" ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : c.status === "partial" ? "bg-amber-500/10 text-amber-700 border-amber-500/20" : "bg-red-500/10 text-red-700 border-red-500/20"}`}>{c.status}</Badge></TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+
+                    {ev.overall_feedback && (
+                      <div className="rounded-lg bg-muted/40 border p-3 text-xs leading-relaxed">{ev.overall_feedback}</div>
+                    )}
+                    <div className="text-[11px] text-muted-foreground">Source: {ev.grading_source || diagMark?.source || "diagram_evaluation"} · {diagEval?.exam_code || ""} · {new Date(diagEval?.created_at || "").toLocaleDateString()}</div>
+                  </Card>
+                );
+              })()}
+
+              <div className="text-xs text-muted-foreground text-center">Generated {new Date(studentDetail.generated_at).toLocaleString()} · {studentDetail.model_metadata.bloom_model} ({studentDetail.model_metadata.grading_source})</div>
+            </div>
+          ) : null}
+        </div>
+        )}
+      </div>
+    );
+  }
 
   // Exam Selection — dense, scannable table with filters
   if (!selectedExam) {
@@ -309,12 +736,17 @@ export default function AnalyticsPage() {
 
         {loadingExams ? (
           <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} />
+        ) : examListError ? (
+          <Card className="p-8 space-y-3" role="alert">
+            <p>Could not load exams. Check the analytics service and retry.</p>
+            <Button variant="outline" onClick={() => setExamReload(value => value + 1)}>Retry</Button>
+          </Card>
         ) : exams.length === 0 ? (
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
             <Card className="p-12 text-center border-border bg-gradient-to-b from-card to-muted/20">
               <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40" />
               <p className="text-muted-foreground">No exams found</p>
-              <p className="text-xs text-muted-foreground mt-1">Exams appear once a rubric is created and submissions are graded.</p>
+              <p className="text-xs text-muted-foreground mt-1">Exams appear once an essay rubric is saved. Grades are shown when available.</p>
             </Card>
           </motion.div>
         ) : (
@@ -430,12 +862,7 @@ export default function AnalyticsPage() {
                             </span>
                           </TableCell>
                           <TableCell className="py-3 text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <span className={`text-sm font-semibold tabular-nums ${exam.average_percentage >= 50 ? "text-emerald-700" : "text-amber-700"}`}>{exam.average_percentage.toFixed(1)}%</span>
-                              <div className="hidden sm:block h-1 w-12 bg-muted rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full ${exam.average_percentage >= 50 ? "bg-emerald-500" : "bg-amber-500"}`} style={{ width: `${Math.min(exam.average_percentage, 100)}%` }} />
-                              </div>
-                            </div>
+                            <ExamInventoryScore exam={exam} />
                           </TableCell>
                           <TableCell className="py-3">
                             {exam.analyzed ? (
@@ -495,33 +922,47 @@ export default function AnalyticsPage() {
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <BarChart3 className="size-4" /> Analytics
           <ChevronRight className="size-4" /> {selectedExam.course_code}
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setSelectedExam(null)}>Back</Button>
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => { setSearchParams({}); setSelectedExam(null); }}>Back</Button>
         </div>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="tracking-tight text-foreground bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text">{selectedExam.subject_name}</h2>
-            <p className="text-sm text-muted-foreground mt-1">{selectedExam.session_name} · {selectedExam.year}</p>
+            <p className="text-sm text-muted-foreground mt-1">{selectedExam.session_name} · {selectedExam.year} {analytics ? `· Generated ${new Date(analytics.generated_at).toLocaleString()}` : ""}</p>
+            {analytics && (analytics as any).unclassified_coverage && (
+              <p className="text-xs text-amber-700 mt-1">Topic assignment pending: {analytics.unclassified_coverage.attempt_count} attempts at {analytics.unclassified_coverage.average_percentage}% — open a question below to review its topic</p>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled title="Coming soon" className="backdrop-blur">
-              <Download className="h-4 w-4 mr-1" /> Export
+            <Button variant="outline" size="sm" onClick={() => setPaperOpen(true)}>
+              <FileText className="h-4 w-4 mr-1" /> View question paper
             </Button>
-            <Button variant="outline" size="sm" disabled title="Coming soon" className="backdrop-blur">
-              <FileText className="h-4 w-4 mr-1" /> Report
+            <Button variant="outline" size="sm" onClick={() => selectedExam && handleSelectExam(selectedExam, { forceReanalyse: true })} disabled={loadingAnalytics} title="Recompute analytics for this exam (ignores cache)">
+              {loadingAnalytics ? <ThinkingOrb state="solving" size={20} aria-label="Reanalysing exam" /> : <Loader2 className="h-4 w-4 mr-1" />} Reanalyse
             </Button>
+
           </div>
         </div>
       </motion.div>
+
+      {studentListError ? <p role="alert" className="text-sm text-destructive">{studentListError}</p>
+        : !loadingStudents && <GradingOverview students={students} />}
+      {!!analytics?.excluded_submissions?.length && <div role="alert" className="rounded-md border border-amber-300 p-3 text-sm">
+        <p className="font-medium">Some essay results were excluded from analytics because their grading evidence needs review.</p>
+        <ul className="list-disc pl-5">{analytics.excluded_submissions.map((item, i) => <li key={i}>{item.student_id}: {item.reason}</li>)}</ul>
+      </div>}
+      {analytics?.snapshot_status === "stale" && <p role="alert" className="rounded-md border border-amber-300 p-3 text-sm">{analytics.refresh_warning}</p>}
 
       {loadingAnalytics ? (
         <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} liveMessage={liveModelMessage} />
       ) : analytics ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <h3 className="mb-2 text-sm font-semibold">Essay analytics · {analytics.statistics.total_students} graded submissions</h3>
             <KpiCards statistics={analytics.statistics} />
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+            <h3 className="mb-2 text-sm font-semibold">Essay score distribution</h3>
             <div className="rounded-xl border bg-card/50 backdrop-blur p-1"><DistributionHistogram statistics={analytics.statistics} /></div>
           </motion.div>
 
@@ -544,6 +985,25 @@ export default function AnalyticsPage() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}>
             <InsightsPanel insights={analytics.canonical_insights} />
           </motion.div>
+
+          {analytics.diagram_analysis && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}>
+              <div className="rounded-xl border bg-card/50 backdrop-blur p-1">
+                <div className="px-4 pt-4 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="size-8 rounded-lg bg-violet-500/10 text-violet-600 flex items-center justify-center">
+                      <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold">Diagram Analysis</h3>
+                      <p className="text-xs text-muted-foreground">Rubric-based evaluation of diagram submissions</p>
+                    </div>
+                  </div>
+                </div>
+                <DiagramAnalysisPanel diagramAnalysis={analytics.diagram_analysis} />
+              </div>
+            </motion.div>
+          )}
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.30 }}>
             <TeachingActions actions={teachingActions} loading={loadingActions} />
@@ -574,15 +1034,17 @@ export default function AnalyticsPage() {
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
                 className="pl-9 h-9 bg-background"
-                disabled={loadingStudents || !analytics}
+                disabled={loadingStudents}
               />
             </div>
           </div>
 
           {loadingStudents ? (
             <div className="p-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Loading students…
+              <ThinkingOrb state="searching" size={20} aria-label="Loading students" /> Loading students…
             </div>
+          ) : studentListError ? (
+            <p role="alert" className="p-4 text-sm text-destructive">{studentListError}</p>
           ) : students.length === 0 ? (
             <div className="p-8 text-center">
               <GraduationCap className="size-8 mx-auto text-muted-foreground/30" />
@@ -595,9 +1057,10 @@ export default function AnalyticsPage() {
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
                     <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Student</TableHead>
-                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Score</TableHead>
-                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">%</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Essay</TableHead>
+                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Diagram</TableHead>
+                    <TableHead className="text-center text-xs uppercase tracking-wider font-semibold text-muted-foreground">Overall</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Grading status</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Analyzed</TableHead>
                     <TableHead className="w-[88px] text-right pr-4 text-xs uppercase tracking-wider font-semibold text-muted-foreground">View</TableHead>
                   </TableRow>
@@ -605,8 +1068,13 @@ export default function AnalyticsPage() {
                 <TableBody>
                   {students
                     .filter((s) => !studentSearch.trim() || s.student_id.toLowerCase().includes(studentSearch.trim().toLowerCase()))
-                    .map((s) => (
-                      <TableRow key={s.student_id} onClick={() => handleSelectStudent(s.student_id)} className="group cursor-pointer h-12 hover:bg-muted/50">
+                    .map((s) => {
+                      const canView = canViewStudent(s);
+                      return (
+                      <TableRow key={s.student_id} aria-disabled={!canView} tabIndex={canView ? 0 : undefined}
+                        onClick={canView ? () => handleSelectStudent(s.student_id) : undefined}
+                        onKeyDown={canView ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void handleSelectStudent(s.student_id); } } : undefined}
+                        className={`group h-12 ${canView ? "cursor-pointer hover:bg-muted/50" : "text-muted-foreground"}`}>
                         <TableCell className="py-2">
                           <div className="flex items-center gap-2">
                             <div className="size-7 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -615,29 +1083,21 @@ export default function AnalyticsPage() {
                             <span className="text-sm font-medium font-mono">{s.student_id}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="py-2 text-center text-sm tabular-nums">
-                          {s.score.obtained.toFixed(1)} / {s.score.maximum.toFixed(1)}
-                        </TableCell>
-                        <TableCell className="py-2 text-center">
-                          <Badge variant="outline" className={`text-xs tabular-nums ${s.score.percentage >= 50 ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-amber-500/10 text-amber-700 border-amber-500/20"}`}>
-                            {s.score.percentage.toFixed(1)}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <Badge variant="outline" className="text-xs">{s.status}</Badge>
-                        </TableCell>
+                        <StudentGradingCells student={s} />
                         <TableCell className="py-2">
                           {s.analysis_status === "generated" ? (
                             <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><CheckCircle2 className="size-3" /> Ready</span>
+                          ) : s.analysis_status === "diagram_only" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-700"><Eye className="size-3" /> Diagram only</span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs text-amber-700"><Clock className="size-3" /> Pending</span>
                           )}
                         </TableCell>
                         <TableCell className="py-2 text-right pr-4">
-                          {loadingStudentDetail && selectedStudentId === s.student_id ? (
+                          {!canView ? <span className="text-xs text-muted-foreground">Awaiting grades</span> : loadingStudentDetail && selectedStudentId === s.student_id ? (
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
-                              <Loader2 className="size-3 animate-spin" />
-                              <span className="animate-pulse">Analyzing…</span>
+                              <ThinkingOrb state="solving" size={20} aria-label="Analysing student" />
+                              <span>{s.analysis_status === "generated" ? "Loading…" : "Analyzing…"}</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-primary group-hover:underline">
@@ -646,7 +1106,7 @@ export default function AnalyticsPage() {
                           )}
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ); })}
                 </TableBody>
               </Table>
               {students.filter((s) => !studentSearch.trim() || s.student_id.toLowerCase().includes(studentSearch.trim().toLowerCase())).length === 0 && (
@@ -663,134 +1123,16 @@ export default function AnalyticsPage() {
         </Card>
       </motion.div>
 
-      {/* Student detail dialog — excludes AI tips */}
-      <Dialog open={!!selectedStudentId} onOpenChange={(open) => { if (!open) { setSelectedStudentId(null); setStudentDetail(null); setStudentDetailError(null); }}}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <GraduationCap className="size-5 text-primary" />
-              {selectedStudentId ?? "Student"} — Performance
-              <Badge variant="outline" className="ml-1 text-xs font-normal">Lecturer view · no AI tips</Badge>
-            </DialogTitle>
-            <DialogDescription>
-              {selectedExam?.course_code} · {selectedExam?.session_name} · {selectedExam?.year} — raw scores, topics and Bloom levels only.
-            </DialogDescription>
-          </DialogHeader>
-
-          {loadingStudentDetail ? (
-            <div className="py-10 flex flex-col items-center gap-3">
-              <Loader2 className="size-6 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading performance…</p>
-            </div>
-          ) : studentDetailError ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4 flex gap-3">
-              <AlertCircle className="size-5 text-amber-600 shrink-0" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{studentDetailError.includes("423") || studentDetailError.toLowerCase().includes("not yet generated") ? "Not yet analyzed" : "Could not load"}</p>
-                <p className="text-sm text-amber-700 dark:text-amber-400">{studentDetailError}</p>
-              </div>
-            </div>
-          ) : studentDetail ? (
-            <div className="space-y-5">
-              {/* Overall */}
-              <Card className="p-4 bg-muted/30">
-                <div className="flex items-center gap-2 text-sm font-medium"><Award className="size-4 text-primary" /> Overall Performance</div>
-                <div className="mt-3 flex flex-wrap items-end gap-4">
-                  <div>
-                    <div className="text-2xl font-semibold tabular-nums">{studentDetail.overall_performance.score.toFixed(1)} <span className="text-base text-muted-foreground">/ {studentDetail.overall_performance.maximum.toFixed(1)}</span></div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{studentDetail.overall_performance.status} · {studentDetail.overall_performance.percentage.toFixed(1)}%</div>
-                  </div>
-                  <Badge className="ml-auto border text-xs">{studentDetail.overall_performance.status}</Badge>
-                </div>
-                <div className="h-2 bg-background rounded-full overflow-hidden mt-3">
-                  <div className="h-full bg-primary rounded-full" style={{ width: `${studentDetail.overall_performance.percentage}%` }} />
-                </div>
-              </Card>
-
-              {/* Question performance */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold flex items-center gap-2"><FileText className="size-4 text-primary" /> Question Breakdown</h4>
-                <div className="rounded-lg border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/40">
-                        <TableHead className="text-xs">Q</TableHead>
-                        <TableHead className="text-xs">Topic</TableHead>
-                        <TableHead className="text-xs">Bloom</TableHead>
-                        <TableHead className="text-xs text-right">Score</TableHead>
-                        <TableHead className="text-xs text-right">%</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {studentDetail.question_performance.map((q) => (
-                        <TableRow key={q.question_id} className="h-10">
-                          <TableCell className="font-medium text-xs">{q.question_no}</TableCell>
-                          <TableCell className="text-xs max-w-[160px] truncate" title={q.topic}>{q.topic}<span className="text-muted-foreground"> · {q.subtopic}</span></TableCell>
-                          <TableCell className="text-xs"><Badge variant="outline" className="text-xs">{q.bloom_analysis.level}</Badge></TableCell>
-                          <TableCell className="text-xs text-right tabular-nums">{q.performance.score.toFixed(1)} / {q.performance.max_score.toFixed(1)}</TableCell>
-                          <TableCell className="text-xs text-right tabular-nums">{q.performance.percentage.toFixed(1)}%</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-
-              {/* Topic performance */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <Card className="p-4">
-                  <div className="text-sm font-medium flex items-center gap-2"><BookOpen className="size-4 text-primary" /> Topic Performance</div>
-                  <div className="mt-3 space-y-2.5">
-                    {studentDetail.topic_performance.length === 0 ? <p className="text-xs text-muted-foreground">No topic data</p> : studentDetail.topic_performance.map((t) => (
-                      <div key={t.topic} className="flex items-center gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs truncate">{t.topic}</div>
-                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1"><div className="h-full bg-primary rounded-full" style={{ width: `${t.percentage}%` }} /></div>
-                        </div>
-                        <div className="text-xs tabular-nums font-medium shrink-0">{t.percentage.toFixed(1)}%</div>
-                        <Badge variant="outline" className="text-[10px] shrink-0">{t.status}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-sm font-medium flex items-center gap-2"><Brain className="size-4 text-primary" /> Bloom Performance</div>
-                  <div className="mt-3 space-y-2.5">
-                    {studentDetail.bloom_performance.length === 0 ? <p className="text-xs text-muted-foreground">No Bloom data</p> : studentDetail.bloom_performance.map((b) => (
-                      <div key={b.level} className="flex items-center gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs">{b.level}</div>
-                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1"><div className="h-full bg-primary rounded-full" style={{ width: `${b.average_score}%` }} /></div>
-                        </div>
-                        <div className="text-xs tabular-nums font-medium shrink-0">{b.average_score.toFixed(1)}%</div>
-                        <Badge variant="outline" className="text-[10px] shrink-0">{b.status}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </div>
-
-              {/* Learning analysis (no AI gaps/tips) */}
-              <Card className="p-4">
-                <div className="text-sm font-medium flex items-center gap-2"><GraduationCap className="size-4 text-primary" /> Learning Summary</div>
-                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                  <div><span className="text-muted-foreground">Overall:</span> <span className="font-medium">{studentDetail.learning_analysis.overall_performance}</span></div>
-                  <div className="col-span-2"><span className="text-muted-foreground">Strong:</span> {studentDetail.learning_analysis.strong_topics.join(", ") || "—"}</div>
-                  <div className="col-span-2"><span className="text-muted-foreground">Developing:</span> {studentDetail.learning_analysis.developing_topics.join(", ") || "—"}</div>
-                  <div className="col-span-2"><span className="text-muted-foreground">Weak:</span> {studentDetail.learning_analysis.weak_topics.join(", ") || "—"}</div>
-                  <div className="col-span-2"><span className="text-muted-foreground">Critical:</span> {studentDetail.learning_analysis.critical_topics.join(", ") || "—"}</div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-3 border-t pt-2">AI improvement tips (recommendations, next-question strategy) are intentionally hidden in lecturer view.</p>
-              </Card>
-
-              <div className="text-xs text-muted-foreground text-center">Generated {new Date(studentDetail.generated_at).toLocaleString()} · {studentDetail.model_metadata.bloom_model} ({studentDetail.model_metadata.grading_source})</div>
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
       <TopicDetailModal topic={selectedTopic} open={!!selectedTopic} onClose={() => setSelectedTopic(null)} />
-      <QuestionDetailModal question={selectedQuestion} open={!!selectedQuestion} onClose={() => setSelectedQuestion(null)} />
+      <ExamPaperModal exam={selectedExam} open={paperOpen} onClose={() => setPaperOpen(false)} />
+      <QuestionDetailModal
+        key={`${selectedExam?.course_code}-${selectedExam?.session_name}-${selectedExam?.year}-${selectedExam?.month}-${selectedExam?.semester}-${selectedQuestion?.question_no}`}
+        question={selectedQuestion}
+        exam={selectedExam}
+        open={!!selectedQuestion}
+        onClose={() => setSelectedQuestion(null)}
+        onTopicSaved={() => { if (selectedExam) void handleSelectExam(selectedExam, { forceReanalyse: true }); }}
+      />
     </div>
   );
 }

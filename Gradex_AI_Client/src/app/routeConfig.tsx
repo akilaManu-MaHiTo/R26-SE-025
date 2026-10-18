@@ -10,6 +10,8 @@ import AnalyticsPage from "./components/AnalyticsPage";
 import { ExamCreator } from "./components/ExamCreator";
 import { VivaPage } from "./components/VivaPage";
 import { SubjectContentPage } from "./components/SubjectContentPage";
+import { TopicTaxonomyPage } from "./components/TopicTaxonomyPage";
+import { CourseMaterialsPage } from "./components/CourseMaterialsPage";
 import { LiveCopilotPage } from "./components/viva-copilot/LiveCopilotPage";
 
 export type AgentId = "diagram-evaluation" | "grading" | "question-exam" | "viva-evaluation";
@@ -103,6 +105,20 @@ export const AGENT_CONFIG: AgentConfig[] = [
         subtitle: "Compose balanced, level-appropriate exams",
         element: <ExamCreator />,
       },
+      {
+        path: "/question-exam/course-materials",
+        label: "Course Materials",
+        title: "Course Materials",
+        subtitle: "Manage lectures, tutorials and previous exam PDFs for Exam Creator",
+        element: <CourseMaterialsPage />,
+      },
+      {
+        path: "/question-exam/topic-taxonomy",
+        label: "Topic Taxonomy",
+        title: "Topic Taxonomy",
+        subtitle: "Edit course topics and browse saved versions",
+        element: <TopicTaxonomyPage />,
+      },
     ],
   },
   {
@@ -139,6 +155,7 @@ export const AGENT_CONFIG: AgentConfig[] = [
 ];
 
 const PATH_TITLES: Record<string, { title: string; subtitle?: string }> = {
+  "/exam-keys": { title: "Exam Keys", subtitle: "Register exam identities before grading" },
   "/dashboard": { title: "Dashboard", subtitle: "Your AI-powered command center" },
   "/student-dashboard": { title: "My Dashboard", subtitle: "Track your progress and upcoming work" },
 };

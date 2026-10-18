@@ -134,6 +134,7 @@ async def create_batch_submission_stubs(
     session_name = (rubric.get("session_name") or "").strip()
     subject_code = (rubric.get("subject_code") or "").strip()
     subject_name = (rubric.get("subject_name") or "").strip() or subject_code
+    exam_key = str(rubric.get("examKey") or rubric.get("exam_key") or "").strip()
 
     year = rubric.get("year")
     month = rubric.get("month")
@@ -196,6 +197,7 @@ async def create_batch_submission_stubs(
                 "year": year,
                 "month": month,
                 "semester": semester,
+                "examKey": exam_key,
                 "student_id": student_id,
                 "paper_key": paper_key,
                 "max_marks_paper_total": max_marks_paper_total,
@@ -240,6 +242,7 @@ async def run_batch_grading(
             subject_name = str(course.get("name") or "").strip()
     if not subject_name:
         subject_name = subject_code
+    exam_key = str(rubric.get("examKey") or rubric.get("exam_key") or "").strip()
 
     year = rubric.get("year")
     month = rubric.get("month")
@@ -413,6 +416,7 @@ async def run_batch_grading(
                         "year": year,
                         "month": month,
                         "semester": semester,
+                        "examKey": exam_key,
                         "student_id": student_id,
                         "paper_key": paper_key,
                         "max_marks_paper_total": max_marks_paper_total,

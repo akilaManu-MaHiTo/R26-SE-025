@@ -1,6 +1,8 @@
 import base64
 import json
 import os
+import re
+import unicodedata
 from collections import defaultdict
 from pathlib import Path
 from typing import Callable, Optional
@@ -40,6 +42,33 @@ def _read_image(image_path: Path):
     return image
 
 
+def _normalize_ocr_label(value: str) -> str:
+    """Remove OCR decoration while preserving meaningful label text."""
+    text = unicodedata.normalize("NFKC", str(value or ""))
+    text = text.replace("_", " ")
+    text = re.sub(r"[^\w\s-]", " ", text, flags=re.UNICODE)
+    text = re.sub(r"(?<!\w)-{2,}(?!\w)", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return ""
+
+    compact = re.sub(r"[\W_]+", "", text).casefold()
+    identifier_aliases = {
+        "sid": "S_Id",
+        "studentid": "S_Id",
+        "cid": "C_Id",
+        "courseid": "C_Id",
+    }
+    return identifier_aliases.get(compact, text)
+
+
+def _normalize_line(line):
+    coords = np.asarray(line).reshape(-1)
+    if coords.size < 4:
+        return None
+    return tuple(int(value) for value in coords[:4])
+
+
 def _detect_lines(
     image,
     canny_low: int = 50,
@@ -63,10 +92,10 @@ def _detect_lines(
 
     normalized_lines = []
     for line in lines:
-        coords = np.asarray(line).reshape(-1)
-        if coords.size < 4:
+        normalized_line = _normalize_line(line)
+        if normalized_line is None:
             continue
-        normalized_lines.append(tuple(int(value) for value in coords[:4]))
+        normalized_lines.append(normalized_line)
 
     return normalized_lines
 
@@ -108,6 +137,154 @@ def _infer_crop_path(crops_root: Path, label: str, stem: str, index: int) -> str
     if matches:
         return str(matches[0])
     return str(label_dir / f"{base_name}.jpg")
+
+
+def _ink_mask(gray):
+    """Binary mask of pen strokes, robust to uneven paper shading and texture."""
+    height, width = gray.shape[:2]
+    kernel = max(15, (min(height, width) // 2) | 1)
+    background = cv2.medianBlur(gray, kernel)
+    darkness = cv2.subtract(background, gray)
+    _, ink = cv2.threshold(darkness, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return ink
+
+
+def _has_underline(crop) -> bool:
+    """Return True when a crop contains a long horizontal underline below its text."""
+    if crop is None or crop.size == 0:
+        return False
+
+    height, width = crop.shape[:2]
+    if height < 8 or width < 16:
+        return False
+
+    gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+    ink = _ink_mask(gray)
+
+    # Opening with a wide, flat kernel keeps only long horizontal strokes and
+    # drops the letters and the curved oval border.
+    kernel = cv2.getStructuringElement(
+        cv2.MORPH_RECT, (max(7, int(width * 0.24)), 1)
+    )
+    horizontal = cv2.morphologyEx(ink, cv2.MORPH_OPEN, kernel)
+    contours, _ = cv2.findContours(
+        horizontal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+    for contour in contours:
+        x, y, line_width, line_height = cv2.boundingRect(contour)
+        line_center = y + line_height / 2.0
+        if line_width < width * 0.28 or line_width > width * 0.80:
+            continue
+        if line_width / max(line_height, 1) < 6:
+            continue
+        # Keep the stroke inside the crop: the connector and the oval border
+        # touch or hug the crop edges.
+        if x < width * 0.04 or x + line_width > width * 0.96:
+            continue
+        # Underlines sit below the label text but above the oval's bottom arc.
+        if line_center < height * 0.50 or line_center > height * 0.82:
+            continue
+
+        # Require label ink right above the stroke (the text it underlines).
+        band_top = max(0, y - max(3, int(height * 0.28)))
+        text_band = ink[band_top:y, x : x + line_width]
+        if text_band.size == 0 or cv2.countNonZero(text_band) < line_width * 0.05:
+            continue
+        return True
+    return False
+
+
+def _crop_detection(image, bbox, padding: float = 0.0):
+    height, width = image.shape[:2]
+    x1, y1, x2, y2 = [int(round(value)) for value in bbox]
+    box_width = max(1, x2 - x1)
+    box_height = max(1, y2 - y1)
+    x_padding = int(round(box_width * padding))
+    y_padding = int(round(box_height * padding))
+    x1 -= x_padding
+    y1 -= y_padding
+    x2 += x_padding
+    y2 += y_padding
+    x1 = max(0, min(x1, width - 1))
+    y1 = max(0, min(y1, height - 1))
+    x2 = max(x1 + 1, min(x2, width))
+    y2 = max(y1 + 1, min(y2, height))
+    return image[y1:y2, x1:x2]
+
+
+def _save_detection_crops(
+    image, detections, crops_root: Path, stem: str
+) -> None:
+    """Persist every model detection crop before OCR or post-processing."""
+    crops_root.mkdir(parents=True, exist_ok=True)
+    label_counts = defaultdict(int)
+
+    for detection in detections:
+        label = str(detection.get("label", "")).strip() or "Unknown"
+        label_counts[label] += 1
+        crop = _crop_detection(image, detection.get("bbox", [0, 0, 0, 0]))
+        if crop is None or crop.size == 0:
+            continue
+
+        label_dir = crops_root / label
+        label_dir.mkdir(parents=True, exist_ok=True)
+        suffix = "" if label_counts[label] == 1 else f"-{label_counts[label]}"
+        crop_path = label_dir / f"{stem}{suffix}.jpg"
+        if not cv2.imwrite(str(crop_path), crop):
+            raise OSError(f"Could not save detection crop to {crop_path}")
+        detection["crop_path"] = str(crop_path)
+
+def _detect_primary_keys(image, detections, save_dir: Path) -> None:
+    primary_dir = save_dir / "crops"
+    primary_count = 0
+    stem = save_dir.name
+
+    for detection in detections:
+        model_label = (
+            str(detection.get("label", "")).strip().lower().replace("_", " ")
+        )
+        if model_label == "attributes":
+            # The model predicts all attributes with one class. Use the
+            # corresponding YOLO crop for the underline decision; the model
+            # does not emit a separate primary-key detection.
+            saved_crop_path = Path(str(detection.get("crop_path", "")))
+            crop = (
+                cv2.imread(str(saved_crop_path))
+                if saved_crop_path.is_file()
+                else None
+            )
+            crop_source = "attributes_crop"
+        else:
+            crop = None
+            crop_source = "expanded_detection_crop"
+
+        # Keep a fallback for direct callers or runs where save_crop did not
+        # produce the expected Attributes image.
+        if crop is None:
+            crop = _crop_detection(
+                image,
+                detection.get("bbox", [0, 0, 0, 0]),
+                padding=0.35,
+            )
+
+        underline_detected = _has_underline(crop)
+        is_primary_key = model_label == "primary key" or (
+            model_label == "attributes" and underline_detected
+        )
+        if not is_primary_key:
+            continue
+
+        primary_count += 1
+        primary_dir.mkdir(parents=True, exist_ok=True)
+        crop_path = primary_dir / f"primary-key-{stem}-{primary_count}.jpg"
+        if not cv2.imwrite(str(crop_path), crop):
+            raise OSError(f"Could not save primary-key crop to {crop_path}")
+
+        detection["label"] = "Primary Key"
+        detection["is_primary_key"] = True
+        detection["underline_detected"] = underline_detected
+        detection["primary_key_crop_path"] = str(crop_path)
+        detection["primary_key_crop_source"] = crop_source
 
 
 def _extract_detections(results, image_path: Path, crops_root: Path):
@@ -167,9 +344,10 @@ def _attach_ocr_text(detections, ocr_rows):
         row = ocr_by_path.get(Path(crop_path).resolve())
         if not row:
             continue
-        text = str(row.get("text", "")).strip()
+        text = _normalize_ocr_label(row.get("text", ""))
         if text:
             det["text"] = text
+            row["text"] = text
         det["ocr_status"] = row.get("status")
 
 
@@ -225,7 +403,22 @@ def _build_er_structure(detections, connections):
         elif det["label"] in attribute_labels:
             attribute_names[det["id"]] = _display_name(det, "Attribute")
 
+    # A duplicate detection of an underlined attribute may carry the connector
+    # while the flagged copy does not, so match primary keys by label text too.
+    primary_key_names = {
+        _display_name(det, "Attribute")
+        for det in detections
+        if det.get("is_primary_key") and str(det.get("text", "")).strip()
+    }
+
+    def is_primary_key(det):
+        return bool(det.get("is_primary_key")) or (
+            str(det.get("text", "")).strip() != ""
+            and _display_name(det, "Attribute") in primary_key_names
+        )
+
     entity_attributes = defaultdict(set)
+    entity_primary_keys = defaultdict(set)
     relationship_entities = defaultdict(set)
     relationship_attributes = defaultdict(set)
     unmatched = []
@@ -237,13 +430,13 @@ def _build_er_structure(detections, connections):
         right_label = right["label"]
 
         if left_label in entity_labels and right_label in attribute_labels:
-            entity_attributes[left["id"]].add(
-                attribute_names.get(right["id"], _display_name(right, "Attribute"))
-            )
+            attribute_name = attribute_names.get(right["id"], _display_name(right, "Attribute"))
+            target = entity_primary_keys if is_primary_key(right) else entity_attributes
+            target[left["id"]].add(attribute_name)
         elif right_label in entity_labels and left_label in attribute_labels:
-            entity_attributes[right["id"]].add(
-                attribute_names.get(left["id"], _display_name(left, "Attribute"))
-            )
+            attribute_name = attribute_names.get(left["id"], _display_name(left, "Attribute"))
+            target = entity_primary_keys if is_primary_key(left) else entity_attributes
+            target[right["id"]].add(attribute_name)
         elif left_label == relationship_label and right_label in entity_labels:
             relationship_entities[left["id"]].add(
                 entity_names.get(right["id"], _display_name(right, "Entity"))
@@ -268,6 +461,9 @@ def _build_er_structure(detections, connections):
         entities[name] = {
             "attributes": sorted(entity_attributes.get(entity_id, set()))
         }
+        primary_keys = sorted(entity_primary_keys.get(entity_id, set()))
+        if primary_keys:
+            entities[name]["primary_keys"] = primary_keys
 
     relationships = []
     for rel_id, rel_name in relationship_names.items():
@@ -423,6 +619,13 @@ def run_er_pipeline(
     ocr_error = ""
     try:
         detections = _extract_detections(results, resolved_image, crops_root)
+        image = _read_image(resolved_image)
+        _save_detection_crops(
+            image,
+            detections,
+            crops_root,
+            resolved_image.stem,
+        )
         label_counts = defaultdict(int)
         for detection in detections:
             label_counts[detection.get("label", "")] += 1
@@ -451,12 +654,12 @@ def run_er_pipeline(
         )
 
         ocr_rows = run_ocr_on_crops(crops_root, progress_callback=progress_callback)
-        save_ocr_outputs(save_dir, ocr_rows)
     except Exception as exc:
         ocr_error = str(exc)
 
     if ocr_rows:
         _attach_ocr_text(detections, ocr_rows)
+        save_ocr_outputs(save_dir, ocr_rows)
 
     _emit_progress(
         progress_callback,
@@ -468,6 +671,7 @@ def run_er_pipeline(
     )
 
     image = _read_image(resolved_image)
+    _detect_primary_keys(image, detections, save_dir)
     lines = _detect_lines(image)
     connections = _connect_lines_to_detections(lines, detections)
     structure = _build_er_structure(detections, connections)
@@ -524,15 +728,17 @@ def main():
         save_dir = Path(results[0].save_dir)
     crops_root = save_dir / "crops"
 
-    rows = run_ocr_on_crops(crops_root)
-    save_ocr_outputs(save_dir, rows)
     if not use_handwritten:
+        image = _read_image(source_path)
+        detections = _extract_detections(results, source_path, crops_root)
+        _save_detection_crops(image, detections, crops_root, source_path.stem)
+        rows = run_ocr_on_crops(crops_root)
         print_label_summary(rows)
 
-        detections = _extract_detections(results, source_path, crops_root)
         _attach_ocr_text(detections, rows)
+        save_ocr_outputs(save_dir, rows)
 
-        image = _read_image(source_path)
+        _detect_primary_keys(image, detections, save_dir)
         lines = _detect_lines(image)
         connections = _connect_lines_to_detections(lines, detections)
         structure = _build_er_structure(detections, connections)
@@ -545,7 +751,7 @@ def main():
             f"connections: {len(connections)}"
         )
 
-    print(f"OCR complete. {len(rows)} crops processed.")
+    print(f"OCR complete. {len(rows) if not use_handwritten else 0} crops processed.")
     print(f"Results saved in: {save_dir}")
 
 

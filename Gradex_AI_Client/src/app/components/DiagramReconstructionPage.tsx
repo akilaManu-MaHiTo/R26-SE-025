@@ -1,3 +1,5 @@
+import { SERVER_BASE_URL } from "../api/gradingApiBase";
+import { apiFetch } from "../api/authApi";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -14,9 +16,7 @@ import { Input } from "./ui/input";
 import { Separator } from "./ui/separator";
 import { AIPageBanner, AIBadgePill } from "./AIBrand";
 
-const API_BASE_URL =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ??
-  "http://127.0.0.1:8000";
+const API_BASE_URL = SERVER_BASE_URL;
 
 type DiagramDetailRecord = {
   _id?: string;
@@ -38,10 +38,13 @@ type DiagramDetailRecord = {
       text?: string;
       bbox?: [number, number, number, number];
       confidence?: number;
+      is_primary_key?: boolean;
+      primary_key_crop_path?: string;
     }>;
     entities?: Array<{
       entity_name?: string;
       attributes?: string[];
+      primary_keys?: string[];
     }>;
     relationships?: Array<{
       relation_name?: string;
@@ -49,7 +52,7 @@ type DiagramDetailRecord = {
       attributes?: string[];
     }>;
     structure?: {
-      entities?: Record<string, { attributes?: string[] }>;
+      entities?: Record<string, { attributes?: string[]; primary_keys?: string[] }>;
       relationships?: Array<{
         name?: string;
         entities?: string[];
@@ -60,6 +63,7 @@ type DiagramDetailRecord = {
   diagram_entity_relations?: Array<{
     entity_name?: string;
     attributes?: string[];
+    primary_keys?: string[];
   }>;
   diagram_relations?: Array<{
     relation_name?: string;
@@ -69,7 +73,7 @@ type DiagramDetailRecord = {
   evaluation_result?: {
     annotated_image?: string;
     structure?: {
-      entities?: Record<string, { attributes?: string[] }>;
+      entities?: Record<string, { attributes?: string[]; primary_keys?: string[] }>;
       relationships?: Array<{
         name?: string;
         entities?: string[];
@@ -101,6 +105,7 @@ function normalizeStructure(record: DiagramDetailRecord) {
   const entities = entityEntries.map(([name, value]) => ({
     name,
     attributes: value.attributes ?? [],
+    primaryKeys: value.primary_keys ?? [],
   }));
 
   const relationships = relationshipEntries.map((relationship) => ({
@@ -125,7 +130,7 @@ export function DiagramReconstructionPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/diagram-evaluate-details`);
+        const response = await apiFetch(`${API_BASE_URL}/api/diagram-evaluate-details`);
         const data = (await parseJsonResponse(response)) as DiagramDetailRecord[] | { detail?: unknown };
         if (!response.ok) {
           const detail = data && typeof data === "object" ? (data as { detail?: unknown }).detail : null;

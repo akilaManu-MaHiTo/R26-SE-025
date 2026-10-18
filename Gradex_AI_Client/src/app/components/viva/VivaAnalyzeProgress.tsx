@@ -1,3 +1,4 @@
+import { apiFetch } from "../../api/authApi";
 import { Check, Loader2 } from "lucide-react";
 
 export const VIVA_ANALYZE_STEPS: Array<{ id: string; label: string }> = [
@@ -26,12 +27,10 @@ export interface VivaProgressSnapshot {
 export async function fetchVivaAnalyzeProgress(
   backendBaseUrl: string,
   progressId: string,
-  apiKey: string,
 ): Promise<VivaProgressSnapshot | null> {
   try {
     const headers: Record<string, string> = { Accept: "application/json" };
-    if (apiKey) headers["X-API-Key"] = apiKey;
-    const response = await fetch(
+    const response = await apiFetch(
       `${backendBaseUrl.replace(/\/$/, "")}/api/viva-analyze/progress/${encodeURIComponent(progressId)}`,
       { headers },
     );
@@ -47,8 +46,7 @@ export async function fetchVivaAnalyzeProgress(
  * in place of the timer that re-requested the same endpoint several times a
  * second. The server pushes only when a stage actually changes.
  *
- * EventSource cannot send headers, so the API key goes in the query string;
- * the server's require_api_key accepts ?api_key= as well as X-API-Key.
+ * EventSource sends the same session cookie as normal API requests.
  *
  * Returns an unsubscribe function. Falls back to nothing if the browser has no
  * EventSource -- callers keep fetchVivaAnalyzeProgress for that case.
@@ -56,7 +54,6 @@ export async function fetchVivaAnalyzeProgress(
 export function subscribeVivaAnalyzeProgress(
   backendBaseUrl: string,
   progressId: string,
-  apiKey: string,
   onSnapshot: (snapshot: VivaProgressSnapshot) => void,
   onError?: () => void,
 ): () => void {
@@ -66,11 +63,10 @@ export function subscribeVivaAnalyzeProgress(
   }
 
   const base = backendBaseUrl.replace(/\/$/, "");
-  const query = apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : "";
-  const url = `${base}/api/viva-analyze/progress/${encodeURIComponent(progressId)}/stream${query}`;
+  const url = `${base}/api/viva-analyze/progress/${encodeURIComponent(progressId)}/stream`;
 
   let closed = false;
-  const source = new EventSource(url);
+  const source = new EventSource(url, { withCredentials: true });
 
   const close = () => {
     if (closed) return;
