@@ -64,6 +64,25 @@ export async function createViva(input: CreateVivaInput): Promise<Viva> {
   return (await response.json()) as Viva;
 }
 
+/** Correct a viva. The server refuses once any student has a mark under it. */
+export async function updateViva(vivaId: string, input: CreateVivaInput): Promise<Viva> {
+  const response = await apiFetch(`${SERVER_BASE_URL}/api/vivas/${encodeURIComponent(vivaId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+  return (await response.json()) as Viva;
+}
+
+/** Delete a viva that has no marks yet. The server refuses otherwise. */
+export async function deleteViva(vivaId: string): Promise<void> {
+  const response = await apiFetch(`${SERVER_BASE_URL}/api/vivas/${encodeURIComponent(vivaId)}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error(await readError(response));
+}
+
 /** The signed-in lecturer's vivas, or everyone's when `all` is set. */
 export async function listVivas(options: { all?: boolean; subjectCode?: string; category?: VivaCategory } = {}): Promise<Viva[]> {
   const params = new URLSearchParams();
