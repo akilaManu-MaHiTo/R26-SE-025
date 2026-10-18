@@ -1,6 +1,6 @@
-const API_BASE =
-  (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ??
-  "http://127.0.0.1:8000";
+import { SERVER_BASE_URL } from "./gradingApiBase";
+import { apiFetch } from "./authApi";
+const API_BASE = SERVER_BASE_URL;
 
 export interface StudentExam {
   subject_code: string;
@@ -57,27 +57,14 @@ export interface StudentAnalytics {
   analysis_version: string;
 }
 
-export async function studentLogin(email: string, password: string): Promise<{ student_id: string; email: string }> {
-  const res = await fetch(`${API_BASE}/api/students/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || "Invalid credentials");
-  }
-  return res.json();
-}
-
 export async function fetchStudentExams(studentId: string): Promise<StudentExam[]> {
-  const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(studentId)}/exams`);
+  const res = await apiFetch(`${API_BASE}/api/students/${encodeURIComponent(studentId)}/exams`);
   if (!res.ok) throw new Error("Failed to fetch student exams");
   return res.json();
 }
 
 export async function fetchStudentProfile(studentId: string): Promise<StudentProfile> {
-  const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(studentId)}/profile`);
+  const res = await apiFetch(`${API_BASE}/api/students/${encodeURIComponent(studentId)}/profile`);
   if (!res.ok) throw new Error("Failed to fetch student profile");
   return res.json();
 }
@@ -94,7 +81,7 @@ export async function fetchStudentDashboard(
   if (year !== undefined) params.set("year", String(year));
   if (month !== undefined) params.set("month", String(month));
   if (semester !== undefined) params.set("semester", String(semester));
-  const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(studentId)}/dashboard?${params}`);
+  const res = await apiFetch(`${API_BASE}/api/students/${encodeURIComponent(studentId)}/dashboard?${params}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     // 423 = not yet analyzed, surface specific message

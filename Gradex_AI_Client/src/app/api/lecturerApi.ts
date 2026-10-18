@@ -1,6 +1,6 @@
-const API_BASE =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ??
-  "http://127.0.0.1:8000";
+import { SERVER_BASE_URL } from "./gradingApiBase";
+import { apiFetch } from "./authApi";
+const API_BASE = SERVER_BASE_URL;
 
 /* ─── Types ────────────────────────────────────────────────────────────── */
 
@@ -204,6 +204,22 @@ export interface QuestionDetail {
     feedback: string | null;
   }>;
   excluded_count: number;
+  approved_topic: string | null;
+  topic_options: string[];
+}
+
+export async function saveQuestionTopic(
+  exam: Pick<ExamListItem, "course_code" | "session_name" | "year" | "month" | "semester">,
+  questionNo: string,
+  topic: string | null,
+): Promise<{ question_no: string; approved_topic: string | null }> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${encodeURIComponent(exam.course_code)}/${encodeURIComponent(exam.session_name)}/questions/${encodeURIComponent(questionNo)}/topic?${params}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Could not save question topic");
+  return data;
 }
 
 export async function fetchQuestionDetail(
@@ -211,7 +227,7 @@ export async function fetchQuestionDetail(
   questionNo: string,
 ): Promise<QuestionDetail> {
   const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
-  const res = await fetch(`${API_BASE}/api/lecturers/exams/${encodeURIComponent(exam.course_code)}/${encodeURIComponent(exam.session_name)}/questions/${encodeURIComponent(questionNo)}?${params}`);
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${encodeURIComponent(exam.course_code)}/${encodeURIComponent(exam.session_name)}/questions/${encodeURIComponent(questionNo)}?${params}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `Failed to fetch question detail (${res.status})`);
@@ -292,7 +308,7 @@ export interface RecommendationsResponse {
 /* ─── API Functions ────────────────────────────────────────────────────── */
 
 export async function fetchExams(): Promise<ExamListItem[]> {
-  const res = await fetch(`${API_BASE}/api/lecturers/exams`);
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams`);
   if (!res.ok) throw new Error("Failed to fetch exams");
   return res.json();
 }
@@ -306,7 +322,7 @@ export async function fetchExamAnalytics(
 ): Promise<ExamAnalytics> {
   const encoded = encodeURIComponent(sessionName);
   const params = new URLSearchParams({ year: String(year), month: String(month), semester: String(semester) });
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/analytics?${params}`,
   );
   if (!res.ok) throw new Error("Failed to fetch exam analytics");
@@ -324,7 +340,7 @@ export async function fetchExamAnalyticsStream(
   const encoded = encodeURIComponent(sessionName);
   const params = new URLSearchParams({ year: String(year), month: String(month), semester: String(semester) });
   const url = `${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/analytics/stream?${params}`;
-  const res = await fetch(url, { headers: { Accept: "text/event-stream" } });
+  const res = await apiFetch(url, { headers: { Accept: "text/event-stream" } });
   if (!res.ok || !res.body) throw new Error("Failed to stream exam analytics");
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -377,7 +393,7 @@ export async function fetchExamStudents(
   if (month !== undefined) params.set("month", String(month));
   if (semester !== undefined) params.set("semester", String(semester));
   const qs = params.toString() ? `?${params}` : "";
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/students${qs}`,
   );
   if (!res.ok) throw new Error("Failed to fetch students");
@@ -462,6 +478,32 @@ export interface LecturerStudentDetail {
   diagram_marking?: DiagramMarking | null;
 }
 
+export interface StudentAnswerEvidence {
+  question_no: string;
+  answer_excerpt: string | null;
+  slice_source: string | null;
+  feedback: string | null;
+  justification: string | null;
+  criteria_breakdown: Array<{ point: string; awarded_marks: number | null; reason: string | null }>;
+  grading_source: string | null;
+  grading_error: string | null;
+}
+
+export async function fetchStudentAnswerEvidence(
+  exam: { course_code: string; session_name: string; year: number; month: number; semester: number },
+  studentId: string,
+  questionNo: string,
+): Promise<StudentAnswerEvidence> {
+  const params = new URLSearchParams({ year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const path = [exam.course_code, exam.session_name].map(encodeURIComponent).join("/");
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${path}/student/${encodeURIComponent(studentId)}/questions/${encodeURIComponent(questionNo)}?${params}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Could not load saved answer evidence");
+  }
+  return res.json();
+}
+
 export async function fetchLecturerStudentDetail(
   courseCode: string,
   sessionName: string,
@@ -482,7 +524,7 @@ export async function fetchLecturerStudentDetail(
   if (includeAiTips) params.set("include_ai_tips", "true");
   if (!autoAnalyze) params.set("auto_analyze", "false");
   const qs = params.toString() ? `?${params}` : "";
-  const res = await fetch(`${API_BASE}/api/lecturers/exams/${encodedCourse}/${encodedSession}/student/${encodedStudent}${qs}`);
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${encodedCourse}/${encodedSession}/student/${encodedStudent}${qs}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `Failed to fetch student detail (${res.status})`);
@@ -510,7 +552,7 @@ export async function fetchLecturerStudentDetailStream(
   if (includeAiTips) params.set("include_ai_tips", "true");
   const qs = params.toString();
   const finalUrl = `${API_BASE}/api/lecturers/exams/${encodedCourse}/${encodedSession}/student/${encodedStudent}/stream${qs ? `?${qs}` : ""}`;
-  const res = await fetch(finalUrl, { headers: { Accept: "text/event-stream" } });
+  const res = await apiFetch(finalUrl, { headers: { Accept: "text/event-stream" } });
   if (!res.ok || !res.body) throw new Error("Failed to stream student detail");
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -558,7 +600,7 @@ export async function fetchTeachingActions(
   semester: number,
 ): Promise<TeachingAction[]> {
   const params = new URLSearchParams({ year: String(year), month: String(month), semester: String(semester) });
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/lecturers/exams/${encodeURIComponent(courseCode)}/${encodeURIComponent(sessionName)}/teaching-actions?${params}`,
   );
   if (!res.ok) throw new Error("Failed to fetch teaching actions");
@@ -579,7 +621,7 @@ export async function fetchRecommendations(
     semester: String(semester),
     limit: String(limit),
   });
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/lecturers/exams/${encodeURIComponent(courseCode)}/${encodeURIComponent(sessionName)}/recommendations?${params}`,
   );
   if (!res.ok) throw new Error("Failed to fetch recommendations");
@@ -608,7 +650,7 @@ export async function fetchQuestionBank(params: { source_type?: string; year?: n
   if (params.year) qs.set("year", String(params.year));
   if (params.canonical_topic) qs.set("canonical_topic", params.canonical_topic);
   if (params.limit) qs.set("limit", String(params.limit));
-  const res = await fetch(`${API_BASE}/api/lecturers/question-bank?${qs}`);
+  const res = await apiFetch(`${API_BASE}/api/lecturers/question-bank?${qs}`);
   if (!res.ok) throw new Error("Failed to fetch question bank");
   return res.json();
 }
@@ -625,7 +667,7 @@ export interface ExamDraft {
 }
 
 export async function createExamDraft(subject_code: string, paper: { exam: string; year: number; questions: any[] }, draft_id?: string): Promise<ExamDraft> {
-  const res = await fetch(`${API_BASE}/api/lecturers/exams/drafts`, {
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/drafts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ subject_code, paper, draft_id }),
@@ -636,13 +678,13 @@ export async function createExamDraft(subject_code: string, paper: { exam: strin
 
 export async function listExamDrafts(course_code?: string): Promise<ExamDraft[]> {
   const qs = course_code ? `?course_code=${encodeURIComponent(course_code)}` : "";
-  const res = await fetch(`${API_BASE}/api/lecturers/exams/drafts${qs}`);
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/drafts${qs}`);
   if (!res.ok) throw new Error("Failed to fetch drafts");
   return res.json();
 }
 
 export async function getExamDraft(draft_id: string): Promise<ExamDraft> {
-  const res = await fetch(`${API_BASE}/api/lecturers/exams/drafts/${encodeURIComponent(draft_id)}`);
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/drafts/${encodeURIComponent(draft_id)}`);
   if (!res.ok) throw new Error("Failed to fetch draft");
   return res.json();
 }
@@ -656,7 +698,7 @@ export interface LlmHealth {
 }
 
 export async function fetchLlmHealth(): Promise<LlmHealth> {
-  const res = await fetch(`${API_BASE}/api/lecturers/llm-health`);
+  const res = await apiFetch(`${API_BASE}/api/lecturers/llm-health`);
   if (!res.ok) throw new Error("Failed to fetch LLM health");
   return res.json();
 }
@@ -673,7 +715,7 @@ export interface BloomHealth {
 }
 
 export async function fetchBloomHealth(): Promise<BloomHealth> {
-  const res = await fetch(`${API_BASE}/api/lecturers/bloom-health`);
+  const res = await apiFetch(`${API_BASE}/api/lecturers/bloom-health`);
   if (!res.ok) throw new Error("Failed to fetch Bloom health");
   return res.json();
 }
@@ -681,7 +723,7 @@ export async function fetchBloomHealth(): Promise<BloomHealth> {
 export async function reanalyseExam(courseCode: string, sessionName: string, year: number, month: number, semester: number): Promise<ExamAnalytics> {
   const encoded = encodeURIComponent(sessionName);
   const params = new URLSearchParams({ year: String(year), month: String(month), semester: String(semester) });
-  const res = await fetch(`${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/analytics/reanalyse?${params}`, { method: "POST" });
+  const res = await apiFetch(`${API_BASE}/api/lecturers/exams/${courseCode}/${encoded}/analytics/reanalyse?${params}`, { method: "POST" });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || "Failed to reanalyse");

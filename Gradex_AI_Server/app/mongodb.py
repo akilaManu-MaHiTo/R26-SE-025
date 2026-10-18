@@ -55,11 +55,8 @@ def get_diagram_evaluation_guidelines_collection():
 
 @lru_cache(maxsize=1)
 def get_exam_keys_collection():
-    client = get_mongo_client()
-    database = client.get_default_database()
-    if database is None:
-        database = client["Grading"]
-    return database["examkeys"]
+    database_name = os.getenv("EXAM_KEYS_DATABASE_NAME") or os.getenv("DATABASE_NAME") or "Grading"
+    return get_mongo_client()[database_name]["examkeys"]
 
 
 def insert_diagram_evaluation(record: dict) -> str:
