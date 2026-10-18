@@ -64,6 +64,25 @@ def insert_diagram_evaluation(record: dict) -> str:
     return str(result.inserted_id)
 
 
+def _session_lookup_values(session: str) -> list[str]:
+    """Accept both short and long session labels stored in examkeys."""
+    text = " ".join((session or "").strip().split())
+    if not text:
+        return []
+    lowered = text.lower()
+    if lowered in {"final", "final examination"}:
+        return ["Final", "Final Examination"]
+    if lowered in {
+        "mid term",
+        "mid-term",
+        "midterm",
+        "mid term examination",
+        "mid-term examination",
+    }:
+        return ["Mid Term", "Mid Term Examination"]
+    return [text]
+
+
 def get_exam_key(
     subject_code: str,
     exam_year: int,
@@ -71,16 +90,18 @@ def get_exam_key(
     exam_semester: int,
     session: str,
 ):
-    return get_exam_keys_collection().find_one(
-        {
-            "subjectCode": subject_code,
-            "examYear": exam_year,
-            "examMonth": exam_month,
-            "examSemester": exam_semester,
-            "session": session,
-        },
-        {"_id": 0},
-    )
+    base = {
+        "subjectCode": subject_code,
+        "examYear": exam_year,
+        "examMonth": exam_month,
+        "examSemester": exam_semester,
+    }
+    collection = get_exam_keys_collection()
+    for session_value in _session_lookup_values(session):
+        record = collection.find_one({**base, "session": session_value}, {"_id": 0})
+        if record is not None:
+            return record
+    return None
 
 
 def list_diagram_evaluations(limit: int = 100):
