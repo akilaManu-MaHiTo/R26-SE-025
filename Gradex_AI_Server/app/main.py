@@ -63,6 +63,10 @@ from Gradex_AI_Server.app.viva_sessions import (
     viva_extra_doc,
 )
 from Gradex_AI_Server.app.viva_student_id import normalize_student_id
+from Gradex_AI_Server.app.viva_video_validation import (
+    MIN_VIVA_UPLOAD_BYTES,
+    validate_viva_video,
+)
 from Gradex_AI_Server.app.session_auth import setup_auth, initialize_auth, close_auth, allowed_origins
 from Gradex_AI_Server.app.core.database import connect_to_mongo, close_mongo_connection, db_instance
 from Gradex_AI_Server.app.viva_copilot.router import router as viva_copilot_router
@@ -634,6 +638,7 @@ def _summarize_mark_document(document: dict[str, Any]) -> dict[str, Any]:
         "subject_name": document.get("subject_name"),
         "viva_id": document.get("viva_id"),
         "viva_total_marks": document.get("viva_total_marks"),
+        "viva_technical_percent": document.get("viva_technical_percent"),
         "viva_label": document.get("viva_label"),
         "viva_category": document.get("viva_category"),
         "processed_at": document.get("processed_at"),
@@ -936,6 +941,8 @@ async def viva_analyze(
 
     if not contents:
         raise HTTPException(status_code=400, detail="Empty upload.")
+    if len(contents) < MIN_VIVA_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail="The video must be at least 2 MB. Please re-upload it.")
     if len(contents) > MAX_VIVA_UPLOAD_BYTES:
         raise HTTPException(status_code=400, detail="File size must be less than 1 GB.")
 
@@ -947,6 +954,15 @@ async def viva_analyze(
 
     saved_mark_id: Optional[str] = None
     try:
+        try:
+            video_facts = await asyncio.to_thread(validate_viva_video, file_path)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        print(
+            f"[VIVA] Pre-analysis video gate passed: "
+            f"{video_facts['duration_seconds']:.2f}s, {video_facts['frame_count']} frames"
+        )
+
         analysis_start = time.time()
         # ML pipeline is CPU/GPU-bound; keep the event loop free for other requests.
         try:

@@ -186,5 +186,40 @@ class AssessmentUnderAnotherScaleTests(unittest.TestCase):
             self.assertIs(base.for_total(total), base, total)
 
 
+class TechnicalWeightTests(unittest.TestCase):
+    def test_default_is_the_documented_50_50(self):
+        fused = fuse_final_score(mode=MODE_WITH, ai_performance=60.0, technical_accuracy=20.0)
+        self.assertEqual(fused["fusion"]["weight_technical"], 0.5)
+        self.assertEqual(fused["fusion"]["weight_ai"], 0.5)
+        self.assertEqual(fused["final_score"], 80.0)
+
+    def test_lecturer_share_sets_technical_and_the_ai_gets_the_rest(self):
+        # AI 60%, technical 20/20 = 100%.
+        for technical, expected in ((0.2, 68.0), (0.6, 84.0), (0.9, 96.0)):
+            fused = fuse_final_score(
+                mode=MODE_WITH, ai_performance=60.0, technical_accuracy=20.0, technical_weight=technical
+            )
+            self.assertEqual(fused["fusion"]["weight_technical"], technical)
+            self.assertAlmostEqual(fused["fusion"]["weight_ai"], 1 - technical)
+            self.assertEqual(fused["final_score"], expected, technical)
+
+    def test_the_share_flows_through_the_assessment_and_the_grade(self):
+        assessment = build_assessment(
+            _sample_result(), mode=MODE_WITH, technical_accuracy=20.0, technical_weight=0.7
+        )
+        self.assertEqual(assessment["fusion"]["weight_technical"], 0.7)
+        self.assertAlmostEqual(assessment["fusion"]["weight_ai"], 0.3)
+
+    def test_without_technical_ignores_the_share(self):
+        fused = fuse_final_score(mode=MODE_WITHOUT, ai_performance=60.0, technical_accuracy=None, technical_weight=0.8)
+        self.assertEqual(fused["fusion"]["weight_ai"], 1.0)
+        self.assertEqual(fused["final_score"], 60.0)
+
+    def test_a_share_outside_20_to_90_percent_is_rejected(self):
+        for bad in (0.1, 0.19, 0.91, 1.0):
+            with self.assertRaises(ValueError, msg=bad):
+                fuse_final_score(mode=MODE_WITH, ai_performance=60.0, technical_accuracy=10.0, technical_weight=bad)
+
+
 if __name__ == "__main__":
     unittest.main()

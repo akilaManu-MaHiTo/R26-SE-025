@@ -65,6 +65,8 @@ export interface VivaMarkSummary {
   viva_id?: string | null;
   /** What the viva was marked out of when this recording was analysed. */
   viva_total_marks?: number | null;
+  /** Technical vivas: the technical share (percent) the final mark was calculated with. */
+  viva_technical_percent?: number | null;
   viva_label?: string | null;
   viva_category?: string | null;
   examiner_email?: string | null;

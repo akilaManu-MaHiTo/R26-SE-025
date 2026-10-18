@@ -17,6 +17,8 @@ export interface Viva {
   notes?: string | null;
   /** What this viva is marked out of (its official marks and the technical score). */
   total_marks: number;
+  /** Technical vivas: percent of the final mark from technical accuracy (AI gets the rest). */
+  technical_percent?: number | null;
   examiner_email: string;
   created_at?: string;
   /** e.g. "SE3040-ER Viva - semester 2 - 2026" */
@@ -35,6 +37,8 @@ export interface CreateVivaInput {
   semester: number;
   /** Left out, the server default applies. */
   total_marks?: number;
+  /** Technical vivas only, 20-90. Left out, 50 applies. */
+  technical_percent?: number;
   notes?: string;
 }
 
