@@ -13,13 +13,14 @@ export interface ExamListItem {
   semester: number;
   total_marks: number;
   question_count: number;
-  student_count: number;
+  student_count: number | null;
   average_score: number | null;
   average_percentage: number | null;
   highest_score: number | null;
   lowest_score: number | null;
   pass_rate: number | null;
-  graded_student_count?: number;
+  graded_student_count?: number | null;
+  grading_warning?: string | null;
   score_basis?: "Essay" | "Diagram";
   analyzed: boolean;
   analyzed_at: string | null;

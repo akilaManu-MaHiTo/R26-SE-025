@@ -370,7 +370,8 @@ def reconstruct_exam_paper(exam_key: str, sources: dict) -> dict:
     def matched_records(collection):
         result = []
         for record in sources.get(collection, []):
-            if record.get("archived_at") is not None:
+            if (record.get("archived_at") is not None
+                    or record.get("archived_reason") == "superseded_by_new_batch"):
                 continue
             ref = _ref(collection, record)
             method = matches(record, ref)

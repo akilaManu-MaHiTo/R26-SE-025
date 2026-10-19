@@ -858,7 +858,7 @@ export default function AnalyticsPage() {
                           </TableCell>
                           <TableCell className="py-3 text-center">
                             <span className="inline-flex items-center gap-1 text-sm tabular-nums font-medium">
-                              <Users className="size-3 text-muted-foreground" /> {exam.student_count}
+                              <Users className="size-3 text-muted-foreground" /> {exam.student_count ?? "Unavailable"}
                             </span>
                           </TableCell>
                           <TableCell className="py-3 text-center">

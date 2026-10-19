@@ -7,6 +7,13 @@ import type { StudentRow, ExamListItem } from "../../api/lecturerApi";
 
 afterEach(cleanup);
 
+it("shows why exam grades are unavailable", () => {
+  render(<ExamInventoryScore exam={{ average_percentage: null,
+    grading_warning: "Duplicate diagram evaluations for a student and exam" } as ExamListItem} />);
+  expect(screen.getByRole("status").textContent).toContain("Duplicate diagram evaluations");
+  expect(screen.queryByText("No valid grades")).toBeNull();
+});
+
 it("distinguishes an ungraded exam from an awarded zero in the exam inventory", () => {
   const exam = { average_percentage: null, score_basis: "Essay", graded_student_count: 0 } as ExamListItem;
   const view = render(<ExamInventoryScore exam={exam} />);
