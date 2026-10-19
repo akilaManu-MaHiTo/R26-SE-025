@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-MIN_VIVA_UPLOAD_BYTES = 2 * 1024 * 1024
+MIN_VIVA_UPLOAD_BYTES = 1 * 1024 * 1024
 MAX_VIVA_UPLOAD_BYTES = 1024 * 1024 * 1024
 MIN_VIVA_DURATION_SECONDS = 10.0
 MAX_VIVA_DURATION_SECONDS = 30 * 60.0
@@ -38,7 +38,7 @@ def validate_viva_video(video_path: str | Path) -> dict[str, Any]:
 
     size = path.stat().st_size
     if size < MIN_VIVA_UPLOAD_BYTES:
-        raise ValueError("The video is too small. Upload a video of at least 2 MB.")
+        raise ValueError("The video is too small. Upload a video of at least 1 MB.")
     if size > MAX_VIVA_UPLOAD_BYTES:
         raise ValueError("The video is too large. Upload a video no larger than 1 GB.")
 

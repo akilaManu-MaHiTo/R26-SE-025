@@ -128,7 +128,7 @@ class VivaFlowHttpTests(unittest.TestCase):
             patch("Gradex_AI_Server.app.core.database.ensure_marks_collection", fake_ensure),
             patch("Gradex_AI_Server.app.subject_rubric_service.get_subject_rubric", fake_get_rubric),
             patch("Gradex_AI_Server.app.viva_service.analyze_video_file", lambda *_a, **_k: dict(FAKE_RESULT)),
-            # The pre-analysis video gate (2 MB minimum, readable/long/clear video) is tested in
+            # The pre-analysis video gate (1 MB minimum, readable/long/clear video) is tested in
             # test_viva_video_gate; these tests upload tiny fake clips to exercise the flow itself.
             patch("Gradex_AI_Server.app.main.MIN_VIVA_UPLOAD_BYTES", 0),
             patch(

@@ -172,7 +172,7 @@ export function VivaPage() {
       toast.success("Assessment published", {
         description: `Final mark ${
           saved.final_mark != null ? saved.final_mark.toFixed(2) : "—"
-        } / 20 (grade ${saved.final_grade ?? "—"}) saved.`,
+        } / ${saved.final_mark_max ?? viva?.total_marks ?? 20} (grade ${saved.final_grade ?? "—"}) saved.`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to publish";
