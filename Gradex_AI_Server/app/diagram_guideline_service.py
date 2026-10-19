@@ -1,7 +1,7 @@
 """Turns a lecturer-uploaded ER-diagram marking-guideline PDF into the
 structured guideline document that /api/diagram-evaluate grades against.
 
-The output shape is fixed by what ``grade_diagram_with_ollama`` already
+The output shape is fixed by what ``grade_diagram_with_groq`` already
 consumes from the ``diagram_marking`` collection::
 
     {"examCode": ..., "guideLines": [{id, criterion, description, expected, marks}], "totalMarks": N}
