@@ -458,10 +458,12 @@ def _build_er_structure(detections, connections):
 
     entities = {}
     for entity_id, name in entity_names.items():
-        entities[name] = {
-            "attributes": sorted(entity_attributes.get(entity_id, set()))
-        }
         primary_keys = sorted(entity_primary_keys.get(entity_id, set()))
+        entities[name] = {
+            "attributes": sorted(
+                entity_attributes.get(entity_id, set()) | set(primary_keys)
+            )
+        }
         if primary_keys:
             entities[name]["primary_keys"] = primary_keys
 

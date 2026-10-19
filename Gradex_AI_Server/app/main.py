@@ -51,7 +51,7 @@ from Gradex_AI_Server.app.mongodb import (
     list_diagram_evaluations,
     upsert_diagram_evaluation_guideline,
 )
-from DiagramEvaluationEngine.diagram_grading import grade_diagram_with_ollama
+from DiagramEvaluationEngine.diagram_grading import grade_diagram_with_groq
 from Gradex_AI_Server.app.analytics_api import router as analytics_router
 from Gradex_AI_Server.app.auth import require_lecturer
 from Gradex_AI_Server.app.exam_keys import router as exam_keys_router
@@ -293,10 +293,10 @@ async def diagram_evaluate(
             logger.info("Diagram extraction completed guideline_id=%s detections=%s ocr_rows=%s", resolved_guideline_id, len(result.get("detections", [])), len(result.get("ocr", [])))
             result["guideline_object_id"] = resolved_guideline_id
             try:
-                result["agent_grading"] = grade_diagram_with_ollama(result, guideline)
+                result["agent_grading"] = grade_diagram_with_groq(result, guideline)
                 result["agent_marks"] = result["agent_grading"]["agent_marks"]
             except Exception as exc:
-                logger.exception("Ollama grading failed guideline_id=%s", resolved_guideline_id)
+                logger.exception("Groq grading failed guideline_id=%s", resolved_guideline_id)
                 result["agent_grading_error"] = str(exc)
             return result
         except Exception as exc:
@@ -334,7 +334,7 @@ async def diagram_evaluate(
             event_queue.put({"type": "result", "payload": extraction_result})
             
             try:
-                result["agent_grading"] = grade_diagram_with_ollama(
+                result["agent_grading"] = grade_diagram_with_groq(
                     result, guideline, progress_callback=pipeline_progress
                 )
                 result["agent_marks"] = result["agent_grading"]["agent_marks"]
@@ -346,7 +346,7 @@ async def diagram_evaluate(
                 }
                 event_queue.put({"type": "grading_result", "payload": grading_result})
             except Exception as exc:
-                logger.exception("Ollama grading failed guideline_id=%s", resolved_guideline_id)
+                logger.exception("Groq grading failed guideline_id=%s", resolved_guideline_id)
                 result["agent_grading_error"] = str(exc)
                 event_queue.put({"type": "grading_error", "payload": str(exc)})
         except Exception as exc:
@@ -1094,7 +1094,7 @@ from Gradex_AI_Server.app.mongodb import (
     list_diagram_evaluations,
     upsert_diagram_evaluation_guideline,
 )
-from DiagramEvaluationEngine.diagram_grading import grade_diagram_with_ollama
+from DiagramEvaluationEngine.diagram_grading import grade_diagram_with_groq
 from Gradex_AI_Server.app.analytics_api import router as analytics_router
 from Gradex_AI_Server.app.auth import require_lecturer
 from Gradex_AI_Server.app.exam_keys import router as exam_keys_router
@@ -1336,10 +1336,10 @@ async def diagram_evaluate(
             logger.info("Diagram extraction completed guideline_id=%s detections=%s ocr_rows=%s", resolved_guideline_id, len(result.get("detections", [])), len(result.get("ocr", [])))
             result["guideline_object_id"] = resolved_guideline_id
             try:
-                result["agent_grading"] = grade_diagram_with_ollama(result, guideline)
+                result["agent_grading"] = grade_diagram_with_groq(result, guideline)
                 result["agent_marks"] = result["agent_grading"]["agent_marks"]
             except Exception as exc:
-                logger.exception("Ollama grading failed guideline_id=%s", resolved_guideline_id)
+                logger.exception("Groq grading failed guideline_id=%s", resolved_guideline_id)
                 result["agent_grading_error"] = str(exc)
             return result
         except Exception as exc:
@@ -1377,7 +1377,7 @@ async def diagram_evaluate(
             event_queue.put({"type": "result", "payload": extraction_result})
             
             try:
-                result["agent_grading"] = grade_diagram_with_ollama(
+                result["agent_grading"] = grade_diagram_with_groq(
                     result, guideline, progress_callback=pipeline_progress
                 )
                 result["agent_marks"] = result["agent_grading"]["agent_marks"]
@@ -1389,7 +1389,7 @@ async def diagram_evaluate(
                 }
                 event_queue.put({"type": "grading_result", "payload": grading_result})
             except Exception as exc:
-                logger.exception("Ollama grading failed guideline_id=%s", resolved_guideline_id)
+                logger.exception("Groq grading failed guideline_id=%s", resolved_guideline_id)
                 result["agent_grading_error"] = str(exc)
                 event_queue.put({"type": "grading_error", "payload": str(exc)})
         except Exception as exc:
