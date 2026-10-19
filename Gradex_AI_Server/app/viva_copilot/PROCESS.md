@@ -108,7 +108,7 @@ HTTP clients are pooled (`httpx`).
 
 | File | Role |
 |---|---|
-| `LiveCopilotPage.tsx` | Page, buttons, WebSocket client, suggestion panel and toasts (sonner), applies events, end-of-session upload |
+| `LiveCopilotPage.tsx` | Page, Start Session / End buttons, WebSocket client, idle auto-finalize timer, suggestion panel and toasts (sonner), applies events, end-of-session upload and progress polling |
 | `CopilotCamera.tsx` | Camera preview, 4 s audio slices, whole-session recorder, Web Speech API |
 | `copilotApi.ts` | REST helpers, WebSocket URL, suggestion normalization |
 | `CopilotErrorBoundary.tsx` | Catches render crashes |
@@ -140,7 +140,13 @@ Shared with Viva Assessment: `viva_sessions.py` (viva lookup, duplicate-mark che
 
 ## 4. Click-by-click process
 
-Phases: `idle` → `presentation` → `viva` → `analyzing` → `analyzed` → `ended`.
+Server phases: `idle` → `presentation` → `viva` → `analyzing` → `analyzed` → `ended`.
+
+**What the shipped UI does.** `LiveCopilotPage.tsx` uses a shortcut: **Start Session** creates the session and immediately sets the phase
+to `viva` (it never uses `presentation`). There are no Save-notes, Panel-enters or Answer-complete buttons: the project context is a fixed
+string, and an answer is finalized automatically when the partial transcript has been idle for 1.2 s (`AUTO_FINALIZE_IDLE_MS`, which calls
+`POST /sessions/{id}/finalize`). The `presentation` phase, `/context`, and the 90 s skip rule below are still implemented on the server
+and covered by tests, but only an API client that drives them would exercise them. Steps 3, 4 and 6 describe that server capability.
 
 ### Step 0 — Open the page
 No network. Optional Project / Module / Notes stay in React state until Create or Save notes. The page needs a viva selected from
@@ -154,10 +160,10 @@ the Viva Workspace and a valid Student ID before a session is analyzed.
 `POST /api/viva-copilot/sessions` → `{ sessionId: "session_<12 hex>", phase: "idle" }`. The client opens
 `WS /api/viva-copilot/ws/{sessionId}`; the server registers the socket and pushes `session.state`. No Groq, no Mongo.
 
-### Step 3 — Save notes (optional)
+### Step 3 — Save notes (server capability, no button in the current UI)
 `POST /sessions/{id}/context` overwrites `project_context` in RAM; used later as LLM context.
 
-### Step 4 — Start presentation
+### Step 4 — Start presentation (server capability; the current UI skips it)
 `POST /sessions/{id}/phase {"phase":"presentation"}` (only from `idle`). Audio slices go over the socket as binary frames; Web
 Speech results go as JSON text frames.
 
@@ -188,9 +194,9 @@ followup_llm.generate_followups
   → WS followup.suggestions.generated
 ```
 
-The UI updates the suggestion panel and shows a toast ("New question suggested"); the examiner can **Ask this** or ignore it.
+The UI updates the suggestion panel (newest first, at most 6 kept) and shows a sonner toast ("New question suggested", 4.5 s); the examiner can **Ask this** or dismiss it.
 
-### Step 6 — Panel enters / start viva
+### Step 6 — Panel enters / start viva (the current UI sets `viva` directly at Start Session)
 `POST /sessions/{id}/finalize`, then `POST /sessions/{id}/phase {"phase":"viva"}`. Leftover buffered speech (4 or more words) is
 added to the presentation. If suggestions exist and the last LLM call was under **90 s** ago, they are re-broadcast without a new
 call; otherwise the LLM runs once on the full presentation. If there is no presentation transcript yet, an error event says
@@ -208,7 +214,7 @@ interviewer turn, broadcasts `interviewer.question.asked` and `transcript.final`
 ### Step 9 — End session and analyze
 The client stops the recorder and uploads the whole recording to `POST /sessions/{id}/analyze` (multipart: `video`, `viva_id`,
 `student_id`, optional `allow_duplicate`, `progress_id`). The server broadcasts phase `analyzing`, runs the grading chain, saves the
-mark, then broadcasts `analyzed`. Progress streams over `GET /api/viva-analyze/progress/{progress_id}/stream` (SSE). Then the client
+mark, then broadcasts `analyzed`. The Live Viva page polls `GET /api/viva-analyze/progress/{progress_id}` every 400 ms for the checklist (Viva Assessment uses the SSE `/stream` variant instead). Then the client
 calls `DELETE /sessions/{id}`: the phase becomes `ended` and the RAM session is removed.
 
 Notes on `/analyze`: it enforces the 1 GB cap and the viva ownership and duplicate-mark rules. A non-technical viva is auto-published;
