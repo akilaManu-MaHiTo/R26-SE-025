@@ -4,6 +4,7 @@ import hashlib
 import os
 import re
 import secrets
+from typing import Literal
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
@@ -160,6 +161,7 @@ class SessionAuthMiddleware:
 class LoginRequest(BaseModel):
     email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=1, max_length=1024)
+    role: Literal["lecturer", "student"] | None = None
 
 
 @router.post("/login")
@@ -183,6 +185,8 @@ async def login(payload: LoginRequest, request: Request, response: Response, db=
         raise HTTPException(401, "Invalid email or password")
     if user["role"] == "student" and not user.get("student_id"):
         raise HTTPException(401, "Invalid email or password")
+    if payload.role is not None and payload.role != user["role"]:
+        raise HTTPException(403, f"Use the {user['role']} sign-in page for this account.")
     if not stored.startswith("$argon2id$") or _hasher.check_needs_rehash(stored):
         upgraded = await run_in_threadpool(hash_password, payload.password)
         result = await db["users"].update_one(

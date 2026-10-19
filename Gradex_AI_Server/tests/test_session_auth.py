@@ -99,6 +99,24 @@ def login(client, email="teacher@example.edu", password="UniquePassword123!"):
     return client.post("/api/auth/login", json={"email": email, "password": password}, headers={"Origin": "http://testserver"})
 
 
+@pytest.mark.parametrize("role,email", [("student", "teacher@example.edu"), ("lecturer", "student@example.edu")])
+def test_wrong_portal_does_not_create_session(system, role, email):
+    client, db = system
+    response = client.post("/api/auth/login", json={"email": email, "password": "UniquePassword123!", "role": role}, headers={"Origin": "http://testserver"})
+    assert response.status_code == 403
+    assert "sign-in page" in response.json()["detail"]
+    assert not db["auth_sessions"].docs
+    assert not client.cookies.get(auth.COOKIE_NAME)
+
+
+@pytest.mark.parametrize("role,email", [("lecturer", "teacher@example.edu"), ("student", "student@example.edu")])
+def test_matching_portal_uses_stored_role(system, role, email):
+    client, _ = system
+    response = client.post("/api/auth/login", json={"email": email, "password": "UniquePassword123!", "role": role}, headers={"Origin": "http://testserver"})
+    assert response.status_code == 200
+    assert response.json()["role"] == role
+
+
 def test_login_restores_identity_and_logout_revokes_session(system):
     client, db = system
     response = login(client)

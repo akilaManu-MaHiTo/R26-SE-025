@@ -41,6 +41,10 @@ function Layout({ role, email, onLogout }: { role: Role; email: string; onLogout
 }
 
 export default function App() {
+  return <BrowserRouter><SessionApp /></BrowserRouter>;
+}
+
+function SessionApp() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checking, setChecking] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
@@ -68,7 +72,11 @@ export default function App() {
   if (!role) {
     return (
       <>
-        <LoginPage onLogin={setUser} />
+        <Routes>
+          <Route path="/login/lecturer" element={<LoginPage key="lecturer" role="lecturer" onLogin={setUser} />} />
+          <Route path="/login/student" element={<LoginPage key="student" role="student" onLogin={setUser} />} />
+          <Route path="*" element={<Navigate to="/login/lecturer" replace />} />
+        </Routes>
         <Toaster />
       </>
     );
@@ -77,7 +85,7 @@ export default function App() {
   const defaultPath = role === "lecturer" ? "/dashboard" : "/student-dashboard";
 
   return (
-    <BrowserRouter>
+    <>
       <Routes>
         <Route element={<Layout role={role} email={user!.email} onLogout={handleLogout} />}>
           <Route index element={<Navigate to={defaultPath} replace />} />
@@ -111,6 +119,6 @@ export default function App() {
         </Route>
       </Routes>
       <Toaster />
-    </BrowserRouter>
+    </>
   );
 }

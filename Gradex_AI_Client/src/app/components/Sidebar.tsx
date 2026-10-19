@@ -1,4 +1,5 @@
-import { LayoutDashboard, LogOut, GraduationCap, KeyRound } from "lucide-react";
+import { LayoutDashboard, LogOut, KeyRound } from "lucide-react";
+import gradexLogo from "../../imports/gradex-logo.png";
 import { NavLink } from "react-router";
 import { Button } from "./ui/button";
 import { cn } from "./ui/utils";
@@ -38,9 +39,7 @@ export function Sidebar({ role, email, onLogout }: SidebarProps) {
   return (
     <aside className="w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 print:hidden">
       <div className="px-6 py-5 border-b border-sidebar-border flex items-center gap-3">
-        <div className="size-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-          <GraduationCap className="size-5" />
-        </div>
+        <img src={gradexLogo} alt="GradeX AI" className="size-11 object-contain dark:invert" />
         <div className="leading-tight">
           <div className="text-sidebar-foreground tracking-tight font-medium">GradeX AI</div>
           <div className="text-xs text-muted-foreground">Learning Suite</div>
