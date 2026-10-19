@@ -20,6 +20,8 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = loadEnv(mode, __dirname, '').VITE_PROXY_TARGET || 'http://127.0.0.1:8000'
   return {
   server: {
+    host: true,
+    allowedHosts: ['57.159.25.221'],
     proxy: {
       '/api': { target: proxyTarget, changeOrigin: true, ws: true },
       '/courses': { target: proxyTarget, changeOrigin: true },
