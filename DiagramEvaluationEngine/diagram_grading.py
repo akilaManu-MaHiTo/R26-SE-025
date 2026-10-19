@@ -263,18 +263,20 @@ You are an ER diagram grading agent powered by Groq. Grade the student's extract
 
 PRIMARY KEY RULE: Each entity's "primary_keys" list contains its primary key attributes. Primary keys also appear in the "attributes" list (they are attributes AND keys). A primary key criterion is fully satisfied when the attribute name appears in the entity's "primary_keys" list — no additional check is required. Do not deduct marks for underline notation or formatting; presence in "primary_keys" is sufficient. If the attribute name is absent from "primary_keys", the criterion gets ZERO marks.
 
-ATTRIBUTE RULE: An attribute criterion (non-primary-key) is satisfied ONLY when the attribute name (allowing only OCR-level formatting differences: case, spaces, underscores, hyphens between the same tokens) appears in the entity's "attributes" list. A differently-named attribute — even one that sounds similar — is NOT a match. Do NOT accept a substitute.
+ATTRIBUTE RULE: An attribute criterion is satisfied when the entity's "attributes" list contains an attribute that means the same thing as the rubric attribute. Accept: case, spacing, underscore and hyphen differences; the entity name being abbreviated or dropped from the attribute name (rubric "Book_Title" matches "title" or "Book Title"; rubric "Student_ID" matches "S_Id", "SID", "student id"); and OCR typos. Do NOT accept an attribute with a genuinely different meaning (e.g. "Email" does not match "Phone"). Award partial marks proportionally when only some of the required attributes are present (e.g. 2 of 3 attributes = 2/3 of the marks).
 
-IDENTIFIER MATCHING (OCR formatting only): For identifier-style attributes (those ending in _ID, _Id, ID, etc.), treat these as the same attribute only when they share the same prefix token: S_ID, S_Id, SID, S ID are all the same; C_ID and S_ID are different identifiers and must never be cross-matched. Entity names may contain OCR typos; match entity names to the rubric by closest meaning, but still require the attribute to be present under that entity.
+IDENTIFIER MATCHING: An identifier attribute (ID, Id, _id, bid, S_Id, etc.) belongs to the entity it is listed under. Within a single entity, "S_Id" under Student IS Student_ID and "bid" under Book IS Book_ID, because the prefix is an abbreviation of that entity's name. Only reject an identifier if it is listed under the wrong entity or clearly refers to a different entity (e.g. "C_Id" under Student when no Customer is expected). Entity names may contain OCR typos or different casing; match them to the rubric by closest meaning.
 
-RELATIONSHIP RULE: Relationships are free-form. Judge a relationship by whether it connects the required entities and whether its label expresses a plausible association (any sensible verb phrase). Accept reasonable synonyms, spelling variants, and inflections. Do not deduct marks for a different-but-sensible verb.
+NOTATION RULE: The structure data is already extracted from the image by shape detection, so it carries no shape information. Treat an entity as a rectangle, an attribute as an oval, a relationship as a diamond, and a primary key as underlined, if and only if it appears in the structure as an entity, attribute, relationship or "primary_keys" entry respectively. The Correct ER Notation criterion therefore receives full marks when entities, attributes, relationships and primary_keys are all present in the correct categories, and partial marks when some categories are missing.
 
-COMPLETENESS RULE: The Overall Completeness criterion checks only structural presence
+RELATIONSHIP RULE: Relationships are free-form. Judge a relationship by whether it connects the required entities and whether its label expresses a plausible association (any sensible verb phrase). Accept reasonable synonyms, spelling variants, and inflections ("Borrow" = "Borrows"). A relationship listing both required entities in its "entities" field satisfies both the Borrows Relationship and the Relationship Connections criteria. Do not deduct marks for a different-but-sensible verb.
+
+COMPLETENESS RULE: The Overall Completeness criterion checks only structural presence. Award full marks if all required entities, attributes, primary keys and relationships are present; award partial marks if only minor items are missing; zero only if most of the structure is missing. Do not zero it merely because a single other criterion lost marks.
 
 === PROCESS ===
-Step 1 — for each criterion, list every required element and check whether it appears in the structure data.
-Step 2 — award marks only for elements confirmed in Step 1.
-Step 3 — if any criterion failed, set Overall Completeness to zero.
+Step 1 — for each criterion, list every required element and find its match (using the matching rules above) in the structure data.
+Step 2 — award marks only for elements confirmed in Step 1; give partial marks where a criterion has several required items and only some are present.
+Step 3 — the "reason" for each criterion must name the structure entry matched, or state exactly what is missing. The "feedback" must only mention items that are actually missing from the structure; if nothing is missing, say the diagram meets the guideline.
 
 Return one criterion_results entry for every rubric criterion, including failed criteria with zero marks. Use the exact criterion IDs from the marking guideline, once each, and do not return any other IDs.
 The total available marks for this guideline are {max_marks:g}. Return max_marks as exactly {max_marks:g}.
