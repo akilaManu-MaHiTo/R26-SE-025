@@ -78,8 +78,19 @@ Deliberately **not** used for the mark: LLM criterion scores, UI sliders, the di
 `engagement_score` blend (the signals it blends are scored individually as of v1.2), `audio_grade`, and the 180 Hz `pitch_score`. Those remain evidence
 and UI only — changing the LLM's scores does not move the mark.
 
-**A visible face is required.** `validate_features` returns `INCOMPLETE` when
-`video_status != success`; audio alone cannot produce a mark.
+**Quality gates.** The assessment is `INCOMPLETE` (no mark, recording held for review) when any of these fail:
+
+| Gate | Rule |
+|---|---|
+| Visible face | `video_status` must be `success`: at least 3 face frames and 15 % coverage, head yaw within 30 degrees of frontal. Audio alone cannot produce a mark. |
+| Single student | No significant second face (area at least 20 % of the main face) in 12 % or more of frames, or in 3 consecutive frames. |
+| Lip motion | When 10 or more words were spoken, the face must show mouth movement (about 1 event per 25 words, capped at 3). A light anti-spoof check. |
+| Speech | The student must have spoken and the audio pipeline must have run. |
+| Audio length | At least 1 second of audio. |
+| Topic coverage | Technical vivas only: the answer must touch at least 5 % (`VIVA_MIN_TOPIC_COVERAGE`) of the subject's concept weight. |
+
+Before the engine runs, the server also rejects videos under 1 MB or over 1 GB, shorter than 10 s or longer than 30 min,
+unreadable, or mostly blurry, dark or noisy (`Gradex_AI_Server/app/viva_video_validation.py`).
 
 Modes:
 
@@ -89,8 +100,14 @@ Modes:
   the viva's total marks, scaled to 100 for the blend. The mark is **never** auto-published: it
   stays a draft until an examiner enters the technical score and publishes.
 
-Every official mark is out of the viva's own total marks (set in the Viva Workspace;
-`VIVA_MARK_MAX`, default 20, only applies to a viva without one). See `services/marking_scale.py`.
+Every official mark is out of the viva's own total marks (1 to 100, set in the Viva Workspace;
+`VIVA_MARK_MAX`, default 20, only applies to a viva without one). `final_mark = final_score / 100 x total`.
+Grades are percentage bands (A+ 90, A 80, B+ 70, B 60, C+ 50, C 40, F), so they follow any scale.
+The web client reads the scale from `GET /api/viva-config` instead of hard-coding it. See `services/marking_scale.py`.
+
+Technical vivas also get an advisory **AI technical-accuracy** panel (`services/technical_accuracy.py`): an LLM checks the
+transcript against the subject's concept rubric, in batches of 12 concepts. It suggests a score; the examiner still enters the
+official technical mark.
 
 A parallel **feature-complete baseline** is attached as `feature_complete` /
 `scoring.feature_complete` and does not affect the official mark. See

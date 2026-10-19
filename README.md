@@ -59,3 +59,34 @@ database before applying this to an existing deployment.
 
 Public signup, email password recovery, social login, and MFA are outside this
 minimal version. Password resets are performed with the account script.
+
+## Viva Evaluation
+
+The viva stack has four parts: the web client (`Gradex_AI_Client`), the main API (`Gradex_AI_Server`), the scoring library
+(`VivaEvaluationEngine`) and MongoDB. Details: [VivaEvaluationEngine/README.md](VivaEvaluationEngine/README.md) (scoring and quality
+gates), [VivaEvaluationEngine/FEATURE_INVENTORY.md](VivaEvaluationEngine/FEATURE_INVENTORY.md) (every feature, scored or not) and
+[Gradex_AI_Server/app/viva_copilot/PROCESS.md](Gradex_AI_Server/app/viva_copilot/PROCESS.md) (Live Viva).
+
+Workflow (lecturer account required):
+
+1. **Viva Workspace** (`/viva-evaluation/vivas`): create a viva (name, subject code and name, year, semester, category technical or
+   non-technical, total marks 1 to 100, and for technical vivas the technical share of the mark, 20 to 90 %, default 50 %). A technical
+   viva also needs the subject's concept content (`/api/subject-content`). A viva with marks can no longer be edited or deleted.
+2. **Viva Assessment** (upload) or **Live Viva** (record): enter a Student ID, then upload or record. The video must be 1 MB to 1 GB and
+   10 seconds to 30 minutes, readable, and not mostly blurry, dark or noisy, with one student clearly on camera. Analysis takes minutes;
+   progress streams to the page.
+3. **Mark**: a non-technical viva is published automatically. A technical viva stays a draft until the examiner enters the technical
+   score (out of the viva's total) and publishes. No grade is issued purely on AI authority for technical vivas.
+4. **Viva Results**: saved marks grouped by student.
+
+Install the engine requirements as well as the server's (`pip install -r VivaEvaluationEngine/requirements.txt`) and make sure `ffmpeg` is on
+PATH. Start the server from the repo root with `python -m uvicorn Gradex_AI_Server.app.main:app --host 0.0.0.0 --port 8000` (no `--reload`).
+Settings are in `Gradex_AI_Server/app/.env` (see `.env.example`): LLM key (`GROQ_API_KEY` or `AI_API_KEY`), `VIVA_WHISPER_MODEL`,
+`VIVA_MARK_MAX` (fallback total, default 20), `VIVA_ANALYZE_TIMEOUT_SECONDS` (default 600) and `VIVA_COPILOT_*`.
+
+Viva API (all lecturer-only): `/api/vivas`, `/api/viva-analyze` (+ `/progress/{id}` and `/progress/{id}/stream`), `/api/viva-marks`
+(+ `/{id}`, `/{id}/publish`, `/{id}/student`), `/api/viva-config`, `/api/subject-content`, `/api/viva-copilot/*`.
+
+Deployment: the client container's nginx proxies `/api/` (including WebSockets, long timeouts) to the backend on port 8000; on Vercel the
+rewrites in `Gradex_AI_Client/vercel.json` do the same. Add every frontend origin, including the production domain, to `CORS_ORIGINS`.
+
