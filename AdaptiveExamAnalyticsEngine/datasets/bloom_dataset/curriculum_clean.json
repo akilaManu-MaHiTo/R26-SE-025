@@ -1,0 +1,542 @@
+[
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Definition of Database and DBMS",
+    "learning_objective": "Explain what a database and a DBMS are, including the processes of defining, constructing, manipulating, and sharing databases."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Advantages of DBMS over File Systems",
+    "learning_objective": "Identify situations where using a database is beneficial over traditional file storage, considering self-describing nature, insulation, multiple views, sharing, and security."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Characteristics and Benefits of Database Systems",
+    "learning_objective": "Describe key benefits such as data independence, efficient access, integrity enforcement, unauthorized access restriction, backup/recovery, and concurrent access."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Database Design Process Overview",
+    "learning_objective": "List and explain the six main phases of database development: requirement collection, conceptual design, logical design, schema refinement, physical design, and security design."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Requirement Collection and Analysis",
+    "learning_objective": "Explain the process of collecting and analyzing user expectations, identifying data to be stored, applications to be built, and operations to be performed, and produce a concise set of user requirements."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Conceptual Database Design using ER Model",
+    "learning_objective": "Create a conceptual database schema using the Entity-Relationship (ER) model, including entities, attributes (simple, composite, multivalued), and keys."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Binary Relationships and Cardinalities",
+    "learning_objective": "Draw and interpret binary relationships with cardinality ratios (1:1, 1:N, M:N) based on given scenarios."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Weak Entities",
+    "learning_objective": "Define weak entities, explain their identifying relationship with the owner entity, and apply the restrictions (one-to-many and total participation)."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Ternary vs. Binary Relationships",
+    "learning_objective": "Determine when to use a ternary relationship versus binary relationships, especially when a common attribute (e.g., quantity) requires all three entities together."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Specialization and Generalization (EER)",
+    "learning_objective": "Explain specialization (defining subclasses) and generalization (grouping into superclasses) using ISA relationships, and represent them in an EER diagram."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Overlapping and Covering Constraints",
+    "learning_objective": "Distinguish between overlapping and disjoint subclasses, and between total (covering) and partial specialization, and apply these constraints in EER diagrams."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Aggregation",
+    "learning_objective": "Explain aggregation as a way to model a relationship set participating in another relationship, and differentiate it from a ternary relationship."
+  },
+  {
+    "lecture": "lec01",
+    "topic": "Introduction to DBMS & Conceptual Database Design",
+    "subtopic": "Modeling Traps (Fan and Chasm Traps)",
+    "learning_objective": "Identify and avoid fan traps (ambiguous pathways due to multiple one-to-many relationships from one entity) and chasm traps (missing relationships) in ER models."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Logical Database Design and Relational Model Overview",
+    "learning_objective": "Explain the purpose and process of logical database design, including the selection of a DBMS and the conversion of a conceptual design into a relational schema."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Relational Model Components: Relations, Schemas, and Instances",
+    "learning_objective": "Define the components of the relational model, including relations, relational schemas, and instances (tuples), and represent them as tables."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Integrity Constraints: Domain Constraints",
+    "learning_objective": "Explain domain constraints as a type of integrity constraint that restricts the values in a column to a specified domain or data type."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Integrity Constraints: Key Constraints (Candidate and Primary Keys)",
+    "learning_objective": "Describe key constraints, including candidate keys and primary keys, as minimal sets of attributes that uniquely identify a tuple in a relation."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Integrity Constraints: Referential Integrity and Foreign Keys",
+    "learning_objective": "Explain referential integrity constraints, using foreign keys to ensure consistency between relations, and diagrammatically represent foreign key relationships."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Integrity Constraints: Other Constraints (Table Constraints and Assertions)",
+    "learning_objective": "Identify other integrity constraints such as table constraints (e.g., CHECK constraints) and assertions (e.g., triggers) for enforcing conditions across multiple tables."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "ER to Relational Mapping: Mapping Entities and Attributes",
+    "learning_objective": "Map entities and their attributes from an ER diagram to relational tables, defining primary keys for each relation."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Mapping Relationships: Binary and N-ary Relationships",
+    "learning_objective": "Map binary relationships (1:1, 1:N, M:N) and n-ary relationships to relational schemas by creating relationship relations and using foreign keys."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Mapping ISA (Specialization/Generalization) Hierarchies: Option 1",
+    "learning_objective": "Apply Option 1 for mapping ISA relationships by creating a relation for the superclass and separate relations for subclasses, using the superclass primary key as both primary and foreign key, suitable for all constraints (disjoint, overlapping, total, partial)."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Mapping ISA Hierarchies: Option 2",
+    "learning_objective": "Apply Option 2 for mapping ISA relationships by creating separate relations for each subclass that include both subclass-specific and superclass attributes, requiring a total specialization (covering constraint)."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Mapping ISA Hierarchies: Option 3",
+    "learning_objective": "Apply Option 3 for mapping ISA relationships by creating a single relation with all superclass and subclass attributes plus a 'type' attribute, suitable for disjoint constraints and when subclasses have few attributes."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Mapping ISA Hierarchies: Option 4",
+    "learning_objective": "Apply Option 4 for mapping ISA relationships by creating a single relation with all superclass and subclass attributes plus Boolean attributes for each subclass, allowing overlapping constraints."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Mapping Aggregation Relationships",
+    "learning_objective": "Map aggregation relationships by first mapping the aggregated relationship as an entity set (table), then treating it as an entity set to map higher-level relationships involving the aggregation."
+  },
+  {
+    "lecture": "lec02",
+    "topic": "Logical Database Design",
+    "subtopic": "Comprehensive EER to Relational Mapping",
+    "learning_objective": "Convert a complete EER diagram, incorporating entities, relationships, ISA hierarchies, and aggregations, into a set of relational tables following appropriate mapping rules."
+  },
+  {
+    "lecture": "lec03",
+    "topic": "Schema Refinement",
+    "subtopic": "Pitfalls of Incorrect Attribute Grouping and Need for Schema Refinement",
+    "learning_objective": "Explain the drawbacks of poorly designed relations, including insertion, deletion, and update anomalies, and data redundancy, using examples."
+  },
+  {
+    "lecture": "lec03",
+    "topic": "Schema Refinement",
+    "subtopic": "Properties of Good Decomposition: Lossless Join and Dependency Preservation",
+    "learning_objective": "Define and distinguish between the lossless join property and the dependency preserving property as criteria for evaluating a good decomposition."
+  },
+  {
+    "lecture": "lec03",
+    "topic": "Schema Refinement",
+    "subtopic": "Definition and Purpose of Functional Dependencies (FDs)",
+    "learning_objective": "Define a functional dependency and explain its role in identifying redundancies and guiding the normalization process."
+  },
+  {
+    "lecture": "lec03",
+    "topic": "Schema Refinement",
+    "subtopic": "Computing Attribute Closure and Candidate Keys using Armstrong's Axioms",
+    "learning_objective": "Compute the closure of an attribute set using Armstrong's axioms (reflexivity, augmentation, transitivity) and identify candidate keys of a relation from a given set of functional dependencies."
+  },
+  {
+    "lecture": "lec03",
+    "topic": "Schema Refinement",
+    "subtopic": "Key Terminology: Superkey, Candidate Key, Primary Key, Prime and Nonprime Attributes",
+    "learning_objective": "Define and differentiate between superkey, candidate key, primary key, prime attribute, and nonprime attribute in the context of relational schemas."
+  },
+  {
+    "lecture": "lec03",
+    "topic": "Schema Refinement",
+    "subtopic": "First Normal Form (1NF) – Atomic Domains",
+    "learning_objective": "Explain First Normal Form (1NF) as requiring atomic (indivisible) domains for all attributes in a relation."
+  },
+  {
+    "lecture": "lec03",
+    "topic": "Schema Refinement",
+    "subtopic": "Second Normal Form (2NF) – Full Functional Dependency and Partial Dependency Elimination",
+    "learning_objective": "Define Second Normal Form (2NF) and eliminate partial dependencies by decomposing a relation, ensuring every nonprime attribute is fully functionally dependent on every candidate key."
+  },
+  {
+    "lecture": "lec03",
+    "topic": "Schema Refinement",
+    "subtopic": "Third Normal Form (3NF) – Transitive Dependency Elimination",
+    "learning_objective": "Define Third Normal Form (3NF), identify transitive dependencies involving nonprime attributes, and decompose a relation to eliminate such dependencies."
+  },
+  {
+    "lecture": "lec03",
+    "topic": "Schema Refinement",
+    "subtopic": "Boyce-Codd Normal Form (BCNF) – Superkey Requirement for All Nontrivial FDs",
+    "learning_objective": "Define Boyce-Codd Normal Form (BCNF) and apply the BCNF decomposition algorithm to normalize a relation where every nontrivial functional dependency's left side is a superkey."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Overview and History of SQL",
+    "learning_objective": "Explain the origins of SQL (SEQUEL, System R) and its standardization (SQL-86, SQL-92), and describe SQL as a comprehensive database language including DDL, DML, security, transactions, and embedded SQL."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "SQL Terminology and Relational Model Mapping",
+    "learning_objective": "Map relational model terms (relation, attribute, tuple) to SQL terms (table, column, row) and use them correctly in SQL statements."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Data Definition Language (DDL) – CREATE TABLE and Constraints",
+    "learning_objective": "Write CREATE TABLE statements to define relations, specifying column data types and constraints such as NOT NULL, UNIQUE, PRIMARY KEY, FOREIGN KEY, DEFAULT, and CHECK."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "DDL – ALTER and DROP Commands",
+    "learning_objective": "Use ALTER TABLE to add columns or constraints and DROP TABLE to delete tables, modifying the database schema as needed."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Data Manipulation Language (DML) – INSERT, DELETE, UPDATE",
+    "learning_objective": "Write INSERT, DELETE, and UPDATE statements to modify data in tables, including inserting specific columns and using conditions for updates and deletions."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Basic SELECT Queries and WHERE Clause",
+    "learning_objective": "Write basic SELECT statements with attribute lists, FROM clauses, and WHERE conditions to retrieve specific rows and columns from one or more tables."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Pattern Matching with LIKE",
+    "learning_objective": "Use the LIKE operator with wildcard characters % and _ to perform pattern matching on string columns in SQL queries."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Checking NULL Values with IS [NOT] NULL",
+    "learning_objective": "Apply IS NULL and IS NOT NULL operators in WHERE clauses to filter rows based on the presence or absence of null values."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Eliminating Duplicates with DISTINCT",
+    "learning_objective": "Use the DISTINCT keyword to remove duplicate rows from the result set of a SELECT query."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Range Conditions with BETWEEN",
+    "learning_objective": "Write conditions using BETWEEN to check whether a value falls within a specified range, including inclusive boundaries."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Sorting Results with ORDER BY",
+    "learning_objective": "Sort query results using ORDER BY with ASC or DESC options based on one or more columns."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Inner Joins",
+    "learning_objective": "Write SQL queries using INNER JOIN (or comma join with condition) to combine rows from two tables based on a matching condition."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Outer Joins (LEFT and RIGHT OUTER JOIN)",
+    "learning_objective": "Write SQL queries using LEFT OUTER JOIN and RIGHT OUTER JOIN to retrieve all rows from one side of the join, with NULLs for non-matching rows from the other side."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Subqueries with IN and EXISTS",
+    "learning_objective": "Write nested queries using the IN operator for membership tests and the EXISTS operator to check for the existence of rows returned by a subquery."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Subqueries with ANY, SOME, and ALL",
+    "learning_objective": "Write subqueries using ANY, SOME, and ALL operators with comparison operators to compare a value against a list or set of values returned by a subquery."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Aggregate Functions (SUM, COUNT, AVG, MIN, MAX)",
+    "learning_objective": "Use aggregate functions such as SUM, COUNT, AVG, MIN, and MAX to compute summary values over a set of rows and return a single result."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Grouping with GROUP BY and HAVING",
+    "learning_objective": "Write SQL queries with GROUP BY to group rows by column values and HAVING to filter groups based on aggregate conditions, following the proper SELECT clause restrictions."
+  },
+  {
+    "lecture": "lec04",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Complete SQL Query Structure (Clause Order)",
+    "learning_objective": "Write complete SQL queries following the correct syntactic order: SELECT, FROM, WHERE, GROUP BY, HAVING, and ORDER BY clauses."
+  },
+  {
+    "lecture": "lec05",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Views – Definition, Creation, and Querying",
+    "learning_objective": "Define a view as a virtual table derived from base tables, write CREATE VIEW statements, and query views like regular tables."
+  },
+  {
+    "lecture": "lec05",
+    "topic": "Structured Query Language (SQL)",
+    "subtopic": "Views – Update Restrictions and Advantages/Disadvantages",
+    "learning_objective": "Explain the limitations of updating views (e.g., aggregate functions, joins) and evaluate the trade-offs between security/simplicity and performance/update restrictions."
+  },
+  {
+    "lecture": "lec05",
+    "topic": "Database Programming",
+    "subtopic": "T-SQL Extensions – Variables and Control-of-Flow (IF...ELSE, WHILE)",
+    "learning_objective": "Write Transact-SQL scripts using local variables (DECLARE, SET), conditional logic (IF...ELSE), and loops (WHILE with BREAK and CONTINUE) to implement server-side logic."
+  },
+  {
+    "lecture": "lec05",
+    "topic": "Database Programming",
+    "subtopic": "User-Defined Functions (Scalar and Table-Valued)",
+    "learning_objective": "Create SQL functions with input parameters and a return value, and call them from queries or scripts to encapsulate reusable logic."
+  },
+  {
+    "lecture": "lec05",
+    "topic": "Database Programming",
+    "subtopic": "Stored Procedures – Creation and Execution with IN/OUT Parameters",
+    "learning_objective": "Write stored procedures using CREATE PROCEDURE, define IN and OUT parameters, and execute them with EXEC, retrieving output values for complex business operations."
+  },
+  {
+    "lecture": "lec05",
+    "topic": "Database Programming",
+    "subtopic": "Triggers – Purpose, Types (AFTER, INSTEAD OF), and Virtual Tables",
+    "learning_objective": "Explain the role of triggers in enforcing business rules and integrity, differentiate between AFTER and INSTEAD OF triggers, and utilize the INSERTED and DELETED virtual tables to respond to DML events."
+  },
+  {
+    "lecture": "lec05",
+    "topic": "Database Programming",
+    "subtopic": "Triggers – Practical Examples for Auditing and Constraint Enforcement",
+    "learning_objective": "Write triggers to track changes (audit), enforce limits (e.g., maximum withdrawals, number of departments per employee), and maintain cross-table constraints (e.g., salary not exceeding manager's salary)."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "Overview and Purpose of JDBC",
+    "learning_objective": "Explain the need for a common database access API and define JDBC as an API specification for connecting Java programs to relational databases."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "JDBC Architecture (JDBC API, DriverManager, Drivers)",
+    "learning_objective": "Describe the JDBC architecture, including the roles of the JDBC API (application-to-manager), DriverManager (manager-to-driver), and JDBC drivers (driver-to-database)."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "Types of JDBC Drivers (Type 1–4)",
+    "learning_objective": "Differentiate between the four JDBC driver types (JDBC-ODBC Bridge, Native API, Network Pure Java, and Thin/All-Java driver) in terms of implementation, performance, and deployment."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "Steps for Using JDBC in a Java Program",
+    "learning_objective": "List the six essential steps for database programming with JDBC: import packages, load/register the driver, open a connection, execute a query, extract data, and clean up resources."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "Importing JDBC Packages and Key Interfaces",
+    "learning_objective": "Import the java.sql package and identify key JDBC interfaces such as Driver, Connection, Statement, PreparedStatement, CallableStatement, and ResultSet."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "Loading and Registering the JDBC Driver",
+    "learning_objective": "Load and register a JDBC driver dynamically using Class.forName() to initialize the driver class and enable database connectivity."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "Establishing a Database Connection",
+    "learning_objective": "Establish a physical database connection using DriverManager.getConnection() with a database URL, username, and password, and close the connection with close()."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "Statement Types: Statement, PreparedStatement, CallableStatement",
+    "learning_objective": "Choose the appropriate statement type (Statement for static SQL, PreparedStatement for parameterized queries, and CallableStatement for stored procedures) based on the use case."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "Executing SQL with Statement (execute, executeUpdate, executeQuery)",
+    "learning_objective": "Execute SQL statements using execute() (general), executeUpdate() (for DML/DDL returning row counts), and executeQuery() (for SELECT returning a ResultSet)."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "Using PreparedStatement with Parameter Markers",
+    "learning_objective": "Write parameterized SQL queries using PreparedStatement with ? markers, and bind values using setXXX() methods before executing the statement."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "Using CallableStatement for Stored Procedures",
+    "learning_objective": "Invoke stored procedures using CallableStatement, including binding input parameters with setXXX(), registering output parameters with registerOutParameter(), and retrieving output values."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "Processing ResultSet (Cursor Navigation and Data Retrieval)",
+    "learning_objective": "Traverse a ResultSet using the next() method and retrieve column values using getXXX() methods by either column index or column name."
+  },
+  {
+    "lecture": "lec06",
+    "topic": "Java Database Connectivity (JDBC)",
+    "subtopic": "JDBC Exception Handling (SQLException)",
+    "learning_objective": "Handle JDBC exceptions using SQLException and extract error details with getMessage() and getErrorCode() for debugging vendor-specific errors."
+  },
+  {
+    "lecture": "lec07",
+    "topic": "Database Utilities",
+    "subtopic": "Overview of Database Utilities in SQL Server",
+    "learning_objective": "Identify common database utilities provided by SQL Server, including data transfer tools, job management, backup tools, and maintenance plans, and explain their roles in database administration."
+  },
+  {
+    "lecture": "lec07",
+    "topic": "Database Utilities",
+    "subtopic": "Data Transfer Methods and Tools (SSIS, Import/Export Wizard, BCP, BULK INSERT, SELECT INTO)",
+    "learning_objective": "List and compare different options for transferring data between sources in SQL Server, such as SQL Server Integration Services (SSIS), the Import/Export Wizard, BCP, BULK INSERT, and SELECT INTO."
+  },
+  {
+    "lecture": "lec07",
+    "topic": "Database Utilities",
+    "subtopic": "Using the SQL Server Import and Export Wizard (Excel to SQL Server)",
+    "learning_objective": "Demonstrate the step-by-step process of exporting data from an Excel file to a SQL Server table using the SQL Server Import and Export Wizard, including selecting data sources, mapping columns, and executing the migration."
+  },
+  {
+    "lecture": "lec07",
+    "topic": "Database Utilities",
+    "subtopic": "BCP (Bulk Copy Program) Command-Line Utility",
+    "learning_objective": "Use the BCP command-line utility to export data from a table or query to a data file and to import data, specifying options such as character type, trusted connection, and server name."
+  },
+  {
+    "lecture": "lec07",
+    "topic": "Database Utilities",
+    "subtopic": "BULK INSERT Command for Loading Data Files",
+    "learning_objective": "Write BULK INSERT statements to load data from a flat file into a SQL Server table, defining field and row terminators to correctly parse the input file."
+  },
+  {
+    "lecture": "lec07",
+    "topic": "Database Utilities",
+    "subtopic": "SELECT INTO Command for Table-to-Table Copying",
+    "learning_objective": "Use the SELECT INTO statement to copy data from one table to another, automatically creating the destination table, and explain its use for quick data duplication."
+  },
+  {
+    "lecture": "lec07",
+    "topic": "Database Utilities",
+    "subtopic": "Backup and Restore Concepts (Full, Differential, and Transaction Log Backups)",
+    "learning_objective": "Explain the importance of backing up SQL Server databases and differentiate between full database backups, differential backups, and transaction log backups in terms of their scope and recovery capabilities."
+  },
+  {
+    "lecture": "lec07",
+    "topic": "Database Utilities",
+    "subtopic": "Creating and Managing Jobs in SQL Server",
+    "learning_objective": "Define a SQL Server job as a series of sequential operations, describe how to create jobs with schedules or alerts, and explain the roles of SQL Server Agent and user permissions in job execution."
+  },
+  {
+    "lecture": "lec07",
+    "topic": "Database Utilities",
+    "subtopic": "Database Maintenance Plans – Purpose and Typical Tasks",
+    "learning_objective": "Develop a simple database maintenance plan by identifying critical tasks such as database backups, integrity verification, index maintenance, and cleanup of old backups and history data to ensure adequate performance and availability."
+  },
+  {
+    "lecture": "lec08",
+    "topic": "Database Security",
+    "subtopic": "Objectives of Database Security (Secrecy, Integrity, Availability)",
+    "learning_objective": "Explain the three main objectives of database security—secrecy (confidentiality), integrity, and availability—and why protecting data is a critical corporate asset."
+  },
+  {
+    "lecture": "lec08",
+    "topic": "Database Security",
+    "subtopic": "Security Policies and Access Control Mechanisms (Discretionary vs. Mandatory)",
+    "learning_objective": "Explain the role of a security policy in specifying user authorizations and distinguish between discretionary access control (privileges) and mandatory access control."
+  },
+  {
+    "lecture": "lec08",
+    "topic": "Database Security",
+    "subtopic": "SQL Server Security Framework: Authentication, Authorization, Principals, Securables, and Permissions",
+    "learning_objective": "Describe the SQL Server security framework, differentiating between authentication (verifying identity) and authorization (determining access rights), and define security principals, securables, and permissions."
+  },
+  {
+    "lecture": "lec08",
+    "topic": "Database Security",
+    "subtopic": "Server-Level Security: Logins and Server Roles",
+    "learning_objective": "Create Windows and SQL Server authentication logins, assign logins to fixed or user-defined server roles, and grant server-level permissions (e.g., CREATE ANY DATABASE, ALTER ANY LOGIN)."
+  },
+  {
+    "lecture": "lec08",
+    "topic": "Database Security",
+    "subtopic": "Database-Level Security: Users and Database Roles",
+    "learning_objective": "Create database users mapped to server logins, assign users to fixed database roles (e.g., db_owner, db_ddladmin, db_securityadmin) and user-defined database roles to manage database-level access."
+  },
+  {
+    "lecture": "lec08",
+    "topic": "Database Security",
+    "subtopic": "Managing Permissions with GRANT, DENY, and REVOKE",
+    "learning_objective": "Manage database permissions by applying GRANT, DENY, and REVOKE statements on securables to principals, covering permissions such as SELECT, INSERT, CREATE TABLE, REFERENCES, and EXECUTE."
+  },
+  {
+    "lecture": "lec08",
+    "topic": "Database Security",
+    "subtopic": "Using Views as an Access Control Mechanism",
+    "learning_objective": "Explain how views can be used as a security tool to restrict user access to specific data and hide underlying table structures, requiring appropriate privileges on the underlying tables."
+  }
+]
