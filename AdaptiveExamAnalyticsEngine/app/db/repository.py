@@ -559,9 +559,14 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
             {"_id": 0, "evaluation.total_score": 1, "evaluation.max_score": 1, "max_marks_paper_total": 1}
         ).to_list(length=500)
 
-        # Also count diagram evaluations for this exam
-        diagram_evals = await find_diagram_evaluations_for_exam(
-            db, course_code, session_name, year, rubric.get("month", 0), rubric.get("semester", 1))
+        diagram_evals, grading_warning = [], None
+        if not submissions:
+            try:
+                diagram_evals = await find_diagram_evaluations_for_exam(
+                    db, course_code, session_name, year, rubric.get("month", 0), rubric.get("semester", 1))
+            except ValueError as exc:
+                # Keep invalid grades unavailable without blocking the exam inventory.
+                grading_warning = str(exc)
 
         # Merge: use submissions if available, otherwise diagram_evals
         student_count = len(submissions) if submissions else len(diagram_evals)
@@ -622,13 +627,14 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
             "semester": rubric.get("semester", 1),
             "total_marks": total_marks,
             "question_count": len(questions),
-            "student_count": student_count,
+            "student_count": student_count if grading_warning is None else None,
             "average_score": avg_score,
             "average_percentage": avg_percentage,
             "highest_score": highest_score,
             "lowest_score": lowest_score,
             "pass_rate": round(pass_count / len(valid_scores) * 100, 2) if valid_scores else None,
-            "graded_student_count": len(valid_scores),
+            "graded_student_count": len(valid_scores) if grading_warning is None else None,
+            "grading_warning": grading_warning,
             "score_basis": "Essay" if submissions else "Diagram",
             "analyzed": analyzed,
             "analyzed_at": analyzed_at,

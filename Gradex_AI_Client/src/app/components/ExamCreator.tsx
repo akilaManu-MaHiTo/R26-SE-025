@@ -333,7 +333,7 @@ export function ExamCreator() {
                       <div className="size-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center shadow-md group-hover:shadow-primary/20 transition-shadow">
                         <Sparkles className="size-5" />
                       </div>
-                      <Badge variant="secondary" className="backdrop-blur">{exam.student_count} students</Badge>
+                      <Badge variant="secondary" className="backdrop-blur">{exam.student_count == null ? "Student count unavailable" : `${exam.student_count} students`}</Badge>
                     </div>
                     <div className="font-semibold">{exam.course_code} — {exam.session_name}</div>
                     <div className="text-sm text-muted-foreground">{exam.subject_name} · {exam.year}</div>

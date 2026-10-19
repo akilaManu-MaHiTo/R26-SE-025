@@ -5,6 +5,7 @@ import { TableCell } from "../ui/table";
 import type { StudentRow, ExamListItem } from "../../api/lecturerApi";
 
 export function ExamInventoryScore({ exam }: { exam: ExamListItem }) {
+  if (exam.grading_warning) return <span role="status" className="text-xs text-amber-700 dark:text-amber-300">Grades unavailable: {exam.grading_warning}</span>;
   if (exam.average_percentage == null) return <span className="text-xs text-muted-foreground">No valid grades</span>;
   return <div className="text-center text-sm tabular-nums">
     <strong>{exam.average_percentage.toFixed(1)}%</strong>
