@@ -946,7 +946,7 @@ async def viva_analyze(
     if not contents:
         raise HTTPException(status_code=400, detail="Empty upload.")
     if len(contents) < MIN_VIVA_UPLOAD_BYTES:
-        raise HTTPException(status_code=400, detail="The video must be at least 2 MB. Please re-upload it.")
+        raise HTTPException(status_code=400, detail="The video must be at least 1 MB. Please re-upload it.")
     if len(contents) > MAX_VIVA_UPLOAD_BYTES:
         raise HTTPException(status_code=400, detail="File size must be less than 1 GB.")
 
