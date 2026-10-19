@@ -338,9 +338,9 @@ export function ExamCreator() {
                     <div className="font-semibold">{exam.course_code} — {exam.session_name}</div>
                     <div className="text-sm text-muted-foreground">{exam.subject_name} · {exam.year}</div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-3">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(exam.average_percentage, 100)}%` }} transition={{ duration: 0.8, delay: 0.3 + idx * 0.05, ease: "easeOut" }} className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full" />
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(exam.average_percentage ?? 0, 100)}%` }} transition={{ duration: 0.8, delay: 0.3 + idx * 0.05, ease: "easeOut" }} className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full" />
                     </div>
-                    <div className="text-xs text-muted-foreground mt-2">Avg {exam.average_percentage.toFixed(1)}% · Pass {exam.pass_rate.toFixed(0)}%</div>
+                    <div className="text-xs text-muted-foreground mt-2">Avg {exam.average_percentage == null ? "N/A" : `${exam.average_percentage.toFixed(1)}%`} · Pass {exam.pass_rate == null ? "N/A" : `${exam.pass_rate.toFixed(0)}%`}</div>
                   </Card>
                 </motion.div>
               ))}

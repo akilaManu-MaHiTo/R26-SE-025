@@ -213,7 +213,8 @@ async def latest_run_id(db: AsyncIOMotorDatabase) -> str | None:
 
 
 async def find_graded_submissions(db: AsyncIOMotorDatabase) -> list[dict]:
-    cursor = db["submissions"].find({"status": "graded"})
+    cursor = db["submissions"].find({"status": "graded", "archived_at": None,
+                                      "archived_reason": {"$ne": "superseded_by_new_batch"}})
     return await cursor.to_list(length=None)
 
 
@@ -373,6 +374,7 @@ async def find_graded_submission(
         "session_name": session_name,
         "status": "graded",
         "archived_at": None,
+        "archived_reason": {"$ne": "superseded_by_new_batch"},
     }
     if year is not None:
         query["year"] = year
@@ -392,7 +394,8 @@ async def find_graded_submissions_for_exam(
     year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> list[dict]:
     # Regrading archives old papers while keeping their status graded.
-    query: dict = {"subject_code": course_code, "session_name": session_name, "status": "graded", "archived_at": None}
+    query: dict = {"subject_code": course_code, "session_name": session_name, "status": "graded", "archived_at": None,
+                   "archived_reason": {"$ne": "superseded_by_new_batch"}}
     if year is not None:
         query["year"] = year
     if month is not None:
@@ -551,7 +554,8 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
 
         submissions = await db["submissions"].find(
             {"subject_code": course_code, "session_name": session_name, "status": "graded",
-             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1), "archived_at": None},
+             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1), "archived_at": None,
+             "archived_reason": {"$ne": "superseded_by_new_batch"}},
             {"_id": 0, "evaluation.total_score": 1, "evaluation.max_score": 1, "max_marks_paper_total": 1}
         ).to_list(length=500)
 
@@ -662,7 +666,8 @@ async def delete_exam_draft(db, draft_id: str) -> bool:
 async def find_graded_submissions_for_student(
     db: AsyncIOMotorDatabase, student_id: str
 ) -> list[dict]:
-    cursor = db["submissions"].find({"student_id": student_id, "status": "graded"})
+    cursor = db["submissions"].find({"student_id": student_id, "status": "graded", "archived_at": None,
+                                      "archived_reason": {"$ne": "superseded_by_new_batch"}})
     return await cursor.to_list(length=None)
 
 

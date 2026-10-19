@@ -704,6 +704,7 @@ async def lecturer_student_answer_evidence(
         "student_id": student_id, "subject_code": course_code, "session_name": session_name,
         "year": year, "month": month, "semester": semester,
         "status": "graded", "archived_at": None,
+        "archived_reason": {"$ne": "superseded_by_new_batch"},
     }, sort=[("_id", -1)])
     if submission is None:
         raise HTTPException(status_code=404, detail="No saved submission for this student and exam.")

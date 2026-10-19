@@ -48,6 +48,41 @@ def test_duplicate_active_student_attempts_are_not_silently_selected():
         immediate(repo.find_graded_submission(Database(submissions=Collection([row, row])), "S1", "IT2040", "Final Examination", 2025, 4, 1))
 
 
+@pytest.mark.parametrize("archive", [
+    {"archived_reason": "superseded_by_new_batch"},
+    {"archived_at": "2026-10-12T18:36:59Z"},
+])
+@pytest.mark.parametrize("reader", ["single", "exam", "student", "batch"])
+def test_submission_readers_ignore_superseded_revision(archive, reader):
+    current = {**IDENTITY, "_id": "current", "examKey": "EXAM-1", "student_id": "S1", "status": "graded"}
+    old = {**current, "_id": "old", **archive}
+    db = Database(submissions=Collection([old, current]))
+    if reader == "single":
+        result = immediate(repo.find_graded_submission(db, "S1", "IT2040", "Final Examination", 2025, 4, 1))
+        assert result == current
+    elif reader == "exam":
+        assert immediate(repo.find_graded_submissions_for_exam(db, "IT2040", "Final Examination", 2025, 4, 1)) == [current]
+    elif reader == "student":
+        assert immediate(repo.find_graded_submissions_for_student(db, "S1")) == [current]
+    else:
+        assert immediate(repo.find_graded_submissions(db)) == [current]
+
+
+def test_lecturer_grading_ignores_superseded_revision_without_archive_timestamp():
+    from app.services.lecturer_grading import build_lecturer_grading_rows
+    from tests.test_exam_paper import fixture
+
+    sources = fixture(diagram=False, students=("S1",))
+    old = deepcopy(sources["submissions"][0])
+    old.update(_id="old", archived_reason="superseded_by_new_batch")
+    old["evaluation"]["total_score"] = 0
+    sources["submissions"].insert(0, old)
+    rows = build_lecturer_grading_rows(sources["examkeys"][0]["examKey"], sources)
+    assert len(rows) == 1
+    assert rows[0]["grading_status"] == "complete"
+    assert rows[0]["score"]["obtained"] == 12
+
+
 def test_class_request_without_dates_cannot_merge_exam_years(monkeypatch):
     from app.services import exam_analytics as service
     monkeypatch.setattr(service, "find_graded_submissions_for_exam", AsyncMock(return_value=[
