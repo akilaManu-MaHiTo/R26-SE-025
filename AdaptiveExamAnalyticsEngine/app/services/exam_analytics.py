@@ -20,6 +20,7 @@ from app.db.repository import (
 )
 from app.ingestion.student_data import StudentDataError, normalize_student_submission
 from app.services import student_pipeline as _student_pipeline
+from app.services.student_accounts import provision_student_accounts
 
 ANALYTICS_VERSION = "1.4"
 
@@ -358,6 +359,8 @@ async def compute_exam_analytics(
         "analytics_version": ANALYTICS_VERSION,
         "excluded_submissions": excluded,
     }
+    _progress("PULSE·AI — Creating missing student accounts...")
+    await provision_student_accounts(db, course_code, session_name, year, month, semester)
     _progress("PULSE·AI — Saving analytics to database...")
     await upsert_exam_analytics(db, document)
     await upsert_exam_analysis_status(

@@ -57,7 +57,7 @@ async def provision_student_accounts(
     created = 0
     existed = 0
     for sub in submissions:
-        sid = str(sub.get("student_id") or "").strip()
+        sid = str(sub.get("student_id") or sub.get("student_key") or "").strip()
         if not sid or sid in seen:
             continue
         seen.add(sid)

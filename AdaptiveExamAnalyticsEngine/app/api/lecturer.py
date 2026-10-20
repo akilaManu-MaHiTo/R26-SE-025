@@ -377,8 +377,6 @@ async def lecturer_exam_analytics(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to compute analytics: {exc}") from exc
-    # Analytics reads have no account-creation side effect — provisioning moved to dedicated endpoint
-    # (student access no longer depends on opening lecturer dashboard)
     try:
         document = await _refresh_diagram_analysis(db, document, course_code, session_name, year, month, semester)
         return ExamAnalyticsDocument.model_validate(document)
@@ -511,7 +509,7 @@ async def lecturer_provision_accounts(
     semester: int | None = Query(None),
     db=Depends(get_db),
 ):
-    """Dedicated student account provisioning (idempotent) — replaces analytics-read side effect."""
+    """Create missing student accounts without recomputing exam analytics."""
     from app.services.student_accounts import provision_student_accounts as _provision
     try:
         result = await _provision(db, course_code, session_name, year, month, semester)

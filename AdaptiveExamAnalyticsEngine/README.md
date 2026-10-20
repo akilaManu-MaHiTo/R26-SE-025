@@ -4,6 +4,15 @@ DBMS learning analytics pipeline: materializes per-student analytics from graded
 submissions, classifies question semantics (Bloom levels, topics), and serves a
 FastAPI dashboard.
 
+## Student accounts
+
+Computing exam analytics creates missing student accounts from that exam's graded
+submissions. Students sign in at `/login/student` with
+`<student-id>@my.sliit.lk` (lowercase) and the default password `Student@123`.
+Existing accounts and passwords are preserved when an exam is analyzed again.
+For previously analyzed exams, use **Reanalyse** to create missing accounts;
+opening a cached result does not provision accounts.
+
 Exam Creator can retrieve course evidence from an independent analytics-owned
 index. See [course RAG setup, import, and search](COURSE_RAG.md).
 
