@@ -1,6 +1,7 @@
 import React from "react";
 import { Card } from "./ui/card";
-import { Loader2, Check } from "lucide-react";
+import { Check } from "lucide-react";
+import { ThinkingOrb } from "thinking-orbs";
 
 export interface LoadStep {
   label: string;
@@ -35,7 +36,7 @@ export function ProgressLoader({ steps, currentStep, className }: ProgressLoader
                         <Check className="size-3.5 text-primary-foreground" strokeWidth={3} />
                       </div>
                     ) : isCurrent ? (
-                      <Loader2 className="size-6 text-primary animate-spin" />
+                      <ThinkingOrb state="solving" size={20} aria-label={step.label} />
                     ) : (
                       <div className="size-6 rounded-full bg-muted border border-border" />
                     )}

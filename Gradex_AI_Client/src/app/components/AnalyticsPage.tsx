@@ -9,7 +9,7 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { ProgressLoader, type LoadStep } from "./ProgressLoader";
+import { AnalysisLoader } from "./AnalysisLoader";
 import { AIPageBanner } from "./AIBrand";
 import { toast } from "sonner";
 import {
@@ -48,52 +48,6 @@ import { QuestionDetailModal } from "./analytics/QuestionDetailModal";
 import { ExamPaperModal } from "./analytics/ExamPaperModal";
 import { StudentQuestionRow } from "./analytics/StudentQuestionRow";
 
-function PremiumLoader({
-  steps,
-  currentStep,
-  liveMessage,
-}: {
-  steps: LoadStep[];
-  currentStep: number;
-  liveMessage?: string;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 space-y-6">
-      <ThinkingOrb state="searching" size={64} aria-label="Loading exam analytics" />
-      <div className="space-y-2 text-center max-w-xl" role="status">
-        <motion.p
-          key={currentStep}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-sm font-medium"
-        >
-          {steps[currentStep]?.label || "Loading..."}
-        </motion.p>
-        {liveMessage && (
-          <motion.p
-            key={liveMessage}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-xs text-muted-foreground font-mono bg-muted/50 rounded-lg px-3 py-2 border"
-          >
-            {liveMessage}
-          </motion.p>
-        )}
-        <div className="flex gap-1.5 justify-center">
-          {steps.map((_, i) => (
-            <motion.div
-              key={i}
-              className={`h-1.5 rounded-full ${i === currentStep ? "bg-primary w-6" : i < currentStep ? "bg-primary/60 w-1.5" : "bg-muted w-1.5"}`}
-              animate={{ scale: i === currentStep ? 1.2 : 1 }}
-              transition={{ duration: 0.3 }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function AnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedStudentId = searchParams.get("student");
@@ -106,10 +60,8 @@ export default function AnalyticsPage() {
   const [examListError, setExamListError] = useState(false);
   const [examReload, setExamReload] = useState(0);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const finishAnalyticsLoading = useCallback(() => setLoadingAnalytics(false), []);
   const [loadingActions, setLoadingActions] = useState(false);
-  const [loadSteps, setLoadSteps] = useState<LoadStep[]>([]);
-  const [currentLoadStep, setCurrentLoadStep] = useState(0);
-  const [liveModelMessage, setLiveModelMessage] = useState<string>("PULSE·AI — Initializing...");
   const [selectedTopic, setSelectedTopic] = useState<CanonicalTopic | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<QuestionPerformance | null>(null);
   // dense table filters
@@ -134,8 +86,6 @@ export default function AnalyticsPage() {
   }, []);
 
   useEffect(() => {
-    setLoadSteps([{ label: "Fetching exams..." }]);
-    setCurrentLoadStep(0);
     setLoadingExams(true);
     setExamListError(false);
     let ignore = false;
@@ -165,21 +115,12 @@ export default function AnalyticsPage() {
     setLoadingStudents(true);
     setStudentListError(null);
     setAnalytics(null);
-    setLiveModelMessage("PULSE·AI — Starting analysis...");
     // reset student finder
     setStudents([]);
     setStudentSearch("");
     setSelectedStudentId(null);
     setStudentDetail(null);
     setStudentDetailError(null);
-
-    const steps: LoadStep[] = [
-      { label: "PULSE·AI — Ingesting submissions..." },
-      { label: "PULSE·AI — Checking Bloom levels & classifying topics..." },
-      { label: "PULSE·AI — Computing statistics & insights..." },
-    ];
-    setLoadSteps(steps);
-    setCurrentLoadStep(0);
 
     // Status does not require model analysis; load it even when analytics fails.
     const studentsPromise = fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
@@ -197,13 +138,8 @@ export default function AnalyticsPage() {
       });
     void studentsPromise;
 
+    let receivedAnalytics = false;
     try {
-      setCurrentLoadStep(0);
-      if (opts?.forceReanalyse) {
-        setLiveModelMessage("PULSE·AI — Re-analysing (forced)...");
-      } else {
-        setLiveModelMessage("PULSE·AI — Connecting to analytics...");
-      }
       // Reanalysis failures must surface; a cached read would conceal the failure.
       let data: ExamAnalytics;
       if (opts?.forceReanalyse) {
@@ -216,26 +152,17 @@ export default function AnalyticsPage() {
             exam.year,
             exam.month,
             exam.semester,
-            (msg) => {
-              if ((handleSelectExam as any)._lastRequestId !== requestId) return;
-              setLiveModelMessage(msg);
-              // Advance loader step based on message content
-              if (msg.includes("Ingesting") || msg.includes("Analyzing student")) setCurrentLoadStep(0);
-              else if (msg.includes("Bloom") || msg.includes("Topic") || msg.includes("Q")) setCurrentLoadStep(1);
-              else if (msg.includes("Computing") || msg.includes("weak") || msg.includes("Finalizing") || msg.includes("Saving")) setCurrentLoadStep(2);
-            },
+            () => {},
           );
         } catch {
           if ((handleSelectExam as any)._lastRequestId !== requestId) return;
-          setLiveModelMessage("PULSE·AI — Streaming unavailable, loading...");
           data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
         }
       }
       // Stale-response guard: only apply if still the latest requested exam
       if ((handleSelectExam as any)._lastRequestId !== requestId) return;
       setAnalytics(data);
-      setLiveModelMessage("PULSE·AI — Analysis complete");
-      setCurrentLoadStep(2);
+      receivedAnalytics = true;
 
       // Grading status is already loading independently; only teaching remains.
       setLoadingActions(true);
@@ -257,7 +184,6 @@ export default function AnalyticsPage() {
       if ((handleSelectExam as any)._lastRequestId !== requestId) return;
       console.error(err);
       const msg = err instanceof Error ? err.message : String(err);
-      setLiveModelMessage("PULSE·AI — Analysis failed");
       // Separate ModernBERT (core) vs Ollama (optional) health
       if (msg.toLowerCase().includes("bloom") || msg.toLowerCase().includes("modernbert")) {
         try {
@@ -272,7 +198,7 @@ export default function AnalyticsPage() {
         toast.error(msg);
       }
     } finally {
-      if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingAnalytics(false);
+      if ((handleSelectExam as any)._lastRequestId === requestId && !receivedAnalytics) setLoadingAnalytics(false);
     }
   }, []);
 
@@ -735,7 +661,7 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {loadingExams ? (
-          <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} />
+          <AnalysisLoader label="Loading exams" />
         ) : examListError ? (
           <Card className="p-8 space-y-3" role="alert">
             <p>Could not load exams. Check the analytics service and retry.</p>
@@ -953,7 +879,11 @@ export default function AnalyticsPage() {
       {analytics?.snapshot_status === "stale" && <p role="alert" className="rounded-md border border-amber-300 p-3 text-sm">{analytics.refresh_warning}</p>}
 
       {loadingAnalytics ? (
-        <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} liveMessage={liveModelMessage} />
+        <AnalysisLoader
+          key={(handleSelectExam as any)._lastRequestId}
+          complete={analytics !== null}
+          onComplete={finishAnalyticsLoading}
+        />
       ) : analytics ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
