@@ -7,6 +7,8 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
+from app.ingestion.submission_attempts import current_essay_attempts, current_essay_sources
+
 
 async def load_exam_paper_sources(db: AsyncIOMotorDatabase, exam_key: str) -> dict:
     """Read only one exam's candidates and referenced rubrics, preserving conflicts.
@@ -72,7 +74,7 @@ async def load_exam_paper_sources(db: AsyncIOMotorDatabase, exam_key: str) -> di
             "_id": {"$in": guideline_refs},
         }).to_list(length=None)
     sources["readCompletedAt"] = datetime.now(timezone.utc).isoformat()
-    return sources
+    return current_essay_sources(sources)
 
 
 COLLECTIONS = (
@@ -215,7 +217,7 @@ async def latest_run_id(db: AsyncIOMotorDatabase) -> str | None:
 async def find_graded_submissions(db: AsyncIOMotorDatabase) -> list[dict]:
     cursor = db["submissions"].find({"status": "graded", "archived_at": None,
                                       "archived_reason": {"$ne": "superseded_by_new_batch"}})
-    return await cursor.to_list(length=None)
+    return current_essay_attempts(await cursor.to_list(length=None))
 
 
 async def find_course_for_submission(
@@ -382,7 +384,7 @@ async def find_graded_submission(
         query["month"] = month
     if semester is not None:
         query["semester"] = semester
-    documents = await db["submissions"].find(query).to_list(length=2)
+    documents = current_essay_attempts(await db["submissions"].find(query).to_list(length=None))
     if len(documents) > 1:
         from app.ingestion.student_data import StudentDataError
         raise StudentDataError("Ambiguous active student submissions; select an exact exam and resolve duplicate attempts")
@@ -403,7 +405,7 @@ async def find_graded_submissions_for_exam(
     if semester is not None:
         query["semester"] = semester
     cursor = db["submissions"].find(query)
-    return await cursor.to_list(length=None)
+    return current_essay_attempts(await cursor.to_list(length=None))
 
 
 async def upsert_exam_analytics(db: AsyncIOMotorDatabase, document: dict) -> None:
@@ -681,7 +683,7 @@ async def find_graded_submissions_for_student(
 ) -> list[dict]:
     cursor = db["submissions"].find({"student_id": student_id, "status": "graded", "archived_at": None,
                                       "archived_reason": {"$ne": "superseded_by_new_batch"}})
-    return await cursor.to_list(length=None)
+    return current_essay_attempts(await cursor.to_list(length=None))
 
 
 async def list_exams_for_student(

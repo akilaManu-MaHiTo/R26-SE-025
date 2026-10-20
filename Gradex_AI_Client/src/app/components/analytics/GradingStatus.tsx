@@ -69,7 +69,7 @@ export function GradingOverview({ students }: { students: StudentRow[] }) {
           <GradingAnimation key={animation} src={animation} />
           <span className="min-w-0 flex-1 space-y-2">
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="text-sm font-semibold">Grading progress</span>
+              <span className="text-sm font-semibold">Validation progress</span>
               <span className="text-xs font-normal text-muted-foreground">{students.length} {students.length === 1 ? "student" : "students"}</span>
             </span>
             <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-normal tabular-nums">

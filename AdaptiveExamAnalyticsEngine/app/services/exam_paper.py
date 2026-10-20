@@ -279,7 +279,9 @@ def reconstruct_exam_paper(exam_key: str, sources: dict) -> dict:
     def unresolved(source, reason):
         paper["unresolvedRecords"].append({"source": source, "reason": reason})
 
-    matched_rubrics = [r for r in sources.get("rubrics", []) if matches(r, _ref(r.get("_source_collection", "rubricCollection"), r))]
+    roster_only = {_identifier(r.get("_id")) for r in sources.get("superseded_rubrics", [])}
+    matched_rubrics = [r for r in sources.get("rubrics", []) + sources.get("superseded_rubrics", [])
+                       if matches(r, _ref(r.get("_source_collection", "rubricCollection"), r))]
     by_rubric_id = defaultdict(list)
     for rubric in matched_rubrics:
         by_rubric_id[_identifier(rubric.get("_id"))].append(rubric)
@@ -310,6 +312,8 @@ def reconstruct_exam_paper(exam_key: str, sources: dict) -> dict:
                 _issue(paper, "duplicate_roster_student", source=rref)
                 duplicate_roster.update(sid for sid, count in Counter(ids).items() if count > 1)
                 duplicate_roster.update(sid for sid in declared_duplicates if isinstance(sid, str))
+        if rid in roster_only:
+            continue
         if rid is None or len(rubrics) != 1:
             _issue(paper, "ambiguous_rubric", scope="paper")
             continue
