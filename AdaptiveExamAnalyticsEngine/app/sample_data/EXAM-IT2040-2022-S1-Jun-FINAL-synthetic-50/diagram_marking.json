@@ -1,0 +1,51 @@
+[
+  {
+    "subject_code": "IT2040",
+    "subject_name": "Database Management Systems",
+    "year": 2022,
+    "month": 6,
+    "semester": 1,
+    "session_name": "Final Examination",
+    "_id": {
+      "$oid": "a4db3bf65afa65c65444db18"
+    },
+    "examKey": "EXAM-IT2040-2022-S1-Jun-FINAL",
+    "question_no": "05",
+    "question_text": "Design, construct, and produce a new, original logical and physical database design diagram for the manufacturing company scenario used in this paper. Show the CUSTOMER, MANUFACTURER, PRODUCT, ORDER and ORDERITEMS entities with all their attributes and clearly underlined primary keys; draw the MANUFACTURER to PRODUCT, CUSTOMER to ORDER, ORDER to ORDERITEMS and PRODUCT to ORDERITEMS relationships with correct cardinalities, optionality and crow's foot notation; mark the foreign keys; add the derived or calculated item for the total order value, an index on OrderItems(OID) and the module or trigger that validates the 2 kg package weight limit; and finish with a short design note that justifies your key and relationship choices. Use clear labels throughout. (20 marks)",
+    "bloom_level": "Create",
+    "totalMarks": 20,
+    "guideLines": [
+      {
+        "id": 1,
+        "criterion": "Creates all five core entities with the correct attributes",
+        "marks": 4
+      },
+      {
+        "id": 2,
+        "criterion": "Marks the primary, foreign and composite primary keys correctly",
+        "marks": 4
+      },
+      {
+        "id": 3,
+        "criterion": "Shows correct cardinalities, optionality and crow's-foot notation",
+        "marks": 4
+      },
+      {
+        "id": 4,
+        "criterion": "Includes the derived total order value, the index and the validation module",
+        "marks": 4
+      },
+      {
+        "id": 5,
+        "criterion": "Produces clear labels and a coherent design justification note",
+        "marks": 4
+      }
+    ],
+    "dataset_provenance": {
+      "kind": "synthetic",
+      "dataset_id": "EXAM-IT2040-2022-S1-Jun-FINAL-synthetic-50-v1",
+      "source": "Adapted from repository sample_data_v4",
+      "limitations": "Simulated answers, marks and diagram detections; not real students, model predictions or independently verified grades."
+    }
+  }
+]

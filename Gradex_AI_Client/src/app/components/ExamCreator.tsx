@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import { ThinkingOrb } from "thinking-orbs";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Plus, X, BookOpen, ChevronRight, Layers, FileDown, Eye, CloudUpload } from "lucide-react";
@@ -17,24 +17,17 @@ import {
   createExamDraft,
   listExamDrafts,
   type ExamListItem,
-  type Recommendation,
   type QuestionBankItem,
   type ExamDraft,
 } from "../api/lecturerApi";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { toast } from "sonner";
 
+import { CandidateActions, DropZone, MoveControls, type StructureActions } from "./ExamStructureControls";
+import { placeQuestion, renumberQuestions, type PlacementSource, type PlacementTarget } from "./examStructure";
 import { ExamCreatorAssistant, PartReviewEditor } from "./ExamCreatorAssistant";
 import { defaultBlueprint, type Part, type PaperQuestion, type Paper } from "../api/examCreatorApi";
 export type { Part, PaperQuestion, Paper } from "../api/examCreatorApi";
-
-function renumberQuestions(qs: PaperQuestion[]): PaperQuestion[] {
-  return qs.map((q, i) => ({
-    ...q,
-    question_number: i + 1,
-    parts: q.parts.map((p, j) => ({ ...p, part: String.fromCharCode(97 + j) })),
-  }));
-}
 
 function totalMarks(paper: Paper): number {
   return paper.questions.flatMap((q) => q.parts).reduce((s, p) => s + (Number(p.max_marks) || 0), 0);
@@ -62,8 +55,17 @@ export function ExamCreator() {
   const setHideSidebar = useHideSidebar()?.setHide;
   const [exams, setExams] = useState<ExamListItem[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamListItem | null>(null);
-  const [paper, setPaper] = useState<Paper>({ exam: "New exam", year: new Date().getFullYear(), questions: [], blueprint: defaultBlueprint() });
-  const [insertTargets, setInsertTargets] = useState<Record<string, string>>({});
+  const [paper, setPaperState] = useState<Paper>({ exam: "New exam", year: new Date().getFullYear(), questions: [], blueprint: defaultBlueprint() });
+  const [selectedQuestion, setSelectedQuestion] = useState<number | null>(null);
+  const [dragged, setDragged] = useState<PlacementSource | null>(null);
+  const [undoPaper, setUndoPaper] = useState<Paper | null>(null);
+  const [placementMessage, setPlacementMessage] = useState("");
+  const setPaper: Dispatch<SetStateAction<Paper>> = useCallback(value => {
+    setUndoPaper(null);
+    setDragged(null);
+    setPlacementMessage("");
+    setPaperState(value);
+  }, []);
   const [loadingExams, setLoadingExams] = useState(true);
   const [loadSteps, setLoadSteps] = useState<LoadStep[]>([]);
   const currentStep = 0;
@@ -99,7 +101,7 @@ export function ExamCreator() {
     setCurrentDraftId(null);
     setBankItems([]);
     setBankFilters({});
-    setInsertTargets({});
+    setSelectedQuestion(null);
     setRightTab("recommended");
     const nextPaper: Paper = { exam: `${exam.course_code} – ${exam.subject_name}`, year: new Date().getFullYear(),
       questions: [], blueprint: defaultBlueprint(),
@@ -128,29 +130,6 @@ export function ExamCreator() {
       .finally(() => { if (!ignore) setLoadingBank(false); });
     return () => { ignore = true; };
   }, [rightTab, bankFilters, selectedExam]);
-
-  const handleInsertFromBank = (item: QuestionBankItem) => {
-    const fakeRec: Recommendation = {
-      question_id: item.question_id,
-      source_type: item.source_type,
-      source_id: item.source_id,
-      canonical_topic: item.canonical_topic,
-      subtopic: item.subtopic,
-      bloom_level: item.bloom_level,
-      difficulty: item.difficulty,
-      marks: item.marks,
-      text: item.text,
-      weakness: 0,
-      lecture_coverage: 1,
-      tutorial_evidence: 1,
-      exam_relevance: 1,
-      bloom_gap: 0,
-      recommendation_score: 0,
-      priority: "Medium",
-      reason: { weakness_pct: 0, lecture: true, tutorial_count: 0, exam_recent_count: 0, bloom_gap: 0 },
-    };
-    handleInsert(fakeRec);
-  };
 
   const handleUpload = async () => {
     setUploading(true);
@@ -181,6 +160,7 @@ export function ExamCreator() {
     setBankFilters({});
     setRightTab("recommended");
     setCurrentDraftId(draft.draft_id);
+    setSelectedQuestion(null);
     setHideSidebar?.(true);
     // create a synthetic selectedExam for header
     setSelectedExam({
@@ -205,40 +185,39 @@ export function ExamCreator() {
 
   };
 
-  const handleInsert = (rec: Recommendation) => {
-    if (paper.questions.some(q => q.parts.some(p => p.question_id === rec.question_id))) {
-      toast.error("This question is already in the draft"); return;
+  const insert = (source: PlacementSource, target: PlacementTarget = { question: paper.questions.length }) => {
+    try {
+      const questions = placeQuestion(paper.questions, source, target);
+      if (JSON.stringify(questions) === JSON.stringify(paper.questions)) return;
+      setUndoPaper(paper);
+      setPaperState({ ...paper, questions });
+      setSelectedQuestion(null);
+      setPlacementMessage(source.kind === "candidate" ? "Question added to paper." : "Paper order updated.");
+      const number = Math.min(target.question + 1, questions.length);
+      requestAnimationFrame(() => {
+        const element = document.getElementById(`question-${number}`);
+        element?.scrollIntoView?.({ block: "nearest" });
+        element?.classList.add("ring-2", "ring-primary");
+        setTimeout(() => element?.classList.remove("ring-2", "ring-primary"), 1200);
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to place question");
+    } finally {
+      setDragged(null);
     }
-    const target = insertTargets[rec.question_id] || "end";
-    if (target.includes("-part")) {
-      const parent = paper.questions.find(q => q.question_number === Number(target.split("Q")[1].split("-")[0]));
-      if (parent && parent.topic !== rec.canonical_topic) {
-        toast.error("Add this topic as a separate question so blueprint coverage stays accurate");
-        return;
-      }
-    }
-    setPaper((prev) => {
-      let qs = [...prev.questions];
-      const newPart: Part = { part: "a", question: rec.text, max_marks: rec.marks > 0 ? rec.marks : 10, question_id: rec.question_id, bloom_level: rec.bloom_level, review_status: "needs_review" };
-      if (target === "end") {
-        qs.push({ question_number: qs.length + 1, topic: rec.canonical_topic, parts: [newPart] });
-      } else if (target.includes("-part")) {
-        const qn = Number(target.split("Q")[1].split("-")[0]);
-        qs = qs.map((q) => (q.question_number === qn ? { ...q, parts: [...q.parts, { ...newPart, part: String.fromCharCode(97 + q.parts.length) }] } : q));
-      } else if (target.startsWith("Q")) {
-        const qn = Number(target.slice(1));
-        qs.splice(qn - 1, 0, { question_number: qn, topic: rec.canonical_topic, parts: [newPart] });
-      }
-      const renumbered = renumberQuestions(qs);
-      setTimeout(() => {
-        const el = document.getElementById(`question-${renumbered.find((q) => q.parts.some((p) => p.question === rec.text))?.question_number}`);
-        el?.scrollIntoView({ behavior: "smooth", block: "center" });
-        el?.classList.add("ring-2", "ring-primary");
-        setTimeout(() => el?.classList.remove("ring-2", "ring-primary"), 1000);
-      }, 100);
-      return { ...prev, questions: renumbered };
-    });
   };
+  const structureActions: StructureActions = {
+    insert,
+    selected: paper.questions.find(q => q.question_number === selectedQuestion),
+    startDrag: (source, event) => {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", "Exam question");
+      setDragged(source);
+    },
+    endDrag: () => setDragged(null),
+  };
+  const draggedTopic = dragged?.kind === "candidate" ? dragged.topic : dragged ? paper.questions[dragged.question]?.topic : undefined;
+  const dropAt = (target: PlacementTarget) => { if (dragged) insert(dragged, target); };
 
   const makePdf = async (markingScheme = false) => {
     const { default: jsPDF } = await import("jspdf");
@@ -396,6 +375,11 @@ export function ExamCreator() {
         </Select>
         <Button variant="ghost" size="sm" onClick={handleBackToSelector} disabled={uploading} className="ml-2">Change exam</Button>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" title="Undo the latest move or insertion before making another edit" disabled={!undoPaper} onClick={() => {
+            if (undoPaper) setPaper(undoPaper);
+            setSelectedQuestion(null);
+            setPlacementMessage("Last structural change undone.");
+          }}>Undo move / add</Button>
           <motion.span key={total} initial={{ scale: 0.9 }} animate={{ scale: 1 }} transition={{ duration: 0.2 }} className={`text-sm font-medium tabular-nums ${total === targetMarks ? "text-green-600" : total < targetMarks ? "text-amber-600" : "text-red-600"}`}>
             Total: {total}/{targetMarks} {total !== targetMarks && "⚠️"}
           </motion.span>
@@ -416,26 +400,45 @@ export function ExamCreator() {
               <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min((total / targetMarks) * 100, 100)}%` }} transition={{ duration: 0.6, ease: "easeOut" }} className={`h-full rounded-full ${total === targetMarks ? "bg-gradient-to-r from-green-500 to-emerald-500" : total < targetMarks ? "bg-gradient-to-r from-amber-500 to-orange-500" : "bg-gradient-to-r from-red-500 to-red-400"}`} />
             </div>
           </motion.div>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Drag questions into your paper, or use Add to paper. Select a question to add matching subparts.</p>
+            <p role="status" className="text-sm text-primary">{placementMessage}</p>
+            {!paper.questions.length && <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">Your paper is empty. Add a suggested question or write a custom question below.</div>}
+          </div>
           <AnimatePresence>
             {paper.questions.map((q, idx) => (
               <motion.div key={q.question_number} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3, delay: idx * 0.03 }}>
+                <DropZone active={!!dragged} label={`Insert as Question ${q.question_number}`} onDrop={() => dropAt({ question: idx })} />
                 <Card id={`question-${q.question_number}`} className="p-4 space-y-3 bg-card/80 backdrop-blur border-border/60 hover:border-primary/20 hover:shadow-md transition-all">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold shrink-0">Question {q.question_number}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <MoveControls label={`question ${q.question_number}`} source={{ kind: "question", question: idx }} actions={structureActions}
+                  up={idx > 0 ? { question: idx - 1 } : undefined} down={idx < paper.questions.length - 1 ? { question: idx + 2 } : undefined} />
+                <Button variant={selectedQuestion === q.question_number ? "secondary" : "outline"} size="sm" aria-pressed={selectedQuestion === q.question_number}
+                  title="Select this question to add matching subparts" onClick={() => setSelectedQuestion(selectedQuestion === q.question_number ? null : q.question_number)}>Question {q.question_number}{selectedQuestion === q.question_number ? " · Selected" : ""}</Button>
                 <Input aria-label={`Question ${q.question_number} topic`} value={q.topic}
                   onChange={e => setPaper(prev => ({ ...prev, questions: prev.questions.map(x => x.question_number === q.question_number ? { ...x, topic: e.target.value, parts: x.parts.map(p => ({ ...p, review_status: "needs_review" })) } : x) }))} />
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setPaper((prev) => ({ ...prev, questions: renumberQuestions(prev.questions.filter((x) => x.question_number !== q.question_number)) }))}
+                  aria-label={`Remove question ${q.question_number}`}
+                  onClick={() => { setSelectedQuestion(null); setPaper((prev) => ({ ...prev, questions: renumberQuestions(prev.questions.filter((x) => x.question_number !== q.question_number)) })); }}
                 >
                   <X className="size-4" />
                 </Button>
               </div>
-              {q.parts.map((p) => (
-                <div key={p.part} className="flex gap-2">
-                  <span className="mt-2 text-sm font-medium shrink-0">{p.part})</span>
+              {q.parts.map((p, partIndex) => (
+                <div key={p.part} className="space-y-2">
+                <DropZone active={!!dragged && dragged.kind !== "question" && draggedTopic === q.topic} label={`Insert part before ${p.part})`} onDrop={() => dropAt({ question: idx, part: partIndex })} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <MoveControls label={`Q${q.question_number} part ${p.part}`} source={{ kind: "part", question: idx, part: partIndex }} actions={structureActions}
+                    up={partIndex > 0 ? { question: idx, part: partIndex - 1 } : undefined}
+                    down={partIndex < q.parts.length - 1 ? { question: idx, part: partIndex + 2 } : undefined} />
+                  <span className="text-sm font-medium">Part {p.part}</span>
+                  {q.parts.length > 1 && <Button size="sm" variant="ghost" onClick={() => insert({ kind: "part", question: idx, part: partIndex })}>Make separate question</Button>}
+                </div>
+                <div className="flex flex-wrap items-start gap-2">
                   <Textarea
+                    aria-label={`Q${q.question_number} part ${p.part} text`}
                     value={p.question}
                     onChange={(e) => setPaper((prev) => ({ ...prev, questions: prev.questions.map((x) => (x.question_number === q.question_number ? { ...x, parts: x.parts.map((y) => (y.part === p.part ? { ...y, question: e.target.value, review_status: "needs_review" } : y)) } : x)) }))}
                     className="flex-1 min-h-[60px]"
@@ -443,6 +446,7 @@ export function ExamCreator() {
                   />
                   <Input
                     type="number"
+                    aria-label={`Q${q.question_number} part ${p.part} marks`}
                     value={p.max_marks}
                     onChange={(e) => setPaper((prev) => ({ ...prev, questions: prev.questions.map((x) => (x.question_number === q.question_number ? { ...x, parts: x.parts.map((y) => (y.part === p.part ? { ...y, max_marks: Number(e.target.value) || 0, review_status: "needs_review" } : y)) } : x)) }))}
                     className="w-20 shrink-0"
@@ -453,12 +457,21 @@ export function ExamCreator() {
                     variant="ghost"
                     size="icon"
                     className="shrink-0"
-                    onClick={() => setPaper((prev) => ({ ...prev, questions: renumberQuestions(prev.questions.map((x) => (x.question_number === q.question_number ? { ...x, parts: x.parts.filter((y) => y.part !== p.part) } : x)).filter((x) => x.parts.length > 0)) }))}
+                    aria-label={`Remove Q${q.question_number} part ${p.part}`}
+                    onClick={() => { setSelectedQuestion(null); setPaper((prev) => ({ ...prev, questions: renumberQuestions(prev.questions.map((x) => (x.question_number === q.question_number ? { ...x, parts: x.parts.filter((y) => y.part !== p.part) } : x)).filter((x) => x.parts.length > 0)) })); }}
                   >
                     <X className="size-4" />
                   </Button>
                 </div>
+                {paper.questions.some(other => other !== q && other.topic === q.topic) && <label className="flex items-center gap-2 text-xs text-muted-foreground">Move part to
+                  <select aria-label={`Move Q${q.question_number} part ${p.part} to question`} className="rounded border bg-background p-2" value="" onChange={e => {
+                    const target = paper.questions[Number(e.target.value)];
+                    insert({ kind: "part", question: idx, part: partIndex }, { question: Number(e.target.value), part: target.parts.length });
+                  }}><option value="" disabled>Choose question</option>{paper.questions.map((other, i) => other !== q && other.topic === q.topic ? <option key={i} value={i}>Question {other.question_number}</option> : null)}</select>
+                </label>}
+                </div>
               ))}
+              <DropZone active={!!dragged && dragged.kind !== "question" && draggedTopic === q.topic} label={`Add part to Question ${q.question_number} (${q.topic})`} onDrop={() => dropAt({ question: idx, part: q.parts.length })} />
               {q.parts.map(p => <PartReviewEditor key={`review-${p.part}`} part={p} onChange={changes => setPaper(prev => ({ ...prev,
                 questions: prev.questions.map(x => x.question_number === q.question_number ? { ...x, parts: x.parts.map(y => y.part === p.part ? { ...y, ...changes } : y) } : x),
               }))} />)}
@@ -473,6 +486,7 @@ export function ExamCreator() {
               </motion.div>
             ))}
           </AnimatePresence>
+          <DropZone active={!!dragged} label="Add new question at end" onDrop={() => dropAt({ question: paper.questions.length })} />
           <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
             <Button
               onClick={() => setPaper((prev) => ({ ...prev, questions: renumberQuestions([...prev.questions, { question_number: prev.questions.length + 1, topic: "", parts: [{ part: "a", question: "", max_marks: 10 }] }]) }))}
@@ -492,7 +506,7 @@ export function ExamCreator() {
               <TabsTrigger value="browse" className="text-xs">Browse Bank</TabsTrigger>
             </TabsList>
             <TabsContent value="recommended" className="space-y-4 mt-4">
-              <ExamCreatorAssistant key={`${selectedExam.course_code}-${currentDraftId ?? "new"}`} courseCode={selectedExam.course_code} paper={paper} setPaper={setPaper} />
+              <ExamCreatorAssistant key={`${selectedExam.course_code}-${currentDraftId ?? "new"}`} courseCode={selectedExam.course_code} paper={paper} setPaper={setPaper} structureActions={structureActions} />
             </TabsContent>
             <TabsContent value="browse" className="space-y-3 mt-4">
               <div className="flex gap-2">
@@ -529,17 +543,8 @@ export function ExamCreator() {
                       </div>
                       <p className="text-xs leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto pr-1 border rounded bg-muted/20 p-1.5">{item.text}</p>
                       <p className="text-[11px] text-muted-foreground whitespace-pre-wrap break-words">{item.subtopic}</p>
-                      <div className="flex gap-1">
-                        <Select value={insertTargets[item.question_id] || "end"} onValueChange={(v) => setInsertTargets((s) => ({ ...s, [item.question_id]: v }))}>
-                          <SelectTrigger className="flex-1 h-7 text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="end">Add as Q{paper.questions.length + 1}</SelectItem>
-                            {paper.questions.map((q) => <SelectItem key={`bq${q.question_number}`} value={`Q${q.question_number}`}>Insert as Q{q.question_number}</SelectItem>)}
-                            {paper.questions.filter(q => q.topic === item.canonical_topic).map((q) => <SelectItem key={`bqp${q.question_number}`} value={`Q${q.question_number}-part`}>Add part to Q{q.question_number}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <Button size="sm" className="h-7" onClick={() => handleInsertFromBank(item)}><Plus className="size-3 mr-1" />Add</Button>
-                      </div>
+                      <CandidateActions topic={item.canonical_topic} part={{ part: "a", question: item.text, max_marks: item.marks > 0 ? item.marks : 10,
+                        question_id: item.question_id, bloom_level: item.bloom_level, review_status: "needs_review" }} actions={structureActions} />
                     </Card>
                   ))}
                 </div>
