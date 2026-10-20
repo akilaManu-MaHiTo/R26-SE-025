@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ThinkingOrb } from "thinking-orbs";
+import { BrandOrb } from "./BrandOrb";
 
 export function AnalysisLoader({ label = "Analyzing exam", complete = false, onComplete }: {
   label?: string;
@@ -32,7 +32,7 @@ export function AnalysisLoader({ label = "Analyzing exam", complete = false, onC
 
   return (
     <div className="flex flex-col items-center justify-center gap-5 py-16">
-      <ThinkingOrb state="solving" size={64} aria-label={label} />
+      <BrandOrb state="solving" size={64} aria-label={label} />
       <div className="w-full max-w-xs space-y-3">
         <div className="flex items-center justify-between text-sm">
           <p className="font-medium">{label}…</p>

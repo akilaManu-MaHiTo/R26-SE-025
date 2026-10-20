@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router";
-import { ThinkingOrb } from "thinking-orbs";
+import { BrandOrb } from "./BrandOrb";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight, UserSearch, Eye, AlertCircle, Loader2, GraduationCap, BookOpen, Brain, Award, User } from "lucide-react";
 import { Button } from "./ui/button";
@@ -380,7 +380,7 @@ export default function AnalyticsPage() {
 
           {!selectionMatches || loadingStudentDetail || (!studentDetail && !studentDetailError) ? (
             <div className="py-10 flex flex-col items-center gap-3">
-              <ThinkingOrb state="searching" size={64} aria-label="Loading student performance" />
+              <BrandOrb state="searching" size={64} aria-label="Loading student performance" />
               <p className="text-sm text-muted-foreground">Loading performance…</p>
             </div>
           ) : studentDetailError ? (
@@ -863,7 +863,7 @@ export default function AnalyticsPage() {
               <FileText className="h-4 w-4 mr-1" /> View question paper
             </Button>
             <Button variant="outline" size="sm" onClick={() => selectedExam && handleSelectExam(selectedExam, { forceReanalyse: true })} disabled={loadingAnalytics} title="Recompute analytics for this exam (ignores cache)">
-              {loadingAnalytics ? <ThinkingOrb state="solving" size={20} aria-label="Reanalysing exam" /> : <Loader2 className="h-4 w-4 mr-1" />} Reanalyse
+              {loadingAnalytics ? <BrandOrb state="solving" size={20} aria-label="Reanalysing exam" /> : <Loader2 className="h-4 w-4 mr-1" />} Reanalyse
             </Button>
 
           </div>
@@ -971,7 +971,7 @@ export default function AnalyticsPage() {
 
           {loadingStudents ? (
             <div className="p-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <ThinkingOrb state="searching" size={20} aria-label="Loading students" /> Loading students…
+              <BrandOrb state="searching" size={20} aria-label="Loading students" /> Loading students…
             </div>
           ) : studentListError ? (
             <p role="alert" className="p-4 text-sm text-destructive">{studentListError}</p>
@@ -1026,7 +1026,7 @@ export default function AnalyticsPage() {
                         <TableCell className="py-2 text-right pr-4">
                           {!canView ? <span className="text-xs text-muted-foreground">Awaiting grades</span> : loadingStudentDetail && selectedStudentId === s.student_id ? (
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
-                              <ThinkingOrb state="solving" size={20} aria-label="Analysing student" />
+                              <BrandOrb state="solving" size={20} aria-label="Analysing student" />
                               <span>{s.analysis_status === "generated" ? "Loading…" : "Analyzing…"}</span>
                             </span>
                           ) : (
