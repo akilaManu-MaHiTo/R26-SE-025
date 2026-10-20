@@ -71,5 +71,5 @@ async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promi
 }
 export const reviewExamPaper = (course_code: string, paper: Paper, signal?: AbortSignal) =>
   post<CreatorReview>("review", { course_code, paper }, signal);
-export const generateExamQuestions = (course_code: string, paper: Paper, topic: string, bloom_level: string, marks: number, signal?: AbortSignal) =>
-  post<Generation>("generate", { course_code, paper, topic, bloom_level, marks, count: 2 }, signal);
+export const generateExamQuestions = (course_code: string, paper: Paper, topic: string, bloom_level: string, marks: number, signal?: AbortSignal, count = 2) =>
+  post<Generation>("generate", { course_code, paper, topic, bloom_level, marks, count }, signal);

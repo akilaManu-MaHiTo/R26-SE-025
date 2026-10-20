@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import React from "react";
-import { afterEach, expect, it } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { GradingOverview, StudentGradingCells, canViewStudent, ExamInventoryScore } from "./GradingStatus";
 import type { StudentRow, ExamListItem } from "../../api/lecturerApi";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 it("shows why exam grades are unavailable", () => {
   render(<ExamInventoryScore exam={{ average_percentage: null,
@@ -33,6 +33,62 @@ function student(id: string, status: "complete" | "pending" | "needs_review", es
     },
   };
 }
+
+it.each([
+  ["complete", "graded", "good"],
+  ["pending", "not_started", "warning"],
+  ["pending", "processing", "warning"],
+  ["needs_review", "graded", "warning"],
+  ["pending", "failed", "danger"],
+] as const)("shows the %s/%s grading animation", (status, essay, animation) => {
+  const { container } = render(<GradingOverview students={[student("S1", status, essay)]} />);
+  const image = container.querySelector("img")!;
+  expect(image).toBeTruthy();
+  expect(image.getAttribute("src")).toContain(`anime-${animation}.svg`);
+  expect(image.getAttribute("alt")).toBe("");
+  expect(screen.getByRole("button", { name: /Grading progress/ })).toBeTruthy();
+});
+
+it("prioritizes failed diagram grading over completed and review results", () => {
+  const failed = student("S1", "needs_review");
+  failed.components!.diagram.status = "failed";
+  const { container } = render(<GradingOverview students={[student("S2", "complete"), failed]} />);
+  expect(container.querySelector("img")!.getAttribute("src")).toContain("anime-danger.svg");
+});
+
+it("uses warning feedback for empty and unverified rosters", () => {
+  const view = render(<GradingOverview students={[]} />);
+  expect(view.container.querySelector("img")!.getAttribute("src")).toContain("anime-warning.svg");
+  const legacy = student("S1", "complete");
+  delete legacy.components;
+  view.rerender(<GradingOverview students={[legacy]} />);
+  expect(view.container.querySelector("img")!.getAttribute("src")).toContain("anime-warning.svg");
+});
+
+it.each(["needs_review", "pending"] as const)("starts green then fades to the actual %s state", status => {
+  vi.useFakeTimers();
+  const view = render(<GradingOverview students={[student("S1", status, status === "pending" ? "failed" : "graded")]} />);
+  const [target, green] = view.container.querySelectorAll("img");
+  expect(green.getAttribute("src")).toContain("anime-good.svg");
+  expect(green.style.opacity).toBe("1");
+  expect(target.style.opacity).toBe("0");
+  act(() => vi.advanceTimersByTime(799));
+  expect(green.style.opacity).toBe("1");
+  act(() => vi.advanceTimersByTime(1));
+  expect(green.style.opacity).toBe("0");
+  expect(target.style.opacity).toBe("1");
+  expect(target.getAttribute("src")).toContain(status === "pending" ? "anime-danger.svg" : "anime-warning.svg");
+});
+
+it("cancels the intro on leaving a course and restarts for a changed status", () => {
+  vi.useFakeTimers();
+  const view = render(<GradingOverview students={[student("S1", "needs_review")]} />);
+  act(() => vi.advanceTimersByTime(800));
+  view.rerender(<GradingOverview students={[student("S1", "pending", "failed")]} />);
+  expect(view.container.querySelector("img")!.style.opacity).toBe("0");
+  view.unmount();
+  expect(vi.getTimerCount()).toBe(0);
+});
 
 it("shows all component counts and excludes pending/review grades from the overall average", () => {
   const review = student("S1", "needs_review");

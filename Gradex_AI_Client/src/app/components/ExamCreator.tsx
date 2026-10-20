@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { CandidateActions, DropZone, MoveControls, type StructureActions } from "./ExamStructureControls";
 import { placeQuestion, renumberQuestions, type PlacementSource, type PlacementTarget } from "./examStructure";
 import { ExamCreatorAssistant, PartReviewEditor } from "./ExamCreatorAssistant";
+import { CustomQuestionGenerator } from "./CustomQuestionGenerator";
 import { defaultBlueprint, type Part, type PaperQuestion, type Paper } from "../api/examCreatorApi";
 export type { Part, PaperQuestion, Paper } from "../api/examCreatorApi";
 
@@ -437,13 +438,20 @@ export function ExamCreator() {
                   {q.parts.length > 1 && <Button size="sm" variant="ghost" onClick={() => insert({ kind: "part", question: idx, part: partIndex })}>Make separate question</Button>}
                 </div>
                 <div className="flex flex-wrap items-start gap-2">
+                  <div className="relative min-w-0 flex-1">
                   <Textarea
                     aria-label={`Q${q.question_number} part ${p.part} text`}
                     value={p.question}
                     onChange={(e) => setPaper((prev) => ({ ...prev, questions: prev.questions.map((x) => (x.question_number === q.question_number ? { ...x, parts: x.parts.map((y) => (y.part === p.part ? { ...y, question: e.target.value, review_status: "needs_review" } : y)) } : x)) }))}
-                    className="flex-1 min-h-[60px]"
+                    className="min-h-[100px] pr-14"
                     placeholder="Question text..."
                   />
+                  <CustomQuestionGenerator courseCode={selectedExam.course_code} paper={paper} question={q} part={p}
+                    onGenerated={candidate => setPaper(prev => ({ ...prev, questions: prev.questions.map(x => x === q
+                      ? { ...x, topic: candidate.topic, parts: x.parts.map(y => y === p
+                        ? { ...candidate, part: y.part, question: candidate.text, max_marks: candidate.marks, review_status: "needs_review" }
+                        : y) } : x) }))} />
+                  </div>
                   <Input
                     type="number"
                     aria-label={`Q${q.question_number} part ${p.part} marks`}
@@ -505,7 +513,7 @@ export function ExamCreator() {
               <TabsTrigger value="recommended" className="text-xs">Recommended</TabsTrigger>
               <TabsTrigger value="browse" className="text-xs">Browse Bank</TabsTrigger>
             </TabsList>
-            <TabsContent value="recommended" className="space-y-4 mt-4">
+            <TabsContent value="recommended" forceMount hidden={rightTab !== "recommended"} className="space-y-4 mt-4">
               <ExamCreatorAssistant key={`${selectedExam.course_code}-${currentDraftId ?? "new"}`} courseCode={selectedExam.course_code} paper={paper} setPaper={setPaper} structureActions={structureActions} />
             </TabsContent>
             <TabsContent value="browse" className="space-y-3 mt-4">

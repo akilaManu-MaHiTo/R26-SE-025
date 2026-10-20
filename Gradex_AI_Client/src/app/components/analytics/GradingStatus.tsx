@@ -1,10 +1,28 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { TableCell } from "../ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
-import { ClipboardCheck, ChevronDown, FileText, Network, Info } from "lucide-react";
+import { ChevronDown, FileText, Network, Info } from "lucide-react";
 import type { StudentRow, ExamListItem } from "../../api/lecturerApi";
+import goodAnimation from "../animations/validation/bloub-galet-effraye-vert-anime-good.svg";
+import warningAnimation from "../animations/validation/bloub-triangle-effraye-ambre-anime-warning.svg";
+import dangerAnimation from "../animations/validation/bloub-capsule-effraye-rouge-anime-danger.svg";
+
+function GradingAnimation({ src }: { src: string }) {
+  const [revealed, setRevealed] = useState(false);
+  useEffect(() => {
+    if (src === goodAnimation) return;
+    const timer = window.setTimeout(() => setRevealed(true), 800);
+    return () => window.clearTimeout(timer);
+  }, [src]);
+  const fade = "block size-12 object-contain object-center transition-opacity duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none";
+  return <span className="relative flex size-12 shrink-0 self-center items-center justify-center" aria-hidden="true">
+    <img src={src} alt="" width={48} height={48} className={fade} style={{ opacity: revealed || src === goodAnimation ? 1 : 0 }} />
+    {src !== goodAnimation && <img src={goodAnimation} alt="" width={48} height={48}
+      className={`absolute inset-0 ${fade}`} style={{ opacity: revealed ? 0 : 1 }} />}
+  </span>;
+}
 
 export function ExamInventoryScore({ exam }: { exam: ExamListItem }) {
   if (exam.grading_warning) return <span role="status" className="text-xs text-amber-700 dark:text-amber-300">Grades unavailable: {exam.grading_warning}</span>;
@@ -28,7 +46,10 @@ export function canViewStudent(student: StudentRow) {
 
 export function GradingOverview({ students }: { students: StudentRow[] }) {
   if (students.some(s => !s.components || !s.grading_status)) {
-    return <Card className="p-4 text-sm" role="status">Grading progress is unavailable for legacy records. Overall grades are not verified.</Card>;
+    return <Card className="flex-row items-center gap-3 p-4 text-sm" role="status">
+      <GradingAnimation key={warningAnimation} src={warningAnimation} />
+      <span>Grading progress is unavailable for legacy records. Overall grades are not verified.</span>
+    </Card>;
   }
   const complete = students.filter(s => s.grading_status === "complete" && typeof s.score.percentage === "number" && Number.isFinite(s.score.percentage));
   const review = students.filter(s => s.grading_status === "needs_review").length;
@@ -38,13 +59,14 @@ export function GradingOverview({ students }: { students: StudentRow[] }) {
   const essayRequired = students.filter(s => s.components?.essay.status !== "not_required").length;
   const diagramRequired = students.filter(s => s.components?.diagram.status !== "not_required").length;
   const average = complete.length ? complete.reduce((sum, s) => sum + s.score.percentage!, 0) / complete.length : null;
+  const failed = students.some(s => s.components?.essay.status === "failed" || s.components?.diagram.status === "failed");
+  const animation = failed ? dangerAnimation
+    : students.length > 0 && complete.length === students.length ? goodAnimation : warningAnimation;
   return <Collapsible asChild>
     <Card className="gap-0 overflow-hidden" aria-label="Exam grading progress">
       <h3>
         <CollapsibleTrigger className="group flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:gap-5 sm:p-5">
-          <span className="hidden size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:flex">
-            <ClipboardCheck className="size-5" aria-hidden="true" />
-          </span>
+          <GradingAnimation key={animation} src={animation} />
           <span className="min-w-0 flex-1 space-y-2">
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="text-sm font-semibold">Grading progress</span>
