@@ -87,7 +87,7 @@ export const AGENT_CONFIG: AgentConfig[] = [
   {
     id: "question-exam",
     basePath: "/question-exam",
-    name: "Question & Exam Prediction",
+    name: "Question & Exam Creator",
     description: "Predict performance, surface cognitive gaps and compose balanced, level-appropriate exams.",
     icon: BarChart3,
     model: "pulse",
