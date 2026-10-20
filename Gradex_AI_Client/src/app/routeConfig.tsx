@@ -165,7 +165,10 @@ export const AGENT_CONFIG: AgentConfig[] = [
 const PATH_TITLES: Record<string, { title: string; subtitle?: string }> = {
   "/exam-keys": { title: "Exam Keys", subtitle: "Register exam identities before grading" },
   "/dashboard": { title: "Dashboard", subtitle: "Your AI-powered command center" },
-  "/student-dashboard": { title: "My Dashboard", subtitle: "Track your progress and upcoming work" },
+  "/student-dashboard": { title: "My Dashboard", subtitle: "Your results, revision priorities, and next steps" },
+  "/student-profile": { title: "My Profile", subtitle: "Your strengths, learning gaps, and exam feedback" },
+  "/student-materials": { title: "Study Materials", subtitle: "Lectures and tutorials for focused revision" },
+  "/student-practice": { title: "Practice", subtitle: "Build confidence with targeted questions" },
 };
 
 for (const agent of AGENT_CONFIG) {

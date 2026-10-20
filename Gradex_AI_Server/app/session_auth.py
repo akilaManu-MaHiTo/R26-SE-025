@@ -145,7 +145,7 @@ class SessionAuthMiddleware:
                 user = await session_user(connection)
                 scope.setdefault("state", {})["user"] = user
                 if user["role"] == "student" and path not in {"/api/auth/me", "/api/auth/logout"}:
-                    match = re.fullmatch(r"/api/students/([^/]+)/(exams|profile|dashboard|practice-questions)", path)
+                    match = re.fullmatch(r"/api/students/([^/]+)/(exams|profile|dashboard|practice-questions|materials(?:/[a-f0-9]{24}/pdf)?)", path)
                     if not self.student_routes or not match or match[1] != user["student_id"]:
                         raise HTTPException(403, "Access denied")
         except (HTTPException, PyMongoError) as exc:

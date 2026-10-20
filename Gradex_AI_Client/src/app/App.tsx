@@ -34,6 +34,7 @@ function Layout({ role, email, onLogout }: { role: Role; email: string; onLogout
         {!hideSidebar && <Sidebar role={role} email={email} onLogout={onLogout} />}
         <main className="flex-1 min-w-0 flex flex-col">
           <TopBar title={meta.title} subtitle={meta.subtitle} />
+          {role === "student" && <div className="flex items-center justify-between gap-3 border-b px-4 py-2 md:hidden"><span className="min-w-0 truncate text-xs text-muted-foreground">{email}</span><button className="min-h-11 shrink-0 rounded-md px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={onLogout}>Sign out</button></div>}
           <div className="flex-1">
             <Outlet />
           </div>
@@ -160,6 +161,8 @@ function SessionApp() {
               role === "student" && studentId ? <StudentDashboard studentId={studentId} /> : <Navigate to={defaultPath} replace />
             }
           />
+          {(["profile", "materials", "practice"] as const).map(view => <Route key={view} path={`/student-${view}`}
+            element={role === "student" && studentId ? <StudentDashboard studentId={studentId} view={view} /> : <Navigate to={defaultPath} replace />} />)}
           <Route path="/exam-keys" element={role === "lecturer" ? <ExamKeysPage /> : <Navigate to={defaultPath} replace />} />
           {role === "lecturer" &&
             AGENT_CONFIG.map((agent) => (
