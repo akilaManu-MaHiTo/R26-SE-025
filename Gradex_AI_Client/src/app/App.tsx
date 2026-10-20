@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useState, createContext, useContext } from "react";
+import { motion } from "framer-motion";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router";
 import { PageErrorBoundary } from "./components/PageErrorBoundary";
+import sessionRetryAnimation from "./components/animations/validation/bloub-capsule-effraye-rouge-anime-danger.svg";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { LoginPage } from "./components/LoginPage";
@@ -67,7 +69,40 @@ function SessionApp() {
   };
 
   if (checking) return <p role="status" className="p-6">Checking your session…</p>;
-  if (sessionError) return <div className="p-6"><p role="alert">{sessionError}</p><button onClick={() => window.location.reload()}>Retry</button></div>;
+  if (sessionError) return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
+      <motion.img
+        src={sessionRetryAnimation}
+        alt=""
+        width={140}
+        height={140}
+        className="size-32 object-contain"
+        aria-hidden="true"
+        initial={{ scale: 0.8, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      />
+      <motion.div
+        className="max-w-md space-y-2"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <h1 className="text-2xl font-semibold tracking-tight">We couldn't verify your session</h1>
+        <p role="alert" className="text-muted-foreground">{sessionError}</p>
+        <p className="text-sm text-muted-foreground">This can happen if your connection dropped or your session expired. Please try again.</p>
+      </motion.div>
+      <motion.button
+        onClick={() => window.location.reload()}
+        className="inline-flex items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      >
+        Retry
+      </motion.button>
+    </div>
+  );
 
   if (!role) {
     return (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { BrandOrb } from "./BrandOrb";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight, UserSearch, Eye, AlertCircle, Loader2, GraduationCap, BookOpen, Brain, Award, User } from "lucide-react";
@@ -48,10 +48,24 @@ import { QuestionDetailModal } from "./analytics/QuestionDetailModal";
 import { ExamPaperModal } from "./analytics/ExamPaperModal";
 import { StudentQuestionRow } from "./analytics/StudentQuestionRow";
 
+function examSearch(exam: ExamListItem) {
+  return `?${new URLSearchParams({
+    course: exam.course_code, session: exam.session_name,
+    year: String(exam.year), month: String(exam.month), semester: String(exam.semester),
+  })}`;
+}
+
 export default function AnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedStudentId = searchParams.get("student");
   const [exams, setExams] = useState<ExamListItem[]>([]);
+  const requestedExam = exams.find(item =>
+    item.course_code === searchParams.get("course") &&
+    item.session_name === searchParams.get("session") &&
+    String(item.year) === searchParams.get("year") &&
+    String(item.month) === searchParams.get("month") &&
+    String(item.semester) === searchParams.get("semester")
+  );
   const [selectedExam, setSelectedExam] = useState<ExamListItem | null>(null);
   const [paperOpen, setPaperOpen] = useState(false);
   const [analytics, setAnalytics] = useState<ExamAnalytics | null>(null);
@@ -318,7 +332,7 @@ export default function AnalyticsPage() {
   }, [selectedExam, students, searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!requestedStudentId) {
+    if (!requestedStudentId || !requestedExam) {
       studentRequest.current = null;
       window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
       setSelectedStudentId(null);
@@ -326,46 +340,46 @@ export default function AnalyticsPage() {
       setStudentDetailError(null);
       setLoadingStudentDetail(false);
     }
-    if (searchParams.has("course")) {
-      const exam = exams.find((item) =>
-        item.course_code === searchParams.get("course") &&
-        item.session_name === searchParams.get("session") &&
-        String(item.year) === searchParams.get("year") &&
-        String(item.month) === searchParams.get("month") &&
-        String(item.semester) === searchParams.get("semester")
-      );
-      if (exam && exam !== selectedExam) {
-        void handleSelectExam(exam);
-        return;
-      }
+    if (!requestedExam) {
+      (handleSelectExam as any)._lastRequestId = null;
+      setSelectedExam(null);
+      setAnalytics(null);
+      setLoadingAnalytics(false);
+      setPaperOpen(false);
+      setSelectedTopic(null);
+      setSelectedQuestion(null);
+      return;
+    }
+    if (requestedExam !== selectedExam) {
+      void handleSelectExam(requestedExam);
+      return;
     }
     if (requestedStudentId && selectedExam && !loadingAnalytics && !loadingStudents && selectedStudentId !== requestedStudentId) {
       void handleSelectStudent(requestedStudentId);
     }
-  }, [requestedStudentId, searchParams, selectedExam, exams, loadingAnalytics, loadingStudents, selectedStudentId, handleSelectExam, handleSelectStudent]);
+  }, [requestedStudentId, requestedExam, selectedExam, loadingAnalytics, loadingStudents, selectedStudentId, handleSelectExam, handleSelectStudent]);
 
-  if (requestedStudentId) {
-    const selectionMatches = selectedStudentId === requestedStudentId && selectedExam && (
-      !searchParams.has("course") || (
-        selectedExam.course_code === searchParams.get("course") &&
-        selectedExam.session_name === searchParams.get("session") &&
-        String(selectedExam.year) === searchParams.get("year") &&
-        String(selectedExam.month) === searchParams.get("month") &&
-        String(selectedExam.semester) === searchParams.get("semester")
-      )
-    );
+  if ((searchParams.has("course") || requestedStudentId) && !loadingExams && !examListError && !requestedExam) {
+    return <div className="p-6 md:p-8 space-y-4">
+      <p role="alert">The requested exam could not be found. Select an exam to continue.</p>
+      <Button variant="outline" asChild><Link to="/question-exam/analytics"><ArrowLeft className="size-4 mr-2" />Back to exams</Link></Button>
+    </div>;
+  }
+
+  if (requestedStudentId && requestedExam) {
+    const selectionMatches = selectedStudentId === requestedStudentId && selectedExam === requestedExam;
     return (
       <div className="p-6 md:p-8 space-y-6">
-        <Button variant="ghost" size="sm" onClick={() => {
-          const params = new URLSearchParams(searchParams);
-          params.delete("student");
-          setSearchParams(params);
-        }}>
-          <ArrowLeft className="size-4 mr-2" /> Back to exam
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <Link to="/question-exam/analytics" className="hover:underline">Student Analytics</Link>
+          <ChevronRight aria-hidden="true" className="size-4" />
+          <Link to={examSearch(requestedExam)} className="hover:underline">{requestedExam.course_code} · {requestedExam.session_name} · {requestedExam.year}/{requestedExam.month} · Semester {requestedExam.semester}</Link>
+          <ChevronRight aria-hidden="true" className="size-4" />
+          <span aria-current="page">{requestedStudentId}</span>
+        </nav>
+        <Button variant="ghost" size="sm" asChild>
+          <Link to={examSearch(requestedExam)}><ArrowLeft className="size-4 mr-2" /> Back to exam</Link>
         </Button>
-        {!selectedExam && !loadingExams ? (
-          <p className="text-sm text-muted-foreground">The exam for this student could not be found.</p>
-        ) : (
         <div className="space-y-6">
           <header className="space-y-2">
             <h2 className="flex flex-wrap items-center gap-2 text-xl font-semibold">
@@ -374,7 +388,7 @@ export default function AnalyticsPage() {
               <Badge variant="outline" className="ml-1 text-xs font-normal">Lecturer view · no AI tips</Badge>
             </h2>
             <p className="text-sm text-muted-foreground">
-              {selectedExam?.course_code} · {selectedExam?.session_name} · {selectedExam?.year} — raw scores, topics and Bloom levels only.
+              {requestedExam.course_code} · {requestedExam.session_name} · {requestedExam.year} — raw scores, topics and Bloom levels only.
             </p>
           </header>
 
@@ -588,13 +602,12 @@ export default function AnalyticsPage() {
             </div>
           ) : null}
         </div>
-        )}
       </div>
     );
   }
 
   // Exam Selection — dense, scannable table with filters
-  if (!selectedExam) {
+  if (!requestedExam || !selectedExam || selectedExam !== requestedExam) {
     const analyzedCount = exams.filter((e) => e.analyzed).length;
     const notAnalyzedCount = exams.length - analyzedCount;
 
@@ -632,12 +645,12 @@ export default function AnalyticsPage() {
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.06 }} className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <BarChart3 className="size-4" /> Analytics
+            <BarChart3 className="size-4" /> Student Analytics
             <ChevronRight className="size-4" /> Exam Selection
           </div>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-1">
-              <h2 className="tracking-tight text-foreground bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Lecturer Analytics</h2>
+              <h2 className="tracking-tight text-foreground bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Student Analytics</h2>
               <p className="text-sm text-muted-foreground max-w-2xl">
                 Dense, scannable list of all exams. Filter by status, search by course, or select a row to view/generate insights.
               </p>
@@ -755,7 +768,7 @@ export default function AnalyticsPage() {
                       {filteredExams.map((exam) => (
                         <TableRow
                           key={`${exam.course_code}-${exam.session_name}-${exam.year}-${exam.month}-${exam.semester}`}
-                          onClick={() => handleSelectExam(exam)}
+                          onClick={() => setSearchParams(examSearch(exam))}
                           className={`group cursor-pointer h-14 border-b last:border-0 transition-colors ${exam.analyzed ? "border-l-2 border-l-emerald-500/40 hover:bg-emerald-500/[0.03]" : "border-l-2 border-l-amber-500/60 hover:bg-amber-500/[0.04] bg-amber-500/[0.015]"}`}
                         >
                           <TableCell className="py-3">
@@ -811,9 +824,9 @@ export default function AnalyticsPage() {
                           </TableCell>
                           <TableCell className="py-3 text-right pr-4">
                             <div className="flex items-center justify-end gap-1">
-                              <span className={`hidden sm:inline-flex items-center gap-1 text-xs font-medium ${exam.analyzed ? "text-emerald-700 group-hover:text-emerald-800" : "text-amber-700 group-hover:text-amber-800"}`}>
+                              <Link to={examSearch(exam)} onClick={event => event.stopPropagation()} aria-label={`View analytics for ${exam.course_code} ${exam.session_name} ${exam.year}/${exam.month} Semester ${exam.semester}`} className={`inline-flex items-center gap-1 text-xs font-medium ${exam.analyzed ? "text-emerald-700 group-hover:text-emerald-800" : "text-amber-700 group-hover:text-amber-800"}`}>
                                 {exam.analyzed ? "View" : "Analyze"} <ArrowUpRight className="size-3" />
-                              </span>
+                              </Link>
                               <ChevronRight className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                             </div>
                           </TableCell>
@@ -845,11 +858,12 @@ export default function AnalyticsPage() {
   return (
     <div className="p-6 md:p-8 space-y-6">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <BarChart3 className="size-4" /> Analytics
-          <ChevronRight className="size-4" /> {selectedExam.course_code}
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => { setSearchParams({}); setSelectedExam(null); }}>Back</Button>
-        </div>
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <Link to="/question-exam/analytics" className="hover:underline">Student Analytics</Link>
+          <ChevronRight aria-hidden="true" className="size-4" />
+          <span aria-current="page">{selectedExam.course_code} · {selectedExam.session_name} · {selectedExam.year}/{selectedExam.month} · Semester {selectedExam.semester}</span>
+          <Button variant="ghost" size="sm" className="ml-auto" asChild><Link to="/question-exam/analytics"><ArrowLeft className="size-4 mr-2" />Back to exams</Link></Button>
+        </nav>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="tracking-tight text-foreground bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text">{selectedExam.subject_name}</h2>

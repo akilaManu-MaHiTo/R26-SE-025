@@ -26,7 +26,6 @@ export function LoginPage({ role, onLogin }: {
       <header className="login-header">
         <div className="login-brand"><img src={gradexLogo} alt="GradeX AI" width="44" height="44" /><span>GradeX<span className="login-brand-ai"> AI</span></span></div>
         <span className="login-header-label">A LITTLE CLARITY. A LOT OF POSSIBILITY.</span>
-        <span className="login-header-edition"><span /> Your campus, connected</span>
       </header>
       <div className="login-stage">
       <main className="login-main" id="login-form" tabIndex={-1}>

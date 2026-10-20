@@ -34,7 +34,7 @@ async def ensure_student_account(db, student_id: str) -> dict:
     doc = {
         "student_id": sid,
         "email": email,
-        # Analysis creates a profile; provision_user.py enables login with a unique password.
+        # Student login sets the default password hash on the first successful sign-in.
         "password_hash": "",
         "role": "student",
         "created_at": now,

@@ -22,9 +22,14 @@ python -m Gradex_AI_Server.scripts.provision_user it001@my.sliit.lk --role stude
 ```
 
 Run the same command to reset an existing account's password; this also revokes
-its sessions. Match the existing student ID exactly. Exam analysis creates student
-profiles without a login password. Provision them with the command above.
-Existing `Student@123` and `admin123` passwords no longer work.
+its sessions. Match the existing student ID exactly. Students sign in at
+`/login/student` with their `<student-id>@my.sliit.lk` email and the default
+password `Student@123`. This applies to new and existing student profiles without
+a password; a password hash is saved on their first successful login. Existing
+custom passwords are preserved. The provisioning command also accepts
+`Student@123` for students. Lecturer accounts cannot use the student default,
+and `admin123` remains blocked. Anyone who knows the shared default and a
+student's email can access that student's account while it uses the default.
 
 Use the main server on port 8000 for the client. Vite proxies `/api` (including
 WebSockets) and `/courses` to it. Leave `VITE_BACKEND_URL` and `VITE_API_BASE_URL`

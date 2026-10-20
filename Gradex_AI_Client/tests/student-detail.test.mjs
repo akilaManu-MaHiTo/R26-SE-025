@@ -88,22 +88,21 @@ test('student stream forwards queue phases and ignores heartbeat progress', asyn
   }
 });
 
-test('student performance replaces the exam page and Back to exam clears the student destination', () => {
+test('student performance replaces the exam page and Back to exam preserves the exam destination', () => {
   const params = new URLSearchParams('student=S1&course=IT2040&session=Final&year=2026&month=7&semester=1');
-  let destination;
   let stateIndex = 0;
-  let goBack;
+  const exam = { course_code: 'IT2040', session_name: 'Final', year: 2026, month: 7, semester: 1 };
   const hooks = {
     ...React,
-    useState: (initial) => [stateIndex++ === 1 ? { course_code: 'IT2040', session_name: 'Final', year: 2026 } : initial, () => {}],
+    useState: (initial) => {
+      const index = stateIndex++;
+      return [index === 0 ? [exam] : index === 1 ? exam : initial, () => {}];
+    },
     useEffect() {},
     useRef: (value) => ({ current: value }),
     useCallback: (callback) => callback,
   };
-  const stub = ({ children, onClick }) => {
-    if (onClick) goBack = onClick;
-    return React.createElement('div', null, children);
-  };
+  const stub = ({ children }) => React.createElement('div', null, children);
   const module = { exports: {} };
   vm.runInNewContext(transformSync(page, { loader: 'tsx', format: 'cjs' }).code, {
     URLSearchParams,
@@ -111,7 +110,8 @@ test('student performance replaces the exam page and Back to exam clears the stu
     exports: module.exports,
     require: (name) => {
       if (name === 'react') return hooks;
-      if (name === 'react-router') return { useSearchParams: () => [params, (value) => { destination = value; }] };
+      if (name === 'react-router') return { useSearchParams: () => [params, () => {}],
+        Link: ({ to, children }) => React.createElement('a', { href: to }, children) };
       if (name === 'framer-motion') return { motion: { div: stub, p: stub } };
       return new Proxy({}, { get: () => stub });
     },
@@ -120,9 +120,7 @@ test('student performance replaces the exam page and Back to exam clears the stu
   assert.match(html, /S1.*Performance/);
   assert.match(html, /Loading performance/);
   assert.doesNotMatch(html, /Individual Students|role="dialog"/);
-  goBack();
-  assert.equal(destination.has('student'), false);
-  assert.equal(destination.get('course'), 'IT2040');
+  assert.match(html, /href="\?course=IT2040&amp;session=Final&amp;year=2026&amp;month=7&amp;semester=1">.*?Back to exam/s);
 });
 
 test('pending student opens the page with an error when the model is offline', async () => {
@@ -248,7 +246,8 @@ test('URL changes hide previous student or exam errors before effects start the 
   for (const query of ['student=B&year=2026', 'student=A&year=2027']) {
     const params = new URLSearchParams(`${query}&course=IT2040&session=Final&month=7&semester=1`);
     let index = 0;
-    const states = { 1: { course_code: 'IT2040', session_name: 'Final', year: 2026, month: 7, semester: 1 },
+    const exam = { course_code: 'IT2040', session_name: 'Final', year: 2026, month: 7, semester: 1 };
+    const states = { 0: [exam, { ...exam, year: 2027 }], 1: exam,
       19: 'A', 22: 'Error belonging to the previous selection' };
     const hooks = { ...React,
       useState: initial => [index in states ? states[index++] : (index++, initial), () => {}],
@@ -257,10 +256,10 @@ test('URL changes hide previous student or exam errors before effects start the 
     const stub = ({ children }) => React.createElement('div', null, children);
     const module = { exports: {} };
     vm.runInNewContext(transformSync(page, { loader: 'tsx', format: 'cjs' }).code, {
-      module, exports: module.exports,
+      module, exports: module.exports, URLSearchParams,
       require(name) {
         if (name === 'react') return hooks;
-        if (name === 'react-router') return { useSearchParams: () => [params, () => {}] };
+        if (name === 'react-router') return { useSearchParams: () => [params, () => {}], Link: stub };
         if (name === 'framer-motion') return { motion: { div: stub, p: stub } };
         return new Proxy({}, { get: () => stub });
       },

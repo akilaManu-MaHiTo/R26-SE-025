@@ -21,8 +21,10 @@ COOKIE_NAME = "gradex_session"
 SESSION_SECONDS = 8 * 60 * 60
 LOGIN_LIMIT = 20
 LOGIN_WINDOW = 15 * 60
+DEFAULT_STUDENT_PASSWORD = "Student@123"
 _hasher = PasswordHasher()
 _dummy_hash = _hasher.hash(secrets.token_urlsafe(32))
+_default_student_hash = _hasher.hash(DEFAULT_STUDENT_PASSWORD)
 _client = None
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 DEFAULT_CORS_ORIGINS = (
@@ -70,8 +72,7 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, stored: str) -> bool:
-    # Shared demo credentials must be replaced through provision_user.py.
-    if password in {"Student@123", "admin123"}:
+    if password == "admin123":
         return False
     try:
         if stored.startswith("pbkdf2_sha256$"):
@@ -179,18 +180,22 @@ async def login(payload: LoginRequest, request: Request, response: Response, db=
         raise HTTPException(429, "Too many login attempts. Try again in 15 minutes.")
     email = payload.email.strip().lower()
     user = await db["users"].find_one({"email": email})
-    stored = (user or {}).get("password_hash") or _dummy_hash
+    original_hash = (user or {}).get("password_hash")
+    use_default = bool(user and user.get("role") == "student" and not original_hash)
+    stored = original_hash or (_default_student_hash if use_default else _dummy_hash)
     valid = await run_in_threadpool(verify_password, payload.password, stored)
     if not valid or not user or user.get("disabled") or user.get("role") not in {"lecturer", "student"}:
         raise HTTPException(401, "Invalid email or password")
     if user["role"] == "student" and not user.get("student_id"):
         raise HTTPException(401, "Invalid email or password")
+    if user["role"] != "student" and payload.password == DEFAULT_STUDENT_PASSWORD:
+        raise HTTPException(401, "Invalid email or password")
     if payload.role is not None and payload.role != user["role"]:
         raise HTTPException(403, f"Use the {user['role']} sign-in page for this account.")
-    if not stored.startswith("$argon2id$") or _hasher.check_needs_rehash(stored):
+    if use_default or not stored.startswith("$argon2id$") or _hasher.check_needs_rehash(stored):
         upgraded = await run_in_threadpool(hash_password, payload.password)
         result = await db["users"].update_one(
-            {"email": email, "password_hash": stored}, {"$set": {"password_hash": upgraded}},
+            {"email": email, "password_hash": original_hash}, {"$set": {"password_hash": upgraded}},
         )
         if not result.matched_count:
             raise HTTPException(401, "Credentials changed. Please sign in again")
