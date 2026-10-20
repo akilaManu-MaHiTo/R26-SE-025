@@ -69,7 +69,30 @@ function SessionApp() {
     catch (error) { toast.error(error instanceof Error ? error.message : "Could not sign out"); }
   };
 
-  if (checking) return <p role="status" className="p-6">Checking your session…</p>;
+  if (checking) return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
+      <motion.img
+        src={sessionCheckingAnimation}
+        alt=""
+        width={140}
+        height={140}
+        className="size-32 object-contain"
+        aria-hidden="true"
+        initial={{ scale: 0.8, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      />
+      <motion.div
+        className="max-w-md space-y-2"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <h1 role="status" className="text-2xl font-semibold tracking-tight">Checking your session…</h1>
+        <p className="text-sm text-muted-foreground">Hang tight while we confirm who you are.</p>
+      </motion.div>
+    </div>
+  );
   if (sessionError) return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
       <motion.img
