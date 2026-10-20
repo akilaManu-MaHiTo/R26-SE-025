@@ -10,6 +10,7 @@ import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { AnalysisLoader } from "./AnalysisLoader";
+import { PremiumExamLoader } from "./PremiumExamLoader";
 import { AIPageBanner } from "./AIBrand";
 import { toast } from "sonner";
 import {
@@ -648,7 +649,7 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {loadingExams ? (
-          <AnalysisLoader label="Loading exams" />
+          <PremiumExamLoader steps={[{ label: "Fetching exams..." }]} currentStep={0} />
         ) : examListError ? (
           <Card className="p-8 space-y-3" role="alert">
             <p>Could not load exams. Check the analytics service and retry.</p>

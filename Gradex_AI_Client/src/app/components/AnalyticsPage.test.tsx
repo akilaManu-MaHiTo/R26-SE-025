@@ -65,12 +65,14 @@ it("shows a recovery link for an unknown exam instead of loading student details
   expect(await screen.findByRole("link", { name: /View analytics.*IT2040/ })).toBeTruthy();
 });
 
-it("shows a searching orb while loading exam analytics inventory", () => {
+it("shows the exam creator loader while loading exam analytics inventory", () => {
   vi.mocked(fetchExams).mockReturnValue(new Promise(() => {}));
   render(<MemoryRouter><AnalyticsPage /></MemoryRouter>);
   const orb = screen.getByRole("img", { name: "Loading exams" });
   expect(orb.tagName).toBe("CANVAS");
   expect(orb.style.width).toBe("64px");
+  expect(screen.getByRole("status").textContent).toContain("Fetching exams...");
+  expect(orb.parentElement?.className).toContain("border-dashed");
 });
 
 it("distinguishes an inventory read failure from no exams and allows retry", async () => {

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router";
 import { PageErrorBoundary } from "./components/PageErrorBoundary";
 import sessionRetryAnimation from "./components/animations/validation/bloub-capsule-effraye-rouge-anime-danger.svg";
+import sessionCheckingAnimation from "./components/animations/bloub-capsule-attentif-vert-anime.svg";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { LoginPage } from "./components/LoginPage";
