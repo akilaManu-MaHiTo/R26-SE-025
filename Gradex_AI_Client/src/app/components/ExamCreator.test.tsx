@@ -12,7 +12,7 @@ vi.mock("../api/examCreatorApi", async importOriginal => ({
 }));
 
 vi.mock("../App", () => ({ useHideSidebar: () => undefined }));
-vi.mock("thinking-orbs", () => ({ ThinkingOrb: () => <span /> }));
+vi.mock("thinking-orbs", () => ({ ThinkingOrb: ({ state }: { state: string }) => <span data-testid="thinking-orb" data-state={state} /> }));
 vi.mock("./ExamCreatorAssistant", () => ({ ExamCreatorAssistant: () => <datalist id="creator-topics"><option value="Indexes" /></datalist>, PartReviewEditor: () => null }));
 vi.mock("../api/lecturerApi", async importOriginal => ({
   ...await importOriginal<typeof import("../api/lecturerApi")>(),
@@ -120,6 +120,9 @@ it("discards generation if the question changes while waiting", async () => {
   vi.mocked(generateExamQuestions).mockImplementation(() => new Promise(done => { resolve = done; }));
   await openGenerator();
   fireEvent.click(screen.getByRole("button", { name: "Generate question", exact: true }));
+  expect(screen.queryByLabelText("Lecture topic")).toBeNull();
+  expect(screen.getByTestId("thinking-orb").getAttribute("data-state")).toBe("solving");
+  expect((screen.getByRole("button", { name: "Generate Q1 part a with AI" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.change(screen.getByLabelText("Q1 part a text"), { target: { value: "New lecturer text" } });
   await act(async () => resolve(generated));
   expect((screen.getByLabelText("Q1 part a text") as HTMLTextAreaElement).value).toBe("New lecturer text");

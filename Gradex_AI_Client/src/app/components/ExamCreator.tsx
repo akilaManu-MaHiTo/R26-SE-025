@@ -7,7 +7,6 @@ import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { type LoadStep } from "./ProgressLoader";
 import { AIPageBanner } from "./AIBrand";
@@ -27,6 +26,7 @@ import { CandidateActions, DropZone, MoveControls, type StructureActions } from 
 import { placeQuestion, renumberQuestions, type PlacementSource, type PlacementTarget } from "./examStructure";
 import { ExamCreatorAssistant, PartReviewEditor } from "./ExamCreatorAssistant";
 import { CustomQuestionGenerator } from "./CustomQuestionGenerator";
+import { QuestionTextInput } from "./QuestionTextInput";
 import { defaultBlueprint, type Part, type PaperQuestion, type Paper } from "../api/examCreatorApi";
 export type { Part, PaperQuestion, Paper } from "../api/examCreatorApi";
 
@@ -439,8 +439,9 @@ export function ExamCreator() {
                 </div>
                 <div className="flex flex-wrap items-start gap-2">
                   <div className="relative min-w-0 flex-1">
-                  <Textarea
+                  <QuestionTextInput
                     aria-label={`Q${q.question_number} part ${p.part} text`}
+                    questionId={p.question_id}
                     value={p.question}
                     onChange={(e) => setPaper((prev) => ({ ...prev, questions: prev.questions.map((x) => (x.question_number === q.question_number ? { ...x, parts: x.parts.map((y) => (y.part === p.part ? { ...y, question: e.target.value, review_status: "needs_review" } : y)) } : x)) }))}
                     className="min-h-[100px] pr-14"
