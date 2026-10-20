@@ -540,13 +540,20 @@ async def list_exams_with_status(db: AsyncIOMotorDatabase) -> list[dict]:
 
 
 async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
-    """Return a list of available exams with basic stats from rubricCollection."""
+    """Return available exams using the latest uploaded rubric per examKey."""
     rubrics = await db["rubricCollection"].find(
-        {}, {"_id": 0, "subject_code": 1, "subject_name": 1, "session_name": 1, "year": 1, "month": 1, "semester": 1, "questions": 1}
-    ).to_list(length=100)
+        {}, {"_id": 1, "examKey": 1, "parsed_at": 1, "subject_code": 1, "subject_name": 1, "session_name": 1, "year": 1, "month": 1, "semester": 1, "questions": 1}
+    ).to_list(length=None)
+    rubrics.sort(key=lambda r: (r.get("parsed_at") or 0, str(r.get("_id", ""))), reverse=True)
 
     result = []
+    seen_exam_keys = set()
     for rubric in rubrics:
+        exam_key = rubric.get("examKey")
+        if exam_key:
+            if exam_key in seen_exam_keys:
+                continue
+            seen_exam_keys.add(exam_key)
         course_code = rubric.get("subject_code", "")
         session_name = rubric.get("session_name", "")
         year = rubric.get("year", 0)

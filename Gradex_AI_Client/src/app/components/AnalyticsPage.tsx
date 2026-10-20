@@ -608,9 +608,6 @@ export default function AnalyticsPage() {
 
   // Exam Selection — dense, scannable table with filters
   if (!requestedExam || !selectedExam || selectedExam !== requestedExam) {
-    const analyzedCount = exams.filter((e) => e.analyzed).length;
-    const notAnalyzedCount = exams.length - analyzedCount;
-
     const yearOptions = Array.from(new Set(exams.map((e) => e.year))).sort((a, b) => b - a);
     const semesterOptions = Array.from(new Set(exams.map((e) => e.semester))).sort((a, b) => a - b);
 
@@ -643,33 +640,10 @@ export default function AnalyticsPage() {
           <AIPageBanner model="pulse" />
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.06 }} className="space-y-3">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.06 }}>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <BarChart3 className="size-4" /> Student Analytics
             <ChevronRight className="size-4" /> Exam Selection
-          </div>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-1">
-              <h2 className="tracking-tight text-foreground bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Student Analytics</h2>
-              <p className="text-sm text-muted-foreground max-w-2xl">
-                Dense, scannable list of all exams. Filter by status, search by course, or select a row to view/generate insights.
-              </p>
-            </div>
-            {exams.length > 0 && (
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="hidden sm:flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5">
-                  <span className="size-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-medium">{analyzedCount} Analyzed</span>
-                  <span className="text-muted-foreground text-xs">·</span>
-                  <span className="size-2 rounded-full bg-amber-500" />
-                  <span className="text-xs font-medium">{notAnalyzedCount} Pending</span>
-                </div>
-                <div className="sm:hidden flex items-center gap-1">
-                  <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 text-xs"><CheckCircle2 className="size-3 mr-1" />{analyzedCount}</Badge>
-                  <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/20 text-xs"><Clock className="size-3 mr-1" />{notAnalyzedCount}</Badge>
-                </div>
-              </div>
-            )}
           </div>
         </motion.div>
 
