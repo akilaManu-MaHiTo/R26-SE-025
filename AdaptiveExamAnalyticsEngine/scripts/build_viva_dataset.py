@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from bson import json_util
 from app.ingestion.student_data import normalize_student_submission
 from app.ingestion.diagram_data import normalize_diagram_evaluation
+from app.services.lecturer_grading import build_lecturer_grading_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "app/sample_data/sample_data_v4"
@@ -67,6 +68,14 @@ def build_dataset():
         sub["raw_ocr_transcript"] = sub["cleaned_ocr_transcript"] = "SYNTHETIC DEMO ANSWERS\n" + transcript
         for row in evaluation["results"]:
             row["q_no"] = row["question_no"]
+            answer = re.search(
+                rf"(?ms)^(?:Question {int(row['q_no'])}|Q{int(row['q_no'])})\s*\n(.*?)(?=^(?:Question \d+|Q\d+)\s*$|\Z)",
+                transcript,
+            )
+            row["answer_excerpt"] = answer.group(1).strip() if answer else ""
+            row["slice_source"] = "split"
+            row["grading_source"] = "synthetic-fixture-not-model-graded"
+            row["error"] = None
             for criterion in row["criteria_breakdown"]:
                 criterion["reason"] = "Simulated rubric award for demonstration; not independently graded."
     for diagram in docs["diagram_evaluation"]:
@@ -78,6 +87,13 @@ def build_dataset():
         result = diagram["evaluation_result"]
         result["grading_source"] = "synthetic-fixture-not-model-graded"
         result["overall_feedback"] = "Synthetic demonstration: " + result["overall_feedback"]
+        diagram["agent_marks"] = result["total_score"]
+        result.update(status="ok", guideline_object_id=guide_id, agent_marks=result["total_score"],
+                      agent_grading={"agent_marks": result["total_score"], "max_marks": 20,
+                                     "criterion_results": [{"id": c["criterion_id"], "marks": c["awarded_marks"],
+                                                            "reason": "Simulated rubric award: " + c["remarks"]}
+                                                           for c in result["criteria_results"]],
+                                     "feedback": result["overall_feedback"]})
     docs["diagram_marking"] = [guide]
     for collection, records in docs.items():
         for record in records:
@@ -90,6 +106,16 @@ def build_dataset():
     # Correct the source fixture's B closure: the question explicitly gives B -> E.
     docs = json.loads(json.dumps(docs).replace("B+ = {B}", "B+ = {B, E}"))
     return docs
+
+
+def lecturer_sources(data):
+    """Supply the registry identity expected by the existing lecturer workflow."""
+    return {"examkeys": [{"_id": "synthetic-validation-registry", "examKey": EXAM_KEY,
+                         "subjectCode": "IT2040", "examYear": 2022, "examMonth": "June",
+                         "examSemester": 1, "session": "Final",
+                         "examStructure": ["Essay"] * 4 + ["Diagram"]}],
+            "rubrics": data["rubricCollection"], "submissions": data["submissions"],
+            "diagram_evaluations": data["diagram_evaluation"], "diagram_marking": data["diagram_marking"]}
 
 
 def validate_dataset(docs):
@@ -130,6 +156,9 @@ def validate_dataset(docs):
     assert len({s["raw_ocr_transcript"] for s in essays.values()}) == 50
     for records in data.values():
         assert all(r["examKey"] == EXAM_KEY and r["dataset_provenance"]["kind"] == "synthetic" for r in records)
+    rows = build_lecturer_grading_rows(EXAM_KEY, lecturer_sources(data))
+    assert len(rows) == 50 and all(r["grading_status"] == "complete" for r in rows)
+    assert all(r["components"]["diagram"]["status"] == "graded" and r["score"]["maximum"] == 100 for r in rows)
     return sorted(summary, key=lambda r: r["total_out_of_100"], reverse=True)
 
 

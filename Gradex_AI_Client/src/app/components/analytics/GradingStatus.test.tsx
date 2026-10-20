@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { GradingOverview, StudentGradingCells, canViewStudent, ExamInventoryScore } from "./GradingStatus";
 import type { StudentRow, ExamListItem } from "../../api/lecturerApi";
 
@@ -38,12 +38,37 @@ it("shows all component counts and excludes pending/review grades from the overa
   const review = student("S1", "needs_review");
   review.score.percentage = 97.27;
   render(<GradingOverview students={[review, student("S2", "complete"), student("S3", "pending", "processing"), student("S4", "pending", "not_started"), student("S5", "pending", "not_started")]} />);
-  expect(screen.getByText("Essay: 2/5 graded")).toBeTruthy();
-  expect(screen.getByText("Diagram: 5/5 graded")).toBeTruthy();
+  const toggle = screen.getByRole("button", { name: /Grading progress/ });
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByRole("progressbar")).toBeNull();
   expect(screen.getByText(/3 pending/)).toBeTruthy();
   expect(screen.getByText("80.91%")).toBeTruthy();
   expect(screen.queryByText("97.27%")).toBeNull();
+  fireEvent.click(toggle);
+  expect(toggle.getAttribute("aria-expanded")).toBe("true");
+  expect(screen.getByRole("progressbar", { name: "Essay grading" }).getAttribute("aria-valuenow")).toBe("40");
+  expect(screen.getByRole("progressbar", { name: "Diagram grading" }).getAttribute("aria-valuenow")).toBe("100");
   expect(screen.getByRole("status").textContent).toContain("3 students are awaiting essay grades");
+  expect(screen.getByRole("status").textContent).toContain("1 grade needs review");
+  fireEvent.click(toggle);
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByRole("progressbar")).toBeNull();
+  expect(screen.getByText("80.91%")).toBeTruthy();
+});
+
+it("handles an empty roster and components that are not required", () => {
+  const view = render(<GradingOverview students={[]} />);
+  fireEvent.click(screen.getByRole("button", { name: /Grading progress/ }));
+  expect(screen.getByText("0 students")).toBeTruthy();
+  expect(screen.getAllByText("Not required")).toHaveLength(2);
+  expect(screen.queryByRole("progressbar")).toBeNull();
+  const row = student("S1", "complete");
+  row.components!.diagram.status = "not_required";
+  view.rerender(<GradingOverview students={[row]} />);
+  expect(screen.getByRole("progressbar", { name: "Essay grading" }).getAttribute("aria-valuenow")).toBe("100");
+  expect(screen.queryByRole("progressbar", { name: "Diagram grading" })).toBeNull();
+  expect(screen.getByText("Not required")).toBeTruthy();
+  expect(screen.queryByText(/awaiting/)).toBeNull();
 });
 
 it("renders processing with an available diagram and no invented overall zero", () => {

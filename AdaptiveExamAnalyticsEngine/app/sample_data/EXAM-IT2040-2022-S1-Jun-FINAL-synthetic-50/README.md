@@ -65,6 +65,30 @@ does not demonstrate pending-grading behaviour. Describe Bloom classifications
 and recommendations as engine outputs when you actually run the analysis;
 stored labels and simulated marks are not measured model accuracy.
 
+## Correcting an earlier import showing zero complete grades
+
+The initial export omitted essay answer-slice evidence and the diagram agent
+grading structure used by the lecturer's combined-grade checks. These are now
+included. All 50 records pass the actual lecturer grading workflow as complete
+with essay maximum 80, diagram maximum 20, and overall maximum 100. No dashboard
+validation rules have been weakened.
+
+Update the existing records by `_id`; do not append a second copy. With MongoDB
+Database Tools installed, run these commands **from this export directory**, using
+your demo database name and connection URI (the example URI is local):
+
+```powershell
+mongoimport --uri="mongodb://127.0.0.1:27017" --db="YOUR_DEMO_DATABASE" --collection=submissions --file=submissions.json --jsonArray --mode=upsert --upsertFields=_id --stopOnError
+mongoimport --uri="mongodb://127.0.0.1:27017" --db="YOUR_DEMO_DATABASE" --collection=diagram_evaluations --file=diagram_evaluation.json --jsonArray --mode=upsert --upsertFields=_id --stopOnError
+```
+
+The deterministic IDs are unchanged, so upsert replaces the original demo
+documents. Other student IDs are untouched. If the initial diagram import used
+the singular collection name, the second command puts the records in the plural
+collection the backend actually reads. Keep the existing course, essay rubric
+and diagram marking scheme. Refresh the dashboard after importing; if it still
+shows old analysis, rerun its existing analysis workflow.
+
 ## Rebuild and validation
 
 From AdaptiveExamAnalyticsEngine run:

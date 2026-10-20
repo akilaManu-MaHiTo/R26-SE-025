@@ -2,6 +2,8 @@ import React from "react";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { TableCell } from "../ui/table";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import { ClipboardCheck, ChevronDown, FileText, Network, Info } from "lucide-react";
 import type { StudentRow, ExamListItem } from "../../api/lecturerApi";
 
 export function ExamInventoryScore({ exam }: { exam: ExamListItem }) {
@@ -36,22 +38,68 @@ export function GradingOverview({ students }: { students: StudentRow[] }) {
   const essayRequired = students.filter(s => s.components?.essay.status !== "not_required").length;
   const diagramRequired = students.filter(s => s.components?.diagram.status !== "not_required").length;
   const average = complete.length ? complete.reduce((sum, s) => sum + s.score.percentage!, 0) / complete.length : null;
-  return <Card className="p-4 space-y-3" aria-label="Exam grading progress">
-    <h3 className="font-semibold">Grading progress · {students.length} students</h3>
-    <div className="flex flex-wrap gap-2 text-sm">
-      <Badge variant="secondary">Essay: {essay}/{essayRequired} graded</Badge>
-      <Badge variant="secondary">Diagram: {diagram}/{diagramRequired} graded</Badge>
-      <span>Overall: {pending} pending · {review} needs review · {complete.length} complete</span>
-    </div>
-    <div className="text-sm">Overall average: <strong>{average === null ? "No complete overall grades yet" : `${average.toFixed(2)}%`}</strong>
-      <span className="text-muted-foreground"> · Based on {complete.length} complete {complete.length === 1 ? "grade" : "grades"}</span>
-    </div>
-    <div role="status" className="rounded-md bg-amber-500/10 p-3 text-sm">
-      {essayRequired > essay && `${essayRequired - essay} ${essayRequired - essay === 1 ? "student is" : "students are"} awaiting essay grades. `}
-      {diagramRequired > diagram && `${diagramRequired - diagram} ${diagramRequired - diagram === 1 ? "student is" : "students are"} awaiting diagram grades. `}
-      Overall statistics exclude incomplete and review-needed results. Essay and diagram analytics use their own graded-student counts.
-    </div>
-  </Card>;
+  return <Collapsible asChild>
+    <Card className="gap-0 overflow-hidden" aria-label="Exam grading progress">
+      <h3>
+        <CollapsibleTrigger className="group flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:gap-5 sm:p-5">
+          <span className="hidden size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:flex">
+            <ClipboardCheck className="size-5" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1 space-y-2">
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="text-sm font-semibold">Grading progress</span>
+              <span className="text-xs font-normal text-muted-foreground">{students.length} {students.length === 1 ? "student" : "students"}</span>
+            </span>
+            <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-normal tabular-nums">
+              <span className="text-emerald-700 dark:text-emerald-400">{complete.length} complete</span>
+              <span className={pending ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}>{pending} pending</span>
+              <span className={review ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}>{review} needs review</span>
+            </span>
+          </span>
+          <span className="shrink-0 text-right">
+            <span className="block text-[11px] font-normal text-muted-foreground">Overall average</span>
+            <strong className="block text-xl font-semibold tracking-tight tabular-nums sm:text-2xl">{average === null ? "—" : `${average.toFixed(2)}%`}</strong>
+          </span>
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none group-data-[state=open]:rotate-180" aria-hidden="true" />
+        </CollapsibleTrigger>
+      </h3>
+      {average === null && <p className="px-4 pb-4 text-xs text-muted-foreground sm:px-5">No complete overall grades yet</p>}
+      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:animate-none">
+        <div className="space-y-4 border-t bg-muted/15 p-4 sm:p-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {([
+              { label: "Essay", count: essay, required: essayRequired, Icon: FileText },
+              { label: "Diagram", count: diagram, required: diagramRequired, Icon: Network },
+            ]).map(({ label, count, required, Icon }) => (
+              <div key={label} className="space-y-3 rounded-lg border bg-card p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-sm font-medium"><Icon className="size-4 text-muted-foreground" aria-hidden="true" />{label}</span>
+                  <span className="text-xs tabular-nums text-muted-foreground">{required ? <><strong className="font-semibold text-foreground">{count}</strong> / {required} graded</> : "Not required"}</span>
+                </div>
+                {required > 0 && <div role="progressbar" aria-label={`${label} grading`} aria-valuemin={0} aria-valuemax={100}
+                  aria-valuenow={Math.round(count / required * 100)} aria-valuetext={`${count} of ${required} graded`}
+                  className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className={`h-full w-full origin-left rounded-full ${count === required ? "bg-emerald-500" : "bg-primary"}`} style={{ transform: `scaleX(${count / required})` }} />
+                </div>}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-start gap-2.5 text-xs leading-relaxed text-muted-foreground">
+            <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <div className="space-y-1">
+              <p className="font-medium text-foreground">Based on {complete.length} complete {complete.length === 1 ? "grade" : "grades"}</p>
+              <p>Overall statistics exclude incomplete and review-needed results. Essay and diagram analytics use their own graded-student counts.</p>
+            </div>
+          </div>
+          {(essayRequired > essay || diagramRequired > diagram || review > 0) && <div role="status" className="space-y-1 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+            {essayRequired > essay && <p>{essayRequired - essay} {essayRequired - essay === 1 ? "student is" : "students are"} awaiting essay grades.</p>}
+            {diagramRequired > diagram && <p>{diagramRequired - diagram} {diagramRequired - diagram === 1 ? "student is" : "students are"} awaiting diagram grades.</p>}
+            {review > 0 && <p>{review} {review === 1 ? "grade needs" : "grades need"} review before inclusion in overall statistics.</p>}
+          </div>}
+        </div>
+      </CollapsibleContent>
+    </Card>
+  </Collapsible>;
 }
 
 export function StudentGradingCells({ student }: { student: StudentRow }) {
