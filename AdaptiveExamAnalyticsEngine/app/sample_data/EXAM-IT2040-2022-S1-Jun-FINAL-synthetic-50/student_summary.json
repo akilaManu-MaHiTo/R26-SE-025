@@ -1,0 +1,602 @@
+[
+  {
+    "student_id": "IT21230102",
+    "essay_marks": 77,
+    "diagram_marks": 20,
+    "total_out_of_100": 97,
+    "question_marks": {
+      "01": 18.0,
+      "02": 19.0,
+      "03": 20.0,
+      "04": 20.0
+    }
+  },
+  {
+    "student_id": "IT21230104",
+    "essay_marks": 72,
+    "diagram_marks": 19,
+    "total_out_of_100": 91,
+    "question_marks": {
+      "01": 19.0,
+      "02": 13.0,
+      "03": 20.0,
+      "04": 20.0
+    }
+  },
+  {
+    "student_id": "IT21230101",
+    "essay_marks": 71,
+    "diagram_marks": 19,
+    "total_out_of_100": 90,
+    "question_marks": {
+      "01": 20.0,
+      "02": 14.0,
+      "03": 18.0,
+      "04": 19.0
+    }
+  },
+  {
+    "student_id": "IT21230105",
+    "essay_marks": 70,
+    "diagram_marks": 20,
+    "total_out_of_100": 90,
+    "question_marks": {
+      "01": 18.0,
+      "02": 15.0,
+      "03": 20.0,
+      "04": 17.0
+    }
+  },
+  {
+    "student_id": "IT21230109",
+    "essay_marks": 70,
+    "diagram_marks": 19,
+    "total_out_of_100": 89,
+    "question_marks": {
+      "01": 20.0,
+      "02": 13.0,
+      "03": 17.0,
+      "04": 20.0
+    }
+  },
+  {
+    "student_id": "IT21230119",
+    "essay_marks": 69,
+    "diagram_marks": 19,
+    "total_out_of_100": 88,
+    "question_marks": {
+      "01": 19.0,
+      "02": 12.0,
+      "03": 20.0,
+      "04": 18.0
+    }
+  },
+  {
+    "student_id": "IT21230120",
+    "essay_marks": 69,
+    "diagram_marks": 19,
+    "total_out_of_100": 88,
+    "question_marks": {
+      "01": 19.0,
+      "02": 15.0,
+      "03": 16.0,
+      "04": 19.0
+    }
+  },
+  {
+    "student_id": "IT21230111",
+    "essay_marks": 67,
+    "diagram_marks": 20,
+    "total_out_of_100": 87,
+    "question_marks": {
+      "01": 15.0,
+      "02": 19.0,
+      "03": 17.0,
+      "04": 16.0
+    }
+  },
+  {
+    "student_id": "IT21230112",
+    "essay_marks": 69,
+    "diagram_marks": 18,
+    "total_out_of_100": 87,
+    "question_marks": {
+      "01": 18.0,
+      "02": 15.0,
+      "03": 20.0,
+      "04": 16.0
+    }
+  },
+  {
+    "student_id": "IT21230116",
+    "essay_marks": 72,
+    "diagram_marks": 14,
+    "total_out_of_100": 86,
+    "question_marks": {
+      "01": 19.0,
+      "02": 14.0,
+      "03": 19.0,
+      "04": 20.0
+    }
+  },
+  {
+    "student_id": "IT21230103",
+    "essay_marks": 64,
+    "diagram_marks": 20,
+    "total_out_of_100": 84,
+    "question_marks": {
+      "01": 18.0,
+      "02": 7.0,
+      "03": 20.0,
+      "04": 19.0
+    }
+  },
+  {
+    "student_id": "IT21230107",
+    "essay_marks": 70,
+    "diagram_marks": 14,
+    "total_out_of_100": 84,
+    "question_marks": {
+      "01": 18.0,
+      "02": 16.0,
+      "03": 19.0,
+      "04": 17.0
+    }
+  },
+  {
+    "student_id": "IT21230106",
+    "essay_marks": 65,
+    "diagram_marks": 18,
+    "total_out_of_100": 83,
+    "question_marks": {
+      "01": 17.0,
+      "02": 12.0,
+      "03": 17.0,
+      "04": 19.0
+    }
+  },
+  {
+    "student_id": "IT21230113",
+    "essay_marks": 60,
+    "diagram_marks": 20,
+    "total_out_of_100": 80,
+    "question_marks": {
+      "01": 11.0,
+      "02": 16.0,
+      "03": 18.0,
+      "04": 15.0
+    }
+  },
+  {
+    "student_id": "IT21230110",
+    "essay_marks": 60,
+    "diagram_marks": 19,
+    "total_out_of_100": 79,
+    "question_marks": {
+      "01": 20.0,
+      "02": 5.0,
+      "03": 15.0,
+      "04": 20.0
+    }
+  },
+  {
+    "student_id": "IT21230118",
+    "essay_marks": 60,
+    "diagram_marks": 14,
+    "total_out_of_100": 74,
+    "question_marks": {
+      "01": 16.0,
+      "02": 15.0,
+      "03": 17.0,
+      "04": 12.0
+    }
+  },
+  {
+    "student_id": "IT21230114",
+    "essay_marks": 53,
+    "diagram_marks": 20,
+    "total_out_of_100": 73,
+    "question_marks": {
+      "01": 11.0,
+      "02": 9.0,
+      "03": 13.0,
+      "04": 20.0
+    }
+  },
+  {
+    "student_id": "IT21230123",
+    "essay_marks": 56,
+    "diagram_marks": 17,
+    "total_out_of_100": 73,
+    "question_marks": {
+      "01": 17.0,
+      "02": 13.0,
+      "03": 12.0,
+      "04": 14.0
+    }
+  },
+  {
+    "student_id": "IT21230108",
+    "essay_marks": 60,
+    "diagram_marks": 11,
+    "total_out_of_100": 71,
+    "question_marks": {
+      "01": 15.0,
+      "02": 12.0,
+      "03": 15.0,
+      "04": 18.0
+    }
+  },
+  {
+    "student_id": "IT21230117",
+    "essay_marks": 50,
+    "diagram_marks": 20,
+    "total_out_of_100": 70,
+    "question_marks": {
+      "01": 18.0,
+      "02": 8.0,
+      "03": 9.0,
+      "04": 15.0
+    }
+  },
+  {
+    "student_id": "IT21230121",
+    "essay_marks": 51,
+    "diagram_marks": 16,
+    "total_out_of_100": 67,
+    "question_marks": {
+      "01": 14.0,
+      "02": 12.0,
+      "03": 17.0,
+      "04": 8.0
+    }
+  },
+  {
+    "student_id": "IT21230122",
+    "essay_marks": 51,
+    "diagram_marks": 15,
+    "total_out_of_100": 66,
+    "question_marks": {
+      "01": 13.0,
+      "02": 11.0,
+      "03": 13.0,
+      "04": 14.0
+    }
+  },
+  {
+    "student_id": "IT21230115",
+    "essay_marks": 48,
+    "diagram_marks": 17,
+    "total_out_of_100": 65,
+    "question_marks": {
+      "01": 11.0,
+      "02": 14.0,
+      "03": 8.0,
+      "04": 15.0
+    }
+  },
+  {
+    "student_id": "IT21230132",
+    "essay_marks": 52,
+    "diagram_marks": 13,
+    "total_out_of_100": 65,
+    "question_marks": {
+      "01": 12.0,
+      "02": 11.0,
+      "03": 16.0,
+      "04": 13.0
+    }
+  },
+  {
+    "student_id": "IT21230124",
+    "essay_marks": 49,
+    "diagram_marks": 13,
+    "total_out_of_100": 62,
+    "question_marks": {
+      "01": 15.0,
+      "02": 10.0,
+      "03": 10.0,
+      "04": 14.0
+    }
+  },
+  {
+    "student_id": "IT21230130",
+    "essay_marks": 44,
+    "diagram_marks": 14,
+    "total_out_of_100": 58,
+    "question_marks": {
+      "01": 13.0,
+      "02": 8.0,
+      "03": 10.0,
+      "04": 13.0
+    }
+  },
+  {
+    "student_id": "IT21230125",
+    "essay_marks": 38,
+    "diagram_marks": 14,
+    "total_out_of_100": 52,
+    "question_marks": {
+      "01": 13.0,
+      "02": 8.0,
+      "03": 7.0,
+      "04": 10.0
+    }
+  },
+  {
+    "student_id": "IT21230128",
+    "essay_marks": 32,
+    "diagram_marks": 19,
+    "total_out_of_100": 51,
+    "question_marks": {
+      "01": 6.0,
+      "02": 11.0,
+      "03": 6.0,
+      "04": 9.0
+    }
+  },
+  {
+    "student_id": "IT21230127",
+    "essay_marks": 30,
+    "diagram_marks": 20,
+    "total_out_of_100": 50,
+    "question_marks": {
+      "01": 5.0,
+      "02": 4.0,
+      "03": 8.0,
+      "04": 13.0
+    }
+  },
+  {
+    "student_id": "IT21230126",
+    "essay_marks": 34,
+    "diagram_marks": 9,
+    "total_out_of_100": 43,
+    "question_marks": {
+      "01": 6.0,
+      "02": 4.0,
+      "03": 13.0,
+      "04": 11.0
+    }
+  },
+  {
+    "student_id": "IT21230131",
+    "essay_marks": 27,
+    "diagram_marks": 15,
+    "total_out_of_100": 42,
+    "question_marks": {
+      "01": 13.0,
+      "02": 8.0,
+      "03": 1.0,
+      "04": 5.0
+    }
+  },
+  {
+    "student_id": "IT21230134",
+    "essay_marks": 33,
+    "diagram_marks": 9,
+    "total_out_of_100": 42,
+    "question_marks": {
+      "01": 11.0,
+      "02": 8.0,
+      "03": 11.0,
+      "04": 3.0
+    }
+  },
+  {
+    "student_id": "IT21230129",
+    "essay_marks": 29,
+    "diagram_marks": 11,
+    "total_out_of_100": 40,
+    "question_marks": {
+      "01": 6.0,
+      "02": 4.0,
+      "03": 11.0,
+      "04": 8.0
+    }
+  },
+  {
+    "student_id": "IT21230133",
+    "essay_marks": 31,
+    "diagram_marks": 7,
+    "total_out_of_100": 38,
+    "question_marks": {
+      "01": 9.0,
+      "02": 4.0,
+      "03": 11.0,
+      "04": 7.0
+    }
+  },
+  {
+    "student_id": "IT21230141",
+    "essay_marks": 34,
+    "diagram_marks": 3,
+    "total_out_of_100": 37,
+    "question_marks": {
+      "01": 12.0,
+      "02": 5.0,
+      "03": 5.0,
+      "04": 12.0
+    }
+  },
+  {
+    "student_id": "IT21230139",
+    "essay_marks": 32,
+    "diagram_marks": 3,
+    "total_out_of_100": 35,
+    "question_marks": {
+      "01": 8.0,
+      "02": 5.0,
+      "03": 12.0,
+      "04": 7.0
+    }
+  },
+  {
+    "student_id": "IT21230140",
+    "essay_marks": 22,
+    "diagram_marks": 9,
+    "total_out_of_100": 31,
+    "question_marks": {
+      "01": 3.0,
+      "02": 2.0,
+      "03": 9.0,
+      "04": 8.0
+    }
+  },
+  {
+    "student_id": "IT21230138",
+    "essay_marks": 19,
+    "diagram_marks": 10,
+    "total_out_of_100": 29,
+    "question_marks": {
+      "01": 4.0,
+      "02": 0.0,
+      "03": 5.0,
+      "04": 10.0
+    }
+  },
+  {
+    "student_id": "IT21230136",
+    "essay_marks": 17,
+    "diagram_marks": 4,
+    "total_out_of_100": 21,
+    "question_marks": {
+      "01": 5.0,
+      "02": 7.0,
+      "03": 4.0,
+      "04": 1.0
+    }
+  },
+  {
+    "student_id": "IT21230147",
+    "essay_marks": 18,
+    "diagram_marks": 3,
+    "total_out_of_100": 21,
+    "question_marks": {
+      "01": 8.0,
+      "02": 1.0,
+      "03": 4.0,
+      "04": 5.0
+    }
+  },
+  {
+    "student_id": "IT21230137",
+    "essay_marks": 12,
+    "diagram_marks": 7,
+    "total_out_of_100": 19,
+    "question_marks": {
+      "01": 0.0,
+      "02": 4.0,
+      "03": 4.0,
+      "04": 4.0
+    }
+  },
+  {
+    "student_id": "IT21230135",
+    "essay_marks": 12,
+    "diagram_marks": 6,
+    "total_out_of_100": 18,
+    "question_marks": {
+      "01": 9.0,
+      "02": 0.0,
+      "03": 1.0,
+      "04": 2.0
+    }
+  },
+  {
+    "student_id": "IT21230146",
+    "essay_marks": 15,
+    "diagram_marks": 1,
+    "total_out_of_100": 16,
+    "question_marks": {
+      "01": 6.0,
+      "02": 1.0,
+      "03": 1.0,
+      "04": 7.0
+    }
+  },
+  {
+    "student_id": "IT21230144",
+    "essay_marks": 10,
+    "diagram_marks": 5,
+    "total_out_of_100": 15,
+    "question_marks": {
+      "01": 5.0,
+      "02": 1.0,
+      "03": 3.0,
+      "04": 1.0
+    }
+  },
+  {
+    "student_id": "IT21230148",
+    "essay_marks": 8,
+    "diagram_marks": 5,
+    "total_out_of_100": 13,
+    "question_marks": {
+      "01": 1.0,
+      "02": 1.0,
+      "03": 1.0,
+      "04": 5.0
+    }
+  },
+  {
+    "student_id": "IT21230145",
+    "essay_marks": 5,
+    "diagram_marks": 6,
+    "total_out_of_100": 11,
+    "question_marks": {
+      "01": 1.0,
+      "02": 0.0,
+      "03": 3.0,
+      "04": 1.0
+    }
+  },
+  {
+    "student_id": "IT21230142",
+    "essay_marks": 4,
+    "diagram_marks": 5,
+    "total_out_of_100": 9,
+    "question_marks": {
+      "01": 2.0,
+      "02": 1.0,
+      "03": 1.0,
+      "04": 0.0
+    }
+  },
+  {
+    "student_id": "IT21230143",
+    "essay_marks": 8,
+    "diagram_marks": 1,
+    "total_out_of_100": 9,
+    "question_marks": {
+      "01": 2.0,
+      "02": 2.0,
+      "03": 2.0,
+      "04": 2.0
+    }
+  },
+  {
+    "student_id": "IT21230149",
+    "essay_marks": 4,
+    "diagram_marks": 3,
+    "total_out_of_100": 7,
+    "question_marks": {
+      "01": 1.0,
+      "02": 0.0,
+      "03": 2.0,
+      "04": 1.0
+    }
+  },
+  {
+    "student_id": "IT21230150",
+    "essay_marks": 4,
+    "diagram_marks": 0,
+    "total_out_of_100": 4,
+    "question_marks": {
+      "01": 3.0,
+      "02": 1.0,
+      "03": 0.0,
+      "04": 0.0
+    }
+  }
+]

@@ -7,6 +7,8 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
+from app.ingestion.submission_attempts import current_essay_attempts, current_essay_sources
+
 
 async def load_exam_paper_sources(db: AsyncIOMotorDatabase, exam_key: str) -> dict:
     """Read only one exam's candidates and referenced rubrics, preserving conflicts.
@@ -72,7 +74,7 @@ async def load_exam_paper_sources(db: AsyncIOMotorDatabase, exam_key: str) -> di
             "_id": {"$in": guideline_refs},
         }).to_list(length=None)
     sources["readCompletedAt"] = datetime.now(timezone.utc).isoformat()
-    return sources
+    return current_essay_sources(sources)
 
 
 COLLECTIONS = (
@@ -213,8 +215,9 @@ async def latest_run_id(db: AsyncIOMotorDatabase) -> str | None:
 
 
 async def find_graded_submissions(db: AsyncIOMotorDatabase) -> list[dict]:
-    cursor = db["submissions"].find({"status": "graded"})
-    return await cursor.to_list(length=None)
+    cursor = db["submissions"].find({"status": "graded", "archived_at": None,
+                                      "archived_reason": {"$ne": "superseded_by_new_batch"}})
+    return current_essay_attempts(await cursor.to_list(length=None))
 
 
 async def find_course_for_submission(
@@ -373,6 +376,7 @@ async def find_graded_submission(
         "session_name": session_name,
         "status": "graded",
         "archived_at": None,
+        "archived_reason": {"$ne": "superseded_by_new_batch"},
     }
     if year is not None:
         query["year"] = year
@@ -380,7 +384,7 @@ async def find_graded_submission(
         query["month"] = month
     if semester is not None:
         query["semester"] = semester
-    documents = await db["submissions"].find(query).to_list(length=2)
+    documents = current_essay_attempts(await db["submissions"].find(query).to_list(length=None))
     if len(documents) > 1:
         from app.ingestion.student_data import StudentDataError
         raise StudentDataError("Ambiguous active student submissions; select an exact exam and resolve duplicate attempts")
@@ -392,7 +396,8 @@ async def find_graded_submissions_for_exam(
     year: int | None = None, month: int | None = None, semester: int | None = None,
 ) -> list[dict]:
     # Regrading archives old papers while keeping their status graded.
-    query: dict = {"subject_code": course_code, "session_name": session_name, "status": "graded", "archived_at": None}
+    query: dict = {"subject_code": course_code, "session_name": session_name, "status": "graded", "archived_at": None,
+                   "archived_reason": {"$ne": "superseded_by_new_batch"}}
     if year is not None:
         query["year"] = year
     if month is not None:
@@ -400,7 +405,7 @@ async def find_graded_submissions_for_exam(
     if semester is not None:
         query["semester"] = semester
     cursor = db["submissions"].find(query)
-    return await cursor.to_list(length=None)
+    return current_essay_attempts(await cursor.to_list(length=None))
 
 
 async def upsert_exam_analytics(db: AsyncIOMotorDatabase, document: dict) -> None:
@@ -537,13 +542,20 @@ async def list_exams_with_status(db: AsyncIOMotorDatabase) -> list[dict]:
 
 
 async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
-    """Return a list of available exams with basic stats from rubricCollection."""
+    """Return available exams using the latest uploaded rubric per examKey."""
     rubrics = await db["rubricCollection"].find(
-        {}, {"_id": 0, "subject_code": 1, "subject_name": 1, "session_name": 1, "year": 1, "month": 1, "semester": 1, "questions": 1}
-    ).to_list(length=100)
+        {}, {"_id": 1, "examKey": 1, "parsed_at": 1, "subject_code": 1, "subject_name": 1, "session_name": 1, "year": 1, "month": 1, "semester": 1, "questions": 1}
+    ).to_list(length=None)
+    rubrics.sort(key=lambda r: (r.get("parsed_at") or 0, str(r.get("_id", ""))), reverse=True)
 
     result = []
+    seen_exam_keys = set()
     for rubric in rubrics:
+        exam_key = rubric.get("examKey")
+        if exam_key:
+            if exam_key in seen_exam_keys:
+                continue
+            seen_exam_keys.add(exam_key)
         course_code = rubric.get("subject_code", "")
         session_name = rubric.get("session_name", "")
         year = rubric.get("year", 0)
@@ -551,13 +563,19 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
 
         submissions = await db["submissions"].find(
             {"subject_code": course_code, "session_name": session_name, "status": "graded",
-             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1), "archived_at": None},
+             "year": year, "month": rubric.get("month", 0), "semester": rubric.get("semester", 1), "archived_at": None,
+             "archived_reason": {"$ne": "superseded_by_new_batch"}},
             {"_id": 0, "evaluation.total_score": 1, "evaluation.max_score": 1, "max_marks_paper_total": 1}
         ).to_list(length=500)
 
-        # Also count diagram evaluations for this exam
-        diagram_evals = await find_diagram_evaluations_for_exam(
-            db, course_code, session_name, year, rubric.get("month", 0), rubric.get("semester", 1))
+        diagram_evals, grading_warning = [], None
+        if not submissions:
+            try:
+                diagram_evals = await find_diagram_evaluations_for_exam(
+                    db, course_code, session_name, year, rubric.get("month", 0), rubric.get("semester", 1))
+            except ValueError as exc:
+                # Keep invalid grades unavailable without blocking the exam inventory.
+                grading_warning = str(exc)
 
         # Merge: use submissions if available, otherwise diagram_evals
         student_count = len(submissions) if submissions else len(diagram_evals)
@@ -618,13 +636,14 @@ async def list_all_exams(db: AsyncIOMotorDatabase) -> list[dict]:
             "semester": rubric.get("semester", 1),
             "total_marks": total_marks,
             "question_count": len(questions),
-            "student_count": student_count,
+            "student_count": student_count if grading_warning is None else None,
             "average_score": avg_score,
             "average_percentage": avg_percentage,
             "highest_score": highest_score,
             "lowest_score": lowest_score,
             "pass_rate": round(pass_count / len(valid_scores) * 100, 2) if valid_scores else None,
-            "graded_student_count": len(valid_scores),
+            "graded_student_count": len(valid_scores) if grading_warning is None else None,
+            "grading_warning": grading_warning,
             "score_basis": "Essay" if submissions else "Diagram",
             "analyzed": analyzed,
             "analyzed_at": analyzed_at,
@@ -662,8 +681,9 @@ async def delete_exam_draft(db, draft_id: str) -> bool:
 async def find_graded_submissions_for_student(
     db: AsyncIOMotorDatabase, student_id: str
 ) -> list[dict]:
-    cursor = db["submissions"].find({"student_id": student_id, "status": "graded"})
-    return await cursor.to_list(length=None)
+    cursor = db["submissions"].find({"student_id": student_id, "status": "graded", "archived_at": None,
+                                      "archived_reason": {"$ne": "superseded_by_new_batch"}})
+    return current_essay_attempts(await cursor.to_list(length=None))
 
 
 async def list_exams_for_student(

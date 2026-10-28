@@ -1,7 +1,7 @@
 """Turns a lecturer-uploaded ER-diagram marking-guideline PDF into the
 structured guideline document that /api/diagram-evaluate grades against.
 
-The output shape is fixed by what ``grade_diagram_with_ollama`` already
+The output shape is fixed by what ``grade_diagram_with_groq`` already
 consumes from the ``diagram_marking`` collection::
 
     {"examCode": ..., "guideLines": [{id, criterion, description, expected, marks}], "totalMarks": N}
@@ -109,6 +109,7 @@ that an automatic grader consumes. You are given the raw text of the lecturer's 
 
 Return strict JSON only (no markdown) with exactly this shape:
 {
+  "fullMarks": 20,
   "guideLines": [
     {
       "id": 1,
@@ -123,6 +124,12 @@ Return strict JSON only (no markdown) with exactly this shape:
 Rules:
 - One entry per numbered criterion in the source text, in the same order, "id" starting at 1.
 - "marks" is the mark allocation stated for that criterion (a number).
+- "fullMarks" is the question's stated total/full marks.
+- If the source contains only a diagram question and a full-marks value, create a
+  sensible set of machine-checkable diagram criteria from the requirements in the
+  question and divide the full marks across those criteria. Do not invent unrelated
+  requirements.
+- The sum of all guideline "marks" must equal "fullMarks" exactly.
 - "expected" is a machine-checkable object describing what must be present. Use the shape that
   fits the criterion, choosing from these patterns:
     entity present:      {"type": "entity", "name": "Student"}
@@ -213,7 +220,56 @@ def _clean_expected(value: Any) -> Dict[str, Any]:
     return cleaned
 
 
-def normalize_guidelines(payload: Any) -> List[Dict[str, Any]]:
+def _numeric_value(value: Any) -> Optional[float]:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number >= 0 else None
+
+
+def _extract_full_marks(text: str) -> Optional[float]:
+    """Find an authoritative total when the PDF states one explicitly."""
+    labeled = re.search(
+        r"(?:full\s*marks?|total\s*marks?|maximum\s*marks?)\s*[:=\-]?\s*(\d+(?:\.\d+)?)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if labeled:
+        return float(labeled.group(1))
+    return None
+
+
+def _allocate_marks(items: List[Dict[str, Any]], total: float) -> None:
+    """Scale criterion marks to the question total using hundredths of a mark."""
+    if not items:
+        return
+    target = int(round(total * 100))
+    current = sum(float(item["marks"]) for item in items)
+    weights = [float(item["marks"]) for item in items]
+    if current <= 0:
+        weights = [1.0] * len(items)
+
+    raw = [target * weight / sum(weights) for weight in weights]
+    allocated = [int(value) for value in raw]
+    remainder = target - sum(allocated)
+    for index in sorted(
+        range(len(items)),
+        key=lambda position: raw[position] - allocated[position],
+        reverse=True,
+    )[:remainder]:
+        allocated[index] += 1
+
+    for item, cents in zip(items, allocated):
+        item["marks"] = cents / 100
+        if float(item["marks"]).is_integer():
+            item["marks"] = int(item["marks"])
+
+
+def normalize_guidelines(
+    payload: Any,
+    full_marks: Optional[float] = None,
+) -> List[Dict[str, Any]]:
     if not isinstance(payload, dict):
         return []
     items = payload.get("guideLines")
@@ -222,6 +278,12 @@ def normalize_guidelines(payload: Any) -> List[Dict[str, Any]]:
         items = payload.get("guidelines") if isinstance(payload.get("guidelines"), list) else None
     if not isinstance(items, list):
         return []
+
+    if full_marks is None and isinstance(payload, dict):
+        for key in ("fullMarks", "totalMarks", "maxMarks"):
+            full_marks = _numeric_value(payload.get(key))
+            if full_marks is not None:
+                break
 
     normalized: List[Dict[str, Any]] = []
     for item in items:
@@ -250,6 +312,8 @@ def normalize_guidelines(payload: Any) -> List[Dict[str, Any]]:
         )
         if len(normalized) >= _MAX_CRITERIA:
             break
+    if full_marks is not None:
+        _allocate_marks(normalized, full_marks)
     return normalized
 
 
@@ -274,7 +338,8 @@ def generate_guidelines(pdf_text: str, exam_code: str) -> List[Dict[str, Any]]:
                 time.sleep(_RETRY_DELAY_S * (attempt + 1))
             continue
 
-        guidelines = normalize_guidelines(_extract_json_object(content))
+        parsed = _extract_json_object(content)
+        guidelines = normalize_guidelines(parsed, _extract_full_marks(pdf_text))
         if guidelines:
             return guidelines
         last_error = f"attempt {attempt + 1}: no usable criteria in Groq response"

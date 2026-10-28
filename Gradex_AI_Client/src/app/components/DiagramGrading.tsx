@@ -1297,12 +1297,12 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
                 {saving ? (
                   <>
                     <Loader2 className="size-4 mr-2 animate-spin" />
-                    Saving to MongoDB...
+                    Saving...
                   </>
                 ) : (
                   <>
                     <Upload className="size-4 mr-2" />
-                    Save to MongoDB
+                    Save
                   </>
                 )}
               </Button>
@@ -1362,7 +1362,7 @@ export function DiagramGrading({ mode }: { mode?: "diagram" | "handwritten" }) {
                 <div className="uppercase tracking-wide">Final Marks</div>
                 <div className="mt-1 text-foreground">
                   {typeof result?.agent_marks === "number"
-                    ? `${result.agent_marks}/${result.agent_grading?.max_marks ?? selectedGuideline?.totalMarks ?? "--"}`
+                    ? `${result.agent_marks.toFixed()}/${result.agent_grading?.max_marks ?? selectedGuideline?.totalMarks ?? "--"}`
                     : "Pending evaluation"}
                 </div>
               </div>

@@ -509,6 +509,11 @@ async def materialize_student_analytics(
     source_submissions = (
         await find_graded_submissions(db) if submissions is None else submissions
     )
+    source_submissions = [
+        submission for submission in source_submissions
+        if submission.get("archived_at") is None
+        and submission.get("archived_reason") != "superseded_by_new_batch"
+    ]
     classification_cache: dict[tuple[str, str], QuestionSemantics] = {}
     saved: list[str] = []
     failures: list[MaterializationFailure] = []

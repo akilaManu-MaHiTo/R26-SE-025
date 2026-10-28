@@ -1,0 +1,17 @@
+[
+  {
+    "_id": {
+      "$oid": "9cc4d5a1115df370cf85bca1"
+    },
+    "code": "IT2040",
+    "name": "Database Management Systems",
+    "description": "Year 2 Database module",
+    "dataset_provenance": {
+      "kind": "synthetic",
+      "dataset_id": "EXAM-IT2040-2022-S1-Jun-FINAL-synthetic-50-v1",
+      "source": "Adapted from repository sample_data_v4",
+      "limitations": "Simulated answers, marks and diagram detections; not real students, model predictions or independently verified grades."
+    },
+    "examKey": "EXAM-IT2040-2022-S1-Jun-FINAL"
+  }
+]

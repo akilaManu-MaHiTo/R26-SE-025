@@ -12,6 +12,14 @@ def build_lecturer_grading_rows(exam_key, sources):
                for name in ("submissions", "diagram_evaluations")}
     rows = []
     for student in paper["students"]:
+        own = [r for r in sources.get("submissions", []) if r.get("student_id") == student["studentId"]
+               and r.get("archived_at") is None and r.get("archived_reason") != "superseded_by_new_batch"]
+        if len(own) == 1 and any(i["code"] == "duplicate_question" for i in paper["issues"]):
+            # Different students may still use different versions of the same exam rubric.
+            rubrics = [r for r in sources.get("rubrics", []) if str(r.get("_id")) == str(own[0].get("rubric_ref"))]
+            if len(rubrics) == 1:
+                individual = reconstruct_exam_paper(exam_key, {**sources, "rubrics": rubrics})
+                student = next((s for s in individual["students"] if s["studentId"] == student["studentId"]), student)
         grade, components = student["grading"], {}
         submitted_at = None
         for kind, collection in (("essay", "submissions"), ("diagram", "diagram_evaluations")):

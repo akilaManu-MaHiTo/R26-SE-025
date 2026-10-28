@@ -1,6 +1,9 @@
 import { Fragment, useEffect, useState, createContext, useContext } from "react";
+import { motion } from "framer-motion";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router";
 import { PageErrorBoundary } from "./components/PageErrorBoundary";
+import sessionRetryAnimation from "./components/animations/validation/bloub-capsule-effraye-rouge-anime-danger.svg";
+import sessionCheckingAnimation from "./components/animations/bloub-capsule-attentif-vert-anime.svg";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { LoginPage } from "./components/LoginPage";
@@ -31,6 +34,7 @@ function Layout({ role, email, onLogout }: { role: Role; email: string; onLogout
         {!hideSidebar && <Sidebar role={role} email={email} onLogout={onLogout} />}
         <main className="flex-1 min-w-0 flex flex-col">
           <TopBar title={meta.title} subtitle={meta.subtitle} />
+          {role === "student" && <div className="flex items-center justify-between gap-3 border-b px-4 py-2 md:hidden"><span className="min-w-0 truncate text-xs text-muted-foreground">{email}</span><button className="min-h-11 shrink-0 rounded-md px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={onLogout}>Sign out</button></div>}
           <div className="flex-1">
             <Outlet />
           </div>
@@ -41,6 +45,10 @@ function Layout({ role, email, onLogout }: { role: Role; email: string; onLogout
 }
 
 export default function App() {
+  return <BrowserRouter><SessionApp /></BrowserRouter>;
+}
+
+function SessionApp() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checking, setChecking] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
@@ -62,13 +70,73 @@ export default function App() {
     catch (error) { toast.error(error instanceof Error ? error.message : "Could not sign out"); }
   };
 
-  if (checking) return <p role="status" className="p-6">Checking your session…</p>;
-  if (sessionError) return <div className="p-6"><p role="alert">{sessionError}</p><button onClick={() => window.location.reload()}>Retry</button></div>;
+  if (checking) return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
+      <motion.img
+        src={sessionCheckingAnimation}
+        alt=""
+        width={140}
+        height={140}
+        className="size-32 object-contain"
+        aria-hidden="true"
+        initial={{ scale: 0.8, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      />
+      <motion.div
+        className="max-w-md space-y-2"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <h1 role="status" className="text-2xl font-semibold tracking-tight">Checking your session…</h1>
+        <p className="text-sm text-muted-foreground">Hang tight while we confirm who you are.</p>
+      </motion.div>
+    </div>
+  );
+  if (sessionError) return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
+      <motion.img
+        src={sessionRetryAnimation}
+        alt=""
+        width={140}
+        height={140}
+        className="size-32 object-contain"
+        aria-hidden="true"
+        initial={{ scale: 0.8, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      />
+      <motion.div
+        className="max-w-md space-y-2"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <h1 className="text-2xl font-semibold tracking-tight">We couldn't verify your session</h1>
+        <p role="alert" className="text-muted-foreground">{sessionError}</p>
+        <p className="text-sm text-muted-foreground">This can happen if your connection dropped or your session expired. Please try again.</p>
+      </motion.div>
+      <motion.button
+        onClick={() => window.location.reload()}
+        className="inline-flex items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      >
+        Retry
+      </motion.button>
+    </div>
+  );
 
   if (!role) {
     return (
       <>
-        <LoginPage onLogin={setUser} />
+        <Routes>
+          <Route path="/login/lecturer" element={<LoginPage key="lecturer" role="lecturer" onLogin={setUser} />} />
+          <Route path="/login/student" element={<LoginPage key="student" role="student" onLogin={setUser} />} />
+          <Route path="*" element={<Navigate to="/login/lecturer" replace />} />
+        </Routes>
         <Toaster />
       </>
     );
@@ -77,7 +145,7 @@ export default function App() {
   const defaultPath = role === "lecturer" ? "/dashboard" : "/student-dashboard";
 
   return (
-    <BrowserRouter>
+    <>
       <Routes>
         <Route element={<Layout role={role} email={user!.email} onLogout={handleLogout} />}>
           <Route index element={<Navigate to={defaultPath} replace />} />
@@ -93,6 +161,8 @@ export default function App() {
               role === "student" && studentId ? <StudentDashboard studentId={studentId} /> : <Navigate to={defaultPath} replace />
             }
           />
+          {(["profile", "materials", "practice"] as const).map(view => <Route key={view} path={`/student-${view}`}
+            element={role === "student" && studentId ? <StudentDashboard studentId={studentId} view={view} /> : <Navigate to={defaultPath} replace />} />)}
           <Route path="/exam-keys" element={role === "lecturer" ? <ExamKeysPage /> : <Navigate to={defaultPath} replace />} />
           {role === "lecturer" &&
             AGENT_CONFIG.map((agent) => (
@@ -111,6 +181,6 @@ export default function App() {
         </Route>
       </Routes>
       <Toaster />
-    </BrowserRouter>
+    </>
   );
 }

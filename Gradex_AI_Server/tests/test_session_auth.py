@@ -99,6 +99,24 @@ def login(client, email="teacher@example.edu", password="UniquePassword123!"):
     return client.post("/api/auth/login", json={"email": email, "password": password}, headers={"Origin": "http://testserver"})
 
 
+@pytest.mark.parametrize("role,email", [("student", "teacher@example.edu"), ("lecturer", "student@example.edu")])
+def test_wrong_portal_does_not_create_session(system, role, email):
+    client, db = system
+    response = client.post("/api/auth/login", json={"email": email, "password": "UniquePassword123!", "role": role}, headers={"Origin": "http://testserver"})
+    assert response.status_code == 403
+    assert "sign-in page" in response.json()["detail"]
+    assert not db["auth_sessions"].docs
+    assert not client.cookies.get(auth.COOKIE_NAME)
+
+
+@pytest.mark.parametrize("role,email", [("lecturer", "teacher@example.edu"), ("student", "student@example.edu")])
+def test_matching_portal_uses_stored_role(system, role, email):
+    client, _ = system
+    response = client.post("/api/auth/login", json={"email": email, "password": "UniquePassword123!", "role": role}, headers={"Origin": "http://testserver"})
+    assert response.status_code == 200
+    assert response.json()["role"] == role
+
+
 def test_login_restores_identity_and_logout_revokes_session(system):
     client, db = system
     response = login(client)
@@ -202,13 +220,40 @@ def test_websocket_requires_lecturer_session_and_trusted_origin(system):
             pass
 
 
-def test_shared_demo_password_is_rejected(system):
+def test_existing_student_default_password_is_accepted(system):
     import hashlib
     client, db = system
     salt = b"legacy-salt"
     digest = hashlib.pbkdf2_hmac("sha256", b"Student@123", salt, 100000).hex()
     db["users"].docs[1]["password_hash"] = f"pbkdf2_sha256$100000${salt.hex()}${digest}"
+    assert login(client, "student@example.edu", "Student@123").status_code == 200
+    assert db["users"].docs[1]["password_hash"].startswith("$argon2id$")
+
+
+@pytest.mark.parametrize("stored", ["", None])
+def test_student_without_password_can_sign_in_with_default(system, stored):
+    client, db = system
+    student = db["users"].docs[1]
+    if stored is None:
+        student.pop("password_hash")
+    else:
+        student["password_hash"] = stored
+    assert login(client, "student@example.edu", "wrong").status_code == 401
+    assert student.get("password_hash") == stored
+    response = login(client, "student@example.edu", "Student@123")
+    assert response.status_code == 200
+    assert response.json()["student_id"] == "IT001"
+    assert student["password_hash"].startswith("$argon2id$")
+    assert login(client, "student@example.edu", "Student@123").status_code == 200
+
+
+def test_default_password_does_not_replace_custom_password_or_enable_lecturer(system):
+    client, db = system
     assert login(client, "student@example.edu", "Student@123").status_code == 401
+    assert login(client, "student@example.edu").status_code == 200
+    db["users"].docs[0]["password_hash"] = ""
+    assert login(client, password="Student@123").status_code == 401
+    assert login(client, "absent@example.edu", "Student@123").status_code == 401
 
 
 def test_secure_cookie_in_production(system, monkeypatch):
@@ -230,6 +275,8 @@ def test_provision_and_password_reset_revoke_old_sessions(system, monkeypatch):
     assert login(client, password="ReplacementPassword123!").status_code == 200
     asyncio.run(provision.provision_user("new@example.edu", "student", "NewStudentPassword123!", "IT002"))
     assert login(client, "new@example.edu", "NewStudentPassword123!").json()["student_id"] == "IT002"
+    asyncio.run(provision.provision_user("new@example.edu", "student", "Student@123", "IT002"))
+    assert login(client, "new@example.edu", "Student@123").status_code == 200
     with pytest.raises(ValueError):
         asyncio.run(provision.provision_user("new@example.edu", "lecturer", "ReplacementPassword123!"))
     with pytest.raises(ValueError):

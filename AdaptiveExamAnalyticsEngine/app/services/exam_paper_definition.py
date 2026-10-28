@@ -6,6 +6,7 @@ from math import isfinite
 
 from app.db.repository import _find_diagram_guideline
 from app.services.exam_paper import _identity, _maximum, _qno, _ref
+from app.ingestion.submission_attempts import current_essay_sources
 
 
 def _json_safe(value):
@@ -54,11 +55,15 @@ async def load_exam_paper_definition(db, exam):
         return document.get("examKey") == key or actual == identity
 
     projection = {"_id": 1, "examKey": 1, **{k: 1 for k in metadata}, "questions": 1}
+    attempts = await db["submissions"].find(query, {"_id": 1, "examKey": 1,
+        **{k: 1 for k in metadata}, "student_id": 1, "rubric_ref": 1, "status": 1,
+        "processed_at": 1, "archived_at": 1, "archived_reason": 1}).to_list(length=None)
     collections = await db.list_collection_names()
     for collection in ("rubricCollection", "rubicCollection"):
         if collection not in collections:
             continue
         rubrics = await db[collection].find(query, projection).to_list(length=None)
+        rubrics = current_essay_sources({"submissions": attempts, "rubrics": rubrics})["rubrics"]
         for rubric in rubrics:
             if not matches(rubric):
                 continue

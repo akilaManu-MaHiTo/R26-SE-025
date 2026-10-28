@@ -3,17 +3,19 @@ import logging
 import os
 import re
 import unicodedata
+from pathlib import Path
 from typing import Any, Callable
 
 import httpx
+from dotenv import load_dotenv
 
+load_dotenv(Path(__file__).resolve().parent / ".env", override=False)
 
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3:latest")
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
-OLLAMA_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180"))
-OLLAMA_NUM_PREDICT = int(os.getenv("OLLAMA_NUM_PREDICT", "512"))
-OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "4096"))
-OLLAMA_FALLBACK_MODEL = os.getenv("OLLAMA_FALLBACK_MODEL", "llama3:latest")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_FALLBACK_MODEL = os.getenv("GROQ_FALLBACK_MODEL", "openai/gpt-oss-120b")
+GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
+GROQ_TIMEOUT_SECONDS = float(os.getenv("GROQ_TIMEOUT_SECONDS", "120"))
+GROQ_MAX_TOKENS = int(os.getenv("GROQ_MAX_TOKENS", "8192"))
 DEFAULT_DIAGRAM_MAX_MARKS = float(os.getenv("DIAGRAM_MAX_MARKS", "20"))
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -224,7 +226,7 @@ def _relax_relationship_labels(guideline: dict[str, Any]) -> dict[str, Any]:
     return relax(guideline)
 
 
-def grade_diagram_with_ollama(
+def grade_diagram_with_groq(
     result: dict[str, Any],
     guideline: dict[str, Any],
     progress_callback: Callable[[dict], None] | None = None,
@@ -234,25 +236,25 @@ def grade_diagram_with_ollama(
     structure = _diagram_structure_data(result)
     structure_json = json.dumps(structure, ensure_ascii=True, default=str)
     logger.info(
-        "Ollama grading started model=%s base_url=%s guideline_id=%s detection_count=%s",
-        OLLAMA_MODEL,
-        OLLAMA_BASE_URL,
+        "Groq grading started model=%s base_url=%s guideline_id=%s detection_count=%s",
+        GROQ_MODEL,
+        GROQ_BASE_URL,
         guideline.get("_id", "unknown"),
         len(result.get("detections", [])),
     )
-    logger.info("Guideline JSON sent to Ollama: %s", guideline_json)
-    logger.info("OLLAMA_INPUT_GUIDELINE %s", guideline_json)
-    logger.info("OLLAMA_INPUT_STRUCTURE %s", structure_json)
+    logger.info("Guideline JSON sent to Groq: %s", guideline_json)
+    logger.info("GROQ_INPUT_GUIDELINE %s", guideline_json)
+    logger.info("GROQ_INPUT_STRUCTURE %s", structure_json)
 
     if progress_callback:
         progress_callback({
-            "stage": "ollama_preparing",
+            "stage": "groq_preparing",
             "message": "Preparing rubric and diagram structure for Grading...",
             "progress": 86,
         })
 
     prompt = f"""
-You are an ER diagram grading agent running locally with Ollama. Grade the student's extracted diagram against the supplied marking guideline.
+You are an ER diagram grading agent powered by Groq. Grade the student's extracted diagram against the supplied marking guideline.
 
 === HARD RULES (apply without exception) ===
 1. Use ONLY the diagram structure provided below. Never infer, assume, or hallucinate any element that is not explicitly present in the structure data.
@@ -261,18 +263,20 @@ You are an ER diagram grading agent running locally with Ollama. Grade the stude
 
 PRIMARY KEY RULE: Each entity's "primary_keys" list contains its primary key attributes. Primary keys also appear in the "attributes" list (they are attributes AND keys). A primary key criterion is fully satisfied when the attribute name appears in the entity's "primary_keys" list — no additional check is required. Do not deduct marks for underline notation or formatting; presence in "primary_keys" is sufficient. If the attribute name is absent from "primary_keys", the criterion gets ZERO marks.
 
-ATTRIBUTE RULE: An attribute criterion (non-primary-key) is satisfied ONLY when the attribute name (allowing only OCR-level formatting differences: case, spaces, underscores, hyphens between the same tokens) appears in the entity's "attributes" list. A differently-named attribute — even one that sounds similar — is NOT a match. Do NOT accept a substitute.
+ATTRIBUTE RULE: An attribute criterion is satisfied when the entity's "attributes" list contains an attribute that means the same thing as the rubric attribute. Accept: case, spacing, underscore and hyphen differences; the entity name being abbreviated or dropped from the attribute name (rubric "Book_Title" matches "title" or "Book Title"; rubric "Student_ID" matches "S_Id", "SID", "student id"); and OCR typos. Do NOT accept an attribute with a genuinely different meaning (e.g. "Email" does not match "Phone"). Award partial marks proportionally when only some of the required attributes are present (e.g. 2 of 3 attributes = 2/3 of the marks).
 
-IDENTIFIER MATCHING (OCR formatting only): For identifier-style attributes (those ending in _ID, _Id, ID, etc.), treat these as the same attribute only when they share the same prefix token: S_ID, S_Id, SID, S ID are all the same; C_ID and S_ID are different identifiers and must never be cross-matched. Entity names may contain OCR typos; match entity names to the rubric by closest meaning, but still require the attribute to be present under that entity.
+IDENTIFIER MATCHING: An identifier attribute (ID, Id, _id, bid, S_Id, etc.) belongs to the entity it is listed under. Within a single entity, "S_Id" under Student IS Student_ID and "bid" under Book IS Book_ID, because the prefix is an abbreviation of that entity's name. Only reject an identifier if it is listed under the wrong entity or clearly refers to a different entity (e.g. "C_Id" under Student when no Customer is expected). Entity names may contain OCR typos or different casing; match them to the rubric by closest meaning.
 
-RELATIONSHIP RULE: Relationships are free-form. Judge a relationship by whether it connects the required entities and whether its label expresses a plausible association (any sensible verb phrase). Accept reasonable synonyms, spelling variants, and inflections. Do not deduct marks for a different-but-sensible verb.
+NOTATION RULE: The structure data is already extracted from the image by shape detection, so it carries no shape information. Treat an entity as a rectangle, an attribute as an oval, a relationship as a diamond, and a primary key as underlined, if and only if it appears in the structure as an entity, attribute, relationship or "primary_keys" entry respectively. The Correct ER Notation criterion therefore receives full marks when entities, attributes, relationships and primary_keys are all present in the correct categories, and partial marks when some categories are missing.
 
-COMPLETENESS RULE: The Overall Completeness criterion checks only structural presence
+RELATIONSHIP RULE: Relationships are free-form. Judge a relationship by whether it connects the required entities and whether its label expresses a plausible association (any sensible verb phrase). Accept reasonable synonyms, spelling variants, and inflections ("Borrow" = "Borrows"). A relationship listing both required entities in its "entities" field satisfies both the Borrows Relationship and the Relationship Connections criteria. Do not deduct marks for a different-but-sensible verb.
+
+COMPLETENESS RULE: The Overall Completeness criterion checks only structural presence. Award full marks if all required entities, attributes, primary keys and relationships are present; award partial marks if only minor items are missing; zero only if most of the structure is missing. Do not zero it merely because a single other criterion lost marks.
 
 === PROCESS ===
-Step 1 — for each criterion, list every required element and check whether it appears in the structure data.
-Step 2 — award marks only for elements confirmed in Step 1.
-Step 3 — if any criterion failed, set Overall Completeness to zero.
+Step 1 — for each criterion, list every required element and find its match (using the matching rules above) in the structure data.
+Step 2 — award marks only for elements confirmed in Step 1; give partial marks where a criterion has several required items and only some are present.
+Step 3 — the "reason" for each criterion must name the structure entry matched, or state exactly what is missing. The "feedback" must only mention items that are actually missing from the structure; if nothing is missing, say the diagram meets the guideline.
 
 Return one criterion_results entry for every rubric criterion, including failed criteria with zero marks. Use the exact criterion IDs from the marking guideline, once each, and do not return any other IDs.
 The total available marks for this guideline are {max_marks:g}. Return max_marks as exactly {max_marks:g}.
@@ -292,104 +296,60 @@ EXTRACTED DIAGRAM STRUCTURE:
 """.strip()
 
     logger.info(
-        "OLLAMA_REQUEST_BEGIN model=%s guideline_id=%s prompt_chars=%s",
-        OLLAMA_MODEL,
+        "GROQ_REQUEST_BEGIN model=%s guideline_id=%s prompt_chars=%s",
+        GROQ_MODEL,
         guideline.get("_id", "unknown"),
         len(prompt),
     )
-    logger.info("OLLAMA_REQUEST_PROMPT\n%s\nOLLAMA_REQUEST_END", prompt)
+    logger.info("GROQ_REQUEST_PROMPT\n%s\nGROQ_REQUEST_END", prompt)
 
     if progress_callback:
         progress_callback({
-            "stage": "ollama_grading",
+            "stage": "groq_grading",
             "message": "Grading the diagram against the guideline...",
             "progress": 92,
         })
 
-    request_models = [OLLAMA_MODEL]
-    if OLLAMA_MODEL != OLLAMA_FALLBACK_MODEL:
-        request_models.append(OLLAMA_FALLBACK_MODEL)
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY is not set.")
 
-    response_payload = None
-    last_error = None
+    request_models = [GROQ_MODEL]
+    if GROQ_MODEL != GROQ_FALLBACK_MODEL:
+        request_models.append(GROQ_FALLBACK_MODEL)
+
+    text = ""
+    last_error: Exception | None = None
     for model in request_models:
-        logger.info("Sending grading prompt to Ollama model=%s guideline_id=%s", model, guideline.get("_id", "unknown"))
+        logger.info("Sending grading prompt to Groq model=%s guideline_id=%s", model, guideline.get("_id", "unknown"))
         try:
             response = httpx.post(
-                f"{OLLAMA_BASE_URL}/api/generate",
+                f"{GROQ_BASE_URL}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
                 json={
                     "model": model,
-                "prompt": prompt,
-                "stream": False,
-                "format": {
-                    "type": "object",
-                    "properties": {
-                        "agent_marks": {"type": "number"},
-                            "max_marks": {"type": "number"},
-                        "criterion_results": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "id": {"type": "number"},
-                                    "marks": {"type": "number"},
-                                    "reason": {"type": "string"},
-                                },
-                                "required": ["id", "marks", "reason"],
-                                "additionalProperties": False,
-                            },
-                        },
-                        "feedback": {"type": "string"},
-                    },
-                    "required": ["agent_marks", "max_marks", "criterion_results", "feedback"],
-                    "additionalProperties": False,
-                },
-                "think": False,
-                "keep_alive": "10m",
-                "options": {
+                    "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0,
-                    "top_k": 20,
-                    "num_ctx": OLLAMA_NUM_CTX,
-                    "num_predict": OLLAMA_NUM_PREDICT,
+                    "max_tokens": GROQ_MAX_TOKENS,
+                    "response_format": {"type": "json_object"},
                 },
-                },
-                timeout=httpx.Timeout(
-                    connect=10.0,
-                    read=OLLAMA_TIMEOUT_SECONDS,
-                    write=10.0,
-                    pool=10.0,
-                ),
+                timeout=httpx.Timeout(connect=10.0, read=GROQ_TIMEOUT_SECONDS, write=10.0, pool=10.0),
             )
-            response.raise_for_status()
-            response_payload = response.json()
-            text = str(response_payload.get("response", ""))
-            logger.info(
-                "OLLAMA_RESPONSE_STATUS model=%s done=%s done_reason=%s response_chars=%s",
-                model,
-                response_payload.get("done"),
-                response_payload.get("done_reason"),
-                len(text),
-            )
-            logger.info("OLLAMA_RESPONSE_RAW model=%s %s", model, text)
+            if response.is_error:
+                raise httpx.HTTPError(f"{response.status_code}: {response.text[:500]}")
+            payload = response.json()
+            text = str(payload["choices"][0]["message"]["content"] or "")
+            logger.info("GROQ_RESPONSE_RAW model=%s %s", model, text)
             break
-        except httpx.ReadTimeout as exc:
+        except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
             last_error = exc
             if model == request_models[-1]:
-                raise RuntimeError(
-                    f"Ollama grading timed out for models: {', '.join(request_models)}"
-                ) from exc
-            logger.warning(
-                "Ollama model timed out; retrying with fallback model=%s",
-                OLLAMA_FALLBACK_MODEL,
-            )
-        except (httpx.HTTPError, ValueError) as exc:
-            raise RuntimeError(f"Ollama grading request failed: {exc}") from exc
-    if response_payload is None:
-        raise RuntimeError(f"Ollama grading request failed: {last_error}")
+                raise RuntimeError(f"Groq grading request failed: {exc}") from exc
+            logger.warning("Groq model %s failed (%s); retrying with fallback model", model, exc)
     if not text.strip():
-        raise RuntimeError("Qwen returned an empty grading response.")
+        raise RuntimeError(f"Groq returned an empty grading response. {last_error or ''}".strip())
     grading = _extract_json(text)
-    logger.info("Ollama grading JSON received: %s", json.dumps(grading, ensure_ascii=True, default=str))
+    logger.info("Groq grading JSON received: %s", json.dumps(grading, ensure_ascii=True, default=str))
 
     try:
         grading["criterion_results"] = _validated_criterion_results(grading, guideline)
@@ -399,16 +359,16 @@ EXTRACTED DIAGRAM STRUCTURE:
         )
         grading["max_marks"] = max_marks
     except (KeyError, TypeError, ValueError) as exc:
-        raise RuntimeError("Qwen returned invalid grading marks.") from exc
+        raise RuntimeError("Groq returned invalid grading marks.") from exc
 
     if progress_callback:
         progress_callback({
-            "stage": "ollama_completed",
+            "stage": "groq_completed",
             "message": "Grading complete.",
             "progress": 100,
         })
     logger.info(
-        "Ollama grading completed guideline_id=%s agent_marks=%s max_marks=%s",
+        "Groq grading completed guideline_id=%s agent_marks=%s max_marks=%s",
         guideline.get("_id", "unknown"),
         grading["agent_marks"],
         grading["max_marks"],

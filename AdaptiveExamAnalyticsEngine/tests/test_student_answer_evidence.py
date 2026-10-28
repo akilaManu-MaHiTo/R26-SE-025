@@ -39,6 +39,7 @@ async def test_question_evidence_uses_saved_answer_or_labelled_legacy_excerpt(re
         collection.find_one.assert_awaited_once_with({
             "student_id": "S1", "subject_code": "IT2040", "session_name": "Final",
             "year": 2026, "month": 7, "semester": 1, "status": "graded", "archived_at": None,
+            "archived_reason": {"$ne": "superseded_by_new_batch"},
         }, sort=[("_id", -1)])
     finally:
         app.dependency_overrides.clear()

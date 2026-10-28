@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Bell, HelpCircle, Moon, Sun, CheckCircle2, UserRound, Clock, AlertCircle } from "lucide-react";
+import { Bell, HelpCircle, Moon, Sun, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { BrandOrb } from "./BrandOrb";
 import { useTheme } from "next-themes";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -88,7 +89,7 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
                       ) : it.status === "failed" ? (
                         <AlertCircle className="size-4 text-destructive shrink-0" />
                       ) : it.active ? (
-                        <UserRound className="size-4 text-primary shrink-0" />
+                        <BrandOrb state="solving" size={20} className="shrink-0" aria-label="Analysing student" />
                       ) : it.progress === 100 ? (
                         <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
                       ) : (

@@ -305,6 +305,9 @@ class ReadOnlyCollection:
                 elif isinstance(expected, dict) and "$in" in expected:
                     if doc.get(field) not in expected["$in"]:
                         return False
+                elif isinstance(expected, dict) and "$ne" in expected:
+                    if doc.get(field) == expected["$ne"]:
+                        return False
                 elif doc.get(field) != expected:
                     return False
             return True

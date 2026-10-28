@@ -1,5 +1,6 @@
-import { LayoutDashboard, LogOut, GraduationCap, KeyRound } from "lucide-react";
-import { NavLink } from "react-router";
+import { LayoutDashboard, LogOut, KeyRound, User, BookOpen, Brain } from "lucide-react";
+import gradexLogo from "../../imports/gradex-logo.png";
+import { NavLink, useLocation } from "react-router";
 import { Button } from "./ui/button";
 import { cn } from "./ui/utils";
 import { AGENT_CONFIG } from "../routeConfig";
@@ -35,12 +36,11 @@ const subItemClass = ({ isActive }: { isActive: boolean }) =>
   );
 
 export function Sidebar({ role, email, onLogout }: SidebarProps) {
+  const { search } = useLocation();
   return (
-    <aside className="w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 print:hidden">
+    <aside className={cn("w-64 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 print:hidden", role === "student" && "hidden md:flex")}>
       <div className="px-6 py-5 border-b border-sidebar-border flex items-center gap-3">
-        <div className="size-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-          <GraduationCap className="size-5" />
-        </div>
+        <img src={gradexLogo} alt="GradeX AI" className="size-11 object-contain dark:invert" />
         <div className="leading-tight">
           <div className="text-sidebar-foreground tracking-tight font-medium">GradeX AI</div>
           <div className="text-xs text-muted-foreground">Learning Suite</div>
@@ -81,10 +81,15 @@ export function Sidebar({ role, email, onLogout }: SidebarProps) {
             </div>
           </>
         ) : (
-          <NavLink to="/student-dashboard" end className={itemClass}>
-            <LayoutDashboard className="size-4" />
-            <span>My Dashboard</span>
-          </NavLink>
+          <div className="space-y-2">
+            <div className="px-3 pb-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">My learning</div>
+            {[{ path: "/student-dashboard", label: "My Dashboard", icon: LayoutDashboard },
+              { path: "/student-profile", label: "My Profile", icon: User },
+              { path: "/student-materials", label: "Study Materials", icon: BookOpen },
+              { path: "/student-practice", label: "Practice", icon: Brain }].map(item => <NavLink key={item.path} to={item.path + search} end className={itemClass}>
+                <item.icon className="size-4" /><span>{item.label}</span>
+              </NavLink>)}
+          </div>
         )}
       </nav>
 

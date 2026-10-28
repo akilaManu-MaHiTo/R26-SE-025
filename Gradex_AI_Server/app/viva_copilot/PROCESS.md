@@ -1,25 +1,25 @@
-# Live Interviewer Copilot — process document
+# Live Viva (Live Interviewer Copilot) — process document
 
-Technical click-through for the isolated **Live Interviewer Copilot**. This is **not** Viva Assessment (upload/record-then-grade). The two features share only the sidebar group and FastAPI `include_router`.
+Technical click-through for the **Live Viva** feature (`/viva-evaluation/live-copilot`). It sits beside **Viva Assessment**
+(upload a recording, then grade) and ends in the same grading chain.
 
 | Product | UI | Backend | Engine |
 |---|---|---|---|
 | **Viva Assessment** | `VivaPage.tsx` | `POST /api/viva-analyze` | `VivaEvaluationEngine` + Mongo marks |
-| **Live Interviewer Copilot** | `viva-copilot/*` | `/api/viva-copilot/*` | In-memory session + Groq STT/chat, **plus** `VivaEvaluationEngine` + Mongo marks at end-of-session analyze |
+| **Live Viva** | `viva-copilot/*` | `/api/viva-copilot/*` | In-memory session + Groq STT/chat while live, then `VivaEvaluationEngine` + Mongo marks at end-of-session analyze |
 
-**During the session** the copilot does not write Mongo and does not score the student: the live
-path is STT + follow-up-question suggestion only, held in `SessionStore` in RAM.
+**During the session** the copilot does not write Mongo and does not score the student. The live path is speech-to-text plus
+follow-up-question suggestions for the examiner, held in `SessionStore` in RAM. The AI never asks the student anything; the
+examiner decides what to ask.
 
-**At end of session** that changed. `POST /sessions/{id}/analyze` (`analysis.py::analyze_live_session`)
-runs the **same** scoring chain as an uploaded recording — via `viva_analysis_runner`, which calls
-`viva_service.analyze_video_file` — and persists a mark to Mongo. The only live-specific
-differences are `source="live_copilot"`, the `copilot_session_id`, and the live transcript
-attached as `live_session` / `live_transcript`. Scoring itself is identical, so a live viva and an
-uploaded one are graded on the same basis.
+**At end of session** `POST /sessions/{id}/analyze` (`analysis.py::analyze_live_session`) runs the **same** scoring chain as an
+uploaded recording, through `viva_analysis_runner` and `viva_service.analyze_video_file`, then saves a mark to Mongo. The only
+differences are `source="live_copilot"`, the `copilot_session_id`, and the live transcript attached as `live_session` /
+`live_transcript`. Scoring is driven by the **recording**, not the live transcript: the Stage-1 families (engagement CNN, Praat
+acoustics, face coverage) are video/waveform-derived and the quality gates depend on them, so a transcript-only mark would be voided.
 
-Scoring is still driven by the **recording**, not the live transcript: the Stage-1 families
-(engagement CNN, Praat acoustics, face coverage) are all video/waveform-derived, and the quality
-gates in `assessment_scoring` depend on them, so a transcript-only mark would be voided.
+A live session is always filed under a viva created in the Viva Workspace (`viva_id`). The viva fixes the category
+(technical or non-technical), the subject, the total marks and, for technical vivas, the technical percentage.
 
 ---
 
@@ -28,62 +28,77 @@ gates in `assessment_scoring` depend on them, so a transcript-only mark would be
 | Process | Command | Default |
 |---|---|---|
 | FastAPI | From repo root: `.venv\Scripts\python.exe -m uvicorn Gradex_AI_Server.app.main:app --host 0.0.0.0 --port 8000` | **8000** (do not use `--reload`) |
-| Vite client | `Gradex_AI_Client` → `npm run dev` | **5173** |
-| Open | Lecturer login → **Viva Evaluation → Live Interviewer Copilot** | `http://localhost:5173/viva-evaluation/live-copilot` |
+| Vite client | `Gradex_AI_Client` → `npm run dev` | **5173** (proxies `/api`, including WebSockets) |
+| Open | Lecturer login → **Viva Evaluation → Live Viva** | `http://localhost:5173/viva-evaluation/live-copilot` |
 
-Env:
+Auth: a lecturer **login session cookie** (`gradex_session`). REST calls use `apiFetch`; the WebSocket sends the same cookie and
+must come from a trusted `Origin`. There are no API keys in the browser. For plain-HTTP local development set
+`AUTH_COOKIE_SECURE=false` on the server.
 
-- Client: `VITE_BACKEND_URL` (fallback `http://localhost:8000`) and `VITE_GRADEX_API_KEY` (must match server `GRADEX_API_KEY`).
-- Server: `Gradex_AI_Server/app/.env` — `GRADEX_API_KEY`, `AI_API_KEY` or `GROQ_API_KEY`. Optional `VIVA_COPILOT_LLM_MODEL` (fallback `openai/gpt-oss-20b`; Llama chat ids retired 16 Aug 2026), `VIVA_COPILOT_STT_MODEL`.
-- REST sends `X-API-Key`. WebSocket uses `?api_key=`.
-- STT chunks queue FIFO (cap 8). Follow-up LLM jobs queue (cap 4). Oldest is dropped only if the cap is exceeded.
+Server env (`Gradex_AI_Server/app/.env`, see `.env.example`):
 
-Restart uvicorn after Python changes. Restart Vite after changing `.env.local`.
+- LLM key: first set of `VIVA_COPILOT_API_KEY`, `VIVA_LLM_API_KEY`, `GROQ_API_KEY`, `AI_API_KEY`, `BACKUP_API_KEY`.
+- `VIVA_COPILOT_LLM_MODEL` (default `openai/gpt-oss-20b`), `VIVA_COPILOT_STT_MODEL` (default `whisper-large-v3-turbo`).
+- `VIVA_COPILOT_MIN_STT_GAP` (default `0.4` s), `VIVA_COPILOT_SESSION_TTL_SECONDS` (default `14400`, `0` disables expiry).
+- Cadence: `COPILOT_SUGGEST_MIN_WORDS` (15), `COPILOT_SUGGEST_MIN_SECONDS` (8), `COPILOT_VIVA_SUGGEST_MIN_WORDS`,
+  `COPILOT_VIVA_SUGGEST_MIN_SECONDS`, `COPILOT_MIN_ANSWER_WORDS` (6).
+- `VIVA_KEEP_UPLOADS=1` keeps the end-of-session recording for debugging (it is deleted otherwise).
+
+Restart uvicorn after Python changes and Vite after changing `.env.local`.
 
 ---
 
 ## 2. Architecture
 
 ```
-Browser (LiveCopilotPage)
+Browser (LiveCopilotPage + CopilotCamera)
   │
   │ REST  (lecturer buttons only)
-  │   POST /api/viva-copilot/sessions
-  │   POST /sessions/{id}/phase | /finalize | /ask | /context
-  │   POST /sessions/{id}/analyze   (end of session — grades + saves the mark)
-  │   GET  /sessions/{id}/transcript
+  │   POST   /api/viva-copilot/sessions
+  │   POST   /sessions/{id}/phase | /finalize | /ask | /context
+  │   POST   /sessions/{id}/analyze      (end of session: grades and saves the mark)
+  │   GET    /sessions/{id} | /sessions/{id}/transcript
   │   DELETE /sessions/{id}
   │
-  │ WebSocket  (live path — no polling)
+  │ WebSocket  (live path, no polling)
   │   WS  /api/viva-copilot/ws/{id}
-  │   → binary audio slices (~4s WebM, Groq Whisper accuracy backstop)
-  │   → JSON {"type":"speech", text, isFinal} (Web Speech API, fast path)
-  │   ← JSON events (transcript, suggestions, errors)
+  │   → binary audio slices (~4 s WebM, Groq Whisper backstop)
+  │   → JSON {"type":"speech", text, isFinal} (browser Web Speech API, fast path)
+  │   → text "ping"
+  │   ← JSON events (transcript, suggestions, errors, phase)
   │
   ▼
 Gradex_AI_Server  (FastAPI, port 8000)
-  router.py  →  pipeline.py  →  session_store.py  (RAM dict — live phase only)
+  router.py  →  pipeline.py  →  session_store.py  (RAM dict, live phase only)
        │             │
-       │             ├─ ingest_text()     → bypasses STT entirely (fast path)
-       │             ├─ stt.py            → Groq Whisper  POST .../audio/transcriptions (pooled httpx client)
-       │             └─ followup_llm.py   → Groq Chat  POST .../chat/completions (streamed, pooled httpx client)
+       │             ├─ ingest_text()     → bypasses STT (fast path)
+       │             ├─ stt.py            → Groq Whisper  POST .../audio/transcriptions
+       │             └─ followup_llm.py   → chat completions (streamed)
        │
        └─ /analyze → analysis.py::analyze_live_session
                           → viva_analysis_runner.run_analysis
                               → viva_service.analyze_video_file   (VivaEvaluationEngine)
-                          → attach_subject_technical_accuracy     (optional, advisory)
-                          → persist_and_autopublish               (Mongo: vivamark.marks)
+                          → attach_subject_technical_accuracy     (technical vivas, advisory)
+                          → persist_and_autopublish               (Mongo marks collection)
 ```
 
-**Why WebSocket for live work:** the browser never polls. Audio and suggestion delivery stay on one socket. REST is only for explicit lecturer actions (create, phase, ask, end). The “database” for the *live* phase is `SessionStore` in RAM — Mongo is not touched while the session is running. It is written once, at the end, by `POST /sessions/{id}/analyze` (see §2 above).
+**Why WebSocket for live work:** the browser never polls. Audio and suggestion delivery share one socket. REST is only for
+explicit lecturer actions. The database for the *live* phase is `SessionStore` in RAM; Mongo is written once, at the end.
 
-**Latency optimizations (dual-path transcription + streaming):**
+**Dual-path transcription:**
 
-- **Browser Web Speech API (`CopilotCamera.tsx`)** produces interim/final transcripts with near-zero network latency and sends them as JSON text frames (`{"type":"speech", ...}`) over the same WebSocket. `pipeline.ingest_text()` consumes these directly — no Groq Whisper round-trip needed for the fast path. Supported in Chromium-based browsers; unsupported browsers silently fall back to Whisper-only.
-- **Groq Whisper (`stt.py` / `groq_client.py`)** keeps running on 4s audio slices in parallel as an accuracy backstop (technical vocabulary, unclear audio, unsupported browsers). Both paths call the same `detect_final_answer()` de-dupe logic, so whichever finalizes an utterance first "wins" and the other is naturally ignored as a duplicate.
-- **Persistent `httpx.Client`** (module-level, connection-pooled) replaces per-request `urllib.urlopen()` calls for both STT and chat completions, removing repeated TCP/TLS handshake overhead.
-- **Streamed chat completions** (`groq_chat(..., on_delta=...)`) let `followup_llm.generate_followups()` detect and emit the *first* valid suggestion object as soon as it appears in the SSE token stream, broadcast via a new `followup.suggestion.partial` event — well before the full 2-3 suggestion JSON response finishes.
-- **Tuned timers:** `SLICE_MS` (client audio slice) 2500→4000ms, `AUTO_FINALIZE_IDLE_MS` 2200→1200ms, `VIVA_COPILOT_MIN_STT_GAP` 1.2→0.4s, presentation refresh threshold 6 words/5s → 5 words/3s.
+- **Browser Web Speech API** (`CopilotCamera.tsx`) gives interim and final text with near-zero latency, sent as `{"type":"speech"}`
+  frames. `pipeline.ingest_text()` consumes them directly. Chromium-based browsers only; others fall back to Whisper only.
+- **Groq Whisper** (`stt.py` / `groq_client.py`) runs on 4 s audio slices (`SLICE_MS = 4000`) in parallel as an accuracy backstop
+  for technical vocabulary and unsupported browsers. A hallucination filter drops junk transcripts.
+- Both paths call `detect_final_answer()`, which de-dupes by content hash and by prefix/overlap, so whichever path finalizes an
+  utterance first wins.
+- `CopilotCamera` also records the whole session (`MediaRecorder`, flushed every 5 s via `SESSION_TIMESLICE_MS`) so a crash still
+  leaves a usable recording. That recording is what `/analyze` uploads.
+
+**Streaming suggestions:** `groq_chat(..., on_delta=...)` lets `followup_llm.generate_followups()` emit the first complete
+suggestion as soon as it appears in the token stream (`followup.suggestion.partial`), before the full response finishes.
+HTTP clients are pooled (`httpx`).
 
 ---
 
@@ -93,209 +108,118 @@ Gradex_AI_Server  (FastAPI, port 8000)
 
 | File | Role |
 |---|---|
-| `LiveCopilotPage.tsx` | Buttons, WS client, toast stack, applies events |
-| `CopilotCamera.tsx` | Camera preview + 12s `MediaRecorder` slices |
-| `copilotApi.ts` | REST helpers + WS URL |
-| `SuggestionToasts.tsx` | Top-right stacked popups |
-| `SuggestionPanel.tsx` | Persistent suggestion list + Ask |
-| `CopilotTranscript.tsx` | Live transcript |
+| `LiveCopilotPage.tsx` | Page, Start Session / End buttons, WebSocket client, idle auto-finalize timer, suggestion panel and toasts (sonner), applies events, end-of-session upload and progress polling |
+| `CopilotCamera.tsx` | Camera preview, 4 s audio slices, whole-session recorder, Web Speech API |
+| `copilotApi.ts` | REST helpers, WebSocket URL, suggestion normalization |
 | `CopilotErrorBoundary.tsx` | Catches render crashes |
 
-Route: `routeConfig.tsx` → path `/viva-evaluation/live-copilot`.
+Route: `routeConfig.tsx` → `/viva-evaluation/live-copilot` ("Live Viva").
 
 ### Backend (`Gradex_AI_Server/app/viva_copilot/`)
 
 | File | Role |
 |---|---|
-| `router.py` | FastAPI REST + WebSocket |
-| `pipeline.py` | STT ingest → pause detect → bulk LLM |
-| `session_store.py` | In-memory `CopilotSession` + `broadcast()` |
+| `router.py` | REST + WebSocket routes (lecturer-only; WebSocket checks session and `Origin`) |
+| `pipeline.py` | STT ingest, pause detection, cadence gates, queues, follow-up generation |
+| `session_store.py` | In-memory `CopilotSession`, `broadcast()`, idle expiry |
 | `stt.py` | Whisper wrapper + hallucination filter |
-| `groq_client.py` | Multi-provider LLM HTTP (Groq/Gemini/OpenRouter chain; not `llm_judge.py`) |
+| `groq_client.py` | Multi-provider LLM and STT HTTP (Groq → Gemini → OpenRouter) |
 | `followup_llm.py` | Chat prompt → JSON suggestions (max 3) |
-| `answer_detector.py` | Min words, duplicate hash |
-| `context_builder.py` | Sliding context (last 5 Q/A, 4000-char excerpt) |
-| `events.py` | WS event payloads |
+| `answer_detector.py` | Minimum words, exact and near-duplicate detection |
+| `context_builder.py` | Sliding context (last 5 Q/A pairs, 4000-char excerpt, last 10 turns) |
+| `events.py` | WebSocket event payloads |
+| `analysis.py` | End-of-session transcript record and analyze chain |
 
-Mounted in `Gradex_AI_Server/app/main.py`: `app.include_router(viva_copilot_router)`.
+Shared with Viva Assessment: `viva_sessions.py` (viva lookup, duplicate-mark check), `viva_analysis_runner.py` (the grading chain),
+`viva_progress.py` (progress events), `viva_student_id.py`.
+
+`VivaEvaluationEngine/services/live_question_recommender.py` is a standalone engine module with its own tests; the server does
+**not** call it (the copilot uses `followup_llm.py`).
 
 ---
 
 ## 4. Click-by-click process
 
-Phases: `idle` → `presentation` → `viva` → `ended`.
+Server phases: `idle` → `presentation` → `viva` → `analyzing` → `analyzed` → `ended`.
+
+**What the shipped UI does.** `LiveCopilotPage.tsx` uses a shortcut: **Start Session** creates the session and immediately sets the phase
+to `viva` (it never uses `presentation`). There are no Save-notes, Panel-enters or Answer-complete buttons: the project context is a fixed
+string, and an answer is finalized automatically when the partial transcript has been idle for 1.2 s (`AUTO_FINALIZE_IDLE_MS`, which calls
+`POST /sessions/{id}/finalize`). The `presentation` phase, `/context`, and the 90 s skip rule below are still implemented on the server
+and covered by tests, but only an API client that drives them would exercise them. Steps 3, 4 and 6 describe that server capability.
 
 ### Step 0 — Open the page
-
-| Actor | Action |
-|---|---|
-| User | Sidebar **Viva Evaluation → Live Interviewer Copilot** |
-| Client | Renders `LiveCopilotPage`. No network yet. |
-| Server | Idle. |
-
-Optional fields (Project / Module / Notes) stay in React state until Create or Save notes.
-
----
+No network. Optional Project / Module / Notes stay in React state until Create or Save notes. The page needs a viva selected from
+the Viva Workspace and a valid Student ID before a session is analyzed.
 
 ### Step 1 — Enable camera
-
-| Actor | Action |
-|---|---|
-| User | **Enable camera** on `CopilotCamera` |
-| Client | `navigator.mediaDevices.getUserMedia({ video, audio })`. Preview only. **No STT yet.** |
-| Server | Not called. |
-
-Transcription starts only after a session exists **and** phase is `presentation` or `viva` **and** the WebSocket is open (`streaming && wsReady`).
-
----
+`getUserMedia({ video, audio })`. Preview only. No STT yet. Transcription starts only once a session exists, the phase is
+`presentation` or `viva`, and the WebSocket is open.
 
 ### Step 2 — Create session
+`POST /api/viva-copilot/sessions` → `{ sessionId: "session_<12 hex>", phase: "idle" }`. The client opens
+`WS /api/viva-copilot/ws/{sessionId}`; the server registers the socket and pushes `session.state`. No Groq, no Mongo.
 
-| Actor | Action |
-|---|---|
-| User | **Create session** |
-| Client | `POST {VITE_BACKEND_URL}/api/viva-copilot/sessions` body `{ projectContext }` |
-| Server | `router.create_session` → `store.create()` → `{ sessionId: "session_<12 hex>", phase: "idle" }` |
-| Client | `new WebSocket(ws://…/api/viva-copilot/ws/{sessionId})` |
-| Server | Accept WS, register socket on session, push `session.state` snapshot |
+### Step 3 — Save notes (server capability, no button in the current UI)
+`POST /sessions/{id}/context` overwrites `project_context` in RAM; used later as LLM context.
 
-**Groq:** none. **Mongo:** none.
-
----
-
-### Step 3 — Save notes (optional, after session exists)
-
-| Actor | Action |
-|---|---|
-| User | **Save notes** |
-| Client | `POST /api/viva-copilot/sessions/{id}/context` |
-| Server | Overwrites `session.project_context` in RAM |
-
-Used later as LLM context. No Groq call.
-
----
-
-### Step 4 — Start presentation
-
-| Actor | Action |
-|---|---|
-| User | **Start presentation** (enabled only when `phase === "idle"`) |
-| Client | `POST /sessions/{id}/phase` `{ "phase": "presentation" }` |
-| Server | `start_presentation()` → `session.phase = "presentation"` → WS `session.phase` |
-| Client | `streaming` becomes true. Camera records **4s** audio slices (`SLICE_MS = 4000`) and, in parallel, runs the browser Web Speech API for instant interim/final text. |
-
-Each audio slice: `MediaRecorder` → `Blob` → `WebSocket.send(ArrayBuffer)` (binary, not JSON).
-Each speech result: `WebSocket.send(JSON.stringify({type:"speech", text, isFinal}))` (text frame, fast path — see §2).
-
----
+### Step 4 — Start presentation (server capability; the current UI skips it)
+`POST /sessions/{id}/phase {"phase":"presentation"}` (only from `idle`). Audio slices go over the socket as binary frames; Web
+Speech results go as JSON text frames.
 
 ### Step 5 — Student talks (automatic loop)
 
-This is the live path. No extra clicks.
-
 ```
-Camera 12s WebM
-  → WS binary
-  → router.copilot_ws
-  → pipeline.ingest_audio_chunk
-       if STT already busy: enqueue FIFO (cap 8 slices; drop oldest only if full)
-       else asyncio.to_thread(stt.transcribe_chunk)
-            → groq_client.groq_transcribe
-               POST https://api.groq.com/openai/v1/audio/transcriptions
-               model whisper-large-v3-turbo (or VIVA_COPILOT_STT_MODEL)
-               min gap 4s between STT calls; retry once on HTTP 429
-       if text: append utterance_buffer, WS transcript.partial
-       if empty after speech (pause): _finalize_utterance
+Audio slice (4 s WebM) → WS binary → pipeline.ingest_audio_chunk
+     if STT is busy: queue FIFO (cap 8; oldest dropped only when full, with an error event)
+     else asyncio.to_thread(stt.transcribe_chunk) → Groq Whisper
+     text → append to utterance_buffer, WS transcript.partial
+     empty after speech (a pause) → _finalize_utterance
 ```
 
-**Finalize utterance (presentation):**
+**Finalize utterance:** `detect_final_answer` keeps it only if it has at least **6 words** (`COPILOT_MIN_ANSWER_WORDS`) and is not a
+duplicate. In `presentation` it is appended to `presentation_parts` and `transcript.final` is sent; then
+`_maybe_presentation_followups` runs.
 
-1. `detect_final_answer` — ≥4 words, not a duplicate hash.
-2. Append to `presentation_parts`, WS `transcript.final`.
-3. `_maybe_presentation_followups` — **bulk LLM, not every slice.**
-
-LLM runs only if:
-
-- presentation word count ≥ **28**
-- **≥28 new words** since last LLM
-- **≥40 seconds** since `last_suggest_at`
-
-Then:
+**Suggestion cadence (both phases).** The LLM runs only when there are at least **15 words** (new words, for presentation) and at
+least **8 s** since the last request started (`COPILOT_SUGGEST_MIN_WORDS` / `COPILOT_SUGGEST_MIN_SECONDS`). The clock is stamped
+when a request starts, so failures cannot cause bursts. A request that arrives while one is running is queued (cap 4), and the
+queue is drained at the same spacing.
 
 ```
 followup_llm.generate_followups
   → groq_client.groq_chat (provider chain: Groq -> Gemini -> OpenRouter)
-     POST to whichever provider has a configured key and available model
-     default Groq model openai/gpt-oss-20b
-     fallbacks: openai/gpt-oss-120b, qwen/qwen3.6-27b
   → JSON { analysis, main_points, suggestions[≤3] }
   → WS presentation.points.extracted
   → WS followup.suggestions.generated
 ```
 
-**UI on `followup.suggestions.generated`:**
+The UI updates the suggestion panel (newest first, at most 6 kept) and shows a sonner toast ("New question suggested", 4.5 s); the examiner can **Ask this** or dismiss it.
 
-- Side panel `SuggestionPanel` updates.
-- Top-right `SuggestionToasts`: new cards **prepended**, older cards **push down**, max **6**, auto-dismiss **16s**. **Ask this** or dismiss.
+### Step 6 — Panel enters / start viva (the current UI sets `viva` directly at Start Session)
+`POST /sessions/{id}/finalize`, then `POST /sessions/{id}/phase {"phase":"viva"}`. Leftover buffered speech (4 or more words) is
+added to the presentation. If suggestions exist and the last LLM call was under **90 s** ago, they are re-broadcast without a new
+call; otherwise the LLM runs once on the full presentation. If there is no presentation transcript yet, an error event says
+suggestions will wait for an answer.
 
-**Groq load while presenting (free tier):**
-
-| API | Cadence | Approx RPM |
-|---|---|---|
-| Whisper | ~1 per 12s audio + 4s server gap | ~5 (limit ~20) |
-| Chat | ~1 per 40s **and** 28 new words | far below chat RPM |
-
-Not one LLM call per STT chunk.
-
----
-
-### Step 6 — Panel enters / start viva
-
-| Actor | Action |
-|---|---|
-| User | **Panel enters / start viva** (only in `presentation`) |
-| Client | `POST /sessions/{id}/finalize` then `POST /sessions/{id}/phase` `{ "phase": "viva" }` |
-| Server | Flush leftover buffer into presentation text. Set `phase = viva`. |
-| Server | If suggestions exist and last LLM was **&lt;90s** ago: **no second Groq chat** — rebroadcast existing suggestions over WS. Else run LLM once on full presentation. |
-
-Audio slices continue over the same WebSocket.
-
----
-
-### Step 7 — Viva answers (automatic + optional click)
-
-After a finalized pause (≥5 words, not duplicate):
-
-1. WS `candidate.answer.final`
-2. Pair with `currentQuestion` into `recent_qa` (max 5 pairs)
-3. **One LLM call** for that answer (queued FIFO, cap 4, if `busy_llm`)
-   Ask this is REST **409** during presentation / idle.
-4. WS `followup.suggestions.generated` → toasts + panel
-
-**Answer complete** (optional): `POST /sessions/{id}/finalize` forces flush of `utterance_buffer` if the pause detector is slow.
-
----
+### Step 7 — Viva answers
+After each finalized answer: `candidate.answer.final` is sent and the answer is paired with `current_question` into `recent_qa`
+(max 5 pairs). Answers accumulate in `pending_answer_parts`, and one LLM call covers the window once the cadence gate opens.
+**Answer complete** (`POST /sessions/{id}/finalize`) forces a flush of the buffer.
 
 ### Step 8 — Ask this
+`POST /sessions/{id}/ask {"question": "..."}`. Returns **409** unless the phase is `viva`. Sets `current_question`, logs an
+interviewer turn, broadcasts `interviewer.question.asked` and `transcript.final` (speaker `interviewer`). No Groq call.
 
-| Actor | Action |
-|---|---|
-| User | **Ask this** on a toast or the side panel |
-| Client | `POST /sessions/{id}/ask` `{ "question": "…" }` |
-| Server | **409** unless `phase === viva`. Else `ask_question()` — sets `currentQuestion`, appends interviewer turn, WS `interviewer.question.asked` + `transcript.final` (speaker interviewer) |
-| Client | Pins the question; dismisses matching toast |
+### Step 9 — End session and analyze
+The client stops the recorder and uploads the whole recording to `POST /sessions/{id}/analyze` (multipart: `video`, `viva_id`,
+`student_id`, optional `allow_duplicate`, `progress_id`). The server broadcasts phase `analyzing`, runs the grading chain, saves the
+mark, then broadcasts `analyzed`. The Live Viva page polls `GET /api/viva-analyze/progress/{progress_id}` every 400 ms for the checklist (Viva Assessment uses the SSE `/stream` variant instead). Then the client
+calls `DELETE /sessions/{id}`: the phase becomes `ended` and the RAM session is removed.
 
-**Groq:** none. Human-in-the-loop: the AI never asks the student.
-
----
-
-### Step 9 — End session
-
-| Actor | Action |
-|---|---|
-| User | **End session** |
-| Client | Close WebSocket, `DELETE /sessions/{id}` |
-| Server | WS `session.phase` = `ended`, `store.delete(id)` — RAM gone |
+Notes on `/analyze`: it enforces the 1 GB cap and the viva ownership and duplicate-mark rules. A non-technical viva is auto-published;
+a technical viva stays a draft until the examiner enters the technical score and publishes (Viva Results). If no recording was
+captured the client shows "No recording was captured, so no score could be produced."
 
 ---
 
@@ -303,11 +227,12 @@ After a finalized pause (≥5 words, not duplicate):
 
 | Channel | When | Who starts it |
 |---|---|---|
-| REST | Create, save notes, start presentation, panel enters, answer complete, Ask this, end | Lecturer click |
-| WebSocket binary | 12s audio | Camera loop |
-| WebSocket JSON | Transcript, points, suggestions, errors, phase, snapshot | Server `broadcast()` |
+| REST | Create, notes, phase changes, answer complete, Ask this, analyze, end | Lecturer action |
+| WebSocket binary | ~4 s audio slices | Camera loop |
+| WebSocket JSON (client → server) | `speech` frames, `ping` | Browser speech recognition, keep-alive |
+| WebSocket JSON (server → client) | Transcript, points, suggestions, errors, phase, snapshot | Server `broadcast()` |
 
-There is **no** `setInterval` poll of `/sessions/{id}` during the live session. `GET /sessions/{id}` exists for debug/reconnect snapshots; the page uses WS `session.state` on connect instead.
+There is no polling of `/sessions/{id}` during the live session; the page uses the WebSocket `session.state` on connect.
 
 ---
 
@@ -316,15 +241,16 @@ There is **no** `setInterval` poll of `/sessions/{id}` during the live session. 
 | `event` | Direction | UI effect |
 |---|---|---|
 | `session.state` | S→C on connect | Restore phase, transcript, suggestions |
-| `session.phase` | S→C | `idle` / `presentation` / `viva` / `ended` |
-| `transcript.partial` | S→C | Grey in-progress line |
+| `session.phase` | S→C | `presentation` / `viva` / `analyzing` / `analyzed` / `ended` |
+| `session.expired` | S→C | Session idle past its TTL; socket closes |
+| `transcript.partial` | S→C | In-progress line |
 | `transcript.final` | S→C | Append turn |
 | `presentation.points.extracted` | S→C | Main-points list |
-| `followup.suggestion.partial` | S→C | First suggestion, streamed early (before the full LLM turn finishes) |
-| `followup.suggestions.generated` | S→C | Panel + **top-right toasts** |
-| `candidate.answer.final` | S→C | Answer id (viva) |
+| `followup.suggestion.partial` | S→C | First suggestion, streamed early |
+| `followup.suggestions.generated` | S→C | Suggestion panel and toast |
+| `candidate.answer.final` | S→C | Answer id (viva phase) |
 | `interviewer.question.asked` | S→C | Current question banner |
-| `copilot.error` | S→C | Error card + sonner toast (throttled) |
+| `copilot.error` | S→C | Error card and toast (throttled) |
 | `pong` | S→C | Reply to text `ping` |
 
 ---
@@ -335,63 +261,56 @@ There is **no** `setInterval` poll of `/sessions/{id}` during the live session. 
 
 - `phase`, `project_context`
 - `presentation_parts`, `main_points`, `analysis`, `suggestions`
-- `utterance_buffer`, `transcript_log` (capped 200)
-- `current_question`, `asked_questions`, `recent_qa`
+- `utterance_buffer`, `pending_answer_parts`, `transcript_log` (capped at 200 turns; snapshots send the last 80)
+- `current_question`, `asked_questions`, `recent_qa`, `recent_hashes`, `recent_texts`
 - `ws_clients`, `busy_llm`, `stt_busy`, `pending_audio` (deque), `pending_followups`
 - `last_suggest_at`, `last_suggest_word_count`
-- `created_at`, `last_activity_at` — idle expiry via `VIVA_COPILOT_SESSION_TTL_SECONDS` (default **14400** = 4 h). Set **0** to disable. Purged on `store.get()` / `store.create()` and when WebSocket or STT sees an expired session.
+- `created_at`, `last_activity_at`: idle expiry via `VIVA_COPILOT_SESSION_TTL_SECONDS` (default **14400** = 4 h; `0` disables).
+  Purged on `store.get()` / `store.create()` and when the WebSocket or STT sees an expired session.
 
 Lost on process restart. Not written to Mongo.
 
 ---
 
-## 8. LLM providers and keys (multi-provider chain)
+## 8. LLM providers and keys
 
-Chat completions use a **Groq → Gemini → OpenRouter** free-tier fallback chain.
-No local gateway (`localhost:20128`) is required — all providers are remote APIs.
+Chat completions use a **Groq → Gemini → OpenRouter** fallback chain. Every provider is a remote API; no local gateway is needed.
+Keys load from `Gradex_AI_Server/app/.env` via `groq_client._load_env()`.
 
-Loaded from `Gradex_AI_Server/app/.env` by `groq_client._load_env()`.
+| Provider | Key search order | Default models |
+|---|---|---|
+| **Groq** (`https://api.groq.com/openai/v1`) | `VIVA_COPILOT_API_KEY`, `VIVA_LLM_API_KEY`, `GROQ_API_KEY`, `AI_API_KEY`, `BACKUP_API_KEY` | `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `qwen/qwen3.6-27b` |
+| **Gemini** | `GEMINI_API_KEY`, `GOOGLE_API_KEY` | `gemini-2.0-flash`, `gemini-1.5-flash` |
+| **OpenRouter** | `OPENROUTER_API_KEY` | `meta-llama/llama-3.1-8b-instruct:free`, `google/gemma-2-9b-it:free`, `mistralai/mistral-7b-instruct:free` |
 
-| Provider | Base URL | Key search order | Default models |
-|---|---|---|---|
-| **Groq** | `https://api.groq.com/openai/v1/chat/completions` | `VIVA_COPILOT_API_KEY`, `VIVA_LLM_API_KEY`, `GROQ_API_KEY`, `AI_API_KEY`, `BACKUP_API_KEY` | `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `qwen/qwen3.6-27b` |
-| **Gemini** | `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | `GEMINI_API_KEY`, `GOOGLE_API_KEY` | `gemini-2.0-flash`, `gemini-1.5-flash` |
-| **OpenRouter** | `https://openrouter.ai/api/v1/chat/completions` | `OPENROUTER_API_KEY` | `meta-llama/llama-3.1-8b-instruct:free`, `google/gemma-2-9b-it:free`, `mistralai/mistral-7b-instruct:free` |
+- A provider with no key is skipped. Within a provider every model is tried; 404, 429 and 5xx move to the next candidate, then the
+  next provider.
+- Overrides: `VIVA_COPILOT_LLM_MODEL` (Groq), `GEMINI_MODEL`, `OPENROUTER_MODEL`; base URLs via `VIVA_COPILOT_LLM_BASE_URL`,
+  `OPENAI_BASE_URL`, `LLM_BASE_URL`, `VIVA_LLM_BASE_URL`, `GEMINI_BASE_URL`, `OPENROUTER_BASE_URL`.
+- **STT** is Groq Whisper only: key from `VIVA_COPILOT_STT_API_KEY`, `STT_API_KEY`, `GROQ_API_KEY`, `AI_API_KEY`, ...; model from
+  `VIVA_COPILOT_STT_MODEL` (default `whisper-large-v3-turbo`); at least `VIVA_COPILOT_MIN_STT_GAP` seconds between calls; one retry on 429.
 
-- If a provider has **no key configured**, it is skipped entirely.
-- Within each provider, every model candidate is tried; 404/429/5xx triggers the next candidate.
-- When all models of a provider fail, the chain moves to the next provider.
-- Override default models with `VIVA_COPILOT_LLM_MODEL` (Groq preferred), `GEMINI_MODEL`, `OPENROUTER_MODEL`.
-
-**STT** stays on Groq Whisper only:
-
-| Setting | Default |
-|---|---|
-| STT key search | `VIVA_COPILOT_STT_API_KEY`, `STT_API_KEY`, `GROQ_API_KEY`, `AI_API_KEY`, ... |
-| STT model | `VIVA_COPILOT_STT_MODEL` or `whisper-large-v3-turbo` |
-
-Copilot **ignores** `GROQ_MODEL` used by other Gradex features.
+The copilot ignores `GROQ_MODEL`, which other Gradex features use.
 
 ---
 
-## 9. Isolation rules (do not mix)
+## 9. Boundaries
 
-Do **not** import from:
-
-- `VivaPage.tsx`, `components/viva/*`
-- `viva_service.py`
-- `VivaEvaluationEngine`
-
-Glue only: `routeConfig.tsx` + `app.include_router` in `main.py`.
+The live-phase modules (`router`, `pipeline`, `session_store`, `stt`, `groq_client`, `followup_llm`, `answer_detector`,
+`context_builder`, `events`) do not import `VivaEvaluationEngine` or the Viva Assessment UI. Only `analysis.py` (and the router's
+upload handling) reach the shared grading chain through `viva_analysis_runner`, `viva_sessions` and `viva_student_id`.
 
 ---
 
 ## 10. Tests
 
-From repo root:
+From the repo root, using the project venv:
 
 ```
 python -m unittest Gradex_AI_Server.app.viva_copilot.tests.test_copilot_pipeline
+python -m unittest Gradex_AI_Server.app.viva_copilot.tests.test_session_store
+python -m unittest Gradex_AI_Server.app.viva_copilot.tests.test_groq_client_endpoints
 ```
 
-Covers answer detection, context builder, presentation bulk-refresh gates, panel-enter skip of a second LLM when suggestions are fresh.
+They cover answer detection, the context builder, suggestion cadence gates, the panel-enter skip of a second LLM call, session
+expiry, and provider endpoint selection.

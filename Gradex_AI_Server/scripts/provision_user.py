@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime, timezone
 from getpass import getpass
 
-from Gradex_AI_Server.app.session_auth import close_auth, get_auth_db, hash_password, initialize_auth
+from Gradex_AI_Server.app.session_auth import DEFAULT_STUDENT_PASSWORD, close_auth, get_auth_db, hash_password, initialize_auth
 
 
 async def provision_user(email: str, role: str, password: str, student_id: str | None = None):
@@ -14,7 +14,7 @@ async def provision_user(email: str, role: str, password: str, student_id: str |
         raise ValueError("Enter a valid email address")
     if role not in {"lecturer", "student"} or (role == "student" and not student_id):
         raise ValueError("Students require --student-id")
-    if not 12 <= len(password) <= 1024:
+    if not 12 <= len(password) <= 1024 and not (role == "student" and password == DEFAULT_STUDENT_PASSWORD):
         raise ValueError("Password must contain 12–1024 characters")
     db = get_auth_db()
     existing = await db["users"].find_one({"email": email})
@@ -37,7 +37,7 @@ def main():
     parser.add_argument("--role", required=True, choices=["lecturer", "student"])
     parser.add_argument("--student-id")
     args = parser.parse_args()
-    password = getpass("Password (at least 12 characters): ")
+    password = getpass("Password (at least 12 characters, or Student@123 for students): ")
     if password != getpass("Confirm password: "):
         parser.error("Passwords do not match")
     try:

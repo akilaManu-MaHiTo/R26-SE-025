@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 import React from "react";
-import { afterEach, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { GradingOverview, StudentGradingCells, canViewStudent, ExamInventoryScore } from "./GradingStatus";
 import type { StudentRow, ExamListItem } from "../../api/lecturerApi";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
+
+it("shows why exam grades are unavailable", () => {
+  render(<ExamInventoryScore exam={{ average_percentage: null,
+    grading_warning: "Duplicate diagram evaluations for a student and exam" } as ExamListItem} />);
+  expect(screen.getByRole("status").textContent).toContain("Duplicate diagram evaluations");
+  expect(screen.queryByText("No valid grades")).toBeNull();
+});
 
 it("distinguishes an ungraded exam from an awarded zero in the exam inventory", () => {
   const exam = { average_percentage: null, score_basis: "Essay", graded_student_count: 0 } as ExamListItem;
@@ -27,16 +34,97 @@ function student(id: string, status: "complete" | "pending" | "needs_review", es
   };
 }
 
+it.each([
+  ["complete", "graded", "good"],
+  ["pending", "not_started", "warning"],
+  ["pending", "processing", "warning"],
+  ["needs_review", "graded", "warning"],
+  ["pending", "failed", "danger"],
+] as const)("shows the %s/%s grading animation", (status, essay, animation) => {
+  const { container } = render(<GradingOverview students={[student("S1", status, essay)]} />);
+  const image = container.querySelector("img")!;
+  expect(image).toBeTruthy();
+  expect(image.getAttribute("src")).toContain(`anime-${animation}.svg`);
+  expect(image.getAttribute("alt")).toBe("");
+  expect(screen.getByRole("button", { name: /Grading progress/ })).toBeTruthy();
+});
+
+it("prioritizes failed diagram grading over completed and review results", () => {
+  const failed = student("S1", "needs_review");
+  failed.components!.diagram.status = "failed";
+  const { container } = render(<GradingOverview students={[student("S2", "complete"), failed]} />);
+  expect(container.querySelector("img")!.getAttribute("src")).toContain("anime-danger.svg");
+});
+
+it("uses warning feedback for empty and unverified rosters", () => {
+  const view = render(<GradingOverview students={[]} />);
+  expect(view.container.querySelector("img")!.getAttribute("src")).toContain("anime-warning.svg");
+  const legacy = student("S1", "complete");
+  delete legacy.components;
+  view.rerender(<GradingOverview students={[legacy]} />);
+  expect(view.container.querySelector("img")!.getAttribute("src")).toContain("anime-warning.svg");
+});
+
+it.each(["needs_review", "pending"] as const)("starts green then fades to the actual %s state", status => {
+  vi.useFakeTimers();
+  const view = render(<GradingOverview students={[student("S1", status, status === "pending" ? "failed" : "graded")]} />);
+  const [target, green] = view.container.querySelectorAll("img");
+  expect(green.getAttribute("src")).toContain("anime-good.svg");
+  expect(green.style.opacity).toBe("1");
+  expect(target.style.opacity).toBe("0");
+  act(() => vi.advanceTimersByTime(799));
+  expect(green.style.opacity).toBe("1");
+  act(() => vi.advanceTimersByTime(1));
+  expect(green.style.opacity).toBe("0");
+  expect(target.style.opacity).toBe("1");
+  expect(target.getAttribute("src")).toContain(status === "pending" ? "anime-danger.svg" : "anime-warning.svg");
+});
+
+it("cancels the intro on leaving a course and restarts for a changed status", () => {
+  vi.useFakeTimers();
+  const view = render(<GradingOverview students={[student("S1", "needs_review")]} />);
+  act(() => vi.advanceTimersByTime(800));
+  view.rerender(<GradingOverview students={[student("S1", "pending", "failed")]} />);
+  expect(view.container.querySelector("img")!.style.opacity).toBe("0");
+  view.unmount();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
 it("shows all component counts and excludes pending/review grades from the overall average", () => {
   const review = student("S1", "needs_review");
   review.score.percentage = 97.27;
   render(<GradingOverview students={[review, student("S2", "complete"), student("S3", "pending", "processing"), student("S4", "pending", "not_started"), student("S5", "pending", "not_started")]} />);
-  expect(screen.getByText("Essay: 2/5 graded")).toBeTruthy();
-  expect(screen.getByText("Diagram: 5/5 graded")).toBeTruthy();
+  const toggle = screen.getByRole("button", { name: /Grading progress/ });
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByRole("progressbar")).toBeNull();
   expect(screen.getByText(/3 pending/)).toBeTruthy();
   expect(screen.getByText("80.91%")).toBeTruthy();
   expect(screen.queryByText("97.27%")).toBeNull();
+  fireEvent.click(toggle);
+  expect(toggle.getAttribute("aria-expanded")).toBe("true");
+  expect(screen.getByRole("progressbar", { name: "Essay grading" }).getAttribute("aria-valuenow")).toBe("40");
+  expect(screen.getByRole("progressbar", { name: "Diagram grading" }).getAttribute("aria-valuenow")).toBe("100");
   expect(screen.getByRole("status").textContent).toContain("3 students are awaiting essay grades");
+  expect(screen.getByRole("status").textContent).toContain("1 grade needs review");
+  fireEvent.click(toggle);
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByRole("progressbar")).toBeNull();
+  expect(screen.getByText("80.91%")).toBeTruthy();
+});
+
+it("handles an empty roster and components that are not required", () => {
+  const view = render(<GradingOverview students={[]} />);
+  fireEvent.click(screen.getByRole("button", { name: /Grading progress/ }));
+  expect(screen.getByText("0 students")).toBeTruthy();
+  expect(screen.getAllByText("Not required")).toHaveLength(2);
+  expect(screen.queryByRole("progressbar")).toBeNull();
+  const row = student("S1", "complete");
+  row.components!.diagram.status = "not_required";
+  view.rerender(<GradingOverview students={[row]} />);
+  expect(screen.getByRole("progressbar", { name: "Essay grading" }).getAttribute("aria-valuenow")).toBe("100");
+  expect(screen.queryByRole("progressbar", { name: "Diagram grading" })).toBeNull();
+  expect(screen.getByText("Not required")).toBeTruthy();
+  expect(screen.queryByText(/awaiting/)).toBeNull();
 });
 
 it("renders processing with an available diagram and no invented overall zero", () => {

@@ -1,0 +1,51 @@
+question_id,rating_overall,rating_weakness_fit,rating_curriculum_fit,rating_difficulty_fit,rating_clarity,would_use,would_edit,annotator_id,comments
+GEN_Java_Datab_008,5,5,5,4,5,TRUE,FALSE,lec01,Directly targets weak JDBC; includes exception handling and resource cleanup.
+GEN_Java_Datab_007,5,5,5,4,5,TRUE,FALSE,lec01,Targets weak JDBC with prepared statements and exception handling.
+IT2040_2024_Tutorial04_Q08,2,1,5,3,4,FALSE,FALSE,lec01,SQL not weak in this snapshot.
+IT2040_2024_Tutorial04_Q06,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial04_Q09,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial04_Q10,2,1,5,4,2,FALSE,FALSE,lec01,SQL not weak; ambiguous wording.
+IT2040_2024_Tutorial07_Q05,2,1,5,4,4,FALSE,FALSE,lec01,Security not weak; JDBC weak but not addressed.
+GEN_Java_Datab_006,5,5,5,4,4,TRUE,FALSE,lec01,Targets weak JDBC; insert and resource cleanup.
+IT2040_2024_Tutorial04_Q07,2,1,5,4,5,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial07_Q07,2,1,5,4,4,FALSE,FALSE,lec01,Security not weak.
+IT2040_2024_Tutorial03_Q02,2,1,5,4,5,FALSE,FALSE,lec01,Schema not weak; Indexes weak.
+IT2040_2024_Tutorial03_Q09,2,1,5,4,4,FALSE,FALSE,lec01,Schema not weak.
+IT2040_2024_Tutorial04_Q06,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial03_Q03,2,1,5,4,4,FALSE,FALSE,lec01,Schema not weak.
+GEN_Database_I_011,4,5,1,4,4,TRUE,FALSE,lec01,Targets weak Indexes but not covered in lectures.
+IT2040_2024_Tutorial03_Q09,2,1,5,4,4,FALSE,FALSE,lec01,Duplicate; Schema not weak.
+IT2040_2024_Tutorial03_Q08,2,1,5,4,4,FALSE,FALSE,lec01,Schema not weak.
+IT2040_2024_Tutorial03_Q08,2,1,5,4,4,FALSE,FALSE,lec01,Duplicate; Schema not weak.
+GEN_Database_I_010,4,5,1,4,4,TRUE,FALSE,lec01,Targets weak Indexes but not covered in lectures.
+GEN_Database_I_009,4,5,1,4,4,TRUE,FALSE,lec01,Targets weak Indexes but not covered in lectures.
+IT2040_2024_Tutorial04_Q14,2,1,5,4,3,FALSE,FALSE,lec01,SQL not weak; grammar issues.
+IT2040_2024_Tutorial04_Q15,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial04_Q12,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial04_Q14,2,1,5,4,3,FALSE,FALSE,lec01,Duplicate; grammar issues.
+IT2040_2024_Tutorial04_Q13,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial04_Q11,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial04_Q11,2,1,5,4,4,FALSE,FALSE,lec01,Duplicate; SQL not weak.
+IT2040_2024_Tutorial04_Q12,2,1,5,4,4,FALSE,FALSE,lec01,Duplicate; SQL not weak.
+IT2040_2024_Tutorial04_Q15,2,1,5,4,4,FALSE,FALSE,lec01,Duplicate; SQL not weak.
+IT2040_2024_Tutorial04_Q13,2,1,5,4,4,FALSE,FALSE,lec01,Duplicate; SQL not weak.
+IT2040_2024_Tutorial04_Q16,2,1,5,4,2,FALSE,FALSE,lec01,SQL not weak; poor grammar.
+GEN_Database_U_001,2,1,5,4,4,FALSE,FALSE,lec01,Utilities not weak; Recovery weak.
+GEN_Database_U_000,2,1,5,4,4,FALSE,FALSE,lec01,Utilities not weak.
+IT2040_2024_Tutorial05_Q01,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial05_Q02,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial05_Q01,2,1,5,4,4,FALSE,FALSE,lec01,Duplicate; SQL not weak.
+GEN_Database_U_002,2,1,5,4,4,FALSE,FALSE,lec01,Utilities not weak.
+IT2040_2024_Tutorial05_Q03,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial05_Q05,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial04_Q16,2,1,5,4,2,FALSE,FALSE,lec01,Duplicate; poor grammar.
+IT2040_2024_Tutorial03_Q02,2,1,5,4,5,FALSE,FALSE,lec01,Schema not weak; Utilities weak.
+IT2040_2024_Tutorial03_Q03,2,1,5,4,4,FALSE,FALSE,lec01,Schema not weak.
+IT2040_2024_Tutorial03_Q01,2,1,5,4,4,FALSE,FALSE,lec01,Schema not weak.
+IT2040_2024_Tutorial03_Q09,2,1,5,4,4,FALSE,FALSE,lec01,Schema not weak.
+IT2040_2024_Tutorial04_Q06,2,1,5,4,4,FALSE,FALSE,lec01,SQL not weak.
+IT2040_2024_Tutorial03_Q04,2,1,5,4,4,FALSE,FALSE,lec01,Schema not weak.
+IT2040_2024_Tutorial06_Q06,2,1,5,3,4,FALSE,FALSE,lec01,Actual SQL/procedure; Utilities weak.
+IT2040_2024_Tutorial03_Q08,2,1,5,4,4,FALSE,FALSE,lec01,Schema not weak.
+IT2040_2024_Tutorial07_Q01,2,1,5,4,5,FALSE,FALSE,lec01,Security not weak.
+IT2040_2024_Tutorial05_Q04,2,1,5,4,4,FALSE,FALSE,lec01,Actual SQL; Utilities weak.

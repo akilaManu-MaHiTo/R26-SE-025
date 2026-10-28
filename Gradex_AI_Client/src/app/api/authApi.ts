@@ -12,11 +12,11 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   return response;
 }
 
-export async function login(email: string, password: string): Promise<AuthUser> {
+export async function login(email: string, password: string, role?: AuthUser["role"]): Promise<AuthUser> {
   const response = await apiFetch(`${SERVER_BASE_URL}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, role }),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Could not sign in");

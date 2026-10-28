@@ -9,7 +9,8 @@ GENERATION_VERSION = "1.1"
 
 
 async def generate_practice_questions(
-    db, student_id: str, course_code: str, session_name: str, strategy: NextQuestionStrategy
+    db, student_id: str, course_code: str, session_name: str, strategy: NextQuestionStrategy,
+    *, exam_id: str | None = None,
 ) -> dict:
     target = strategy.model_dump()
     response = await generate_practice_questions_call(target)
@@ -19,7 +20,7 @@ async def generate_practice_questions(
         return {"status": "degraded", "reason": "target_mismatch"}
     document = {
         "student_id": student_id,
-        "exam_id": f"{course_code}@{session_name}",
+        "exam_id": exam_id or f"{course_code}@{session_name}",
         "course": {"code": course_code, "name": await _resolve_course_name(db, course_code)},
         "request": target,
         "questions": response["questions"],

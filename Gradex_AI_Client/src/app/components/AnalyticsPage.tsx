@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "react-router";
-import { ThinkingOrb } from "thinking-orbs";
+import { Link, useSearchParams } from "react-router";
+import { BrandOrb } from "./BrandOrb";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, FileText, BarChart3, Users, ChevronRight, Sparkles, CheckCircle2, Clock, Search, SlidersHorizontal, ArrowUpRight, UserSearch, Eye, AlertCircle, Loader2, GraduationCap, BookOpen, Brain, Award, User } from "lucide-react";
 import { Button } from "./ui/button";
@@ -9,7 +9,8 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { ProgressLoader, type LoadStep } from "./ProgressLoader";
+import { AnalysisLoader } from "./AnalysisLoader";
+import { PremiumExamLoader } from "./PremiumExamLoader";
 import { AIPageBanner } from "./AIBrand";
 import { toast } from "sonner";
 import {
@@ -48,56 +49,24 @@ import { QuestionDetailModal } from "./analytics/QuestionDetailModal";
 import { ExamPaperModal } from "./analytics/ExamPaperModal";
 import { StudentQuestionRow } from "./analytics/StudentQuestionRow";
 
-function PremiumLoader({
-  steps,
-  currentStep,
-  liveMessage,
-}: {
-  steps: LoadStep[];
-  currentStep: number;
-  liveMessage?: string;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 space-y-6">
-      <ThinkingOrb state="searching" size={64} aria-label="Loading exam analytics" />
-      <div className="space-y-2 text-center max-w-xl" role="status">
-        <motion.p
-          key={currentStep}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-sm font-medium"
-        >
-          {steps[currentStep]?.label || "Loading..."}
-        </motion.p>
-        {liveMessage && (
-          <motion.p
-            key={liveMessage}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-xs text-muted-foreground font-mono bg-muted/50 rounded-lg px-3 py-2 border"
-          >
-            {liveMessage}
-          </motion.p>
-        )}
-        <div className="flex gap-1.5 justify-center">
-          {steps.map((_, i) => (
-            <motion.div
-              key={i}
-              className={`h-1.5 rounded-full ${i === currentStep ? "bg-primary w-6" : i < currentStep ? "bg-primary/60 w-1.5" : "bg-muted w-1.5"}`}
-              animate={{ scale: i === currentStep ? 1.2 : 1 }}
-              transition={{ duration: 0.3 }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+function examSearch(exam: ExamListItem) {
+  return `?${new URLSearchParams({
+    course: exam.course_code, session: exam.session_name,
+    year: String(exam.year), month: String(exam.month), semester: String(exam.semester),
+  })}`;
 }
 
 export default function AnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedStudentId = searchParams.get("student");
   const [exams, setExams] = useState<ExamListItem[]>([]);
+  const requestedExam = exams.find(item =>
+    item.course_code === searchParams.get("course") &&
+    item.session_name === searchParams.get("session") &&
+    String(item.year) === searchParams.get("year") &&
+    String(item.month) === searchParams.get("month") &&
+    String(item.semester) === searchParams.get("semester")
+  );
   const [selectedExam, setSelectedExam] = useState<ExamListItem | null>(null);
   const [paperOpen, setPaperOpen] = useState(false);
   const [analytics, setAnalytics] = useState<ExamAnalytics | null>(null);
@@ -106,10 +75,8 @@ export default function AnalyticsPage() {
   const [examListError, setExamListError] = useState(false);
   const [examReload, setExamReload] = useState(0);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const finishAnalyticsLoading = useCallback(() => setLoadingAnalytics(false), []);
   const [loadingActions, setLoadingActions] = useState(false);
-  const [loadSteps, setLoadSteps] = useState<LoadStep[]>([]);
-  const [currentLoadStep, setCurrentLoadStep] = useState(0);
-  const [liveModelMessage, setLiveModelMessage] = useState<string>("PULSE·AI — Initializing...");
   const [selectedTopic, setSelectedTopic] = useState<CanonicalTopic | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<QuestionPerformance | null>(null);
   // dense table filters
@@ -134,8 +101,6 @@ export default function AnalyticsPage() {
   }, []);
 
   useEffect(() => {
-    setLoadSteps([{ label: "Fetching exams..." }]);
-    setCurrentLoadStep(0);
     setLoadingExams(true);
     setExamListError(false);
     let ignore = false;
@@ -165,21 +130,12 @@ export default function AnalyticsPage() {
     setLoadingStudents(true);
     setStudentListError(null);
     setAnalytics(null);
-    setLiveModelMessage("PULSE·AI — Starting analysis...");
     // reset student finder
     setStudents([]);
     setStudentSearch("");
     setSelectedStudentId(null);
     setStudentDetail(null);
     setStudentDetailError(null);
-
-    const steps: LoadStep[] = [
-      { label: "PULSE·AI — Ingesting submissions..." },
-      { label: "PULSE·AI — Checking Bloom levels & classifying topics..." },
-      { label: "PULSE·AI — Computing statistics & insights..." },
-    ];
-    setLoadSteps(steps);
-    setCurrentLoadStep(0);
 
     // Status does not require model analysis; load it even when analytics fails.
     const studentsPromise = fetchExamStudents(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester)
@@ -197,13 +153,8 @@ export default function AnalyticsPage() {
       });
     void studentsPromise;
 
+    let receivedAnalytics = false;
     try {
-      setCurrentLoadStep(0);
-      if (opts?.forceReanalyse) {
-        setLiveModelMessage("PULSE·AI — Re-analysing (forced)...");
-      } else {
-        setLiveModelMessage("PULSE·AI — Connecting to analytics...");
-      }
       // Reanalysis failures must surface; a cached read would conceal the failure.
       let data: ExamAnalytics;
       if (opts?.forceReanalyse) {
@@ -216,26 +167,17 @@ export default function AnalyticsPage() {
             exam.year,
             exam.month,
             exam.semester,
-            (msg) => {
-              if ((handleSelectExam as any)._lastRequestId !== requestId) return;
-              setLiveModelMessage(msg);
-              // Advance loader step based on message content
-              if (msg.includes("Ingesting") || msg.includes("Analyzing student")) setCurrentLoadStep(0);
-              else if (msg.includes("Bloom") || msg.includes("Topic") || msg.includes("Q")) setCurrentLoadStep(1);
-              else if (msg.includes("Computing") || msg.includes("weak") || msg.includes("Finalizing") || msg.includes("Saving")) setCurrentLoadStep(2);
-            },
+            () => {},
           );
         } catch {
           if ((handleSelectExam as any)._lastRequestId !== requestId) return;
-          setLiveModelMessage("PULSE·AI — Streaming unavailable, loading...");
           data = await fetchExamAnalytics(exam.course_code, exam.session_name, exam.year, exam.month, exam.semester);
         }
       }
       // Stale-response guard: only apply if still the latest requested exam
       if ((handleSelectExam as any)._lastRequestId !== requestId) return;
       setAnalytics(data);
-      setLiveModelMessage("PULSE·AI — Analysis complete");
-      setCurrentLoadStep(2);
+      receivedAnalytics = true;
 
       // Grading status is already loading independently; only teaching remains.
       setLoadingActions(true);
@@ -257,7 +199,6 @@ export default function AnalyticsPage() {
       if ((handleSelectExam as any)._lastRequestId !== requestId) return;
       console.error(err);
       const msg = err instanceof Error ? err.message : String(err);
-      setLiveModelMessage("PULSE·AI — Analysis failed");
       // Separate ModernBERT (core) vs Ollama (optional) health
       if (msg.toLowerCase().includes("bloom") || msg.toLowerCase().includes("modernbert")) {
         try {
@@ -272,7 +213,7 @@ export default function AnalyticsPage() {
         toast.error(msg);
       }
     } finally {
-      if ((handleSelectExam as any)._lastRequestId === requestId) setLoadingAnalytics(false);
+      if ((handleSelectExam as any)._lastRequestId === requestId && !receivedAnalytics) setLoadingAnalytics(false);
     }
   }, []);
 
@@ -392,7 +333,7 @@ export default function AnalyticsPage() {
   }, [selectedExam, students, searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!requestedStudentId) {
+    if (!requestedStudentId || !requestedExam) {
       studentRequest.current = null;
       window.dispatchEvent(new CustomEvent("topbar-student-analysis", { detail: { active: false } }));
       setSelectedStudentId(null);
@@ -400,46 +341,46 @@ export default function AnalyticsPage() {
       setStudentDetailError(null);
       setLoadingStudentDetail(false);
     }
-    if (searchParams.has("course")) {
-      const exam = exams.find((item) =>
-        item.course_code === searchParams.get("course") &&
-        item.session_name === searchParams.get("session") &&
-        String(item.year) === searchParams.get("year") &&
-        String(item.month) === searchParams.get("month") &&
-        String(item.semester) === searchParams.get("semester")
-      );
-      if (exam && exam !== selectedExam) {
-        void handleSelectExam(exam);
-        return;
-      }
+    if (!requestedExam) {
+      (handleSelectExam as any)._lastRequestId = null;
+      setSelectedExam(null);
+      setAnalytics(null);
+      setLoadingAnalytics(false);
+      setPaperOpen(false);
+      setSelectedTopic(null);
+      setSelectedQuestion(null);
+      return;
+    }
+    if (requestedExam !== selectedExam) {
+      void handleSelectExam(requestedExam);
+      return;
     }
     if (requestedStudentId && selectedExam && !loadingAnalytics && !loadingStudents && selectedStudentId !== requestedStudentId) {
       void handleSelectStudent(requestedStudentId);
     }
-  }, [requestedStudentId, searchParams, selectedExam, exams, loadingAnalytics, loadingStudents, selectedStudentId, handleSelectExam, handleSelectStudent]);
+  }, [requestedStudentId, requestedExam, selectedExam, loadingAnalytics, loadingStudents, selectedStudentId, handleSelectExam, handleSelectStudent]);
 
-  if (requestedStudentId) {
-    const selectionMatches = selectedStudentId === requestedStudentId && selectedExam && (
-      !searchParams.has("course") || (
-        selectedExam.course_code === searchParams.get("course") &&
-        selectedExam.session_name === searchParams.get("session") &&
-        String(selectedExam.year) === searchParams.get("year") &&
-        String(selectedExam.month) === searchParams.get("month") &&
-        String(selectedExam.semester) === searchParams.get("semester")
-      )
-    );
+  if ((searchParams.has("course") || requestedStudentId) && !loadingExams && !examListError && !requestedExam) {
+    return <div className="p-6 md:p-8 space-y-4">
+      <p role="alert">The requested exam could not be found. Select an exam to continue.</p>
+      <Button variant="outline" asChild><Link to="/question-exam/analytics"><ArrowLeft className="size-4 mr-2" />Back to exams</Link></Button>
+    </div>;
+  }
+
+  if (requestedStudentId && requestedExam) {
+    const selectionMatches = selectedStudentId === requestedStudentId && selectedExam === requestedExam;
     return (
       <div className="p-6 md:p-8 space-y-6">
-        <Button variant="ghost" size="sm" onClick={() => {
-          const params = new URLSearchParams(searchParams);
-          params.delete("student");
-          setSearchParams(params);
-        }}>
-          <ArrowLeft className="size-4 mr-2" /> Back to exam
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <Link to="/question-exam/analytics" className="hover:underline">Student Analytics</Link>
+          <ChevronRight aria-hidden="true" className="size-4" />
+          <Link to={examSearch(requestedExam)} className="hover:underline">{requestedExam.course_code} · {requestedExam.session_name} · {requestedExam.year}/{requestedExam.month} · Semester {requestedExam.semester}</Link>
+          <ChevronRight aria-hidden="true" className="size-4" />
+          <span aria-current="page">{requestedStudentId}</span>
+        </nav>
+        <Button variant="ghost" size="sm" asChild>
+          <Link to={examSearch(requestedExam)}><ArrowLeft className="size-4 mr-2" /> Back to exam</Link>
         </Button>
-        {!selectedExam && !loadingExams ? (
-          <p className="text-sm text-muted-foreground">The exam for this student could not be found.</p>
-        ) : (
         <div className="space-y-6">
           <header className="space-y-2">
             <h2 className="flex flex-wrap items-center gap-2 text-xl font-semibold">
@@ -448,13 +389,13 @@ export default function AnalyticsPage() {
               <Badge variant="outline" className="ml-1 text-xs font-normal">Lecturer view · no AI tips</Badge>
             </h2>
             <p className="text-sm text-muted-foreground">
-              {selectedExam?.course_code} · {selectedExam?.session_name} · {selectedExam?.year} — raw scores, topics and Bloom levels only.
+              {requestedExam.course_code} · {requestedExam.session_name} · {requestedExam.year} — raw scores, topics and Bloom levels only.
             </p>
           </header>
 
           {!selectionMatches || loadingStudentDetail || (!studentDetail && !studentDetailError) ? (
             <div className="py-10 flex flex-col items-center gap-3">
-              <ThinkingOrb state="searching" size={64} aria-label="Loading student performance" />
+              <BrandOrb state="searching" size={64} aria-label="Loading student performance" />
               <p className="text-sm text-muted-foreground">Loading performance…</p>
             </div>
           ) : studentDetailError ? (
@@ -662,16 +603,12 @@ export default function AnalyticsPage() {
             </div>
           ) : null}
         </div>
-        )}
       </div>
     );
   }
 
   // Exam Selection — dense, scannable table with filters
-  if (!selectedExam) {
-    const analyzedCount = exams.filter((e) => e.analyzed).length;
-    const notAnalyzedCount = exams.length - analyzedCount;
-
+  if (!requestedExam || !selectedExam || selectedExam !== requestedExam) {
     const yearOptions = Array.from(new Set(exams.map((e) => e.year))).sort((a, b) => b - a);
     const semesterOptions = Array.from(new Set(exams.map((e) => e.semester))).sort((a, b) => a - b);
 
@@ -704,38 +641,15 @@ export default function AnalyticsPage() {
           <AIPageBanner model="pulse" />
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.06 }} className="space-y-3">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.06 }}>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <BarChart3 className="size-4" /> Analytics
+            <BarChart3 className="size-4" /> Student Analytics
             <ChevronRight className="size-4" /> Exam Selection
-          </div>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-1">
-              <h2 className="tracking-tight text-foreground bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Lecturer Analytics</h2>
-              <p className="text-sm text-muted-foreground max-w-2xl">
-                Dense, scannable list of all exams. Filter by status, search by course, or select a row to view/generate insights.
-              </p>
-            </div>
-            {exams.length > 0 && (
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="hidden sm:flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5">
-                  <span className="size-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-medium">{analyzedCount} Analyzed</span>
-                  <span className="text-muted-foreground text-xs">·</span>
-                  <span className="size-2 rounded-full bg-amber-500" />
-                  <span className="text-xs font-medium">{notAnalyzedCount} Pending</span>
-                </div>
-                <div className="sm:hidden flex items-center gap-1">
-                  <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 text-xs"><CheckCircle2 className="size-3 mr-1" />{analyzedCount}</Badge>
-                  <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/20 text-xs"><Clock className="size-3 mr-1" />{notAnalyzedCount}</Badge>
-                </div>
-              </div>
-            )}
           </div>
         </motion.div>
 
         {loadingExams ? (
-          <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} />
+          <PremiumExamLoader steps={[{ label: "Fetching exams..." }]} currentStep={0} />
         ) : examListError ? (
           <Card className="p-8 space-y-3" role="alert">
             <p>Could not load exams. Check the analytics service and retry.</p>
@@ -829,7 +743,7 @@ export default function AnalyticsPage() {
                       {filteredExams.map((exam) => (
                         <TableRow
                           key={`${exam.course_code}-${exam.session_name}-${exam.year}-${exam.month}-${exam.semester}`}
-                          onClick={() => handleSelectExam(exam)}
+                          onClick={() => setSearchParams(examSearch(exam))}
                           className={`group cursor-pointer h-14 border-b last:border-0 transition-colors ${exam.analyzed ? "border-l-2 border-l-emerald-500/40 hover:bg-emerald-500/[0.03]" : "border-l-2 border-l-amber-500/60 hover:bg-amber-500/[0.04] bg-amber-500/[0.015]"}`}
                         >
                           <TableCell className="py-3">
@@ -858,7 +772,7 @@ export default function AnalyticsPage() {
                           </TableCell>
                           <TableCell className="py-3 text-center">
                             <span className="inline-flex items-center gap-1 text-sm tabular-nums font-medium">
-                              <Users className="size-3 text-muted-foreground" /> {exam.student_count}
+                              <Users className="size-3 text-muted-foreground" /> {exam.student_count ?? "Unavailable"}
                             </span>
                           </TableCell>
                           <TableCell className="py-3 text-center">
@@ -885,9 +799,9 @@ export default function AnalyticsPage() {
                           </TableCell>
                           <TableCell className="py-3 text-right pr-4">
                             <div className="flex items-center justify-end gap-1">
-                              <span className={`hidden sm:inline-flex items-center gap-1 text-xs font-medium ${exam.analyzed ? "text-emerald-700 group-hover:text-emerald-800" : "text-amber-700 group-hover:text-amber-800"}`}>
+                              <Link to={examSearch(exam)} onClick={event => event.stopPropagation()} aria-label={`View analytics for ${exam.course_code} ${exam.session_name} ${exam.year}/${exam.month} Semester ${exam.semester}`} className={`inline-flex items-center gap-1 text-xs font-medium ${exam.analyzed ? "text-emerald-700 group-hover:text-emerald-800" : "text-amber-700 group-hover:text-amber-800"}`}>
                                 {exam.analyzed ? "View" : "Analyze"} <ArrowUpRight className="size-3" />
-                              </span>
+                              </Link>
                               <ChevronRight className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                             </div>
                           </TableCell>
@@ -919,11 +833,12 @@ export default function AnalyticsPage() {
   return (
     <div className="p-6 md:p-8 space-y-6">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <BarChart3 className="size-4" /> Analytics
-          <ChevronRight className="size-4" /> {selectedExam.course_code}
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => { setSearchParams({}); setSelectedExam(null); }}>Back</Button>
-        </div>
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <Link to="/question-exam/analytics" className="hover:underline">Student Analytics</Link>
+          <ChevronRight aria-hidden="true" className="size-4" />
+          <span aria-current="page">{selectedExam.course_code} · {selectedExam.session_name} · {selectedExam.year}/{selectedExam.month} · Semester {selectedExam.semester}</span>
+          <Button variant="ghost" size="sm" className="ml-auto" asChild><Link to="/question-exam/analytics"><ArrowLeft className="size-4 mr-2" />Back to exams</Link></Button>
+        </nav>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="tracking-tight text-foreground bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text">{selectedExam.subject_name}</h2>
@@ -937,7 +852,7 @@ export default function AnalyticsPage() {
               <FileText className="h-4 w-4 mr-1" /> View question paper
             </Button>
             <Button variant="outline" size="sm" onClick={() => selectedExam && handleSelectExam(selectedExam, { forceReanalyse: true })} disabled={loadingAnalytics} title="Recompute analytics for this exam (ignores cache)">
-              {loadingAnalytics ? <ThinkingOrb state="solving" size={20} aria-label="Reanalysing exam" /> : <Loader2 className="h-4 w-4 mr-1" />} Reanalyse
+              {loadingAnalytics ? <BrandOrb state="solving" size={20} aria-label="Reanalysing exam" /> : <Loader2 className="h-4 w-4 mr-1" />} Reanalyse
             </Button>
 
           </div>
@@ -953,7 +868,11 @@ export default function AnalyticsPage() {
       {analytics?.snapshot_status === "stale" && <p role="alert" className="rounded-md border border-amber-300 p-3 text-sm">{analytics.refresh_warning}</p>}
 
       {loadingAnalytics ? (
-        <PremiumLoader steps={loadSteps} currentStep={currentLoadStep} liveMessage={liveModelMessage} />
+        <AnalysisLoader
+          key={(handleSelectExam as any)._lastRequestId}
+          complete={analytics !== null}
+          onComplete={finishAnalyticsLoading}
+        />
       ) : analytics ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
@@ -1041,7 +960,7 @@ export default function AnalyticsPage() {
 
           {loadingStudents ? (
             <div className="p-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <ThinkingOrb state="searching" size={20} aria-label="Loading students" /> Loading students…
+              <BrandOrb state="searching" size={20} aria-label="Loading students" /> Loading students…
             </div>
           ) : studentListError ? (
             <p role="alert" className="p-4 text-sm text-destructive">{studentListError}</p>
@@ -1096,7 +1015,7 @@ export default function AnalyticsPage() {
                         <TableCell className="py-2 text-right pr-4">
                           {!canView ? <span className="text-xs text-muted-foreground">Awaiting grades</span> : loadingStudentDetail && selectedStudentId === s.student_id ? (
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
-                              <ThinkingOrb state="solving" size={20} aria-label="Analysing student" />
+                              <BrandOrb state="solving" size={20} aria-label="Analysing student" />
                               <span>{s.analysis_status === "generated" ? "Loading…" : "Analyzing…"}</span>
                             </span>
                           ) : (

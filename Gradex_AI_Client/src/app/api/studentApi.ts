@@ -1,6 +1,32 @@
 import { SERVER_BASE_URL } from "./gradingApiBase";
 import { apiFetch } from "./authApi";
+import type { MaterialInventory } from "./courseMaterialsApi";
 const API_BASE = SERVER_BASE_URL;
+
+export interface StudentPractice {
+  questions: Array<{ prompt: string; topic: string; bloom_level: string; difficulty: string; hints: string[] }>;
+  generated_at: string;
+}
+
+export async function fetchStudentMaterials(studentId: string): Promise<MaterialInventory> {
+  const response = await apiFetch(`${API_BASE}/api/students/${encodeURIComponent(studentId)}/materials`);
+  if (!response.ok) throw new Error("Could not load study materials. Please try again.");
+  return response.json();
+}
+
+export const studentMaterialPdfUrl = (studentId: string, documentId: string) =>
+  `${API_BASE}/api/students/${encodeURIComponent(studentId)}/materials/${encodeURIComponent(documentId)}/pdf`;
+
+export async function fetchStudentPractice(studentId: string, exam: StudentExam): Promise<StudentPractice> {
+  const params = new URLSearchParams({ course_code: exam.subject_code, session_name: exam.session_name,
+    year: String(exam.year), month: String(exam.month), semester: String(exam.semester) });
+  const response = await apiFetch(`${API_BASE}/api/students/${encodeURIComponent(studentId)}/practice-questions?${params}`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : "Practice generation is unavailable. You can still revise the questions and missed criteria on your profile.");
+  }
+  return response.json();
+}
 
 export interface StudentExam {
   subject_code: string;

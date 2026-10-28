@@ -47,7 +47,7 @@ class ValidateVivaVideoTests(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.dir.cleanup)
-        # Synthetic clips are far below 2 MB; the size rule has its own tests below.
+        # Synthetic clips are far below 1 MB; the size rule has its own tests below.
         patcher = patch.object(gate, "MIN_VIVA_UPLOAD_BYTES", 1)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -69,7 +69,7 @@ class ValidateVivaVideoTests(unittest.TestCase):
     def test_under_the_minimum_size_is_refused(self):
         path = self._video("small.mp4", seconds=12, frame_fn=_textured)
         with patch.object(gate, "MIN_VIVA_UPLOAD_BYTES", path.stat().st_size + 1):
-            with self.assertRaisesRegex(ValueError, "at least 2 MB"):
+            with self.assertRaisesRegex(ValueError, "at least 1 MB"):
                 gate.validate_viva_video(path)
 
     def test_a_file_that_is_not_a_video_is_refused(self):
@@ -150,7 +150,7 @@ class UploadGateTests(unittest.TestCase):
             with self.assertRaises(HTTPException) as ctx:
                 _analyze(b"x" * 1024)
         self.assertEqual(ctx.exception.status_code, 400)
-        self.assertIn("at least 2 MB", ctx.exception.detail)
+        self.assertIn("at least 1 MB", ctx.exception.detail)
         pipeline.assert_not_called()
         self.assertEqual({p.name for p in UPLOAD_DIR.glob("*")}, self.before)
 

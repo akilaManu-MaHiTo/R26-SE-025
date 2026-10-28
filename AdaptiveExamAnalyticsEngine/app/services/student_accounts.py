@@ -34,7 +34,7 @@ async def ensure_student_account(db, student_id: str) -> dict:
     doc = {
         "student_id": sid,
         "email": email,
-        # Analysis creates a profile; provision_user.py enables login with a unique password.
+        # Student login sets the default password hash on the first successful sign-in.
         "password_hash": "",
         "role": "student",
         "created_at": now,
@@ -57,7 +57,7 @@ async def provision_student_accounts(
     created = 0
     existed = 0
     for sub in submissions:
-        sid = str(sub.get("student_id") or "").strip()
+        sid = str(sub.get("student_id") or sub.get("student_key") or "").strip()
         if not sid or sid in seen:
             continue
         seen.add(sid)

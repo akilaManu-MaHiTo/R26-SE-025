@@ -9,6 +9,25 @@ from app.services import student_pipeline
 from app.services.student_pipeline import materialize_student_analytics
 
 
+async def test_explicit_batch_skips_superseded_and_archived_submissions(monkeypatch):
+    current = {"student_id": "S1", "_id": "current"}
+    rows = [
+        {**current, "_id": "old", "archived_reason": "superseded_by_new_batch"},
+        {**current, "_id": "archived", "archived_at": "2026-10-12"},
+        current,
+    ]
+    document = SimpleNamespace(student_id="S1", model_dump=lambda **kwargs: current)
+    build = AsyncMock(return_value=document)
+    save = AsyncMock()
+    monkeypatch.setattr(student_pipeline, "_build_student_analytics", build)
+    monkeypatch.setattr(student_pipeline, "upsert_student_analytics", save)
+    result = await materialize_student_analytics(None, submissions=rows)
+    assert result.saved == ["S1"]
+    assert result.failures == []
+    build.assert_awaited_once_with(None, current, {}, progress=build.call_args.kwargs["progress"])
+    save.assert_awaited_once()
+
+
 COURSE = {
     "course_code": "IT2040",
     "course_name": "Database Management Systems",
